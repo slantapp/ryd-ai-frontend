@@ -1,0 +1,176 @@
+{
+  "slug": "web-development-basics",
+  "curriculum": {
+    "title": "HTML Fundamentals",
+    "description": "Learn the building blocks of web development with HTML. Master tags, elements, and structure to create beautiful web pages.",
+    "language": "en",
+    "modules": [
+      {
+        "id": "html_module_01",
+        "title": "Introduction to HTML",
+        "prerequisite": null,
+        "lessons": [
+          {
+            "id": "html_lesson_01",
+            "title": "What is HTML?",
+            "body": "HTML stands for HyperText Markup Language. It's the standard language used to create web pages. HTML uses tags to structure content, making it readable by web browsers. Think of HTML as the skeleton of a webpage - it defines the structure and content, but not necessarily how it looks.",
+            "avatar_script": "Welcome to HTML Fundamentals! HTML is the foundation of every website you visit. It stands for HyperText Markup Language, and it's what tells your browser how to display content. Think of HTML as the skeleton of a webpage - it provides the structure. We use tags, which are like labels, to tell the browser what each piece of content is. For example, we use heading tags for titles, paragraph tags for text, and image tags for pictures. Let's start building your first webpage!",
+            "media": {},
+            "code_example": {
+              "code": "<!DOCTYPE html>\n<html>\n<head>\n    <title>My First Page</title>\n</head>\n<body>\n    <h1>Welcome to HTML!</h1>\n    <h2>Learning HTML</h2>\n    <p>This is a paragraph tag.</p>\n</body>\n</html>",
+              "language": "html",
+              "description": "Basic HTML structure with heading and paragraph tags",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "html_q1",
+                "type": "multiple_choice",
+                "question": "What does HTML stand for?",
+                "options": [
+                  "HyperText Markup Language",
+                  "High Tech Modern Language",
+                  "Home Tool Markup Language",
+                  "Hyperlink Text Markup Language"
+                ],
+                "answer": "HyperText Markup Language",
+                "explanation": "HTML stands for HyperText Markup Language, which is the standard markup language for creating web pages."
+              },
+              {
+                "id": "html_q2",
+                "type": "true_false",
+                "question": "HTML is a programming language.",
+                "answer": false,
+                "explanation": "HTML is a markup language, not a programming language. It describes the structure of a webpage but doesn't have programming logic like variables or functions."
+              },
+              {
+                "id": "html_q3",
+                "type": "code_test",
+                "question": "Create an h2 heading tag with the text 'Learning HTML'",
+                "explanation": "Great! Headings help organize your content. The h2 tag creates a second-level heading, which is perfect for section titles. Remember to include both the opening and closing tags!",
+                "code_example": {
+                  "code": "<h1>Main Title</h1>\n<h2>Learning HTML</h2>\n<p>This is a paragraph.</p>",
+                  "language": "html",
+                  "description": "Example of HTML heading tags",
+                  "explanation": "Let me show you how HTML headings work. I'm creating an h1 tag for the main title, and an h2 tag for a section heading. Notice how each tag has an opening tag like <h2> and a closing tag like </h2>. The text goes between them. Headings help organize your page and make it easier to read.",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedHTML": "<h2>Learning HTML</h2>"
+                }
+              }
+            ],
+            "next_lesson_id": "html_lesson_02"
+          },
+          {
+            "id": "html_lesson_02",
+            "title": "HTML Document Structure",
+            "body": "Every HTML document follows a basic structure. It starts with a DOCTYPE declaration, followed by an html element that contains a head and body section. The head contains metadata like the page title, while the body contains the visible content.",
+            "avatar_script": "Now let's learn about the structure of an HTML document. Every HTML page has a specific structure that browsers expect. First, we declare the document type with DOCTYPE html. Then we have the html tag, which wraps everything. Inside, we have two main sections: the head and the body. The head contains information about the page that users don't see directly, like the title that appears in the browser tab. The body contains all the content that users will see on the page - your text, images, links, and more. This structure is like a blueprint for your webpage!",
+            "media": {},
+            "code_example": {
+              "code": "<!DOCTYPE html>\n<html>\n<head>\n    <title>Welcome to my webpage</title>\n</head>\n<body>\n    <p>Welcome to my webpage</p>\n</body>\n</html>",
+              "language": "html",
+              "description": "Complete HTML document structure with DOCTYPE, head, and body",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "html_q4",
+                "type": "multiple_choice",
+                "question": "Which section contains the visible content of a webpage?",
+                "options": ["head", "body", "footer", "header"],
+                "answer": "body",
+                "explanation": "The body section contains all the visible content that users see on the webpage, such as text, images, and links."
+              },
+              {
+                "id": "html_q5",
+                "type": "true_false",
+                "question": "The head section is visible to users on the webpage.",
+                "answer": false,
+                "explanation": "The head section contains metadata and is not visible on the webpage itself. It includes information like the page title, which appears in the browser tab."
+              },
+              {
+                "id": "html_q6",
+                "type": "code_test",
+                "question": "Create a paragraph tag with the text 'Welcome to my webpage'",
+                "explanation": "Excellent! Paragraphs are the most common way to display text content on a webpage. The <p> tag wraps your text and creates proper spacing.",
+                "code_example": {
+                  "code": "<p>Welcome to my webpage</p>\n<p>This is another paragraph.</p>",
+                  "language": "html",
+                  "description": "Example of HTML paragraph tags",
+                  "explanation": "Here's how to create paragraphs. The p tag stands for paragraph. I put the opening tag <p>, then my text, and close it with </p>. Each paragraph tag creates a separate block of text with spacing. This is the most common way to add text to your webpage.",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedHTML": "<p>Welcome to my webpage</p>"
+                }
+              }
+            ],
+            "next_lesson_id": "html_lesson_03"
+          }
+        ]
+      },
+      {
+        "id": "html_module_02",
+        "title": "HTML Elements and Tags",
+        "prerequisite": "html_module_01",
+        "lessons": [
+          {
+            "id": "html_lesson_03",
+            "title": "Common HTML Tags",
+            "body": "HTML uses tags to define different types of content. Some common tags include: h1 to h6 for headings, p for paragraphs, a for links, img for images, and div for containers. Each tag has a specific purpose and helps organize content semantically.",
+            "avatar_script": "Let's explore some of the most common HTML tags you'll use every day! Headings are created with h1 through h6 tags, where h1 is the largest and most important heading. Paragraphs use the p tag to wrap text content. Links are made with the a tag, and they need an href attribute to specify where they go. Images use the img tag with a src attribute pointing to the image file. The div tag is a container that helps organize and group related content together. These tags work together to create well-structured, readable web pages. Practice using them, and you'll be building websites in no time!",
+            "media": {},
+            "code_example": {
+              "code": "<h1>Main Heading</h1>\n<p>This is a paragraph.</p>\n<a href=\"https://example.com\">Visit Example</a>\n<img src=\"image.jpg\" alt=\"Description\">\n<div>Container content</div>",
+              "language": "html",
+              "description": "Common HTML tags: headings, paragraphs, links, images, and divs",
+              "autoRun": false,
+              "typingSpeed": 75
+            },
+            "questions": [
+              {
+                "id": "html_q7",
+                "type": "multiple_choice",
+                "question": "Which tag is used for the most important heading?",
+                "options": ["h6", "h1", "p", "div"],
+                "answer": "h1",
+                "explanation": "The h1 tag is used for the most important heading on a page. There should typically be only one h1 per page."
+              },
+              {
+                "id": "html_q8",
+                "type": "true_false",
+                "question": "The img tag requires both src and alt attributes.",
+                "answer": true,
+                "explanation": "While src is required to specify the image source, alt is highly recommended for accessibility to describe the image for screen readers."
+              },
+              {
+                "id": "html_q9",
+                "type": "code_test",
+                "question": "Create an anchor (link) tag with href='https://example.com' and the text 'Visit Example'",
+                "explanation": "Perfect! Links are essential for navigation on the web. The <a> tag creates clickable links, and the href attribute tells the browser where to go when clicked.",
+                "code_example": {
+                  "code": "<a href=\"https://example.com\">Visit Example</a>\n<a href=\"https://google.com\">Go to Google</a>",
+                  "language": "html",
+                  "description": "Example of HTML anchor (link) tags",
+                  "explanation": "Let me show you how to create links. The 'a' tag stands for anchor, which creates a clickable link. I use the href attribute to specify where the link goes - that's the URL. The text between the opening and closing tags is what users will see and click on. Links are how we connect different pages on the web!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedHTML": "<a href='https://example.com'>Visit Example</a>"
+                }
+              }
+            ],
+            "next_lesson_id": null
+          }
+        ]
+      }
+    ]
+  }
+}

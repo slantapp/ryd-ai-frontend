@@ -1,0 +1,97 @@
+import { CreateProfile, SelectPlatform, SelectProfile } from "@/pages/auth";
+import { PRIVATE_PATHS, PUBLIC_PATHS } from "../utils/routePaths";
+import { Navigate } from "react-router-dom";
+import {
+  CoursesPage,
+  // CodingExercise,
+  SettingsPage,
+  Dashboard,
+  WishlistPage,
+  SupportPage,
+} from "@/pages/app";
+import CodeExample from "@/data/CodeExample";
+
+interface AppRoute {
+  path: string;
+  element: React.ReactNode;
+  children?: [
+    {
+      path: string;
+      element: React.ReactNode;
+    }
+  ];
+}
+
+interface AppRoute {
+  path: string;
+  element: React.ReactNode;
+  children?: [
+    {
+      path: string;
+      element: React.ReactNode;
+    }
+  ];
+}
+
+const { DASHBOARD, COURSES, COURSE_QUIZ, SETTINGS, WISHLISTS, SUPPORT } =
+  PRIVATE_PATHS;
+
+const { SELECT_PLATFORM, SELECT_PROFILE, CREATE_PROFILE } = PUBLIC_PATHS;
+
+export const PUBLIC_ROUTES: AppRoute[] = [
+  {
+    path: "/",
+    element: <SelectPlatform />,
+  },
+  {
+    path: SELECT_PLATFORM,
+    element: <SelectPlatform />,
+  },
+  {
+    path: SELECT_PROFILE,
+    element: <SelectProfile />,
+  },
+  {
+    path: CREATE_PROFILE,
+    element: <CreateProfile />,
+  },
+  {
+    path: "*",
+    element: <Navigate to="/" replace />,
+  },
+];
+
+export const PRIVATE_ROUTES: AppRoute[] = [
+  // {
+  //   path: '/',
+  //   element: <Dashboard />,
+  // },
+  {
+    path: DASHBOARD,
+    element: <Dashboard />,
+  },
+  {
+    path: COURSES,
+    element: <CoursesPage />,
+  },
+  {
+    path: COURSE_QUIZ,
+    element: <CodeExample />,
+  },
+  {
+    path: SETTINGS,
+    element: <SettingsPage />,
+  },
+  {
+    path: WISHLISTS,
+    element: <WishlistPage />,
+  },
+  {
+    path: SUPPORT,
+    element: <SupportPage />,
+  },
+  {
+    path: "*",
+    element: <Navigate to={DASHBOARD} replace />,
+  },
+];

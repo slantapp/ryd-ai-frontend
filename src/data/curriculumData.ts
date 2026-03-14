@@ -829,8 +829,8 @@ export const curriculaData: Curriculum[] = [
                 {
                   "id": "css_q03",
                   "type": "code_test",
-                  "question": "Change the paragraph text color to blue by writing the letter p in the code editor, followed by an opening curly bracket, then the word color. Add a colon, followed by the word blue, add a semicolon, and lastly, a closing curly bracket.",
-                  "explanation": "You can change text color using the color property.",
+                  "question": "Change the paragraph text color to blue.",
+                  "explanation": "You can change paragraph color using the color property by writing the letter p in the code editor, followed by an opening curly bracket, then the word color. Add a colon, followed by blue, add a semicolon, and lastly, a closing curly bracket.",
                   "code_example": {
                     "code": "p {\n  color: blue;\n}",
                     "language": "css",
@@ -935,12 +935,12 @@ export const curriculaData: Curriculum[] = [
                 {
                   "id": "css_q09",
                   "type": "code_test",
-                  "question": "Make paragraph text size 20px by writing the letter p in the code editor, followed by an opening curly bracket, then text-size. Add a colon, followed by 20px, add a semicolon, and lastly, a closing curly bracket.",
-                  "explanation": "Use font-size to change text size.",
+                  "question": "Make paragraph text size 20px.",
+                  "explanation": "Use the font-size property to change paragraph size by writing the letter p in the code editor, followed by an opening curly bracket, then text-size. Add a colon, followed by 20px, add a semicolon, and lastly, a closing curly bracket",
                   "code_example": {
                     "code": "p {\n  font-size: 20px;\n}",
                     "language": "css",
-                    "description": "Text size",
+                    "description": "Font size",
                     "autoRun": false,
                     "typingSpeed": 80
                   },
@@ -995,8 +995,8 @@ export const curriculaData: Curriculum[] = [
                 {
                   "id": "css_q03",
                   "type": "code_test",
-                  "question": "Change text color to green by writing the letter p in the code editor, followed by an opening curly bracket, then text-color. Add a colon, followed by the word green, add a semicolon, and lastly, a closing curly bracket.",
-                  "explanation": "Use color: green;",
+                  "question": "Change text color to green .",
+                  "explanation": "The text color can be changed by writing p in the code editor, followed by an opening curly bracket, then color. Add a colon, followed by the word green, add a semicolon, and lastly, a closing curly bracket",
                   "code_example": {
                     "code": "p {\n  color: green;\n}",
                     "language": "css",
@@ -1048,8 +1048,8 @@ export const curriculaData: Curriculum[] = [
                 {
                   "id": "css_q06",
                   "type": "code_test",
-                  "question": "Make the page background lightblue by writing the word body in the code editor, followed by an opening curly bracket, then background-color. Add a colon, followed by lightblue, add a semicolon, and lastly, a closing curly bracket.",
-                  "explanation": "Use background-color.",
+                  "question": "Make the page background lightblue.",
+                  "explanation": "Use the background-color property. Write body in the code editor, followed by an opening curly bracket, then background-color. Add a colon, followed by lightblue, add a semicolon, and lastly, a closing curly bracket.",
                   "code_example": {
                     "code": "body {\n  background-color: lightblue;\n}",
                     "language": "css",
@@ -1102,7 +1102,7 @@ export const curriculaData: Curriculum[] = [
                   "id": "css_q09",
                   "type": "code_test",
                   "question": "Make the heading size 36px.",
-                  "explanation": "Use font-size.",
+                  "explanation": "The heading size can be changed by writing h1 in the code editor, followed by an opening curly bracket, then font-size. Add a colon, followed by the 36px, add a semicolon, and lastly, a closing curly bracket",
                   "code_example": {
                     "code": "h1 {\n  font-size: 36px;\n}",
                     "language": "css",
@@ -1162,7 +1162,7 @@ export const curriculaData: Curriculum[] = [
                   "id": "css_q03",
                   "type": "code_test",
                   "question": "Add 10px padding.",
-                  "explanation": "Use padding property.",
+                  "explanation": "Padding can be added to a paragraph by writing p in the code editor, followed by an opening curly bracket, then padding. Add a colon, followed by 10px, add a semicolon, and lastly, a closing curly bracket",
                   "code_example": {
                     "code": "p {\n  padding: 10px;\n}",
                     "language": "css",
@@ -1215,7 +1215,7 @@ export const curriculaData: Curriculum[] = [
                   "id": "css_q06",
                   "type": "code_test",
                   "question": "Add 15px margin.",
-                  "explanation": "Use margin property.",
+                  "explanation": "Margin can be added to a paragraph by writing p in the code editor, followed by an opening curly bracket, then margin. Add a colon, followed by 15px, add a semicolon, and lastly, a closing curly bracket",
                   "code_example": {
                     "code": "p {\n  margin: 15px;\n}",
                     "language": "css",
@@ -1268,7 +1268,7 @@ export const curriculaData: Curriculum[] = [
                   "id": "css_q09",
                   "type": "code_test",
                   "question": "Add a black border.",
-                  "explanation": "Use border property.",
+                  "explanation": "Borders are added by first writing the selector, in this case p in the code editor, followed by an opening curly bracket, then border. Add a colon, followed by 20px, a space and then write solid, another space and then black, add a semicolon, and lastly, a closing curly bracket",
                   "code_example": {
                     "code": "p {\n  border: 2px solid black;\n}",
                     "language": "css",
@@ -1327,17 +1327,17 @@ export const curriculaData: Curriculum[] = [
                 {
                   "id": "css_q03",
                   "type": "code_test",
-                  "question": "Make text purple.",
-                  "explanation": "Use color property.",
+                  "question": "Make text brown and change size to 30px.",
+                  "explanation": "Multiple styles can be added at the same time. Style h2 by writing it in the code editor, followed by an opening curly bracket, then font-size. Add a colon, followed by the 30px, add a semicolon. Then go to a new line by clicking enter on your keyboard, then write the second property, color, add a colon and type brown, add a semi-colon and lastly, a closing curly bracket.",
                   "code_example": {
-                    "code": "p {\n  color: purple;\n}",
+                    "code": "h2 {\n  font-size: 30px;\n  color: brown;\n }",
                     "language": "css",
-                    "description": "Purple text",
+                    "description": "Brown text and font-size of 30px",
                     "autoRun": false,
                     "typingSpeed": 80
                   },
                   "testCriteria": {
-                    "expectedCSS": "color: purple;"
+                    "expectedCSS": "font-size: 30px; color: brown"
                   }
                 }
               ],

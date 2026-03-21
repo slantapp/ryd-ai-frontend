@@ -14,7 +14,7 @@ const DashboardLayout = ({ children }: DashboardProps) => {
   return (
     <div className="flex h-screen flex-col items-stretch gap-4 overflow-hidden bg-white bg-[url('/images/auth-bg.png')] bg-cover bg-center bg-no-repeat">
       <TopNav onOpenMobileNav={() => setMobileNavOpen(true)} />
-      <div className="relative mt-24 flex h-full min-h-0 w-full gap-4 overflow-hidden rounded-t-2xl px-3 pb-3 transition-all duration-300 ease-in-out sm:px-4 sm:pb-4">
+      <div className="relative md:mt-24 mt-20 flex h-full min-h-0 w-full gap-4 overflow-hidden rounded-t-2xl px-3 pb-6 transition-all duration-300 ease-in-out sm:px-4 sm:pb-4">
         <SideNav
           mobileNavOpen={mobileNavOpen}
           onMobileNavClose={closeMobileNav}

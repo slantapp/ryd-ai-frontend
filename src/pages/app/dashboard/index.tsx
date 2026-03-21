@@ -71,11 +71,11 @@ const Dashboard = () => {
 
   return (
     <div className="mx-auto min-w-0 max-w-full space-y-4 sm:space-y-6">
-      <header className="flex flex-col gap-3 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between">
+      <header className="flex gap-3 items-center justify-between">
         <h1 className="font-solway text-xl font-bold tracking-tight text-[#0A090B] sm:text-2xl md:text-3xl">
           Dashboard
         </h1>
-        <DatePicker className="w-full min-w-0 shrink-0 justify-between text-sm min-[480px]:w-auto min-[480px]:max-w-[min(100%,17.5rem)] sm:text-base" />
+        <DatePicker className="w-fit shrink-0 justify-between text-sm  sm:text-base" />
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
@@ -84,19 +84,19 @@ const Dashboard = () => {
             key={`${id}-${label}`}
             className="rounded-xl border bg-white/80 shadow-md transition-shadow hover:shadow-lg"
           >
-            <div className="flex flex-col gap-2 p-3 sm:gap-2.5 sm:p-4">
-              <div className="flex size-9 shrink-0 items-center justify-center sm:size-11 md:size-12">
+            <div className="flex flex-col gap-2 p-3 sm:gap-2.5 sm:p-4 lg:flex-row lg:items-center lg:gap-3 lg:p-4">
+              <div className="flex size-9 shrink-0 items-center justify-center sm:size-11 md:size-12 lg:size-14">
                 <img
                   src={Icon}
                   alt=""
                   className="max-h-full max-w-full object-contain"
                 />
               </div>
-              <div className="min-w-0">
-                <p className="text-base font-bold leading-none tabular-nums sm:text-lg md:text-xl">
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-bold leading-none tabular-nums sm:text-xl md:text-2xl lg:text-xl">
                   {value}
                 </p>
-                <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-snug text-[#666666] sm:min-h-11 sm:text-sm">
+                <p className="mt-1 line-clamp-2 text-sm leading-snug text-[#666666] sm:text-base lg:mt-1 lg:text-sm">
                   {label}
                 </p>
               </div>

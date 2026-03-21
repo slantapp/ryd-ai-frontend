@@ -56,105 +56,94 @@ const CoursesPage = () => {
     setCurrentPage((prev) => Math.min(totalPages, prev + 1));
   };
 
+  const tabTriggerClass = cn(
+    "shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-all sm:px-4 sm:py-2 sm:text-sm md:px-6",
+    "font-solway whitespace-nowrap",
+    "data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md",
+    "data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900",
+  );
+
   return (
-    <div className="flex flex-col h-full p-4">
-      {/* Courses Collection */}
-      <section className="flex flex-col h-full space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-bold text-2xl font-solway">Courses Collection</h2>
+    <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col">
+      <section className="flex min-h-0 flex-1 flex-col space-y-3 sm:space-y-4">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="font-solway text-xl font-bold tracking-tight text-[#0A090B] sm:text-2xl lg:text-3xl">
+            Courses Collection
+          </h2>
         </div>
 
         <Tabs
           value={activeTab}
           onValueChange={(value) => {
             setActiveTab(value);
-            setCurrentPage(1); // Reset to first page when tab changes
+            setCurrentPage(1);
           }}
+          className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 sm:gap-4"
         >
-          <TabsList className="bg-gray-100/50 p-1 rounded-xl gap-1">
-            <TabsTrigger
-              className={cn(
-                "px-6 py-2 rounded-lg font-solway font-semibold transition-all",
-                "data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md",
-                "data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900"
-              )}
-              value="all"
-            >
-              All ({getAllCourses().length})
-            </TabsTrigger>
-            <TabsTrigger
-              className={cn(
-                "px-6 py-2 rounded-lg font-solway font-semibold transition-all",
-                "data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md",
-                "data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900"
-              )}
-              value="ongoing"
-            >
-              Ongoing ({getOngoingCourses().length})
-            </TabsTrigger>
-            <TabsTrigger
-              className={cn(
-                "px-6 py-2 rounded-lg font-solway font-semibold transition-all",
-                "data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md",
-                "data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900"
-              )}
-              value="completed"
-            >
-              Completed ({getCompletedCourses().length})
-            </TabsTrigger>
-          </TabsList>
+          <div className="min-w-0 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] scrollbar-hide">
+            <TabsList className="inline-flex h-auto min-w-min gap-1 rounded-xl bg-gray-100/50 p-1 sm:w-fit">
+              <TabsTrigger className={tabTriggerClass} value="all">
+                All ({getAllCourses().length})
+              </TabsTrigger>
+              <TabsTrigger className={tabTriggerClass} value="ongoing">
+                Ongoing ({getOngoingCourses().length})
+              </TabsTrigger>
+              <TabsTrigger className={tabTriggerClass} value="completed">
+                Completed ({getCompletedCourses().length})
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {currentCourses.length === 0 ? (
+              <div className="flex flex-col items-center justify-center px-2 py-12 text-center sm:py-16">
+                <BookOpen className="mb-3 size-14 text-gray-300 sm:mb-4 sm:size-16" />
+                <h3 className="mb-2 text-base font-semibold text-gray-700 sm:text-lg">
+                  No courses found
+                </h3>
+                <p className="max-w-sm text-sm text-gray-500 sm:text-base">
+                  {activeTab === "ongoing"
+                    ? "You don't have any ongoing courses yet."
+                    : activeTab === "completed"
+                      ? "You haven't completed any courses yet."
+                      : "No courses available."}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 pb-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6">
+                {currentCourses.map((course) => (
+                  <CourseCard
+                    key={course.slug}
+                    course={course}
+                    showWishlistButton={true}
+                    isInWishlist={isInWishlist(course.slug)}
+                    onWishlistToggle={toggleWishlist}
+                    wishlistButtonVariant="toggle"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </Tabs>
 
-        <div className="flex-1 overflow-y-auto">
-          {currentCourses.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <BookOpen className="w-16 h-16 text-gray-300 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                No courses found
-              </h3>
-              <p className="text-gray-500">
-                {activeTab === "ongoing"
-                  ? "You don't have any ongoing courses yet."
-                  : activeTab === "completed"
-                  ? "You haven't completed any courses yet."
-                  : "No courses available."}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-4">
-              {currentCourses.map((course, i) => (
-                <CourseCard
-                  key={i}
-                  course={course}
-                  showWishlistButton={true}
-                  isInWishlist={isInWishlist(course.slug)}
-                  onWishlistToggle={toggleWishlist}
-                  wishlistButtonVariant="toggle"
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-4 border-t">
-            <div className="text-sm text-gray-600 font-sans-serifbookflf">
+          <div className="flex shrink-0 flex-col gap-3 border-t border-gray-200 pt-3 sm:flex-row sm:items-center sm:justify-between sm:pt-4">
+            <p className="text-center text-xs text-gray-600 font-sans-serifbookflf sm:text-left sm:text-sm">
               Showing {startIndex + 1} to{" "}
               {Math.min(endIndex, filteredCourses.length)} of{" "}
               {filteredCourses.length} courses
-            </div>
-            <div className="flex items-center gap-2">
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={handlePreviousPage}
                 disabled={currentPage === 1}
-                className="rounded-full bg-primary text-white border-none shadow disabled:bg-gray-200 disabled:text-gray-400"
+                className="size-9 shrink-0 rounded-full border-none bg-primary text-white shadow disabled:bg-gray-200 disabled:text-gray-400 sm:size-10"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="size-4" />
               </Button>
-              <div className="flex items-center gap-1">
+              <div className="flex max-w-full flex-wrap items-center justify-center gap-1">
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                   (page) => (
                     <Button
@@ -162,15 +151,16 @@ const CoursesPage = () => {
                       variant={currentPage === page ? "default" : "outline"}
                       size="sm"
                       onClick={() => setCurrentPage(page)}
-                      className={
+                      className={cn(
+                        "min-w-8 px-2 text-xs sm:min-w-9 sm:px-3 sm:text-sm",
                         currentPage === page
                           ? "bg-primary text-white"
-                          : "bg-white hover:bg-gray-100"
-                      }
+                          : "bg-white hover:bg-gray-100",
+                      )}
                     >
                       {page}
                     </Button>
-                  )
+                  ),
                 )}
               </div>
               <Button
@@ -178,9 +168,9 @@ const CoursesPage = () => {
                 size="icon"
                 onClick={handleNextPage}
                 disabled={currentPage === totalPages}
-                className="rounded-full bg-primary text-white border-none shadow disabled:bg-gray-200 disabled:text-gray-400"
+                className="size-9 shrink-0 rounded-full border-none bg-primary text-white shadow disabled:bg-gray-200 disabled:text-gray-400 sm:size-10"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="size-4" />
               </Button>
             </div>
           </div>

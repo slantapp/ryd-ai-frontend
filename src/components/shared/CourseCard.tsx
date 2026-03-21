@@ -76,9 +76,9 @@ const CourseCard = ({
   };
 
   return (
-    <Card className="group relative overflow-hidden rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border-0 bg-white">
+    <Card className="group relative overflow-hidden rounded-2xl border-0 bg-white shadow-sm transition-all duration-300 hover:shadow-md">
       {/* Image Container */}
-      <div className="relative h-48 overflow-hidden">
+      <div className="relative h-40 overflow-hidden sm:h-48">
         <img
           src={course.img}
           alt={course.title}
@@ -88,7 +88,7 @@ const CourseCard = ({
         <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
 
         {/* Status Badge */}
-        <div className="absolute top-4 left-4">
+        <div className="absolute left-3 top-3 sm:left-4 sm:top-4">
           {getStatusBadge(course.status)}
         </div>
 
@@ -98,7 +98,7 @@ const CourseCard = ({
             onClick={handleWishlistClick}
             size="icon"
             variant="ghost"
-            className="absolute top-4 right-4 h-9 w-9 p-0 bg-white/90 hover:bg-white transition-colors rounded-full shadow-md"
+            className="absolute right-3 top-3 size-8 rounded-full bg-white/90 p-0 shadow-md transition-colors hover:bg-white sm:right-4 sm:top-4 sm:size-9"
           >
             <Heart
               className={cn(
@@ -123,7 +123,7 @@ const CourseCard = ({
       </div>
 
       {/* Content */}
-      <CardContent className="p-4 py-0">
+      <CardContent className="px-3 pb-4 pt-0 sm:px-4 sm:pb-4">
         {/* Level Badge */}
         {course.level && (
           <div className="mb-2">
@@ -184,7 +184,7 @@ const CourseCard = ({
         <Button
           onClick={() => navigate(`/courses/${course.slug}`)}
           className={cn(
-            "w-full font-semibold transition-all h-12 text-sm",
+            "h-11 w-full text-xs font-semibold transition-all sm:h-12 sm:text-sm",
             course.status === "completed"
               ? "bg-green-600 hover:bg-green-700"
               : course.status === "ongoing"

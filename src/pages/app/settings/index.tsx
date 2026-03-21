@@ -53,35 +53,42 @@ const SettingsPage = () => {
     },
   ];
 
+  const navButtonClass = (isActive: boolean) =>
+    cn(
+      "flex w-full min-w-0 items-center gap-3 rounded-xl p-3 text-left transition sm:gap-4 sm:p-4 lg:p-6 lg:pl-4",
+      isActive ? "bg-primary text-white" : "bg-gray-50 hover:bg-gray-100",
+    );
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex w-full gap-10 p-6">
-        {/* Left Side */}
-        <div className="space-y-4">
-          <div className="space-y-2 my-6">
-            <h3 className="font-sans-serifbookfl text-[#081A28]">ACCOUNT</h3>
+    <div className="mx-auto flex min-h-0 min-w-0 max-w-full flex-col gap-4 sm:gap-6">
+      <div className="flex w-full flex-col gap-5 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
+        <nav
+          className="w-full shrink-0 space-y-2 sm:space-y-3 lg:w-[min(100%,20rem)] xl:w-88"
+          aria-label="Settings sections"
+        >
+          <div className="space-y-2 pt-1 lg:my-4 lg:pt-0 xl:my-6">
+            <h3 className="font-sans-serifbookfl text-xs font-semibold uppercase tracking-wide text-[#081A28] sm:text-sm">
+              Account
+            </h3>
           </div>
           {items.map(({ key, label, desc, icon: Icon }) => (
             <button
               key={key}
+              type="button"
               onClick={() => setActiveTab(key)}
-              className={cn(
-                "flex w-full items-center gap-4 rounded-xl  p-6 px-4 text-left transition",
-                activeTab === key
-                  ? "bg-primary text-white"
-                  : "bg-gray-50 hover:bg-gray-100"
-              )}
+              className={navButtonClass(activeTab === key)}
             >
-              <div className="flex items-center justify-center gap-2 rounded-[6px] bg-white w-[52px] h-[52px]">
-                <Icon className="h-5 w-5 text-primary" />
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-md bg-white sm:size-[52px]">
+                <Icon className="size-4.5 text-primary sm:size-5" />
               </div>
-              <div>
-                <p className="font-bold font-solway">{label}</p>
-
+              <div className="min-w-0 flex-1">
+                <p className="font-solway text-sm font-bold sm:text-base">
+                  {label}
+                </p>
                 <p
                   className={cn(
-                    "text-sm font-sans-serifbookflf",
-                    activeTab === key ? "text-white/80" : "text-gray-500"
+                    "mt-0.5 font-sans-serifbookflf text-xs leading-snug sm:text-sm",
+                    activeTab === key ? "text-white/80" : "text-gray-500",
                   )}
                 >
                   {desc}
@@ -89,31 +96,32 @@ const SettingsPage = () => {
               </div>
             </button>
           ))}
-          <div className="space-y-2 my-6">
-            <h3 className="font-sans-serifbookfl text-[#081A28]">OTHERS</h3>
-            <p className="font-bold font-solway">Notification</p>
+          <div className="space-y-1 pt-2 sm:space-y-2 lg:my-4 xl:my-6">
+            <h3 className="font-sans-serifbookfl text-xs font-semibold uppercase tracking-wide text-[#081A28] sm:text-sm">
+              Others
+            </h3>
+            <p className="font-solway text-sm font-bold sm:text-base">
+              Notification
+            </p>
           </div>
-          {otherItems.map(({ key, label, desc, icon: Icon }, i) => (
+          {otherItems.map(({ key, label, desc, icon: Icon }) => (
             <button
-              key={i}
+              key={key}
+              type="button"
               onClick={() => setActiveTab(key)}
-              className={cn(
-                "flex w-full items-center gap-4 rounded-xl  p-6 px-4 text-left transition",
-                activeTab === key
-                  ? "bg-primary text-white"
-                  : "bg-gray-50 hover:bg-gray-100"
-              )}
+              className={navButtonClass(activeTab === key)}
             >
-              <div className="flex items-center justify-center gap-2 rounded-[6px] bg-white w-[52px] h-[52px]">
-                <Icon className="h-5 w-5 text-primary" />
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-md bg-white sm:size-[52px]">
+                <Icon className="size-4.5 text-primary sm:size-5" />
               </div>
-              <div>
-                <p className="font-bold font-solway">{label}</p>
-
+              <div className="min-w-0 flex-1">
+                <p className="font-solway text-sm font-bold sm:text-base">
+                  {label}
+                </p>
                 <p
                   className={cn(
-                    "text-sm font-sans-serifbookflf",
-                    activeTab === key ? "text-white/80" : "text-gray-500"
+                    "mt-0.5 font-sans-serifbookflf text-xs leading-snug sm:text-sm",
+                    activeTab === key ? "text-white/80" : "text-gray-500",
                   )}
                 >
                   {desc}
@@ -121,9 +129,9 @@ const SettingsPage = () => {
               </div>
             </button>
           ))}
-        </div>
-        {/* Main Content */}
-        <div className="flex-1 bg-white rounded-2xl p-6 shadow-xs">
+        </nav>
+
+        <div className="min-w-0 flex-1 rounded-2xl bg-white p-4 shadow-xs sm:p-5 lg:p-6">
           {items.find((item) => item.key === activeTab)?.content}
           {otherItems.find((item) => item.key === activeTab)?.content}
         </div>

@@ -120,114 +120,121 @@ const SupportPage = () => {
     }));
   };
 
+  const quickCardClass = (active: boolean) =>
+    cn(
+      "flex min-w-0 items-center gap-3 rounded-xl border-2 p-4 text-left transition-all sm:gap-4 sm:p-5",
+      active
+        ? "border-primary bg-primary/5 shadow-md"
+        : "border-transparent bg-white shadow-md hover:border-primary/30 hover:shadow-lg",
+    );
+
   return (
-    <div className="space-y-6 p-4">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold font-solway text-[#081A28]">
+    <div className="mx-auto min-h-0 min-w-0 max-w-full space-y-4 sm:space-y-6">
+      <header className="min-w-0">
+        <h1 className="font-solway text-xl font-bold tracking-tight text-[#081A28] sm:text-2xl lg:text-3xl">
           Support Center
         </h1>
-        <p className="text-gray-500 font-sans-serifbookflf mt-1">
+        <p className="mt-1 font-sans-serifbookflf text-sm text-gray-500 sm:text-base">
           Get help, find answers, and reach our team
         </p>
-      </div>
+      </header>
 
-      {/* Quick Help Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         <button
+          type="button"
           onClick={() => setActiveSection("contact")}
-          className={cn(
-            "flex items-center gap-4 rounded-xl p-5 text-left transition-all border-2",
-            activeSection === "contact"
-              ? "border-primary bg-primary/5 shadow-md"
-              : "border-transparent bg-white shadow-md hover:shadow-lg hover:border-primary/30"
-          )}
+          className={quickCardClass(activeSection === "contact")}
         >
-          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
-            <MessageCircle className="h-6 w-6 text-primary" />
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 sm:size-12">
+            <MessageCircle className="size-5 text-primary sm:size-6" />
           </div>
-          <div>
-            <p className="font-bold font-solway text-[#081A28]">Contact Us</p>
-            <p className="text-sm text-gray-500 font-sans-serifbookflf">
+          <div className="min-w-0 flex-1">
+            <p className="font-solway text-sm font-bold text-[#081A28] sm:text-base">
+              Contact Us
+            </p>
+            <p className="font-sans-serifbookflf text-xs text-gray-500 sm:text-sm">
               Send a message to our team
             </p>
           </div>
-          <ChevronRight className="h-5 w-5 text-gray-400 ml-auto" />
+          <ChevronRight className="ml-auto size-5 shrink-0 text-gray-400" />
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveSection("faq")}
-          className={cn(
-            "flex items-center gap-4 rounded-xl p-5 text-left transition-all border-2",
-            activeSection === "faq"
-              ? "border-primary bg-primary/5 shadow-md"
-              : "border-transparent bg-white shadow-md hover:shadow-lg hover:border-primary/30"
-          )}
+          className={quickCardClass(activeSection === "faq")}
         >
-          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
-            <BookOpen className="h-6 w-6 text-primary" />
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 sm:size-12">
+            <BookOpen className="size-5 text-primary sm:size-6" />
           </div>
-          <div>
-            <p className="font-bold font-solway text-[#081A28]">FAQ</p>
-            <p className="text-sm text-gray-500 font-sans-serifbookflf">
+          <div className="min-w-0 flex-1">
+            <p className="font-solway text-sm font-bold text-[#081A28] sm:text-base">
+              FAQ
+            </p>
+            <p className="font-sans-serifbookflf text-xs text-gray-500 sm:text-sm">
               Find quick answers
             </p>
           </div>
-          <ChevronRight className="h-5 w-5 text-gray-400 ml-auto" />
+          <ChevronRight className="ml-auto size-5 shrink-0 text-gray-400" />
         </button>
 
         <a
           href="mailto:learning@rydlearning.com"
-          className="flex items-center gap-4 rounded-xl p-5 text-left transition-all border-2 border-transparent bg-white shadow-md hover:shadow-lg hover:border-primary/30"
+          className={cn(quickCardClass(false), "no-underline")}
         >
-          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
-            <Headphones className="h-6 w-6 text-primary" />
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 sm:size-12">
+            <Headphones className="size-5 text-primary sm:size-6" />
           </div>
-          <div>
-            <p className="font-bold font-solway text-[#081A28]">Direct Email</p>
-            <p className="text-sm text-gray-500 font-sans-serifbookflf">
+          <div className="min-w-0 flex-1">
+            <p className="font-solway text-sm font-bold text-[#081A28] sm:text-base">
+              Direct Email
+            </p>
+            <p className="break-all font-sans-serifbookflf text-xs text-gray-500 sm:break-normal sm:text-sm">
               learning@rydlearning.com
             </p>
           </div>
-          <ChevronRight className="h-5 w-5 text-gray-400 ml-auto" />
+          <ChevronRight className="ml-auto size-5 shrink-0 text-gray-400" />
         </a>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left: Form or FAQ */}
-        <div className="flex-1 bg-white rounded-2xl shadow-md p-6">
+      <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+        <div className="min-w-0 flex-1 rounded-2xl bg-white p-4 shadow-md sm:p-5 lg:p-6">
           {activeSection === "contact" ? (
             <div>
-              <h2 className="text-lg font-bold font-solway text-[#081A28] mb-6">
+              <h2 className="mb-4 font-solway text-base font-bold text-[#081A28] sm:mb-6 sm:text-lg">
                 Send us a message
               </h2>
               {isSubmitted ? (
-                <div className="text-center py-12">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                    <Send className="h-8 w-8 text-primary" />
+                <div className="py-8 text-center sm:py-12">
+                  <div className="mb-4 inline-flex size-14 items-center justify-center rounded-full bg-primary/10 sm:size-16">
+                    <Send className="size-7 text-primary sm:size-8" />
                   </div>
-                  <p className="font-bold font-solway text-lg text-[#081A28]">
+                  <p className="font-solway text-base font-bold text-[#081A28] sm:text-lg">
                     Message sent successfully!
                   </p>
-                  <p className="text-gray-500 mt-2 font-sans-serifbookflf">
+                  <p className="mt-2 font-sans-serifbookflf text-sm text-gray-500">
                     We'll get back to you within 24 hours.
                   </p>
                   <Button
                     variant="outline"
-                    className="mt-4"
+                    className="mt-4 w-full max-w-xs sm:w-auto"
                     onClick={() => {
                       setIsSubmitted(false);
-                      setFormData({ name: "", email: "", subject: "", message: "" });
+                      setFormData({
+                        name: "",
+                        email: "",
+                        subject: "",
+                        message: "",
+                      });
                     }}
                   >
                     Send another message
                   </Button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 font-sans-serifbookflf">
+                    <label className="mb-1.5 block font-sans-serifbookflf text-sm font-medium text-gray-700 sm:mb-2">
                       Your name
                     </label>
                     <Input
@@ -236,11 +243,11 @@ const SupportPage = () => {
                       onChange={handleInputChange}
                       placeholder="John Doe"
                       required
-                      className="h-12 rounded-lg bg-[#F8F8FA] border-gray-200"
+                      className="h-11 rounded-lg border-gray-200 bg-[#F8F8FA] text-base sm:h-12 sm:text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 font-sans-serifbookflf">
+                    <label className="mb-1.5 block font-sans-serifbookflf text-sm font-medium text-gray-700 sm:mb-2">
                       Email address
                     </label>
                     <Input
@@ -250,11 +257,11 @@ const SupportPage = () => {
                       onChange={handleInputChange}
                       placeholder="john@example.com"
                       required
-                      className="h-12 rounded-lg bg-[#F8F8FA] border-gray-200"
+                      className="h-11 rounded-lg border-gray-200 bg-[#F8F8FA] text-base sm:h-12 sm:text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 font-sans-serifbookflf">
+                    <label className="mb-1.5 block font-sans-serifbookflf text-sm font-medium text-gray-700 sm:mb-2">
                       Subject
                     </label>
                     <Input
@@ -263,11 +270,11 @@ const SupportPage = () => {
                       onChange={handleInputChange}
                       placeholder="How can we help?"
                       required
-                      className="h-12 rounded-lg bg-[#F8F8FA] border-gray-200"
+                      className="h-11 rounded-lg border-gray-200 bg-[#F8F8FA] text-base sm:h-12 sm:text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 font-sans-serifbookflf">
+                    <label className="mb-1.5 block font-sans-serifbookflf text-sm font-medium text-gray-700 sm:mb-2">
                       Message
                     </label>
                     <textarea
@@ -277,14 +284,14 @@ const SupportPage = () => {
                       placeholder="Describe your issue or question in detail..."
                       required
                       rows={5}
-                      className="w-full rounded-lg bg-[#F8F8FA] border border-gray-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0"
+                      className="w-full rounded-lg border border-gray-200 bg-[#F8F8FA] px-3 py-2.5 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 sm:text-sm"
                     />
                   </div>
                   <Button
                     type="submit"
-                    className="w-full h-12 rounded-lg font-solway"
+                    className="h-11 w-full rounded-lg font-solway sm:h-12"
                   >
-                    <Send className="h-4 w-4 mr-2" />
+                    <Send className="mr-2 size-4 shrink-0" />
                     Send message
                   </Button>
                 </form>
@@ -292,31 +299,31 @@ const SupportPage = () => {
             </div>
           ) : (
             <div>
-              <h2 className="text-lg font-bold font-solway text-[#081A28] mb-4">
+              <h2 className="mb-3 font-solway text-base font-bold text-[#081A28] sm:mb-4 sm:text-lg">
                 Frequently asked questions
               </h2>
-              <div className="relative mb-6">
+              <div className="relative mb-4 sm:mb-6">
                 <Search
-                  size={20}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-gray-400"
+                  aria-hidden
                 />
                 <Input
                   placeholder="Search FAQ..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-12 rounded-lg bg-[#F3ECFE] border-primary/20 focus-visible:ring-1 focus-visible:ring-primary"
+                  className="h-11 rounded-lg border-primary/20 bg-[#F3ECFE] pl-10 text-base focus-visible:ring-1 focus-visible:ring-primary sm:h-12 sm:text-sm"
                 />
               </div>
               {filteredFaqs.length > 0 ? (
-                <div className="space-y-4">
-                  {filteredFaqs.map((group, i) => (
-                    <div key={i} className="space-y-3">
-                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <div className="space-y-4 sm:space-y-5">
+                  {filteredFaqs.map((group) => (
+                    <div key={group.section} className="space-y-2 sm:space-y-3">
+                      <h3 className="text-[0.65rem] font-semibold uppercase tracking-wider text-gray-500 sm:text-xs">
                         {group.section}
                       </h3>
                       <div className="space-y-2">
                         {group.items.map((item, j) => {
-                          const key = `${i}-${j}`;
+                          const key = `${group.section}-${j}`;
                           const isOpen = openFaq === key;
                           return (
                             <Collapsible
@@ -326,18 +333,18 @@ const SupportPage = () => {
                                 setOpenFaq(isOpen ? null : key)
                               }
                             >
-                              <CollapsibleTrigger className="flex w-full items-center justify-between rounded-xl p-4 text-left font-medium transition bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-primary/20">
-                                <span className="font-sans-serifbookflf">
+                              <CollapsibleTrigger className="flex w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-transparent bg-gray-50 p-3 text-left text-sm font-medium transition hover:border-primary/20 hover:bg-gray-100 sm:gap-3 sm:p-4 sm:text-base">
+                                <span className="min-w-0 font-sans-serifbookflf">
                                   {item.q}
                                 </span>
                                 <ChevronRight
                                   className={cn(
-                                    "h-5 w-5 text-gray-400 shrink-0 ml-2 transition-transform",
-                                    isOpen && "rotate-90"
+                                    "size-5 shrink-0 text-gray-400 transition-transform",
+                                    isOpen && "rotate-90",
                                   )}
                                 />
                               </CollapsibleTrigger>
-                              <CollapsibleContent className="px-4 pb-3 pt-2 text-sm text-gray-600 border-l-2 border-primary/30 ml-4">
+                              <CollapsibleContent className="ml-2 border-l-2 border-primary/30 px-3 pb-3 pt-2 text-sm leading-relaxed text-gray-600 sm:ml-4 sm:px-4">
                                 {item.a}
                               </CollapsibleContent>
                             </Collapsible>
@@ -348,10 +355,12 @@ const SupportPage = () => {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <FileQuestion className="h-12 w-12 text-gray-300 mb-3" />
-                  <p className="font-medium text-gray-600">No matching questions</p>
-                  <p className="text-sm text-gray-500 mt-1">
+                <div className="flex flex-col items-center justify-center px-2 py-10 text-center sm:py-12">
+                  <FileQuestion className="mb-3 size-11 text-gray-300 sm:size-12" />
+                  <p className="font-medium text-gray-600">
+                    No matching questions
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">
                     Try a different search term or contact us directly
                   </p>
                 </div>
@@ -360,54 +369,56 @@ const SupportPage = () => {
           )}
         </div>
 
-        {/* Right: Support Info Sidebar */}
-        <div className="lg:w-[320px] space-y-4 shrink-0">
-          <div className="bg-gradient-to-br from-[#F3ECFE] to-primary/5 rounded-2xl p-6 border border-primary/10">
-            <h3 className="font-bold font-solway text-[#081A28] mb-4">
+        <div className="w-full shrink-0 space-y-3 sm:space-y-4 lg:w-80 lg:shrink-0 xl:w-[20rem]">
+          <div className="rounded-2xl border border-primary/10 bg-linear-to-br from-[#F3ECFE] to-primary/5 p-4 sm:p-6">
+            <h3 className="mb-3 font-solway text-base font-bold text-[#081A28] sm:mb-4 sm:text-lg">
               Support channels
             </h3>
-            <div className="space-y-4">
-              {supportChannels.map((channel, i) => {
+            <div className="space-y-3 sm:space-y-4">
+              {supportChannels.map((channel) => {
                 const IconComponent = channel.icon;
                 return (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-white shadow-sm shrink-0">
-                    <IconComponent className="h-5 w-5 text-primary" />
+                  <div
+                    key={channel.title}
+                    className="flex min-w-0 items-start gap-3"
+                  >
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm sm:size-10">
+                      <IconComponent className="size-4 text-primary sm:size-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-sans-serifbookflf text-xs font-semibold text-[#081A28] sm:text-sm">
+                        {channel.title}
+                      </p>
+                      <p className="text-sm font-medium text-primary sm:text-base">
+                        {channel.desc}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {channel.subtext}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold font-sans-serifbookflf text-sm text-[#081A28]">
-                      {channel.title}
-                    </p>
-                    <p className="text-sm text-primary font-medium">
-                      {channel.desc}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {channel.subtext}
-                    </p>
-                  </div>
-                </div>
-              );
+                );
               })}
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-md p-6 border">
-            <h3 className="font-bold font-solway text-[#081A28] mb-3">
+          <div className="rounded-2xl border bg-white p-4 shadow-md sm:p-6">
+            <h3 className="mb-2 font-solway text-base font-bold text-[#081A28] sm:mb-3 sm:text-lg">
               Need urgent help?
             </h3>
-            <p className="text-sm text-gray-600 font-sans-serifbookflf mb-4">
+            <p className="mb-3 font-sans-serifbookflf text-sm text-gray-600 sm:mb-4">
               For critical issues, email us directly with "Urgent" in the subject
               line.
             </p>
             <Button
               variant="outline"
-              className="w-full rounded-lg"
+              className="h-11 w-full rounded-lg sm:h-12"
               onClick={() => {
                 setActiveSection("contact");
                 setFormData((prev) => ({ ...prev, subject: "Urgent - " }));
               }}
             >
-              <Mail className="h-4 w-4 mr-2" />
+              <Mail className="mr-2 size-4 shrink-0" />
               Send urgent message
             </Button>
           </div>

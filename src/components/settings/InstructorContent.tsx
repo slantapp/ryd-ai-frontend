@@ -20,8 +20,8 @@ interface NarratorAvatarRef {
 const getPreviewText = (instructor: InstructorType): string => {
   const greetings = {
     woman:
-      "Hello! I'm Ella. We'll dive into coding and AI by creating interactive stories, animations, and cool AI experiments. I use easy-to-follow projects, adapt to your speed, and encourage you to imagine and invent. You'll get friendly help and plenty of chances to showcase what you make. Pick me if you love creative learning and want a cheerful partner on your tech journey.",
-    man: "Hello! I am your male instructor. This is how I will look and sound when teaching you. I'm excited to help you learn and grow!",
+      "Hello! I'm Frank. This is how I will look and sound when teaching you. I'm excited to help you learn and grow!",
+    man: "Hello! I'm Frank. This is how I will look and sound when teaching you. I'm excited to help you learn and grow!",
   };
 
   return greetings[instructor];

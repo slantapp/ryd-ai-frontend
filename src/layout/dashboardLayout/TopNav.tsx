@@ -10,12 +10,18 @@ import {
   BookOpen,
   LifeBuoy,
   ChevronDown,
+  Menu,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import SignOutModal from "@/components/shared/SignOutModal";
 
-const TopNav = () => {
+interface TopNavProps {
+  onOpenMobileNav?: () => void;
+}
+
+const TopNav = ({ onOpenMobileNav }: TopNavProps) => {
   const userDetails = useAuthStore((state) => state.user);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [open, setOpen] = useState(false);
@@ -24,49 +30,61 @@ const TopNav = () => {
   const profileImage = parsedUser?.logo || "https://i.pravatar.cc/150?img=3c";
 
   return (
-    <div
-      className={`fixed flex left-4 right-4 top-4 
-           rounded-[20px] shadow-xs px-4 py-2 z-40 transition-all duration-300 ease-in-out bg-white
-        `}
-    >
-      <div className="flex gap-4 w-full justify-between items-center">
-        {/* Logo */}
-        <img src="/images/logo.svg" alt="logo" className="w-40" />
+    <div className="fixed left-3 right-3 top-3 z-[60] flex rounded-[20px] bg-white px-2 py-2 shadow-xs transition-all duration-300 ease-in-out sm:left-4 sm:right-4 sm:top-4 sm:px-4">
+      <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="shrink-0 lg:hidden"
+            onClick={() => onOpenMobileNav?.()}
+            aria-label="Open menu"
+          >
+            <Menu className="size-5" strokeWidth={2} />
+          </Button>
+          <img
+            src="/images/logo.svg"
+            alt="RYD Learning"
+            className="h-7 w-auto max-w-[7.5rem] object-contain object-left sm:h-9 sm:max-w-[9rem] md:max-w-[10rem]"
+          />
+        </div>
 
-        {/* Right Actions */}
-        <div className="flex space-x-2 items-center w-fit">
-          <div className="space-x-2 flex items-center rounded-full p-2 bg-[#F3ECFE]">
-            <Bell size={18} />
+        <div className="flex w-fit shrink-0 items-center gap-1.5 sm:space-x-2">
+          <div className="flex items-center rounded-full bg-[#F3ECFE] p-1.5 sm:p-2">
+            <Bell className="size-[1.05rem] sm:size-[18px]" strokeWidth={2} />
           </div>
 
-          {/* Profile + Dropdown */}
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-              <div className="flex cursor-pointer items-center space-x-2 bg-[#F3ECFE] rounded-full px-6 py-2">
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-2 rounded-full bg-[#F3ECFE] px-2 py-1.5 outline-none sm:gap-0 sm:space-x-2 sm:px-4 sm:py-2 md:px-6"
+              >
                 <img
                   src={profileImage}
-                  alt="profile image"
-                  className="rounded-full w-8 h-8 object-cover"
+                  alt=""
+                  className="size-7 shrink-0 rounded-full object-cover sm:size-8"
                 />
 
-                <div className="text-xs">
-                  <h4 className="text-nowrap text-[#132050] font-semibold">
+                <div className="hidden min-w-0 text-left text-xs sm:block">
+                  <h4 className="truncate font-semibold text-[#132050]">
                     {userDetails?.firstName || "Hello, Jonas 👋"}{" "}
                     {userDetails?.lastName}
                   </h4>
-                  <p className="flex items-center gap-4 text-[#1320507A]">
-                    Switch Account
+                  <p className="flex items-center gap-2 text-[#1320507A] md:gap-4">
+                    <span className="hidden md:inline">Switch Account</span>
                     <ChevronDown
                       color="#6a7282"
                       size={20}
                       strokeWidth={3}
-                      className={`cursor-pointer transition-transform duration-300 ${
+                      className={`shrink-0 cursor-pointer transition-transform duration-300 ${
                         open ? "rotate-180" : "rotate-0"
                       }`}
                     />
                   </p>
                 </div>
-              </div>
+              </button>
             </PopoverTrigger>
 
             <PopoverContent

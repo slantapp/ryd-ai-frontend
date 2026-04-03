@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import Split from "react-split";
 import NarratorAvatar from "narrator-avatar";
-import { Volume2, RotateCcw } from "lucide-react";
+import { Volume2, RotateCcw, Mic } from "lucide-react";
 import {
   type Question,
   type Lesson,
@@ -27,6 +27,58 @@ import {
 } from "../components/exercise";
 import { useInstructorStore } from "../stores/instructorStore";
 import { useCoursesStore } from "../stores/coursesStore";
+import { cn } from "../lib/utils";
+
+function useMediaQueryMinLg() {
+  const [matches, setMatches] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(min-width: 1024px)").matches
+      : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => setMatches(mq.matches);
+    mq.addEventListener("change", onChange);
+    onChange();
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return matches;
+}
+
+/** Compact mic + pulses for narrow viewports (avatar hidden; stays in sync with `isSpeaking`). */
+function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
+  return (
+    <div className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
+      {isSpeaking && (
+        <>
+          <span className="absolute inline-flex size-[120%] animate-ping rounded-full bg-primary/30" />
+          <span
+            className="absolute inline-flex size-full rounded-full bg-primary/20"
+            style={{
+              animation: "pulse 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+            }}
+          />
+        </>
+      )}
+      <div
+        className={cn(
+          "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md transition-all duration-300 sm:size-10",
+          isSpeaking
+            ? "scale-105 border-primary shadow-lg shadow-primary/25"
+            : "border-primary/25",
+        )}
+      >
+        <Mic
+          className={cn(
+            "size-[1.15rem] text-primary sm:size-5",
+            isSpeaking && "animate-pulse",
+          )}
+          aria-hidden
+        />
+      </div>
+    </div>
+  );
+}
 
 // ============================================================================
 // TYPES
@@ -57,7 +109,8 @@ type PendingAction =
   | { type: "enable_next_lesson" }
   | { type: "show_completion" }
   | { type: "ask_question"; question: Question }
-  | { type: "clear_code_and_ask"; question: Question };
+  | { type: "clear_code_and_ask"; question: Question }
+  | { type: "wait_then_clear_and_ask"; question: Question };
 
 // ============================================================================
 // MAIN COMPONENT
@@ -98,6 +151,7 @@ function CodeExampleInner() {
   const [canStartQuestions, setCanStartQuestions] = useState(false);
   const [canNextLesson, setCanNextLesson] = useState(false);
   const [canPreviousLesson, setCanPreviousLesson] = useState(false);
+  const [canPrevious, setCanPrevious] = useState(false); // Can go to previous question OR previous lesson
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Answer state
@@ -133,6 +187,7 @@ function CodeExampleInner() {
     : null;
   const progressKey = exercise ? `course-progress-${exercise}` : null;
   const isCodeTestQuestion = currentQuestion?.type === "code_test";
+  const isLgUp = useMediaQueryMinLg();
 
   // ============================================================================
   // AVATAR HELPERS
@@ -240,24 +295,27 @@ function CodeExampleInner() {
           } else {
             // Typing complete
             isTypingCodeRef.current = false;
+            console.log("Typing complete", codeExample);
 
             // After typing, speak the explanation if available
+            // The explanation teaches what the code does - student sees code while listening
             if (codeExample.explanation) {
-              // Wait a moment for the code to be visible
+              // Wait a moment for the code to be fully visible before explaining
               setTimeout(() => {
+                // Speak the explanation - when done, we'll wait a bit, then clear and ask
                 speak(codeExample.explanation!, {
-                  type: "clear_code_and_ask",
+                  type: "wait_then_clear_and_ask",
                   question,
                 });
-              }, 500);
+              }, 800);
             } else {
-              // No explanation, just clear and ask the question
+              // No explanation, just announce we're clearing and ask the question
               setTimeout(() => {
                 speak(
                   "Now it's your turn! I've cleared the example. Try solving the problem yourself.",
                   { type: "clear_code_and_ask", question }
                 );
-              }, 1000);
+              }, 1500);
             }
           }
         };
@@ -421,6 +479,17 @@ function CodeExampleInner() {
           speak(action.question.question);
         }, 500);
         break;
+      case "wait_then_clear_and_ask":
+        // After explanation finishes, wait a moment so student can absorb,
+        // then announce we're clearing and ask the question
+        setTimeout(() => {
+          // Announce that we're clearing the example and it's the student's turn
+          speak(
+            "Now it's your turn! I've cleared the example. Try solving the problem yourself.",
+            { type: "clear_code_and_ask", question: action.question }
+          );
+        }, 1500); // 1.5 second pause after explanation before clearing
+        break;
       default:
         break;
     }
@@ -483,9 +552,10 @@ function CodeExampleInner() {
       });
 
       // Keep Previous enabled when advancing questions on a non-first lesson
-      if (curriculum && getPreviousLessonInOrder(currentLesson, curriculum)) {
-        setCanPreviousLesson(true);
-      }
+      const hasPrevLesson = curriculum ? !!getPreviousLessonInOrder(currentLesson, curriculum) : false;
+      setCanPreviousLesson(hasPrevLesson);
+      // Enable Previous button - we can always go back since nextIndex > 0
+      setCanPrevious(true);
 
       // Check if this is a code_test question with a code example to teach first
       if (nextQuestion.type === "code_test" && nextQuestion.code_example) {
@@ -696,6 +766,7 @@ function CodeExampleInner() {
     setCanStartQuestions(false);
     setCanNextLesson(false);
     setCanPreviousLesson(false);
+    setCanPrevious(false);
     setCode("");
     setResults([]);
     setCorrectAnswersCount(0);
@@ -724,6 +795,7 @@ function CodeExampleInner() {
     setCanStartQuestions(false);
     setCanNextLesson(false);
     setCanPreviousLesson(false);
+    setCanPrevious(false);
     setCode("");
     setResults([]);
 
@@ -747,10 +819,10 @@ function CodeExampleInner() {
       if (prevLesson.questions?.length) {
         setCanStartQuestions(true);
       }
-      // Enable previous lesson button if there's a lesson before this one
-      if (getPreviousLessonInOrder(prevLesson, curriculum)) {
-        setCanPreviousLesson(true);
-      }
+      // Enable previous lesson/question button if there's a lesson before this one
+      const hasPrevLesson = !!getPreviousLessonInOrder(prevLesson, curriculum);
+      setCanPreviousLesson(hasPrevLesson);
+      setCanPrevious(hasPrevLesson); // At lesson start (no questions yet), can only go to prev lesson
       // Enable next lesson button if there's a lesson after this one
       if (getNextLessonInOrder(prevLesson, curriculum)) {
         setCanNextLesson(true);
@@ -762,6 +834,72 @@ function CodeExampleInner() {
     saveProgress,
     speakLessonContent,
     stopSpeaking,
+  ]);
+
+  const handlePreviousQuestion = useCallback(() => {
+    if (!currentLesson?.questions || currentQuestionIndex <= 0) return;
+
+    stopSpeaking();
+    stopCodeTyping();
+
+    const prevIndex = currentQuestionIndex - 1;
+    const prevQuestion = currentLesson.questions[prevIndex];
+
+    setCurrentQuestion(prevQuestion);
+    setCurrentQuestionIndex(prevIndex);
+    setSelectedAnswer(null);
+    setIsAnswerSubmitted(false);
+    setCode("");
+    setResults([]);
+
+    saveProgress({
+      lessonId: currentLesson.id,
+      lessonIndex: curriculum ? getLessonIndexInCurriculum(currentLesson, curriculum) : undefined,
+      questionIndex: prevIndex,
+      lessonStarted: true,
+      canStartQuestions: false,
+    });
+
+    // Update canPrevious based on whether there's still a previous question or lesson
+    const hasPrevQuestion = prevIndex > 0;
+    const hasPrevLesson = curriculum ? !!getPreviousLessonInOrder(currentLesson, curriculum) : false;
+    setCanPrevious(hasPrevQuestion || hasPrevLesson);
+
+    // Check if this is a code_test question with a code example to teach first
+    if (prevQuestion.type === "code_test" && prevQuestion.code_example) {
+      typeCodeExample(prevQuestion.code_example, prevQuestion);
+    } else {
+      speak(prevQuestion.question);
+    }
+  }, [
+    currentLesson,
+    currentQuestionIndex,
+    curriculum,
+    saveProgress,
+    speak,
+    stopSpeaking,
+    stopCodeTyping,
+    typeCodeExample,
+  ]);
+
+  const handlePrevious = useCallback(() => {
+    if (!canPrevious || isSpeaking) return;
+
+    // If we have a current question and it's not the first one, go to previous question
+    if (currentQuestion && currentQuestionIndex > 0) {
+      handlePreviousQuestion();
+    } else if (canPreviousLesson) {
+      // Otherwise, go to previous lesson
+      handlePreviousLesson();
+    }
+  }, [
+    canPrevious,
+    isSpeaking,
+    currentQuestion,
+    currentQuestionIndex,
+    canPreviousLesson,
+    handlePreviousQuestion,
+    handlePreviousLesson,
   ]);
 
   const handleStartQuestions = useCallback(() => {
@@ -792,9 +930,10 @@ function CodeExampleInner() {
     });
 
     // Enable Previous whenever we have a previous lesson (regardless of completion)
-    if (curriculum && getPreviousLessonInOrder(currentLesson, curriculum)) {
-      setCanPreviousLesson(true);
-    }
+    // At question index 0, we can only go to previous lesson
+    const hasPrevLesson = curriculum ? !!getPreviousLessonInOrder(currentLesson, curriculum) : false;
+    setCanPreviousLesson(hasPrevLesson);
+    setCanPrevious(hasPrevLesson); // At first question, can only go to prev lesson
 
     // Check if this is a code_test question with a code example to teach first
     if (question.type === "code_test" && question.code_example) {
@@ -837,6 +976,7 @@ function CodeExampleInner() {
     setCanStartQuestions(false);
     setCanNextLesson(false);
     setCanPreviousLesson(false);
+    setCanPrevious(false);
     setCode("");
     setResults([]);
 
@@ -860,10 +1000,10 @@ function CodeExampleInner() {
       if (nextLesson.questions?.length) {
         setCanStartQuestions(true);
       }
-      // Enable previous lesson button if there's a lesson before this one
-      if (getPreviousLessonInOrder(nextLesson, curriculum)) {
-        setCanPreviousLesson(true);
-      }
+      // Enable previous lesson/question button if there's a lesson before this one
+      const hasPrevLesson = !!getPreviousLessonInOrder(nextLesson, curriculum);
+      setCanPreviousLesson(hasPrevLesson);
+      setCanPrevious(hasPrevLesson); // At lesson start (no questions yet), can only go to prev lesson
       // Enable next lesson button if there's a lesson after this one
       if (getNextLessonInOrder(nextLesson, curriculum)) {
         setCanNextLesson(true);
@@ -1160,46 +1300,50 @@ function CodeExampleInner() {
       const questionCount = lesson.questions?.length ?? 0;
       const allQuestionsDone = questionCount > 0 && (saved.questionIndex ?? 0) >= questionCount;
 
+      const hasPrevLesson = !!getPreviousLessonInOrder(lesson, curriculum);
+      const questionIndex = saved.questionIndex ?? 0;
+
       if (allQuestionsDone) {
         // Restore "lesson completed" state: no current question, enable Next/Previous Lesson
         setCurrentQuestion(null);
         if (getNextLessonInOrder(lesson, curriculum)) {
           setCanNextLesson(true);
         }
-        if (getPreviousLessonInOrder(lesson, curriculum)) {
-          setCanPreviousLesson(true);
-        }
+        setCanPreviousLesson(hasPrevLesson);
+        setCanPrevious(hasPrevLesson); // No current question, can only go to prev lesson
       } else if (
-        saved.questionIndex >= 0 &&
-        lesson.questions?.[saved.questionIndex]
+        questionIndex >= 0 &&
+        lesson.questions?.[questionIndex]
       ) {
-        setCurrentQuestion(lesson.questions[saved.questionIndex]);
+        setCurrentQuestion(lesson.questions[questionIndex]);
         // Enable Previous when restoring to lesson mid-flow
-        if (getPreviousLessonInOrder(lesson, curriculum)) {
-          setCanPreviousLesson(true);
-        }
+        setCanPreviousLesson(hasPrevLesson);
+        // Can go to previous question if not on first question, or to previous lesson
+        setCanPrevious(questionIndex > 0 || hasPrevLesson);
       } else {
         // Restored at start of lesson (no current question yet) - enable Previous if applicable
-        if (getPreviousLessonInOrder(lesson, curriculum)) {
-          setCanPreviousLesson(true);
-        }
+        setCanPreviousLesson(hasPrevLesson);
+        setCanPrevious(hasPrevLesson);
       }
     }
   }, [curriculum, exercise, loadProgress]);
 
   // Keep Previous/Next lesson buttons in sync whenever we're on a lesson.
-  // Previous: enabled whenever there's a previous lesson (regardless of current lesson completion).
+  // Previous: enabled whenever there's a previous question OR previous lesson.
   // Next: enabled by enable_next_lesson or when lesson has no questions.
   useEffect(() => {
     if (!currentLesson || !curriculum || !lessonStarted) return;
-    // Previous is only disabled when on the first lesson (no previous to go back to)
-    setCanPreviousLesson(!!getPreviousLessonInOrder(currentLesson, curriculum));
+    const hasPrevLesson = !!getPreviousLessonInOrder(currentLesson, curriculum);
+    const hasPrevQuestion = currentQuestionIndex > 0;
+    // Previous is only disabled when on the first question of the first lesson
+    setCanPreviousLesson(hasPrevLesson);
+    setCanPrevious(hasPrevQuestion || hasPrevLesson);
     // canNextLesson is set by handleSpeechEnd (enable_next_lesson) or moveToNextQuestion (completion)
     // so we only update it when lesson has no questions - otherwise user must complete first
     if (!currentLesson.questions?.length && getNextLessonInOrder(currentLesson, curriculum)) {
       setCanNextLesson(true);
     }
-  }, [currentLesson, curriculum, lessonStarted]);
+  }, [currentLesson, curriculum, lessonStarted, currentQuestionIndex]);
 
   // Sync progress to store when lesson changes
   useEffect(() => {
@@ -1284,6 +1428,111 @@ function CodeExampleInner() {
     accurateLipSync: true,
   };
 
+  const lessonChromePanel = (
+    <div className="shrink-0 relative z-10">
+      {!lessonStarted && (
+        <div className="mb-4 pb-4">
+          <StartLessonButton onStart={handleStartLesson} />
+        </div>
+      )}
+
+      {lessonStarted && (
+        <div className="mb-4 rounded-2xl border border-primary/10 bg-white/60 p-3 shadow-sm backdrop-blur sm:p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
+                Lesson Controls
+              </p>
+              <p className="text-xs text-gray-500 sm:text-sm">
+                Navigate through lessons and modules.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={handlePrevious}
+              disabled={!canPrevious || isSpeaking}
+              className={`rounded-xl px-2 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm ${canPrevious && !isSpeaking
+                ? "bg-red-500 text-white shadow hover:bg-red-600"
+                : "cursor-not-allowed bg-gray-200 text-gray-500"
+                }`}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={handleStartQuestions}
+              disabled={!canStartQuestions || isSpeaking}
+              className={`rounded-xl px-2 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm ${canStartQuestions && !isSpeaking
+                ? "bg-primary text-white shadow hover:bg-primary/90"
+                : "cursor-not-allowed bg-gray-200 text-gray-500"
+                }`}
+            >
+              Start
+            </button>
+            <button
+              type="button"
+              onClick={handleNextLesson}
+              disabled={!canNextLesson || isSpeaking}
+              className={`rounded-xl px-2 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm ${canNextLesson && !isSpeaking
+                ? "bg-green-500 text-white shadow hover:bg-green-600"
+                : "cursor-not-allowed bg-gray-200 text-gray-500"
+                }`}
+            >
+              Next
+            </button>
+          </div>
+          {isCourseCompleted && (
+            <button
+              type="button"
+              onClick={handleRestartCourse}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold bg-amber-500 text-white shadow transition-colors hover:bg-amber-600"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Restart course
+            </button>
+          )}
+        </div>
+      )}
+
+      {currentQuestion?.type === "code_test" && (
+        <QuestionInfo question={currentQuestion} />
+      )}
+
+      {isCodeTestQuestion && (
+        <div className="my-4 hidden min-h-[100px] items-center justify-center lg:flex lg:my-6">
+          <div className="relative flex items-center justify-center">
+            {isSpeaking && (
+              <>
+                <div className="absolute h-16 w-16 animate-ping rounded-full bg-primary/20"></div>
+                <div
+                  className="absolute h-14 w-14 animate-ping rounded-full bg-primary/30"
+                  style={{ animationDelay: "0.2s" }}
+                ></div>
+                <div
+                  className="absolute h-12 w-12 animate-ping rounded-full bg-primary/40"
+                  style={{ animationDelay: "0.4s" }}
+                ></div>
+              </>
+            )}
+            <div
+              className={`relative rounded-full border-2 bg-white/90 p-3 shadow-lg backdrop-blur-sm transition-all duration-300 ${isSpeaking
+                ? "scale-110 border-primary shadow-primary/50"
+                : "scale-100 border-primary/30"
+                }`}
+            >
+              <Volume2
+                className={`h-6 w-6 text-primary ${isSpeaking ? "animate-pulse" : ""
+                  }`}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -1292,371 +1541,214 @@ function CodeExampleInner() {
     <div className="relative h-full overflow-hidden">
       <Split
         className="flex h-full"
-        sizes={[35, 65]}
-        minSize={200}
-        gutterSize={8}
+        sizes={isLgUp ? [35, 65] : [0, 100]}
+        minSize={isLgUp ? 200 : 0}
+        gutterSize={isLgUp ? 8 : 0}
         gutterStyle={(dimension, gutterSize) =>
-          dimension === "width"
+          dimension === "width" && gutterSize > 0
             ? {
               width: `${gutterSize}px`,
               cursor: "col-resize",
               pointerEvents: "auto",
             }
-            : {}
+            : { width: "0px", pointerEvents: "none" }
         }
       >
-        {/* LEFT SIDE: Question Info + Avatar */}
-        <div className="relative pr-4 overflow-y-auto min-h-0 flex flex-col scrollbar-hide">
-          {/* Controls and buttons - shrink-0 keeps them visible and never overlapped by avatar */}
-          <div className="shrink-0 relative z-10">
-            {/* Start Lesson Button */}
-            {!lessonStarted && (
-              <div className="mb-4 pb-4">
-                <StartLessonButton onStart={handleStartLesson} />
-              </div>
-            )}
+        {/* LEFT SIDE: lesson chrome + avatar (desktop only); narrow viewports use 0% width */}
+        <div
+          className={cn(
+            "relative flex min-h-0 flex-col overflow-y-auto scrollbar-hide",
+            isLgUp ? "pr-4" : "min-w-0 overflow-hidden",
+          )}
+        >
+          {isLgUp && (
+            <>
+              {lessonChromePanel}
 
-            {/* Lesson Controls */}
-            {lessonStarted && (
-              <div className="mb-4 rounded-2xl border border-primary/10 bg-white/60 p-4 shadow-sm backdrop-blur">
-                <div className="mb-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
-                      Lesson Controls
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Navigate through lessons and modules.
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    onClick={handlePreviousLesson}
-                    disabled={!canPreviousLesson || isSpeaking}
-                    className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${canPreviousLesson && !isSpeaking
-                      ? "bg-red-500 text-white shadow hover:bg-red-600"
-                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                      }`}
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={handleStartQuestions}
-                    disabled={!canStartQuestions || isSpeaking}
-                    className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${canStartQuestions && !isSpeaking
-                      ? "bg-primary text-white shadow hover:bg-primary/90"
-                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                      }`}
-                  >
-                    Start Questions
-                  </button>
-                  <button
-                    onClick={handleNextLesson}
-                    disabled={!canNextLesson || isSpeaking}
-                    className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${canNextLesson && !isSpeaking
-                      ? "bg-green-500 text-white shadow hover:bg-green-600"
-                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                      }`}
-                  >
-                    Next
-                  </button>
-                </div>
-                {isCourseCompleted && (
-                  <button
-                    onClick={handleRestartCourse}
-                    className="mt-3 flex items-center justify-center gap-2 w-full rounded-xl px-3 py-2.5 text-sm font-semibold bg-amber-500 text-white shadow hover:bg-amber-600 transition-colors"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Restart course
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Question Info for Code Tests */}
-            {currentQuestion?.type === "code_test" && (
-              <QuestionInfo question={currentQuestion} />
-            )}
-
-            {/* Speaker Icon for Code Test Questions */}
-            {isCodeTestQuestion && (
-              <div className="flex items-center justify-center my-6 min-h-[100px]">
-                <div className="relative flex items-center justify-center">
-                  {/* Pulsating rings - only when speaking */}
-                  {isSpeaking && (
-                    <>
-                      <div className="absolute w-16 h-16 bg-primary/20 rounded-full animate-ping"></div>
-                      <div
-                        className="absolute w-14 h-14 bg-primary/30 rounded-full animate-ping"
-                        style={{ animationDelay: "0.2s" }}
-                      ></div>
-                      <div
-                        className="absolute w-12 h-12 bg-primary/40 rounded-full animate-ping"
-                        style={{ animationDelay: "0.4s" }}
-                      ></div>
-                    </>
-                  )}
-                  {/* Speaker icon - always visible for code test questions */}
-                  <div
-                    className={`relative bg-white/90 rounded-full p-3 backdrop-blur-sm border-2 shadow-lg transition-all duration-300 ${isSpeaking
-                      ? "border-primary scale-110 shadow-primary/50"
-                      : "border-primary/30 scale-100"
-                      }`}
-                  >
-                    <Volume2
-                      className={`w-6 h-6 text-primary ${isSpeaking ? "animate-pulse" : ""
-                        }`}
+              {!isCodeTestQuestion && curriculum && (
+                <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                  <div className="flex justify-start items-center w-full h-full min-h-0 min-w-0">
+                    <NarratorAvatar
+                      ref={avatarRef}
+                      {...avatarConfig}
+                      onReady={() => console.log("Avatar is ready!")}
+                      onError={(error: unknown) =>
+                        console.error("Avatar error:", error)
+                      }
+                      onSpeechStart={handleSpeechStart}
+                      onSpeechEnd={handleSpeechEnd}
+                      onSubtitle={handleSubtitle}
+                      className="w-full h-full min-w-0 min-h-0 max-h-full max-w-full"
                     />
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
-          {/* Avatar - flex-1 min-h-0 keeps it below controls; never overlaps buttons */}
-          {!isCodeTestQuestion && curriculum && (
-            <div className="flex-1 min-h-0 flex flex-col mt-4 overflow-hidden min-w-0">
-              <div className="flex justify-start items-center w-full h-full min-h-0 min-w-0">
-                <NarratorAvatar
-                  ref={avatarRef}
-                  {...avatarConfig}
-                  onReady={() => console.log("Avatar is ready!")}
-                  onError={(error: unknown) =>
-                    console.error("Avatar error:", error)
-                  }
-                  onSpeechStart={handleSpeechStart}
-                  onSpeechEnd={handleSpeechEnd}
-                  onSubtitle={handleSubtitle}
-                  className="w-full h-full min-w-0 min-h-0 max-h-full max-w-full"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Hidden avatar for code test questions - still functional for speech */}
-          {isCodeTestQuestion && curriculum && (
-            <div className="invisible absolute inset-0 pointer-events-none">
-              <NarratorAvatar
-                ref={avatarRef}
-                {...avatarConfig}
-                onReady={() => console.log("Avatar is ready!")}
-                onError={(error: unknown) =>
-                  console.error("Avatar error:", error)
-                }
-                onSpeechStart={handleSpeechStart}
-                onSpeechEnd={handleSpeechEnd}
-                onSubtitle={handleSubtitle}
-                className="w-full h-full"
-              />
-            </div>
+              {isCodeTestQuestion && curriculum && (
+                <div className="pointer-events-none invisible absolute inset-0">
+                  <NarratorAvatar
+                    ref={avatarRef}
+                    {...avatarConfig}
+                    onReady={() => console.log("Avatar is ready!")}
+                    onError={(error: unknown) =>
+                      console.error("Avatar error:", error)
+                    }
+                    onSpeechStart={handleSpeechStart}
+                    onSpeechEnd={handleSpeechEnd}
+                    onSubtitle={handleSubtitle}
+                    className="h-full w-full"
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
 
         {/* RIGHT SIDE */}
-        <div className="overflow-y-auto min-h-0 flex flex-col scrollbar-hide w-full">
-          {isCodeTestQuestion ? (
-            <div className="flex flex-col min-h-0 h-full flex-1 w-full">
-              <Split
-                direction="vertical"
-                className="flex flex-col h-full w-full"
-                sizes={[35, 65]}
-                minSize={100}
-                gutterSize={8}
-                gutterStyle={(dimension, gutterSize) =>
-                  dimension === "height"
-                    ? {
-                      height: `${gutterSize}px`,
-                      cursor: "row-resize",
-                      pointerEvents: "auto",
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {!isLgUp && (
+            <header className="shrink-0 border-b border-primary/10 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
+              <div className="flex items-center gap-3">
+                <InstructorSpeakingIndicator isSpeaking={isSpeaking} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/80">
+                    Instructor audio
+                  </p>
+                  <p
+                    className="truncate text-xs text-gray-600 sm:text-sm"
+                    title={
+                      isSpeaking
+                        ? currentSubtitle || "Speaking…"
+                        : "Ready when you are"
                     }
-                    : {}
-                }
-              >
-                <CodeEditor
-                  code={code}
-                  onCodeChange={setCode}
-                  onTestCode={handleCodeTest}
-                  onTryOut={handleRunCodeTryOut}
-                  onToggleFullscreen={() =>
-                    setFullscreen(fullscreen === "editor" ? null : "editor")
-                  }
-                  isFullscreen={fullscreen === "editor"}
-                  canTest={
-                    !!currentQuestion &&
-                    currentQuestion.type === "code_test"
-                  }
-                  canSubmit={
-                    !!currentQuestion &&
-                    currentQuestion.type === "code_test" &&
-                    !!code.trim() &&
-                    !isSpeaking
-                  }
-                />
-                <TestResults
-                  results={results}
-                  code={code}
-                  onToggleFullscreen={() =>
-                    setFullscreen(fullscreen === "results" ? null : "results")
-                  }
-                  isFullscreen={fullscreen === "results"}
-                />
-              </Split>
-            </div>
-          ) : (
-            <div className="w-full bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-6 overflow-y-auto border-l-2 border-primary/20 min-h-screen flex flex-col relative">
-              {/* Decorative background */}
-              <div className="absolute inset-0 opacity-5 pointer-events-none">
-                <div className="absolute top-20 right-10 w-32 h-32 bg-primary rounded-full blur-3xl"></div>
-                <div className="absolute bottom-20 left-10 w-40 h-40 bg-primary/60 rounded-full blur-3xl"></div>
+                  >
+                    {isSpeaking
+                      ? currentSubtitle || "Speaking…"
+                      : "Ready when you are"}
+                  </p>
+                </div>
               </div>
+            </header>
+          )}
 
-              <div className="relative z-10">
-                {currentQuestion ? (
-                  <>
-                    <div className="mb-6">
-                      <h3 className="text-2xl font-bold mb-3 text-gray-900 leading-tight">
-                        {currentQuestion.question}
-                      </h3>
-                      <div className="h-1 w-20 bg-linear-to-r from-primary via-primary/80 to-primary/60 rounded-full"></div>
-                    </div>
+          <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+            {isCodeTestQuestion ? (
+              <div className="flex flex-col min-h-0 h-full flex-1 w-full">
+                <Split
+                  direction="vertical"
+                  className="flex flex-col h-full w-full"
+                  sizes={[35, 65]}
+                  minSize={100}
+                  gutterSize={8}
+                  gutterStyle={(dimension, gutterSize) =>
+                    dimension === "height"
+                      ? {
+                        height: `${gutterSize}px`,
+                        cursor: "row-resize",
+                        pointerEvents: "auto",
+                      }
+                      : {}
+                  }
+                >
+                  <CodeEditor
+                    code={code}
+                    onCodeChange={setCode}
+                    onTestCode={handleCodeTest}
+                    onTryOut={handleRunCodeTryOut}
+                    onToggleFullscreen={() =>
+                      setFullscreen(fullscreen === "editor" ? null : "editor")
+                    }
+                    isFullscreen={fullscreen === "editor"}
+                    canTest={
+                      !!currentQuestion &&
+                      currentQuestion.type === "code_test"
+                    }
+                    canSubmit={
+                      !!currentQuestion &&
+                      currentQuestion.type === "code_test" &&
+                      !!code.trim() &&
+                      !isSpeaking
+                    }
+                  />
+                  <TestResults
+                    results={results}
+                    code={code}
+                    onToggleFullscreen={() =>
+                      setFullscreen(fullscreen === "results" ? null : "results")
+                    }
+                    isFullscreen={fullscreen === "results"}
+                  />
+                </Split>
+              </div>
+            ) : (
+              <div className="relative flex w-full min-h-0 flex-1 flex-col overflow-y-auto border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-6 lg:min-h-screen lg:border-l-2">
+                {/* Decorative background */}
+                <div className="absolute inset-0 opacity-5 pointer-events-none">
+                  <div className="absolute top-20 right-10 w-32 h-32 bg-primary rounded-full blur-3xl"></div>
+                  <div className="absolute bottom-20 left-10 w-40 h-40 bg-primary/60 rounded-full blur-3xl"></div>
+                </div>
 
-                    {/* Multiple Choice UI */}
-                    {currentQuestion.type === "multiple_choice" && (
-                      <MultipleChoiceQuestion
-                        question={currentQuestion}
-                        selectedAnswer={selectedAnswer as string | null}
-                        onSelect={handleMultipleChoiceSelect}
-                        disabled={isAnswerSubmitted}
-                      />
-                    )}
+                <div className="relative z-10">
+                  {currentQuestion ? (
+                    <>
+                      <div className="mb-6">
+                        <h3 className="mb-3 text-xl font-bold leading-tight text-gray-900 sm:text-2xl">
+                          {currentQuestion.question}
+                        </h3>
+                        <div className="h-1 w-20 bg-linear-to-r from-primary via-primary/80 to-primary/60 rounded-full"></div>
+                      </div>
 
-                    {/* True/False UI */}
-                    {currentQuestion.type === "true_false" && (
-                      <TrueFalseQuestion
-                        selectedAnswer={selectedAnswer as boolean | null}
-                        onSelect={handleTrueFalseSelect}
-                        disabled={isAnswerSubmitted}
-                      />
-                    )}
-
-                    {/* Submit Button */}
-                    {(currentQuestion.type === "multiple_choice" ||
-                      currentQuestion.type === "true_false") && (
-                        <div className="mt-6">
-                          <button
-                            onClick={handleSubmitAnswer}
-                            disabled={
-                              selectedAnswer === null ||
-                              isAnswerSubmitted ||
-                              isSpeaking
-                            }
-                            className={`w-full py-3 px-6 rounded-xl font-semibold text-lg transition-all duration-200 transform ${selectedAnswer !== null &&
-                              !isAnswerSubmitted &&
-                              !isSpeaking
-                              ? "bg-linear-to-r from-primary via-primary/90 to-primary/80 text-white shadow-lg shadow-primary/40 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/50"
-                              : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-60"
-                              }`}
-                          >
-                            {isAnswerSubmitted
-                              ? "Answer Submitted"
-                              : "Submit Answer"}
-                          </button>
-                        </div>
+                      {/* Multiple Choice UI */}
+                      {currentQuestion.type === "multiple_choice" && (
+                        <MultipleChoiceQuestion
+                          question={currentQuestion}
+                          selectedAnswer={selectedAnswer as string | null}
+                          onSelect={handleMultipleChoiceSelect}
+                          disabled={isAnswerSubmitted}
+                        />
                       )}
 
-                    {/* Hint */}
-                    {currentQuestion.explanation && (
-                      <div className="mt-8 p-4 bg-linear-to-br from-primary/10 via-primary/5 to-transparent border-l-4 border-primary rounded-r-lg shadow-sm backdrop-blur-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5">
-                            <svg
-                              className="w-5 h-5 text-primary"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
+                      {/* True/False UI */}
+                      {currentQuestion.type === "true_false" && (
+                        <TrueFalseQuestion
+                          selectedAnswer={selectedAnswer as boolean | null}
+                          onSelect={handleTrueFalseSelect}
+                          disabled={isAnswerSubmitted}
+                        />
+                      )}
+
+                      {/* Submit Button */}
+                      {(currentQuestion.type === "multiple_choice" ||
+                        currentQuestion.type === "true_false") && (
+                          <div className="mt-6">
+                            <button
+                              onClick={handleSubmitAnswer}
+                              disabled={
+                                selectedAnswer === null ||
+                                isAnswerSubmitted ||
+                                isSpeaking
+                              }
+                              className={`w-full py-3 px-6 rounded-xl font-semibold text-lg transition-all duration-200 transform ${selectedAnswer !== null &&
+                                !isAnswerSubmitted &&
+                                !isSpeaking
+                                ? "bg-linear-to-r from-primary via-primary/90 to-primary/80 text-white shadow-lg shadow-primary/40 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/50"
+                                : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-60"
+                                }`}
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            </svg>
+                              {isAnswerSubmitted
+                                ? "Answer Submitted"
+                                : "Submit Answer"}
+                            </button>
                           </div>
-                          <div className="flex-1">
-                            <strong className="text-primary font-semibold block mb-1">
-                              Hint:
-                            </strong>
-                            <p className="text-gray-700 text-sm leading-relaxed">
-                              {currentQuestion.explanation}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : currentLesson ? (
-                  <div className="space-y-6">
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                        <span className="text-sm font-medium text-primary/70 uppercase tracking-wide">
-                          Lesson in Progress
-                        </span>
-                      </div>
-                      <h2 className="text-3xl font-bold mb-3 text-gray-900 leading-tight">
-                        {currentLesson.title}
-                      </h2>
-                      <div className="h-1 w-24 bg-linear-to-r from-primary via-primary/80 to-primary/60 rounded-full"></div>
-                    </div>
+                        )}
 
-                    {/* Subtitle Mode - Show when avatar is speaking */}
-                    {isShowingSubtitles && currentSubtitle ? (
-                      <div className="flex-1 flex items-center justify-center min-h-[300px]">
-                        <div className="max-w-2xl mx-auto px-6">
-                          {/* Subtitle container with animation */}
-                          <div className="relative">
-                            {/* Speaking indicator */}
-                            <div className="flex items-center justify-center gap-2 mb-6">
-                              <div className="flex items-center gap-1">
-                                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
-                              </div>
-                              <span className="text-sm font-medium text-primary/70">
-                                Your instructor is speaking...
-                              </span>
-                            </div>
-
-                            {/* Main subtitle text */}
-                            <div
-                              className="p-8 bg-white/80 backdrop-blur-md rounded-2xl border-2 border-primary/20 shadow-xl transition-all duration-500 ease-out"
-                              key={currentSubtitle}
-                            >
-                              <p
-                                className="text-2xl md:text-3xl font-medium text-gray-800 leading-relaxed text-center animate-fade-in"
-                                style={{
-                                  animation: "fadeIn 0.5s ease-out forwards"
-                                }}
-                              >
-                                {currentSubtitle}
-                              </p>
-                            </div>
-
-                            {/* Decorative elements */}
-                            <div className="absolute -top-4 -left-4 w-8 h-8 bg-primary/20 rounded-full blur-xl"></div>
-                            <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-primary/30 rounded-full blur-xl"></div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Static content - Show when not speaking */
-                      <div className="space-y-4">
-                        <div className="p-5 bg-white/60 backdrop-blur-sm rounded-xl border border-primary/20 shadow-sm">
-                          <div className="flex items-start gap-3 mb-3">
-                            <div className="mt-1">
+                      {/* Hint */}
+                      {currentQuestion.explanation && (
+                        <div className="mt-8 p-4 bg-linear-to-br from-primary/10 via-primary/5 to-transparent border-l-4 border-primary rounded-r-lg shadow-sm backdrop-blur-sm">
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5">
                               <svg
-                                className="w-6 h-6 text-primary"
+                                className="w-5 h-5 text-primary"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
@@ -1665,24 +1757,81 @@ function CodeExampleInner() {
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   strokeWidth={2}
-                                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                                 />
                               </svg>
                             </div>
                             <div className="flex-1">
-                              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                Overview
-                              </h3>
-                              <p className="text-gray-700 leading-relaxed">
-                                {currentLesson.body}
+                              <strong className="text-primary font-semibold block mb-1">
+                                Hint:
+                              </strong>
+                              <p className="text-gray-700 text-sm leading-relaxed">
+                                {currentQuestion.explanation}
                               </p>
                             </div>
                           </div>
                         </div>
+                      )}
+                    </>
+                  ) : currentLesson ? (
+                    <div className="space-y-6">
+                      <div className="mb-6">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                          <span className="text-sm font-medium text-primary/70 uppercase tracking-wide">
+                            Lesson in Progress
+                          </span>
+                        </div>
+                        <h2 className="mb-3 text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">
+                          {currentLesson.title}
+                        </h2>
+                        <div className="h-1 w-24 bg-linear-to-r from-primary via-primary/80 to-primary/60 rounded-full"></div>
+                      </div>
 
-                        {currentLesson.avatar_script && (
-                          <div className="p-5 bg-linear-to-br from-primary/10 via-primary/5 to-transparent rounded-xl border-l-4 border-primary shadow-sm backdrop-blur-sm">
-                            <div className="flex items-start gap-3">
+                      {/* Subtitle Mode - Show when avatar is speaking */}
+                      {isShowingSubtitles && currentSubtitle ? (
+                        <div className="flex min-h-[200px] flex-1 items-center justify-center sm:min-h-[260px] lg:min-h-[300px]">
+                          <div className="max-w-2xl mx-auto px-6">
+                            {/* Subtitle container with animation */}
+                            <div className="relative">
+                              {/* Speaking indicator */}
+                              <div className="flex items-center justify-center gap-2 mb-6">
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
+                                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                                </div>
+                                <span className="text-sm font-medium text-primary/70">
+                                  Your instructor is speaking...
+                                </span>
+                              </div>
+
+                              {/* Main subtitle text */}
+                              <div
+                                className="rounded-2xl border-2 border-primary/20 bg-white/80 p-5 shadow-xl backdrop-blur-md transition-all duration-500 ease-out sm:p-8"
+                                key={currentSubtitle}
+                              >
+                                <p
+                                  className="animate-fade-in text-center text-lg font-medium leading-relaxed text-gray-800 sm:text-2xl md:text-3xl"
+                                  style={{
+                                    animation: "fadeIn 0.5s ease-out forwards"
+                                  }}
+                                >
+                                  {currentSubtitle}
+                                </p>
+                              </div>
+
+                              {/* Decorative elements */}
+                              <div className="absolute -top-4 -left-4 w-8 h-8 bg-primary/20 rounded-full blur-xl"></div>
+                              <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-primary/30 rounded-full blur-xl"></div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Static content - Show when not speaking */
+                        <div className="space-y-4">
+                          <div className="p-5 bg-white/60 backdrop-blur-sm rounded-xl border border-primary/20 shadow-sm">
+                            <div className="flex items-start gap-3 mb-3">
                               <div className="mt-1">
                                 <svg
                                   className="w-6 h-6 text-primary"
@@ -1694,35 +1843,91 @@ function CodeExampleInner() {
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     strokeWidth={2}
-                                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
                                   />
                                 </svg>
                               </div>
                               <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-primary mb-2">
-                                  What You'll Learn
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                  Overview
                                 </h3>
                                 <p className="text-gray-700 leading-relaxed">
-                                  {currentLesson.avatar_script}
+                                  {currentLesson.body}
                                 </p>
                               </div>
                             </div>
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary/30 border-t-primary mb-4"></div>
-                      <p className="text-gray-400 text-lg font-medium">
-                        Waiting to start lesson...
-                      </p>
+
+                          {currentLesson.avatar_script && (
+                            <div className="p-5 bg-linear-to-br from-primary/10 via-primary/5 to-transparent rounded-xl border-l-4 border-primary shadow-sm backdrop-blur-sm">
+                              <div className="flex items-start gap-3">
+                                <div className="mt-1">
+                                  <svg
+                                    className="w-6 h-6 text-primary"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                                    />
+                                  </svg>
+                                </div>
+                                <div className="flex-1">
+                                  <h3 className="text-lg font-semibold text-primary mb-2">
+                                    What You'll Learn
+                                  </h3>
+                                  <p className="text-gray-700 leading-relaxed">
+                                    {currentLesson.avatar_script}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary/30 border-t-primary mb-4"></div>
+                        <p className="text-gray-400 text-lg font-medium">
+                          Waiting to start lesson...
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
+            )}
+          </div>
+
+          {!isLgUp && (
+            <div className="max-h-[42vh] shrink-0 overflow-y-auto overflow-x-hidden border-t border-gray-200 bg-white/95 px-3 py-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.1)] sm:px-4">
+              {lessonChromePanel}
+            </div>
+          )}
+
+          {!isLgUp && curriculum && (
+            <div
+              className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
+              aria-hidden
+            >
+              <NarratorAvatar
+                ref={avatarRef}
+                {...avatarConfig}
+                onReady={() => console.log("Avatar is ready!")}
+                onError={(error: unknown) =>
+                  console.error("Avatar error:", error)
+                }
+                onSpeechStart={handleSpeechStart}
+                onSpeechEnd={handleSpeechEnd}
+                onSubtitle={handleSubtitle}
+                className="h-full w-full"
+              />
             </div>
           )}
         </div>

@@ -1,4 +1,9 @@
-import { CreateProfile, SelectPlatform, SelectProfile } from "@/pages/auth";
+import {
+  AuthRedirect,
+  CreateProfile,
+  SelectPlatform,
+  SelectProfile,
+} from "@/pages/auth";
 import { PRIVATE_PATHS, PUBLIC_PATHS } from "../utils/routePaths";
 import { Navigate } from "react-router-dom";
 import {
@@ -36,7 +41,8 @@ interface AppRoute {
 const { DASHBOARD, COURSES, COURSE_QUIZ, SETTINGS, WISHLISTS, SUPPORT } =
   PRIVATE_PATHS;
 
-const { SELECT_PLATFORM, SELECT_PROFILE, CREATE_PROFILE } = PUBLIC_PATHS;
+const { SELECT_PLATFORM, SELECT_PROFILE, CREATE_PROFILE, AUTH_REDIRECT } =
+  PUBLIC_PATHS;
 
 export const PUBLIC_ROUTES: AppRoute[] = [
   {
@@ -54,6 +60,10 @@ export const PUBLIC_ROUTES: AppRoute[] = [
   {
     path: CREATE_PROFILE,
     element: <CreateProfile />,
+  },
+  {
+    path: AUTH_REDIRECT,
+    element: <AuthRedirect />,
   },
   {
     path: "*",

@@ -1,10 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { RYD_PARENT_SIGN_IN_URL } from "@/utils/routePaths";
 import { FaArrowRight } from "react-icons/fa6";
-import { useNavigate } from "react-router-dom";
 
 const SelectPlatform = () => {
-  const navigate = useNavigate();
+  const goToParentSignIn = () => {
+    window.location.assign(RYD_PARENT_SIGN_IN_URL);
+  };
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-8 sm:px-6 sm:py-10 md:py-12">
       <div className="flex w-full max-w-md flex-col gap-6 md:gap-8 lg:max-w-5xl lg:flex-row lg:items-stretch lg:justify-center lg:gap-10">
@@ -23,7 +26,11 @@ const SelectPlatform = () => {
                 You can access your One-to-one tutor via the RYD Platforms
               </p>
               <div className="px-2 sm:px-4 md:px-8 lg:px-10">
-                <Button className="relative h-[52px] w-full rounded-[20px] bg-white font-solway text-base font-semibold text-[#0A090B] transition-colors hover:bg-inherit/20 hover:text-primary sm:h-[56px] sm:text-lg">
+                <Button
+                  type="button"
+                  onClick={goToParentSignIn}
+                  className="relative h-[52px] w-full rounded-[20px] bg-white font-solway text-base font-semibold text-[#0A090B] transition-colors hover:bg-inherit/20 hover:text-primary sm:h-[56px] sm:text-lg"
+                >
                   <div className="absolute flex items-center justify-center rounded-[20px] h-full w-[58px] left-0 bg-primary p-2">
                     <div className="flex justify-center items-center rounded-full text-primary bg-white w-full h-full ">
                       <FaArrowRight size={24} />
@@ -52,7 +59,8 @@ const SelectPlatform = () => {
               </p>
               <div className="px-2 sm:px-4 md:px-8 lg:px-10">
                 <Button
-                  onClick={() => navigate("/select-profile")}
+                  type="button"
+                  onClick={goToParentSignIn}
                   className="relative h-[52px] w-full rounded-[20px] bg-white font-solway text-base font-semibold text-[#0A090B] transition-colors hover:bg-inherit/20 hover:text-[#0063F7] sm:h-[56px] sm:text-lg"
                 >
                   <div className="absolute flex items-center justify-center rounded-[20px] h-full w-[58px] left-0 bg-[#0063F7] p-2">

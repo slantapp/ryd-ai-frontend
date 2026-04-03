@@ -1,6 +1,6 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useId } from "react";
 import { Button } from "@/components/ui/button";
-import { Heart, Send } from "lucide-react";
+import { Heart, MessageSquarePlus, Send, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCoursesStore, coursesData } from "@/stores/coursesStore";
 import { useAuthStore } from "@/stores/authStore";
@@ -15,11 +15,144 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+
+type CourseRequestState = {
+  name: string;
+  courseRequest: string;
+  description: string;
+};
+
+function CourseRequestFormCard({
+  courseRequest,
+  setCourseRequest,
+  onSubmit,
+  className,
+  showClose,
+  onClose,
+}: {
+  courseRequest: CourseRequestState;
+  setCourseRequest: React.Dispatch<React.SetStateAction<CourseRequestState>>;
+  onSubmit: (e: React.FormEvent) => void;
+  className?: string;
+  showClose?: boolean;
+  onClose?: () => void;
+}) {
+  const formIds = useId();
+  const nameId = `${formIds}-name`;
+  const courseId = `${formIds}-course`;
+  const descId = `${formIds}-description`;
+
+  return (
+    <Card className={cn("rounded-2xl border border-gray-100 shadow-sm", className)}>
+      <CardHeader className="space-y-1.5 px-4 pb-3 pt-5 sm:px-6 sm:pb-4 sm:pt-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1.5">
+            <CardTitle className="font-solway text-base sm:text-lg">
+              Request a course
+            </CardTitle>
+            <CardDescription className="font-sans-serifbookflf text-xs leading-relaxed sm:text-sm">
+              Don’t see what you need? Tell us which course you’d like and
+              we’ll consider adding it.
+            </CardDescription>
+          </div>
+          {showClose && onClose && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9 shrink-0"
+              onClick={onClose}
+              aria-label="Close request form"
+            >
+              <X className="size-4" />
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="px-4 pb-5 sm:px-6 sm:pb-6">
+        <form onSubmit={onSubmit} className="space-y-3 sm:space-y-4">
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label
+              htmlFor={nameId}
+              className="text-sm font-medium sm:text-base"
+            >
+              Name
+            </Label>
+            <Input
+              id={nameId}
+              value={courseRequest.name}
+              onChange={(e) =>
+                setCourseRequest((prev) => ({
+                  ...prev,
+                  name: e.target.value,
+                }))
+              }
+              placeholder="Your name"
+              className="h-10 rounded-lg text-base sm:h-11 sm:text-sm"
+              required
+            />
+          </div>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label
+              htmlFor={courseId}
+              className="text-sm font-medium sm:text-base"
+            >
+              Course request
+            </Label>
+            <Input
+              id={courseId}
+              value={courseRequest.courseRequest}
+              onChange={(e) =>
+                setCourseRequest((prev) => ({
+                  ...prev,
+                  courseRequest: e.target.value,
+                }))
+              }
+              placeholder="e.g. Advanced React Patterns"
+              className="h-10 rounded-lg text-base sm:h-11 sm:text-sm"
+              required
+            />
+          </div>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label
+              htmlFor={descId}
+              className="text-sm font-medium sm:text-base"
+            >
+              Description <span className="text-gray-400">(optional)</span>
+            </Label>
+            <Textarea
+              id={descId}
+              value={courseRequest.description}
+              onChange={(e) =>
+                setCourseRequest((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+              placeholder="Any details about the course you’d like..."
+              className="min-h-[88px] resize-y rounded-lg text-base sm:min-h-[80px] sm:text-sm"
+              rows={3}
+            />
+          </div>
+          <Button
+            type="submit"
+            className="h-11 w-full rounded-lg bg-primary font-medium hover:bg-primary/90 sm:h-12"
+          >
+            <Send className="mr-2 size-4 shrink-0" />
+            Submit request
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
 
 const WishlistPage = () => {
   const navigate = useNavigate();
   const { wishlist, removeFromWishlist, isInWishlist } = useCoursesStore();
   const user = useAuthStore((state) => state.user);
+  const [showRequestFormNarrow, setShowRequestFormNarrow] = useState(false);
 
   const [courseRequest, setCourseRequest] = useState({
     name: "",
@@ -53,12 +186,13 @@ const WishlistPage = () => {
       courseRequest: "",
       description: "",
     }));
+    setShowRequestFormNarrow(false);
   };
 
   return (
     <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col gap-4 sm:gap-6 lg:flex-row lg:gap-8">
       <section className="flex min-h-0 min-w-0 flex-1 flex-col space-y-3 sm:space-y-4">
-        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div className="min-w-0">
             <h2 className="font-solway text-xl font-bold tracking-tight text-[#0A090B] sm:text-2xl lg:text-3xl">
               My Wishlist
@@ -68,6 +202,26 @@ const WishlistPage = () => {
               {wishlistCourses.length !== 1 ? "s" : ""} saved
             </p>
           </div>
+          <Button
+            type="button"
+            variant={showRequestFormNarrow ? "outline" : "default"}
+            className="w-full shrink-0 gap-2 font-solway sm:w-auto lg:hidden"
+            onClick={() => setShowRequestFormNarrow((v) => !v)}
+            aria-expanded={showRequestFormNarrow}
+            aria-controls="wishlist-request-form-panel"
+          >
+            {showRequestFormNarrow ? (
+              <>
+                <X className="size-4 shrink-0" />
+                Hide request form
+              </>
+            ) : (
+              <>
+                <MessageSquarePlus className="size-4 shrink-0" />
+                Request a course
+              </>
+            )}
+          </Button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -102,119 +256,29 @@ const WishlistPage = () => {
             </div>
           )}
         </div>
+
+        {showRequestFormNarrow && (
+          <div
+            id="wishlist-request-form-panel"
+            className="shrink-0 border-t border-gray-200 pt-4 lg:hidden"
+          >
+            <CourseRequestFormCard
+              courseRequest={courseRequest}
+              setCourseRequest={setCourseRequest}
+              onSubmit={handleSubmitRequest}
+              showClose
+              onClose={() => setShowRequestFormNarrow(false)}
+            />
+          </div>
+        )}
       </section>
 
-      <aside className="w-full shrink-0 self-stretch lg:w-[360px] lg:shrink-0 lg:self-start lg:sticky lg:top-24">
-        <Card className="rounded-2xl border border-gray-100 shadow-sm">
-          <CardHeader className="space-y-1.5 px-4 pb-3 pt-5 sm:px-6 sm:pb-4 sm:pt-6">
-            <CardTitle className="font-solway text-base sm:text-lg">
-              Request a course
-            </CardTitle>
-            <CardDescription className="font-sans-serifbookflf text-xs leading-relaxed sm:text-sm">
-              Don’t see what you need? Tell us which course you’d like and we’ll
-              consider adding it.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-4 pb-5 sm:px-6 sm:pb-6">
-            <form
-              onSubmit={handleSubmitRequest}
-              className="space-y-3 sm:space-y-4"
-            >
-              <div className="space-y-1.5 sm:space-y-2">
-                <Label
-                  htmlFor="request-name"
-                  className="text-sm font-medium sm:text-base"
-                >
-                  Name
-                </Label>
-                <Input
-                  id="request-name"
-                  value={courseRequest.name}
-                  onChange={(e) =>
-                    setCourseRequest((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }))
-                  }
-                  placeholder="Your name"
-                  className="h-10 rounded-lg text-base sm:h-11 sm:text-sm"
-                  required
-                />
-              </div>
-              {/* <div className="space-y-2">
-                <Label htmlFor="request-email" className="font-medium">
-                  Email
-                </Label>
-                <Input
-                  id="request-email"
-                  type="email"
-                  value={courseRequest.email}
-                  onChange={(e) =>
-                    setCourseRequest((prev) => ({
-                      ...prev,
-                      email: e.target.value,
-                    }))
-                  }
-                  placeholder="you@example.com"
-                  className="rounded-lg bg-gray-50"
-                  required
-                />
-                <p className="text-xs text-gray-500">
-                  Auto-filled from your profile
-                </p>
-              </div> */}
-              <div className="space-y-1.5 sm:space-y-2">
-                <Label
-                  htmlFor="request-course"
-                  className="text-sm font-medium sm:text-base"
-                >
-                  Course request
-                </Label>
-                <Input
-                  id="request-course"
-                  value={courseRequest.courseRequest}
-                  onChange={(e) =>
-                    setCourseRequest((prev) => ({
-                      ...prev,
-                      courseRequest: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g. Advanced React Patterns"
-                  className="h-10 rounded-lg text-base sm:h-11 sm:text-sm"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5 sm:space-y-2">
-                <Label
-                  htmlFor="request-description"
-                  className="text-sm font-medium sm:text-base"
-                >
-                  Description <span className="text-gray-400">(optional)</span>
-                </Label>
-                <Textarea
-                  id="request-description"
-                  value={courseRequest.description}
-                  onChange={(e) =>
-                    setCourseRequest((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                  placeholder="Any details about the course you’d like..."
-                  className="min-h-[88px] resize-y rounded-lg text-base sm:min-h-[80px] sm:text-sm"
-                  rows={3}
-                />
-              </div>
-              <Button
-                type="submit"
-                className="h-11 w-full rounded-lg bg-primary font-medium hover:bg-primary/90 sm:h-12"
-              >
-                <Send className="mr-2 size-4 shrink-0" />
-                Submit request
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+      <aside className="hidden w-full shrink-0 self-stretch lg:block lg:w-[360px] lg:shrink-0 lg:self-start lg:sticky lg:top-24">
+        <CourseRequestFormCard
+          courseRequest={courseRequest}
+          setCourseRequest={setCourseRequest}
+          onSubmit={handleSubmitRequest}
+        />
       </aside>
     </div>
   );

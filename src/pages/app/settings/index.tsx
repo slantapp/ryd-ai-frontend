@@ -3,8 +3,9 @@ import FAQContent from "@/components/settings/FAQContent";
 import PasswordContent from "@/components/settings/PasswordContent";
 import ProfileContent from "@/components/settings/ProfileContent";
 import InstructorContent from "@/components/settings/InstructorContent";
+import SubscriptionContent from "@/components/settings/SubscriptionContent";
 import { cn } from "@/lib/utils";
-import { User, Lock, HelpCircle, GraduationCap } from "lucide-react";
+import { User, Lock, HelpCircle, GraduationCap, CreditCard } from "lucide-react";
 import { useState } from "react";
 
 // type TabKey = "profile" | "password" | "difficulty" | "faq";
@@ -26,6 +27,16 @@ const SettingsPage = () => {
       desc: "Last change 2 weeks ago",
       icon: Lock,
       content: <PasswordContent />,
+    },
+  ];
+
+  const billingItems = [
+    {
+      key: "subscription",
+      label: "Subscription",
+      desc: "Plans, Paystack demo & renewal (test)",
+      icon: CreditCard,
+      content: <SubscriptionContent />,
     },
   ];
 
@@ -95,6 +106,36 @@ const SettingsPage = () => {
                 </p>
               </div>
             </button>
+            ))}
+          <div className="space-y-2 pt-2 sm:space-y-3 lg:my-4 lg:pt-0 xl:my-6">
+            <h3 className="font-sans-serifbookfl text-xs font-semibold uppercase tracking-wide text-[#081A28] sm:text-sm">
+              Billing
+            </h3>
+          </div>
+          {billingItems.map(({ key, label, desc, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setActiveTab(key)}
+              className={navButtonClass(activeTab === key)}
+            >
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-md bg-white sm:size-[52px]">
+                <Icon className="size-4.5 text-primary sm:size-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-solway text-sm font-bold sm:text-base">
+                  {label}
+                </p>
+                <p
+                  className={cn(
+                    "mt-0.5 font-sans-serifbookflf text-xs leading-snug sm:text-sm",
+                    activeTab === key ? "text-white/80" : "text-gray-500",
+                  )}
+                >
+                  {desc}
+                </p>
+              </div>
+            </button>
           ))}
           <div className="space-y-1 pt-2 sm:space-y-2 lg:my-4 xl:my-6">
             <h3 className="font-sans-serifbookfl text-xs font-semibold uppercase tracking-wide text-[#081A28] sm:text-sm">
@@ -133,6 +174,7 @@ const SettingsPage = () => {
 
         <div className="min-w-0 flex-1 rounded-2xl bg-white p-4 shadow-xs sm:p-5 lg:p-6">
           {items.find((item) => item.key === activeTab)?.content}
+          {billingItems.find((item) => item.key === activeTab)?.content}
           {otherItems.find((item) => item.key === activeTab)?.content}
         </div>
       </div>

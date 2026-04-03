@@ -181,7 +181,7 @@ const SubscriptionContent = () => {
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Test environment ribbon */}
-      {/* <div
+      <div
         className={cn(
           "relative overflow-hidden rounded-2xl border border-amber-200/80 bg-linear-to-r from-amber-50 via-orange-50 to-amber-50 px-4 py-3 sm:px-5",
           "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6)]"
@@ -227,7 +227,7 @@ const SubscriptionContent = () => {
             Reset demo state
           </Button>
         </div>
-      </div> */}
+      </div>
 
       <div>
         <h2 className="font-solway text-lg font-semibold text-gray-900 sm:text-xl">

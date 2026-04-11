@@ -349,11 +349,11 @@ const SubscriptionContent = () => {
       case "select-method":
         return (
           <div className="space-y-4">
-            <div className="rounded-xl bg-[#F8F8FA] p-4">
-              <div className="flex items-center justify-between">
+            <div className="rounded-xl bg-[#F8F8FA] p-3 sm:p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="font-inter text-sm text-gray-600">Amount</span>
-                <div className="text-right">
-                  <span className="font-solway text-xl font-bold text-gray-900">
+                <div className="text-left sm:text-right">
+                  <span className="font-solway text-lg font-bold text-gray-900 sm:text-xl">
                     {selectedMeta.priceLabel}
                   </span>
                   <span className="ml-1 font-inter text-sm text-gray-500">
@@ -378,7 +378,7 @@ const SubscriptionContent = () => {
                     type="button"
                     onClick={() => setPaymentMethod(method.id)}
                     className={cn(
-                      "flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all",
+                      "flex min-h-13 w-full min-w-0 items-center gap-3 rounded-xl border-2 p-3 text-left transition-all sm:min-h-0 sm:p-4",
                       paymentMethod === method.id
                         ? "border-primary bg-primary/5"
                         : "border-gray-200 hover:border-gray-300"
@@ -386,19 +386,19 @@ const SubscriptionContent = () => {
                   >
                     <div
                       className={cn(
-                        "flex size-10 items-center justify-center rounded-lg",
+                        "flex size-9 shrink-0 items-center justify-center rounded-lg sm:size-10",
                         paymentMethod === method.id
                           ? "bg-primary text-white"
                           : "bg-gray-100 text-gray-600"
                       )}
                     >
-                      <method.icon className="size-5" />
+                      <method.icon className="size-4 sm:size-5" />
                     </div>
-                    <span className="font-inter font-medium text-gray-900">
+                    <span className="min-w-0 flex-1 font-inter text-sm font-medium text-gray-900 sm:text-base">
                       {method.label}
                     </span>
                     {paymentMethod === method.id && (
-                      <Check className="ml-auto size-5 text-primary" />
+                      <Check className="size-5 shrink-0 text-primary" />
                     )}
                   </button>
                 ))}
@@ -426,12 +426,12 @@ const SubscriptionContent = () => {
               Back
             </button>
 
-            <div className="rounded-xl bg-[#F8F8FA] p-4">
-              <div className="flex items-center justify-between">
+            <div className="rounded-xl bg-[#F8F8FA] p-3 sm:p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="font-inter text-sm text-gray-600">
                   Pay {selectedMeta.priceLabel}
                 </span>
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="w-fit shrink-0 text-xs">
                   {selectedMeta.name}
                 </Badge>
               </div>
@@ -454,7 +454,7 @@ const SubscriptionContent = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="card-expiry" className="font-inter text-sm">
                     Expiry
@@ -489,12 +489,16 @@ const SubscriptionContent = () => {
               </div>
             </div>
 
-            <div className="rounded-lg bg-blue-50 p-3">
-              <p className="font-inter text-xs text-blue-800">
+            <div className="rounded-lg bg-blue-50 p-2.5 sm:p-3">
+              <p className="wrap-break-word font-inter text-[11px] leading-relaxed text-blue-800 sm:text-xs">
                 <strong>Test cards:</strong> Use{" "}
-                <code className="rounded bg-blue-100 px-1">4084 0840 8408 4081</code>{" "}
+                <code className="break-all rounded bg-blue-100 px-1 py-0.5 text-[10px] sm:text-xs">
+                  4084 0840 8408 4081
+                </code>{" "}
                 (CVV: 408) for instant success, or{" "}
-                <code className="rounded bg-blue-100 px-1">5078 5078 5078 5078 12</code>{" "}
+                <code className="break-all rounded bg-blue-100 px-1 py-0.5 text-[10px] sm:text-xs">
+                  5078 5078 5078 5078 12
+                </code>{" "}
                 (CVV: 081, PIN: 1111) to test PIN flow.
               </p>
             </div>
@@ -523,7 +527,7 @@ const SubscriptionContent = () => {
               </p>
             </div>
 
-            <div className="mx-auto max-w-[200px]">
+            <div className="mx-auto w-full max-w-[200px]">
               <Input
                 type="password"
                 placeholder="••••"
@@ -558,7 +562,7 @@ const SubscriptionContent = () => {
               </p>
             </div>
 
-            <div className="mx-auto max-w-[240px]">
+            <div className="mx-auto w-full max-w-[240px]">
               <Input
                 type="text"
                 placeholder="000000"
@@ -590,33 +594,33 @@ const SubscriptionContent = () => {
               Back
             </button>
 
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 sm:p-4">
               <p className="mb-3 font-inter text-sm text-gray-700">
                 Transfer{" "}
                 <strong className="text-gray-900">{selectedMeta.priceLabel}</strong>{" "}
                 to the account below:
               </p>
 
-              <div className="space-y-3 rounded-lg bg-white p-4">
-                <div className="flex justify-between">
-                  <span className="font-inter text-sm text-gray-500">Bank</span>
-                  <span className="font-inter font-medium text-gray-900">
+              <div className="space-y-3 rounded-lg bg-white p-3 sm:p-4">
+                <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                  <span className="shrink-0 font-inter text-sm text-gray-500">Bank</span>
+                  <span className="min-w-0 wrap-break-word text-left font-inter font-medium text-gray-900 sm:text-right">
                     {transferAccount.bank}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-inter text-sm text-gray-500">
+                <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                  <span className="shrink-0 font-inter text-sm text-gray-500">
                     Account Number
                   </span>
-                  <span className="font-mono font-semibold text-gray-900">
+                  <span className="break-all text-left font-mono text-sm font-semibold text-gray-900 sm:text-base sm:text-right">
                     {transferAccount.accountNumber}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-inter text-sm text-gray-500">
+                <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                  <span className="shrink-0 font-inter text-sm text-gray-500">
                     Account Name
                   </span>
-                  <span className="font-inter font-medium text-gray-900">
+                  <span className="min-w-0 wrap-break-word text-left font-inter font-medium text-gray-900 sm:text-right">
                     {transferAccount.accountName}
                   </span>
                 </div>
@@ -646,14 +650,14 @@ const SubscriptionContent = () => {
               Back
             </button>
 
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center">
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-center sm:p-4">
               <p className="mb-3 font-inter text-sm text-gray-700">
                 Dial the code below on your phone to pay{" "}
                 <strong>{selectedMeta.priceLabel}</strong>
               </p>
 
-              <div className="rounded-lg bg-white p-4">
-                <p className="font-mono text-2xl font-bold text-gray-900">
+              <div className="rounded-lg bg-white p-3 sm:p-4">
+                <p className="break-all font-mono text-lg font-bold leading-snug text-gray-900 sm:text-2xl">
                   {ussdCode}
                 </p>
               </div>
@@ -711,14 +715,14 @@ const SubscriptionContent = () => {
             <Button
               type="button"
               variant="outline"
-              className="rounded-xl"
+              className="h-11 w-full rounded-xl sm:h-10 sm:w-auto"
               onClick={closeCheckout}
             >
               Cancel
             </Button>
             <Button
               type="button"
-              className="rounded-xl font-solway"
+              className="h-11 w-full rounded-xl font-solway sm:h-10 sm:w-auto"
               onClick={() => {
                 if (paymentMethod === "card") setStep("card-details");
                 else if (paymentMethod === "bank") setStep("bank-transfer");
@@ -734,7 +738,7 @@ const SubscriptionContent = () => {
         return (
           <Button
             type="button"
-            className="w-full rounded-xl font-solway"
+            className="h-11 w-full rounded-xl font-solway sm:h-10"
             onClick={() => void handleCardSubmit()}
             disabled={
               cardNumber.replace(/\s/g, "").length < 16 ||
@@ -750,7 +754,7 @@ const SubscriptionContent = () => {
         return (
           <Button
             type="button"
-            className="w-full rounded-xl font-solway"
+            className="h-11 w-full rounded-xl font-solway sm:h-10"
             onClick={() => void handlePinSubmit()}
             disabled={cardPin.length < 4}
           >
@@ -762,7 +766,7 @@ const SubscriptionContent = () => {
         return (
           <Button
             type="button"
-            className="w-full rounded-xl font-solway"
+            className="h-11 w-full rounded-xl font-solway sm:h-10"
             onClick={() => void handleOtpSubmit()}
             disabled={cardOtp.length < 6}
           >
@@ -785,7 +789,7 @@ const SubscriptionContent = () => {
         return (
           <Button
             type="button"
-            className="w-full rounded-xl font-solway"
+            className="h-11 w-full rounded-xl font-solway sm:h-10"
             onClick={() => void handleUssdConfirm()}
           >
             I've completed the payment
@@ -796,7 +800,7 @@ const SubscriptionContent = () => {
         return (
           <Button
             type="button"
-            className="w-full rounded-xl font-solway"
+            className="h-11 w-full rounded-xl font-solway sm:h-10"
             onClick={closeCheckout}
           >
             Done
@@ -975,27 +979,38 @@ const SubscriptionContent = () => {
         }}
       >
         <DialogContent
-          className="max-w-md rounded-2xl border-0 sm:max-w-md"
+          className={cn(
+            "top-4 max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-lg translate-y-0 gap-0 overflow-hidden rounded-2xl border-0 p-0 sm:top-1/2 sm:max-h-[min(86dvh,760px)] sm:w-full sm:-translate-y-1/2",
+            "flex flex-col"
+          )}
           showCloseButton={step !== "processing" && step !== "success"}
         >
-          <DialogHeader>
-            <div className="flex items-center gap-3">
+          <DialogHeader className="shrink-0 space-y-0 border-b border-gray-100 px-4 pb-3 pt-4 pr-12 text-left sm:px-6 sm:pb-4 sm:pt-5 sm:pr-14">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <img
                 src="https://website-v3-assets.s3.amazonaws.com/assets/img/hero/Paystack-mark-white-twitter.png"
                 alt="Paystack"
-                className="size-8 rounded-lg bg-[#00C3F7] p-1.5"
+                className="size-7 shrink-0 rounded-lg bg-[#00C3F7] p-1.5 sm:size-8"
               />
-              <DialogTitle className="font-solway text-lg">
+              <DialogTitle className="min-w-0 font-solway text-base leading-snug sm:text-lg">
                 {step === "success" ? "Payment Complete" : "Checkout"}
               </DialogTitle>
             </div>
           </DialogHeader>
 
-          {renderCheckoutContent()}
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 py-3 sm:px-6 sm:py-4">
+            {renderCheckoutContent()}
+          </div>
 
-          <DialogFooter className="gap-2 sm:gap-2">
-            {renderCheckoutFooter()}
-          </DialogFooter>
+          {step !== "processing" && (
+            <DialogFooter
+              className={cn(
+                "shrink-0 flex-col gap-2 border-t border-gray-100 bg-white px-4 py-3 sm:flex-row sm:justify-end sm:gap-2 sm:px-6 sm:py-4"
+              )}
+            >
+              {renderCheckoutFooter()}
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>

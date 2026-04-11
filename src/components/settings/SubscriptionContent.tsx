@@ -4,34 +4,41 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
   Check,
-  FlaskConical,
+  ChevronLeft,
+  CreditCard,
+  Building2,
+  Smartphone,
   Loader2,
   ShieldCheck,
   Sparkles,
   Zap,
+  Lock,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
-const DEMO_STORAGE_KEY = "ryd-ai-subscription-demo-v1";
+const STORAGE_KEY = "ryd-ai-subscription-v3";
 
-export type PlanId = "lite" | "plus" | "family";
+export type PlanId = "monthly" | "quarterly" | "annual";
 
-export interface SimulatedSubscription {
+export interface Subscription {
   planId: PlanId;
   planName: string;
   amountKobo: number;
   paystackReference: string;
   paidAt: string;
   renewsAt: string;
+  paymentMethod: string;
+  last4?: string;
 }
 
 const PLAN_META: Record<
@@ -39,10 +46,11 @@ const PLAN_META: Record<
   {
     name: string;
     tagline: string;
-    /** Shown in “current plan” — how many learner profiles this tier allows */
-    learnerProfilesLabel: string;
+    durationLabel: string;
+    durationMonths: number;
     priceLabel: string;
     amountNgn: number;
+    periodSuffix: string;
     accent: string;
     borderAccent: string;
     icon: typeof Sparkles;
@@ -50,85 +58,157 @@ const PLAN_META: Record<
     popular?: boolean;
   }
 > = {
-  lite: {
-    name: "Learner Lite",
-    tagline: "One learner profile — same full course library as every plan",
-    learnerProfilesLabel: "1 learner profile",
+  monthly: {
+    name: "Monthly",
+    tagline: "Flexible — renew every month",
+    durationLabel: "1-month access",
+    durationMonths: 1,
     priceLabel: "₦4,500",
     amountNgn: 4_500,
+    periodSuffix: "/ month",
     accent: "from-[#E8E0FF] to-[#F3ECFE]",
     borderAccent: "border-transparent",
     icon: Zap,
     features: [
-      "1 learner profile included",
-      "Full access to all courses — identical catalog on every plan",
-      "Core AI study companion & standard narration",
-      "Community knowledge base",
+      "Full AI LMS access (courses, AI tools, progress tracking)",
+      "Same platform features as every plan",
+      "Renews monthly unless cancelled",
     ],
   },
-  plus: {
-    name: "Learner Plus",
-    tagline: "Up to 3 profiles — siblings or a small household, one library",
-    learnerProfilesLabel: "Up to 3 learner profiles",
-    priceLabel: "₦12,000",
-    amountNgn: 12_000,
+  quarterly: {
+    name: "Quarterly",
+    tagline: "Balanced — one payment every 3 months",
+    durationLabel: "3-month access",
+    durationMonths: 3,
+    priceLabel: "₦11,500",
+    amountNgn: 11_500,
+    periodSuffix: "/ quarter",
     accent: "from-[#CCE0FD] to-[#E8F0FF]",
     borderAccent: "ring-2 ring-[#0063F7]/35",
     icon: Sparkles,
     popular: true,
     features: [
-      "Up to 3 learner profiles",
-      "Full access to all courses — identical catalog on every plan",
-      "Priority AI tutor responses",
-      "Progress analytics & streak insights",
-      "Email support within 24h",
+      "Full AI LMS access for the entire quarter",
+      "Fewer transactions — convenient for steady learners",
+      "Renews every 3 months unless cancelled",
     ],
   },
-  family: {
-    name: "Family Studio",
-    tagline: "Up to 6 profiles — maximum seats, same courses for everyone",
-    learnerProfilesLabel: "Up to 6 learner profiles",
-    priceLabel: "₦28,000",
-    amountNgn: 28_000,
+  annual: {
+    name: "Annual",
+    tagline: "Best value — pay once per year",
+    durationLabel: "12-month access",
+    durationMonths: 12,
+    priceLabel: "₦38,000",
+    amountNgn: 38_000,
+    periodSuffix: "/ year",
     accent: "from-[#FCE7F3] to-[#F3ECFE]",
     borderAccent: "border-transparent",
     icon: ShieldCheck,
     features: [
-      "Up to 6 learner profiles",
-      "Full access to all courses — identical catalog on every plan",
-      "Shared family progress hub (demo)",
-      "Quarterly live Q&A slot (simulated)",
-      "Dedicated success line (demo)",
+      "Full AI LMS access for 12 months",
+      "Lowest cost per month — best savings",
+      "Renews annually unless cancelled",
     ],
   },
 };
 
-type PaystackPhase = "idle" | "redirect" | "bank" | "success";
+type PaymentMethod = "card" | "bank" | "ussd";
+type CheckoutStep =
+  | "select-method"
+  | "card-details"
+  | "pin"
+  | "otp"
+  | "bank-transfer"
+  | "ussd"
+  | "processing"
+  | "success";
 
-const loadDemoSub = (): SimulatedSubscription | null => {
+const TEST_CARDS = {
+  success: {
+    number: "4084 0840 8408 4081",
+    expiry: "03/27",
+    cvv: "408",
+    pin: "",
+    otp: "",
+    label: "Visa (No PIN/OTP)",
+  },
+  pinOnly: {
+    number: "5078 5078 5078 5078 12",
+    expiry: "03/27",
+    cvv: "081",
+    pin: "1111",
+    otp: "",
+    label: "Mastercard (PIN only)",
+  },
+  pinOtp: {
+    number: "5060 6666 6666 6666 666",
+    expiry: "03/27",
+    cvv: "123",
+    pin: "1234",
+    otp: "123456",
+    label: "Verve (PIN + OTP)",
+  },
+};
+
+const loadSub = (): Subscription | null => {
   try {
-    const raw = sessionStorage.getItem(DEMO_STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as SimulatedSubscription;
+    return JSON.parse(raw) as Subscription;
   } catch {
     return null;
   }
 };
 
-const saveDemoSub = (sub: SimulatedSubscription) => {
-  sessionStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(sub));
+const saveSub = (sub: Subscription) => {
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(sub));
+};
+
+const formatCardNumber = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  const groups = digits.match(/.{1,4}/g);
+  return groups ? groups.join(" ") : "";
+};
+
+const formatExpiry = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length >= 2) {
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}`;
+  }
+  return digits;
 };
 
 const SubscriptionContent = () => {
-  const [subscription, setSubscription] = useState<SimulatedSubscription | null>(
-    null
-  );
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanId | null>(null);
-  const [phase, setPhase] = useState<PaystackPhase>("idle");
+  const [step, setStep] = useState<CheckoutStep>("select-method");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+
+  // Card form state
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [cardPin, setCardPin] = useState("");
+  const [cardOtp, setCardOtp] = useState("");
+  const [requiresPin, setRequiresPin] = useState(false);
+  const [requiresOtp, setRequiresOtp] = useState(false);
+  const [expectedPin, setExpectedPin] = useState("");
+  const [expectedOtp, setExpectedOtp] = useState("");
+
+  // Bank transfer state
+  const [transferAccount] = useState({
+    bank: "Wema Bank",
+    accountNumber: "0123456789",
+    accountName: "Paystack-RYD",
+    expiresIn: "30:00",
+  });
+
+  // USSD state
+  const [ussdCode] = useState("*737*000*4500#");
 
   useEffect(() => {
-    setSubscription(loadDemoSub());
+    setSubscription(loadSub());
   }, []);
 
   const selectedMeta = useMemo(
@@ -138,107 +218,606 @@ const SubscriptionContent = () => {
 
   const openCheckout = (planId: PlanId) => {
     setSelectedPlan(planId);
-    setPhase("idle");
+    setStep("select-method");
+    setPaymentMethod("card");
+    resetCardForm();
     setCheckoutOpen(true);
   };
 
-  const runSimulatedPaystack = useCallback(async () => {
-    if (!selectedPlan || !selectedMeta) return;
-    setPhase("redirect");
-    await new Promise((r) => setTimeout(r, 900));
-    setPhase("bank");
-    await new Promise((r) => setTimeout(r, 1_400));
-    const ref = `PAY_${Date.now().toString(36).toUpperCase()}_TST`;
-    const paidAt = new Date().toISOString();
-    const renews = new Date();
-    renews.setMonth(renews.getMonth() + 1);
-    const next: SimulatedSubscription = {
-      planId: selectedPlan,
-      planName: selectedMeta.name,
-      amountKobo: selectedMeta.amountNgn * 100,
-      paystackReference: ref,
-      paidAt,
-      renewsAt: renews.toISOString(),
-    };
-    setSubscription(next);
-    saveDemoSub(next);
-    setPhase("success");
-    toast.success("Paystack (sandbox): payment captured successfully.");
-  }, [selectedPlan, selectedMeta]);
+  const resetCardForm = () => {
+    setCardNumber("");
+    setCardExpiry("");
+    setCardCvv("");
+    setCardPin("");
+    setCardOtp("");
+    setRequiresPin(false);
+    setRequiresOtp(false);
+    setExpectedPin("");
+    setExpectedOtp("");
+  };
 
   const closeCheckout = () => {
     setCheckoutOpen(false);
-    setPhase("idle");
+    setStep("select-method");
     setSelectedPlan(null);
+    resetCardForm();
   };
 
-  const resetDemo = () => {
-    sessionStorage.removeItem(DEMO_STORAGE_KEY);
-    setSubscription(null);
-    toast.info("Demo subscription cleared — you're back on the exploration tier.");
+  const completePayment = useCallback(
+    (method: string, last4?: string) => {
+      if (!selectedPlan || !selectedMeta) return;
+      const ref = `PY_${Date.now().toString(36).toUpperCase()}`;
+      const paidAt = new Date().toISOString();
+      const renews = new Date();
+      renews.setMonth(renews.getMonth() + selectedMeta.durationMonths);
+      const next: Subscription = {
+        planId: selectedPlan,
+        planName: selectedMeta.name,
+        amountKobo: selectedMeta.amountNgn * 100,
+        paystackReference: ref,
+        paidAt,
+        renewsAt: renews.toISOString(),
+        paymentMethod: method,
+        last4,
+      };
+      setSubscription(next);
+      saveSub(next);
+      setStep("success");
+      toast.success("Payment successful!");
+    },
+    [selectedPlan, selectedMeta]
+  );
+
+  const handleCardSubmit = async () => {
+    const cleanNumber = cardNumber.replace(/\s/g, "");
+
+    // Check which test card was used
+    let matchedCard: (typeof TEST_CARDS)[keyof typeof TEST_CARDS] | null = null;
+    for (const card of Object.values(TEST_CARDS)) {
+      if (cleanNumber === card.number.replace(/\s/g, "")) {
+        matchedCard = card;
+        break;
+      }
+    }
+
+    if (matchedCard) {
+      if (matchedCard.pin && !requiresPin) {
+        setRequiresPin(true);
+        setExpectedPin(matchedCard.pin);
+        if (matchedCard.otp) {
+          setRequiresOtp(true);
+          setExpectedOtp(matchedCard.otp);
+        }
+        setStep("pin");
+        return;
+      }
+    }
+
+    // No PIN required or unknown card — process directly
+    setStep("processing");
+    await new Promise((r) => setTimeout(r, 2000));
+    completePayment("Card", cleanNumber.slice(-4));
+  };
+
+  const handlePinSubmit = async () => {
+    if (cardPin !== expectedPin) {
+      toast.error("Incorrect PIN. Please try again.");
+      return;
+    }
+
+    if (requiresOtp) {
+      setStep("otp");
+      toast.info("An OTP has been sent to your phone.");
+      return;
+    }
+
+    setStep("processing");
+    await new Promise((r) => setTimeout(r, 2000));
+    completePayment("Card", cardNumber.replace(/\s/g, "").slice(-4));
+  };
+
+  const handleOtpSubmit = async () => {
+    if (cardOtp !== expectedOtp) {
+      toast.error("Incorrect OTP. Please try again.");
+      return;
+    }
+
+    setStep("processing");
+    await new Promise((r) => setTimeout(r, 2000));
+    completePayment("Card", cardNumber.replace(/\s/g, "").slice(-4));
+  };
+
+  const handleBankTransferConfirm = async () => {
+    setStep("processing");
+    await new Promise((r) => setTimeout(r, 3000));
+    completePayment("Bank Transfer");
+  };
+
+  const handleUssdConfirm = async () => {
+    setStep("processing");
+    await new Promise((r) => setTimeout(r, 3000));
+    completePayment("USSD");
+  };
+
+  const inputClass =
+    "h-11 rounded-lg border-gray-200 bg-white px-3 font-inter text-[#0A090B] placeholder:text-gray-400";
+
+  const renderCheckoutContent = () => {
+    if (!selectedMeta) return null;
+
+    switch (step) {
+      case "select-method":
+        return (
+          <div className="space-y-4">
+            <div className="rounded-xl bg-[#F8F8FA] p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-inter text-sm text-gray-600">Amount</span>
+                <div className="text-right">
+                  <span className="font-solway text-xl font-bold text-gray-900">
+                    {selectedMeta.priceLabel}
+                  </span>
+                  <span className="ml-1 font-inter text-sm text-gray-500">
+                    {selectedMeta.periodSuffix}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="font-inter text-sm font-medium text-gray-700">
+                Select payment method
+              </p>
+              <div className="grid gap-2">
+                {[
+                  { id: "card" as const, icon: CreditCard, label: "Pay with Card" },
+                  { id: "bank" as const, icon: Building2, label: "Bank Transfer" },
+                  { id: "ussd" as const, icon: Smartphone, label: "USSD" },
+                ].map((method) => (
+                  <button
+                    key={method.id}
+                    type="button"
+                    onClick={() => setPaymentMethod(method.id)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-all",
+                      paymentMethod === method.id
+                        ? "border-primary bg-primary/5"
+                        : "border-gray-200 hover:border-gray-300"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "flex size-10 items-center justify-center rounded-lg",
+                        paymentMethod === method.id
+                          ? "bg-primary text-white"
+                          : "bg-gray-100 text-gray-600"
+                      )}
+                    >
+                      <method.icon className="size-5" />
+                    </div>
+                    <span className="font-inter font-medium text-gray-900">
+                      {method.label}
+                    </span>
+                    {paymentMethod === method.id && (
+                      <Check className="ml-auto size-5 text-primary" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 pt-2 text-gray-400">
+              <Lock className="size-4" />
+              <span className="font-inter text-xs">
+                Secured by Paystack
+              </span>
+            </div>
+          </div>
+        );
+
+      case "card-details":
+        return (
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => setStep("select-method")}
+              className="flex items-center gap-1 font-inter text-sm text-gray-600 hover:text-gray-900"
+            >
+              <ChevronLeft className="size-4" />
+              Back
+            </button>
+
+            <div className="rounded-xl bg-[#F8F8FA] p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-inter text-sm text-gray-600">
+                  Pay {selectedMeta.priceLabel}
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  {selectedMeta.name}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="card-number" className="font-inter text-sm">
+                  Card Number
+                </Label>
+                <Input
+                  id="card-number"
+                  placeholder="0000 0000 0000 0000"
+                  value={cardNumber}
+                  onChange={(e) =>
+                    setCardNumber(formatCardNumber(e.target.value))
+                  }
+                  maxLength={23}
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="card-expiry" className="font-inter text-sm">
+                    Expiry
+                  </Label>
+                  <Input
+                    id="card-expiry"
+                    placeholder="MM/YY"
+                    value={cardExpiry}
+                    onChange={(e) =>
+                      setCardExpiry(formatExpiry(e.target.value))
+                    }
+                    maxLength={5}
+                    className={inputClass}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="card-cvv" className="font-inter text-sm">
+                    CVV
+                  </Label>
+                  <Input
+                    id="card-cvv"
+                    placeholder="123"
+                    type="password"
+                    value={cardCvv}
+                    onChange={(e) =>
+                      setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))
+                    }
+                    maxLength={4}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-blue-50 p-3">
+              <p className="font-inter text-xs text-blue-800">
+                <strong>Test cards:</strong> Use{" "}
+                <code className="rounded bg-blue-100 px-1">4084 0840 8408 4081</code>{" "}
+                (CVV: 408) for instant success, or{" "}
+                <code className="rounded bg-blue-100 px-1">5078 5078 5078 5078 12</code>{" "}
+                (CVV: 081, PIN: 1111) to test PIN flow.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 text-gray-400">
+              <Lock className="size-4" />
+              <span className="font-inter text-xs">
+                Your card details are secure
+              </span>
+            </div>
+          </div>
+        );
+
+      case "pin":
+        return (
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-primary/10">
+                <Lock className="size-6 text-primary" />
+              </div>
+              <h3 className="font-solway text-lg font-semibold text-gray-900">
+                Enter your PIN
+              </h3>
+              <p className="mt-1 font-inter text-sm text-gray-600">
+                Please enter your 4-digit card PIN to authorize this payment
+              </p>
+            </div>
+
+            <div className="mx-auto max-w-[200px]">
+              <Input
+                type="password"
+                placeholder="••••"
+                value={cardPin}
+                onChange={(e) =>
+                  setCardPin(e.target.value.replace(/\D/g, "").slice(0, 4))
+                }
+                maxLength={4}
+                className="h-14 text-center text-2xl tracking-[0.5em]"
+                autoFocus
+              />
+            </div>
+
+            <p className="text-center font-inter text-xs text-gray-500">
+              Test PIN: <code className="rounded bg-gray-100 px-1">{expectedPin}</code>
+            </p>
+          </div>
+        );
+
+      case "otp":
+        return (
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-primary/10">
+                <Smartphone className="size-6 text-primary" />
+              </div>
+              <h3 className="font-solway text-lg font-semibold text-gray-900">
+                Enter OTP
+              </h3>
+              <p className="mt-1 font-inter text-sm text-gray-600">
+                Enter the 6-digit code sent to your phone
+              </p>
+            </div>
+
+            <div className="mx-auto max-w-[240px]">
+              <Input
+                type="text"
+                placeholder="000000"
+                value={cardOtp}
+                onChange={(e) =>
+                  setCardOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                maxLength={6}
+                className="h-14 text-center text-2xl tracking-[0.3em]"
+                autoFocus
+              />
+            </div>
+
+            <p className="text-center font-inter text-xs text-gray-500">
+              Test OTP: <code className="rounded bg-gray-100 px-1">{expectedOtp}</code>
+            </p>
+          </div>
+        );
+
+      case "bank-transfer":
+        return (
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => setStep("select-method")}
+              className="flex items-center gap-1 font-inter text-sm text-gray-600 hover:text-gray-900"
+            >
+              <ChevronLeft className="size-4" />
+              Back
+            </button>
+
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <p className="mb-3 font-inter text-sm text-gray-700">
+                Transfer{" "}
+                <strong className="text-gray-900">{selectedMeta.priceLabel}</strong>{" "}
+                to the account below:
+              </p>
+
+              <div className="space-y-3 rounded-lg bg-white p-4">
+                <div className="flex justify-between">
+                  <span className="font-inter text-sm text-gray-500">Bank</span>
+                  <span className="font-inter font-medium text-gray-900">
+                    {transferAccount.bank}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-inter text-sm text-gray-500">
+                    Account Number
+                  </span>
+                  <span className="font-mono font-semibold text-gray-900">
+                    {transferAccount.accountNumber}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-inter text-sm text-gray-500">
+                    Account Name
+                  </span>
+                  <span className="font-inter font-medium text-gray-900">
+                    {transferAccount.accountName}
+                  </span>
+                </div>
+              </div>
+
+              <p className="mt-3 text-center font-inter text-xs text-amber-700">
+                This account expires in {transferAccount.expiresIn}
+              </p>
+            </div>
+
+            <p className="font-inter text-xs text-gray-500">
+              Click "I've sent the money" after completing the transfer. Your
+              subscription will be activated once payment is confirmed.
+            </p>
+          </div>
+        );
+
+      case "ussd":
+        return (
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => setStep("select-method")}
+              className="flex items-center gap-1 font-inter text-sm text-gray-600 hover:text-gray-900"
+            >
+              <ChevronLeft className="size-4" />
+              Back
+            </button>
+
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center">
+              <p className="mb-3 font-inter text-sm text-gray-700">
+                Dial the code below on your phone to pay{" "}
+                <strong>{selectedMeta.priceLabel}</strong>
+              </p>
+
+              <div className="rounded-lg bg-white p-4">
+                <p className="font-mono text-2xl font-bold text-gray-900">
+                  {ussdCode}
+                </p>
+              </div>
+
+              <p className="mt-3 font-inter text-xs text-gray-500">
+                Follow the prompts to complete payment
+              </p>
+            </div>
+          </div>
+        );
+
+      case "processing":
+        return (
+          <div className="py-8 text-center">
+            <Loader2 className="mx-auto size-12 animate-spin text-primary" />
+            <p className="mt-4 font-solway text-lg font-semibold text-gray-900">
+              Processing payment...
+            </p>
+            <p className="mt-1 font-inter text-sm text-gray-600">
+              Please wait while we confirm your transaction
+            </p>
+          </div>
+        );
+
+      case "success":
+        return (
+          <div className="py-4 text-center">
+            <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-green-100">
+              <Check className="size-8 text-green-600" />
+            </div>
+            <h3 className="font-solway text-xl font-bold text-gray-900">
+              Payment Successful!
+            </h3>
+            <p className="mt-2 font-inter text-sm text-gray-600">
+              Your {selectedMeta.name} subscription is now active.
+            </p>
+            {subscription && (
+              <p className="mt-3 font-mono text-xs text-gray-500">
+                Reference: {subscription.paystackReference}
+              </p>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const renderCheckoutFooter = () => {
+    switch (step) {
+      case "select-method":
+        return (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl"
+              onClick={closeCheckout}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="rounded-xl font-solway"
+              onClick={() => {
+                if (paymentMethod === "card") setStep("card-details");
+                else if (paymentMethod === "bank") setStep("bank-transfer");
+                else if (paymentMethod === "ussd") setStep("ussd");
+              }}
+            >
+              Continue
+            </Button>
+          </>
+        );
+
+      case "card-details":
+        return (
+          <Button
+            type="button"
+            className="w-full rounded-xl font-solway"
+            onClick={() => void handleCardSubmit()}
+            disabled={
+              cardNumber.replace(/\s/g, "").length < 16 ||
+              cardExpiry.length < 5 ||
+              cardCvv.length < 3
+            }
+          >
+            Pay {selectedMeta?.priceLabel}
+          </Button>
+        );
+
+      case "pin":
+        return (
+          <Button
+            type="button"
+            className="w-full rounded-xl font-solway"
+            onClick={() => void handlePinSubmit()}
+            disabled={cardPin.length < 4}
+          >
+            Authorize
+          </Button>
+        );
+
+      case "otp":
+        return (
+          <Button
+            type="button"
+            className="w-full rounded-xl font-solway"
+            onClick={() => void handleOtpSubmit()}
+            disabled={cardOtp.length < 6}
+          >
+            Verify & Pay
+          </Button>
+        );
+
+      case "bank-transfer":
+        return (
+          <Button
+            type="button"
+            className="w-full rounded-xl font-solway"
+            onClick={() => void handleBankTransferConfirm()}
+          >
+            I've sent the money
+          </Button>
+        );
+
+      case "ussd":
+        return (
+          <Button
+            type="button"
+            className="w-full rounded-xl font-solway"
+            onClick={() => void handleUssdConfirm()}
+          >
+            I've completed the payment
+          </Button>
+        );
+
+      case "success":
+        return (
+          <Button
+            type="button"
+            className="w-full rounded-xl font-solway"
+            onClick={closeCheckout}
+          >
+            Done
+          </Button>
+        );
+
+      default:
+        return null;
+    }
   };
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      {/* Test environment ribbon */}
-      <div
-        className={cn(
-          "relative overflow-hidden rounded-2xl border border-amber-200/80 bg-linear-to-r from-amber-50 via-orange-50 to-amber-50 px-4 py-3 sm:px-5",
-          "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6)]"
-        )}
-      >
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(-45deg, #000 0, #000 1px, transparent 1px, transparent 10px)",
-          }}
-        />
-        <div className="relative flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3 sm:items-center">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/90 shadow-sm ring-1 ring-amber-100">
-              <FlaskConical className="size-5 text-amber-700" aria-hidden />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-solway text-sm font-bold text-amber-950 sm:text-base">
-                  Test &amp; demo environment
-                </p>
-                <Badge
-                  variant="outline"
-                  className="border-amber-300 bg-white/80 font-sans-serifbookflf text-[10px] font-semibold uppercase tracking-wide text-amber-900"
-                >
-                  No real charges
-                </Badge>
-              </div>
-              <p className="mt-0.5 font-sans-serifbookflf text-xs leading-snug text-amber-900/80 sm:text-sm">
-                Checkout below simulates Paystack hosted pay — perfect for
-                stakeholder walkthroughs.
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={resetDemo}
-            className="shrink-0 border-amber-300 bg-white/90 font-sans-serifbookflf text-amber-900 hover:bg-amber-50"
-          >
-            Reset demo state
-          </Button>
-        </div>
-      </div>
-
       <div>
         <h2 className="font-solway text-lg font-semibold text-gray-900 sm:text-xl">
           Subscription
         </h2>
-        <p className="mt-1 font-sans-serifbookflf text-sm text-gray-600">
-          Every plan includes the{" "}
-          <span className="font-semibold text-gray-800">same course catalog</span>
-          ; tiers only change how many{" "}
-          <span className="font-semibold text-gray-800">learner profiles</span>{" "}
-          you can add. Demo checkout below is simulated.
+        <p className="mt-1 font-inter text-sm text-gray-600">
+          Access to the AI LMS (courses, tools, and features) requires an{" "}
+          <span className="font-semibold text-gray-800">active subscription</span>.
+          Choose a billing period that works for you.
         </p>
       </div>
 
@@ -247,8 +826,8 @@ const SubscriptionContent = () => {
         <CardContent className="rounded-[20px] bg-[#F8F8FA] p-5 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-sans-serifbookfl text-xs font-semibold uppercase tracking-wide text-[#081A28]">
-                Current access
+              <p className="font-inter text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Current plan
               </p>
               {subscription ? (
                 <>
@@ -256,24 +835,25 @@ const SubscriptionContent = () => {
                     {subscription.planName}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Badge className="bg-[#F3ECFE] font-sans-serifbookflf text-xs font-medium text-primary hover:bg-[#F3ECFE]">
-                      Active (demo)
+                    <Badge className="bg-green-100 font-inter text-xs font-medium text-green-800 hover:bg-green-100">
+                      Active
                     </Badge>
-                    <Badge
-                      variant="outline"
-                      className="border-gray-200 font-sans-serifbookflf text-xs"
-                    >
-                      Ref: {subscription.paystackReference}
-                    </Badge>
+                    {subscription.last4 && (
+                      <Badge
+                        variant="outline"
+                        className="border-gray-200 font-inter text-xs"
+                      >
+                        •••• {subscription.last4}
+                      </Badge>
+                    )}
                   </div>
-                  <p className="mt-2 font-sans-serifbookflf text-xs text-gray-600 sm:text-sm">
+                  <p className="mt-2 font-inter text-xs text-gray-600 sm:text-sm">
                     <span className="font-semibold text-gray-800">
-                      {PLAN_META[subscription.planId].learnerProfilesLabel}
+                      {PLAN_META[subscription.planId].durationLabel}
                     </span>
                     {" · "}
-                    Simulated renewal:{" "}
+                    Renews{" "}
                     {new Date(subscription.renewsAt).toLocaleDateString(undefined, {
-                      weekday: "short",
                       month: "short",
                       day: "numeric",
                       year: "numeric",
@@ -283,33 +863,28 @@ const SubscriptionContent = () => {
               ) : (
                 <>
                   <p className="mt-1 font-solway text-xl font-bold text-gray-900">
-                    Exploration tier
+                    No active plan
                   </p>
-                  <p className="mt-1 font-sans-serifbookflf text-sm text-gray-600">
-                    You&apos;re browsing with mock data — upgrade a plan to see
-                    the Paystack sandbox receipt.
+                  <p className="mt-1 font-inter text-sm text-gray-600">
+                    Subscribe to unlock full access to all courses and AI features.
                   </p>
                 </>
               )}
             </div>
-            <div className="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-100 sm:max-w-xs">
-              <p className="font-sans-serifbookfl text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                Paystack (simulated)
-              </p>
-              {subscription ? (
-                <p className="mt-2 font-mono text-xs text-gray-800">
-                  {subscription.amountKobo / 100} NGN / mo · paid{" "}
-                  {new Date(subscription.paidAt).toLocaleTimeString(undefined, {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+            {subscription && (
+              <div className="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-100 sm:max-w-xs">
+                <p className="font-inter text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                  Last payment
                 </p>
-              ) : (
-                <p className="mt-2 font-sans-serifbookflf text-xs text-gray-600">
-                  Awaiting first sandbox transaction.
+                <p className="mt-1 font-inter text-sm text-gray-800">
+                  ₦{(subscription.amountKobo / 100).toLocaleString()} via{" "}
+                  {subscription.paymentMethod}
                 </p>
-              )}
-            </div>
+                <p className="font-mono text-xs text-gray-500">
+                  {subscription.paystackReference}
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -331,8 +906,8 @@ const SubscriptionContent = () => {
             >
               {plan.popular && (
                 <div className="absolute right-4 top-4">
-                  <Badge className="bg-[#0063F7] font-sans-serifbookflf text-[10px] font-semibold uppercase tracking-wider text-white hover:bg-[#0063F7]">
-                    Most picked
+                  <Badge className="bg-[#0063F7] font-inter text-[10px] font-semibold uppercase tracking-wider text-white hover:bg-[#0063F7]">
+                    Most popular
                   </Badge>
                 </div>
               )}
@@ -348,22 +923,22 @@ const SubscriptionContent = () => {
                 <h3 className="font-solway text-lg font-bold text-gray-900">
                   {plan.name}
                 </h3>
-                <p className="mt-1 font-sans-serifbookflf text-sm text-gray-600">
+                <p className="mt-1 font-inter text-sm text-gray-600">
                   {plan.tagline}
                 </p>
-                <div className="mt-4 flex items-baseline gap-1">
+                <div className="mt-4 flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
                   <span className="font-solway text-3xl font-bold tracking-tight text-gray-900">
                     {plan.priceLabel}
                   </span>
-                  <span className="font-sans-serifbookflf text-sm text-gray-600">
-                    / month
+                  <span className="font-inter text-sm text-gray-600">
+                    {plan.periodSuffix}
                   </span>
                 </div>
                 <ul className="mt-5 flex-1 space-y-2.5">
                   {plan.features.map((f) => (
                     <li
                       key={f}
-                      className="flex gap-2 font-sans-serifbookflf text-sm text-gray-700"
+                      className="flex gap-2 font-inter text-sm text-gray-700"
                     >
                       <Check className="mt-0.5 size-4 shrink-0 text-primary" />
                       <span>{f}</span>
@@ -380,11 +955,11 @@ const SubscriptionContent = () => {
                       : "bg-primary hover:bg-primary/90"
                   )}
                 >
-                  {isCurrent ? "Renew / Change" : "Subscribe"}
+                  {isCurrent ? "Renew" : "Subscribe"}
                 </Button>
                 {isCurrent && (
-                  <p className="mt-2 text-center font-sans-serifbookflf text-xs text-gray-600">
-                    You&apos;re on this tier in the demo.
+                  <p className="mt-2 text-center font-inter text-xs text-gray-600">
+                    Your current plan
                   </p>
                 )}
               </CardContent>
@@ -393,128 +968,33 @@ const SubscriptionContent = () => {
         })}
       </div>
 
-      <p className="font-sans-serifbookflf text-center text-xs text-gray-500">
-        Demo only — card networks, OTP, and webhooks are mocked for your meeting.
-        Production will use live Paystack keys on the backend.
-      </p>
-
       <Dialog
         open={checkoutOpen}
         onOpenChange={(o) => {
-          if (!o) closeCheckout();
-          else setCheckoutOpen(true);
+          if (!o && step !== "processing") closeCheckout();
         }}
       >
-        <DialogContent className="max-w-md rounded-2xl border-0 sm:max-w-md">
+        <DialogContent
+          className="max-w-md rounded-2xl border-0 sm:max-w-md"
+          showCloseButton={step !== "processing" && step !== "success"}
+        >
           <DialogHeader>
-            <DialogTitle className="font-solway text-xl">
-              Paystack Checkout
-            </DialogTitle>
-            <DialogDescription className="font-sans-serifbookflf text-sm">
-              Sandbox mirror — no funds move. Sequencing matches hosted pay:
-              redirect → bank simulation → reference.
-            </DialogDescription>
+            <div className="flex items-center gap-3">
+              <img
+                src="https://website-v3-assets.s3.amazonaws.com/assets/img/hero/Paystack-mark-white-twitter.png"
+                alt="Paystack"
+                className="size-8 rounded-lg bg-[#00C3F7] p-1.5"
+              />
+              <DialogTitle className="font-solway text-lg">
+                {step === "success" ? "Payment Complete" : "Checkout"}
+              </DialogTitle>
+            </div>
           </DialogHeader>
 
-          {selectedMeta && (
-            <div className="space-y-4">
-              <div className="rounded-xl bg-[#F8F8FA] p-4 ring-1 ring-gray-100">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-sans-serifbookflf text-sm text-gray-600">
-                    Plan
-                  </span>
-                  <span className="font-solway font-semibold text-gray-900">
-                    {selectedMeta.name}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-2 border-t border-gray-200/80 pt-2">
-                  <span className="font-sans-serifbookflf text-sm text-gray-600">
-                    Amount
-                  </span>
-                  <span className="font-solway text-lg font-bold text-gray-900">
-                    {selectedMeta.priceLabel}
-                  </span>
-                </div>
-                <p className="mt-2 font-mono text-[11px] text-gray-500">
-                  publicKey=pk_test_••••RYD_LMS_DEMO
-                </p>
-              </div>
-
-              {phase === "success" ? (
-                <div className="rounded-xl border border-primary/20 bg-[#F3ECFE] p-4">
-                  <div className="flex items-center gap-2 text-primary">
-                    <ShieldCheck className="size-5 shrink-0" />
-                    <span className="font-solway font-semibold">
-                      Payment successful
-                    </span>
-                  </div>
-                  <p className="mt-2 font-sans-serifbookflf text-sm text-gray-700">
-                    Reference stored in session for the demo. In production,
-                    your backend would verify via Paystack API.
-                  </p>
-                  {subscription && (
-                    <p className="mt-2 break-all font-mono text-xs text-gray-800">
-                      {subscription.paystackReference}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2 rounded-xl bg-white p-4 ring-1 ring-gray-100">
-                  <p className="font-sans-serifbookfl text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Status
-                  </p>
-                  {phase === "idle" && (
-                    <p className="font-sans-serifbookflf text-sm text-gray-700">
-                      Ready to simulate customer authorization.
-                    </p>
-                  )}
-                  {phase === "redirect" && (
-                    <p className="flex items-center gap-2 font-sans-serifbookflf text-sm text-gray-700">
-                      <Loader2 className="size-4 animate-spin text-primary" />
-                      Redirecting to Paystack hosted page…
-                    </p>
-                  )}
-                  {phase === "bank" && (
-                    <p className="flex items-center gap-2 font-sans-serifbookflf text-sm text-gray-700">
-                      <Loader2 className="size-4 animate-spin text-[#0063F7]" />
-                      Test bank authorizing (sandbox)…
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          {renderCheckoutContent()}
 
           <DialogFooter className="gap-2 sm:gap-2">
-            {phase === "success" ? (
-              <Button
-                type="button"
-                className="w-full rounded-xl font-solway sm:w-auto"
-                onClick={closeCheckout}
-              >
-                Done
-              </Button>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl font-sans-serifbookflf"
-                  onClick={closeCheckout}
-                  disabled={phase !== "idle"}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  className="rounded-xl font-solway"
-                  onClick={() => void runSimulatedPaystack()}
-                  disabled={phase !== "idle" || !selectedMeta}
-                >
-                  Pay securely
-                </Button>
-              </>
-            )}
+            {renderCheckoutFooter()}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import Split from "react-split";
 import NarratorAvatar from "narrator-avatar";
-import { Volume2, RotateCcw, Mic } from "lucide-react";
+import { Volume2, RotateCcw, Mic, Play } from "lucide-react";
 import {
   type Question,
   type Lesson,
@@ -17,7 +17,6 @@ import {
   getLessonByIndex,
 } from "../data/curriculumData";
 import {
-  StartLessonButton,
   QuestionInfo,
   CodeEditor,
   TestResults,
@@ -130,6 +129,12 @@ function CodeExampleInner() {
   // ============================================================================
 
   const avatarRef = useRef<NarratorAvatarRef | null>(null);
+  /** False until NarratorAvatar fires onReady (WebGL + TTS ready). Mobile needs this before speak. */
+  const avatarReadyRef = useRef(false);
+  /** Speech requested before avatar was ready; desktop flushes on ready, mobile after tap-to-unlock. */
+  const pendingSpeechQueueRef = useRef<
+    Array<{ text: string; action: PendingAction }>
+  >([]);
   const pendingActionRef = useRef<PendingAction>({ type: "none" });
   const isManuallyStopped = useRef(false);
   const codeTypingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -178,6 +183,9 @@ function CodeExampleInner() {
   const [currentSubtitle, setCurrentSubtitle] = useState<string>("");
   const [isShowingSubtitles, setIsShowingSubtitles] = useState(false);
 
+  /** iOS/Safari: audio must start from a user tap; onReady runs outside that gesture, so we prompt. */
+  const [showMobileAudioUnlock, setShowMobileAudioUnlock] = useState(false);
+
   // ============================================================================
   // DERIVED VALUES
   // ============================================================================
@@ -195,7 +203,8 @@ function CodeExampleInner() {
 
   const getAvatar = useCallback(() => avatarRef.current, []);
 
-  const speak = useCallback(
+  /** Speak immediately; only call when avatar is ready (or from mobile unlock tap = valid gesture). */
+  const speakImmediate = useCallback(
     (text: string, action: PendingAction = { type: "none" }) => {
       try {
         const avatar = getAvatar();
@@ -211,6 +220,52 @@ function CodeExampleInner() {
     },
     [getAvatar]
   );
+
+  const speak = useCallback(
+    (text: string, action: PendingAction = { type: "none" }) => {
+      try {
+        if (!avatarReadyRef.current) {
+          pendingSpeechQueueRef.current.push({ text, action });
+          return;
+        }
+        speakImmediate(text, action);
+      } catch (error) {
+        console.warn("Error speaking text:", error);
+      }
+    },
+    [speakImmediate]
+  );
+
+  const flushNextQueuedSpeech = useCallback(() => {
+    const q = pendingSpeechQueueRef.current;
+    if (q.length === 0) return;
+    const next = q.shift()!;
+    speakImmediate(next.text, next.action);
+  }, [speakImmediate]);
+
+  const handleAvatarReady = useCallback(() => {
+    avatarReadyRef.current = true;
+    const q = pendingSpeechQueueRef.current;
+    if (q.length === 0) {
+      setShowMobileAudioUnlock(false);
+      return;
+    }
+
+    if (!isLgUp) {
+      // Mobile WebKit: onReady is async — not in the user gesture that tapped "Start".
+      // Ask for one tap so speakText runs inside a gesture (autoplay / AudioContext policy).
+      setShowMobileAudioUnlock(true);
+      return;
+    }
+
+    // Desktop: play first chunk now; rest chain on speech end
+    flushNextQueuedSpeech();
+  }, [isLgUp, flushNextQueuedSpeech]);
+
+  const handleMobileAudioUnlock = useCallback(() => {
+    setShowMobileAudioUnlock(false);
+    flushNextQueuedSpeech();
+  }, [flushNextQueuedSpeech]);
 
   const stopSubtitles = useCallback(() => {
     setCurrentSubtitle("");
@@ -229,6 +284,9 @@ function CodeExampleInner() {
       // Stop subtitles
       stopSubtitles();
 
+      pendingSpeechQueueRef.current = [];
+      setShowMobileAudioUnlock(false);
+
       const avatar = getAvatar();
       if (avatar && typeof avatar.stopSpeaking === "function") {
         isManuallyStopped.current = true;
@@ -244,6 +302,8 @@ function CodeExampleInner() {
       console.warn("Error stopping speech:", error);
       pendingActionRef.current = { type: "none" };
       setIsSpeaking(false);
+      pendingSpeechQueueRef.current = [];
+      setShowMobileAudioUnlock(false);
     }
   }, [getAvatar, stopSubtitles]);
 
@@ -493,7 +553,10 @@ function CodeExampleInner() {
       default:
         break;
     }
-  }, [speak, stopSubtitles]);
+
+    // Continue any speech queued before avatar was ready (multi-chunk flush)
+    flushNextQueuedSpeech();
+  }, [speak, stopSubtitles, flushNextQueuedSpeech]);
 
   const handleSpeechEnd = useCallback(() => {
     // Ignore if manually stopped
@@ -1345,6 +1408,13 @@ function CodeExampleInner() {
     }
   }, [currentLesson, curriculum, lessonStarted, currentQuestionIndex]);
 
+  // Avatar remounts when layout or code-test mode changes — reset readiness until onReady fires again.
+  useEffect(() => {
+    avatarReadyRef.current = false;
+    pendingSpeechQueueRef.current = [];
+    setShowMobileAudioUnlock(false);
+  }, [exercise, isLgUp, isCodeTestQuestion]);
+
   // Sync progress to store when lesson changes
   useEffect(() => {
     if (!currentLesson || !exercise || !curriculum) return;
@@ -1430,12 +1500,6 @@ function CodeExampleInner() {
 
   const lessonChromePanel = (
     <div className="shrink-0 relative z-10">
-      {!lessonStarted && (
-        <div className="mb-4 pb-4">
-          <StartLessonButton onStart={handleStartLesson} />
-        </div>
-      )}
-
       {lessonStarted && (
         <div className="mb-4 rounded-2xl border border-primary/10 bg-white/60 p-3 shadow-sm backdrop-blur sm:p-4">
           <div className="mb-3 flex items-center justify-between">
@@ -1571,7 +1635,7 @@ function CodeExampleInner() {
                     <NarratorAvatar
                       ref={avatarRef}
                       {...avatarConfig}
-                      onReady={() => console.log("Avatar is ready!")}
+                      onReady={handleAvatarReady}
                       onError={(error: unknown) =>
                         console.error("Avatar error:", error)
                       }
@@ -1589,7 +1653,7 @@ function CodeExampleInner() {
                   <NarratorAvatar
                     ref={avatarRef}
                     {...avatarConfig}
-                    onReady={() => console.log("Avatar is ready!")}
+                    onReady={handleAvatarReady}
                     onError={(error: unknown) =>
                       console.error("Avatar error:", error)
                     }
@@ -1606,9 +1670,11 @@ function CodeExampleInner() {
 
         {/* RIGHT SIDE */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {/* Mobile: Instructor audio header + control buttons at top */}
           {!isLgUp && (
-            <header className="shrink-0 border-b border-primary/10 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
-              <div className="flex items-center gap-3">
+            <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
+              {/* Instructor audio indicator */}
+              <div className="flex items-center gap-3 px-3 py-2">
                 <InstructorSpeakingIndicator isSpeaking={isSpeaking} />
                 <div className="min-w-0 flex-1">
                   <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/80">
@@ -1628,7 +1694,29 @@ function CodeExampleInner() {
                   </p>
                 </div>
               </div>
-            </header>
+              {/* Mobile WebKit: first speech after avatar loads must run inside a tap (see handleAvatarReady). */}
+              {showMobileAudioUnlock && (
+                <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
+                  <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
+                    Your phone needs one tap to allow instructor voice. This is normal on Safari and Chrome mobile.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleMobileAudioUnlock}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
+                  >
+                    <Volume2 className="h-5 w-5 shrink-0" aria-hidden />
+                    <span className="whitespace-nowrap">Tap to start voice</span>
+                  </button>
+                </div>
+              )}
+              {/* Lesson controls / code question info — hidden until lesson starts (start lives in main content) */}
+              {(lessonStarted || currentQuestion?.type === "code_test") && (
+                <div className="px-3 pb-3">
+                  {lessonChromePanel}
+                </div>
+              )}
+            </div>
           )}
 
           <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
@@ -1891,12 +1979,49 @@ function CodeExampleInner() {
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary/30 border-t-primary mb-4"></div>
-                        <p className="text-gray-400 text-lg font-medium">
-                          Waiting to start lesson...
+                    <div className="flex items-center justify-center h-full min-h-[300px]">
+                      <div className="text-center max-w-md mx-auto px-6">
+                        {/* Animated icon */}
+                        <div className="relative inline-flex items-center justify-center mb-6">
+                          <div className="absolute h-20 w-20 rounded-full bg-primary/10 animate-ping"></div>
+                          <div className="absolute h-16 w-16 rounded-full bg-primary/20 animate-pulse"></div>
+                          <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-primary to-primary/80 shadow-lg shadow-primary/30">
+                            <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                        </div>
+
+                        {/* Welcome text */}
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                          Ready to Learn?
+                        </h2>
+                        <p className="text-gray-500 mb-6 leading-relaxed">
+                          Your learning adventure awaits! Click the button below to begin your lesson and start building amazing things.
                         </p>
+
+                        {/* Start course — same action as former StartLessonButton; label stays on one line */}
+                        <button
+                          type="button"
+                          onClick={handleStartLesson}
+                          className="group mx-auto flex w-full max-w-xs shrink-0 items-center justify-center gap-3 whitespace-nowrap rounded-full bg-linear-to-r from-primary via-primary to-primary/90 px-10 py-4 text-base font-bold tracking-tight text-white shadow-lg shadow-primary/35 ring-2 ring-primary/20 transition-all duration-200 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98] sm:max-w-none sm:px-12"
+                        >
+                          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
+                            <Play className="size-5 fill-white text-white" aria-hidden />
+                          </span>
+                          <span className="pr-1">Start learning</span>
+                        </button>
+
+                        {/* Decorative elements */}
+                        <div className="mt-8 flex items-center justify-center gap-2 text-xs text-gray-400">
+                          <span className="h-1 w-1 rounded-full bg-primary/40"></span>
+                          <span>Interactive lessons</span>
+                          <span className="h-1 w-1 rounded-full bg-primary/40"></span>
+                          <span>Fun quizzes</span>
+                          <span className="h-1 w-1 rounded-full bg-primary/40"></span>
+                          <span>Hands-on coding</span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1904,12 +2029,6 @@ function CodeExampleInner() {
               </div>
             )}
           </div>
-
-          {!isLgUp && (
-            <div className="max-h-[42vh] shrink-0 overflow-y-auto overflow-x-hidden border-t border-gray-200 bg-white/95 px-3 py-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.1)] sm:px-4">
-              {lessonChromePanel}
-            </div>
-          )}
 
           {!isLgUp && curriculum && (
             <div
@@ -1919,7 +2038,7 @@ function CodeExampleInner() {
               <NarratorAvatar
                 ref={avatarRef}
                 {...avatarConfig}
-                onReady={() => console.log("Avatar is ready!")}
+                onReady={handleAvatarReady}
                 onError={(error: unknown) =>
                   console.error("Avatar error:", error)
                 }

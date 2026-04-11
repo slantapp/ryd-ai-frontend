@@ -1,11 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { RYD_PARENT_SIGN_IN_URL } from "@/utils/routePaths";
+import { RYD_PARENT_SIGN_IN_URL, PUBLIC_PATHS } from "@/utils/routePaths";
 import { FaArrowRight } from "react-icons/fa6";
+import { useNavigate } from "react-router-dom";
 
 const SelectPlatform = () => {
+  const navigate = useNavigate();
   const goToParentSignIn = () => {
     window.location.assign(RYD_PARENT_SIGN_IN_URL);
+  };
+  const goToAiLogin = () => {
+    navigate(PUBLIC_PATHS.LOGIN);
   };
 
   return (
@@ -60,7 +65,7 @@ const SelectPlatform = () => {
               <div className="px-2 sm:px-4 md:px-8 lg:px-10">
                 <Button
                   type="button"
-                  onClick={goToParentSignIn}
+                  onClick={goToAiLogin}
                   className="relative h-[52px] w-full rounded-[20px] bg-white font-solway text-base font-semibold text-[#0A090B] transition-colors hover:bg-inherit/20 hover:text-[#0063F7] sm:h-[56px] sm:text-lg"
                 >
                   <div className="absolute flex items-center justify-center rounded-[20px] h-full w-[58px] left-0 bg-[#0063F7] p-2">

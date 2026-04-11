@@ -34,7 +34,7 @@ const SettingsPage = () => {
     {
       key: "subscription",
       label: "Subscription",
-      desc: "Plans, Paystack demo & renewal (test)",
+      desc: "Manage your plan and payment method",
       icon: CreditCard,
       content: <SubscriptionContent />,
     },

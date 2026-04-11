@@ -78,9 +78,8 @@ const TopNav = ({ onOpenMobileNav }: TopNavProps) => {
                       color="#6a7282"
                       size={20}
                       strokeWidth={3}
-                      className={`shrink-0 cursor-pointer transition-transform duration-300 ${
-                        open ? "rotate-180" : "rotate-0"
-                      }`}
+                      className={`shrink-0 cursor-pointer transition-transform duration-300 ${open ? "rotate-180" : "rotate-0"
+                        }`}
                     />
                   </p>
                 </div>
@@ -107,9 +106,6 @@ const TopNav = ({ onOpenMobileNav }: TopNavProps) => {
                     {userDetails?.email || "myemail@gmail.com"}
                   </span>
                 </div>
-                <span className="ml-auto text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">
-                  Pro
-                </span>
               </div>
 
               <div className="border-t">
@@ -139,8 +135,12 @@ const TopNav = ({ onOpenMobileNav }: TopNavProps) => {
               {/* Logout */}
               <div className="border-t">
                 <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-600 hover:text-white rounded-b-xl transition-colors"
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setIsModalOpen(true);
+                  }}
+                  className="flex w-full items-center rounded-b-xl px-4 py-3 text-sm text-red-600 transition-colors hover:bg-red-50 hover:text-red-700"
                 >
                   <LogOut size={18} className="mr-2" />
                   Log out
@@ -151,8 +151,11 @@ const TopNav = ({ onOpenMobileNav }: TopNavProps) => {
         </div>
       </div>
 
-      {/* Logout Modal */}
-      <SignOutModal isOpen={isModalOpen} setIsOpen={setIsModalOpen} />
+      <SignOutModal
+        isOpen={isModalOpen}
+        setIsOpen={setIsModalOpen}
+        onRequestClose={() => setOpen(false)}
+      />
     </div>
   );
 };

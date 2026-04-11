@@ -7,6 +7,10 @@ export const PUBLIC_PATHS = {
   SELECT_PROFILE: "/select-profile",
   CREATE_PROFILE: "/create-profile",
   AUTH_REDIRECT: "/auth/redirect",
+  LOGIN: "/auth/login",
+  SIGN_UP: "/auth/sign-up",
+  FORGOT_PASSWORD: "/auth/forgot-password",
+  RESET_PASSWORD: "/auth/reset-password",
 };
 
 export const PRIVATE_PATHS = {

@@ -25,21 +25,14 @@ import {
   Lock,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import {
+  loadSubscription,
+  saveSubscription,
+  type PlanId,
+  type Subscription,
+} from "@/utils/subscriptionSession";
 
-const STORAGE_KEY = "ryd-ai-subscription-v3";
-
-export type PlanId = "monthly" | "quarterly" | "annual";
-
-export interface Subscription {
-  planId: PlanId;
-  planName: string;
-  amountKobo: number;
-  paystackReference: string;
-  paidAt: string;
-  renewsAt: string;
-  paymentMethod: string;
-  last4?: string;
-}
+export type { PlanId, Subscription } from "@/utils/subscriptionSession";
 
 const PLAN_META: Record<
   PlanId,
@@ -150,20 +143,6 @@ const TEST_CARDS = {
   },
 };
 
-const loadSub = (): Subscription | null => {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as Subscription;
-  } catch {
-    return null;
-  }
-};
-
-const saveSub = (sub: Subscription) => {
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(sub));
-};
-
 const formatCardNumber = (value: string) => {
   const digits = value.replace(/\D/g, "");
   const groups = digits.match(/.{1,4}/g);
@@ -178,7 +157,16 @@ const formatExpiry = (value: string) => {
   return digits;
 };
 
-const SubscriptionContent = () => {
+type SubscriptionContentProps = {
+  /** When true, hides settings chrome and notifies parent after a successful checkout “Done”. */
+  gateMode?: boolean;
+  onSubscriptionComplete?: () => void;
+};
+
+const SubscriptionContent = ({
+  gateMode = false,
+  onSubscriptionComplete,
+}: SubscriptionContentProps) => {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanId | null>(null);
@@ -208,7 +196,7 @@ const SubscriptionContent = () => {
   const [ussdCode] = useState("*737*000*4500#");
 
   useEffect(() => {
-    setSubscription(loadSub());
+    setSubscription(loadSubscription());
   }, []);
 
   const selectedMeta = useMemo(
@@ -237,10 +225,14 @@ const SubscriptionContent = () => {
   };
 
   const closeCheckout = () => {
+    const finishGate = gateMode && step === "success";
     setCheckoutOpen(false);
     setStep("select-method");
     setSelectedPlan(null);
     resetCardForm();
+    if (finishGate) {
+      onSubscriptionComplete?.();
+    }
   };
 
   const completePayment = useCallback(
@@ -261,7 +253,7 @@ const SubscriptionContent = () => {
         last4,
       };
       setSubscription(next);
-      saveSub(next);
+      saveSubscription(next);
       setStep("success");
       toast.success("Payment successful!");
     },
@@ -813,88 +805,111 @@ const SubscriptionContent = () => {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div
+      className={cn(
+        "space-y-6 sm:space-y-8",
+        gateMode && "space-y-4 sm:space-y-5"
+      )}
+    >
       <div>
         <h2 className="font-solway text-lg font-semibold text-gray-900 sm:text-xl">
-          Subscription
+          {gateMode ? "Choose a plan to continue" : "Subscription"}
         </h2>
         <p className="mt-1 font-inter text-sm text-gray-600">
-          Access to the AI LMS (courses, tools, and features) requires an{" "}
-          <span className="font-semibold text-gray-800">active subscription</span>.
-          Choose a billing period that works for you.
+          {gateMode ? (
+            <>
+              Complete checkout below to unlock the dashboard, courses, and AI
+              features. This step is required before you can use the platform.
+            </>
+          ) : (
+            <>
+              Access to the AI LMS (courses, tools, and features) requires an{" "}
+              <span className="font-semibold text-gray-800">active subscription</span>.
+              Choose a billing period that works for you.
+            </>
+          )}
         </p>
       </div>
 
       {/* Current plan */}
-      <Card className="rounded-2xl border-none shadow-none">
-        <CardContent className="rounded-[20px] bg-[#F8F8FA] p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-inter text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Current plan
-              </p>
-              {subscription ? (
-                <>
-                  <p className="mt-1 font-solway text-xl font-bold text-gray-900">
-                    {subscription.planName}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Badge className="bg-green-100 font-inter text-xs font-medium text-green-800 hover:bg-green-100">
-                      Active
-                    </Badge>
-                    {subscription.last4 && (
-                      <Badge
-                        variant="outline"
-                        className="border-gray-200 font-inter text-xs"
-                      >
-                        •••• {subscription.last4}
+      {!gateMode && (
+        <Card className="rounded-2xl border-none shadow-none">
+          <CardContent className="rounded-[20px] bg-[#F8F8FA] p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-inter text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Current plan
+                </p>
+                {subscription ? (
+                  <>
+                    <p className="mt-1 font-solway text-xl font-bold text-gray-900">
+                      {subscription.planName}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Badge className="bg-green-100 font-inter text-xs font-medium text-green-800 hover:bg-green-100">
+                        Active
                       </Badge>
-                    )}
-                  </div>
-                  <p className="mt-2 font-inter text-xs text-gray-600 sm:text-sm">
-                    <span className="font-semibold text-gray-800">
-                      {PLAN_META[subscription.planId].durationLabel}
-                    </span>
-                    {" · "}
-                    Renews{" "}
-                    {new Date(subscription.renewsAt).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                      {subscription.last4 && (
+                        <Badge
+                          variant="outline"
+                          className="border-gray-200 font-inter text-xs"
+                        >
+                          •••• {subscription.last4}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="mt-2 font-inter text-xs text-gray-600 sm:text-sm">
+                      <span className="font-semibold text-gray-800">
+                        {PLAN_META[subscription.planId].durationLabel}
+                      </span>
+                      {" · "}
+                      Renews{" "}
+                      {new Date(subscription.renewsAt).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-1 font-solway text-xl font-bold text-gray-900">
+                      No active plan
+                    </p>
+                    <p className="mt-1 font-inter text-sm text-gray-600">
+                      Subscribe to unlock full access to all courses and AI features.
+                    </p>
+                  </>
+                )}
+              </div>
+              {subscription && (
+                <div className="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-100 sm:max-w-xs">
+                  <p className="font-inter text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    Last payment
                   </p>
-                </>
-              ) : (
-                <>
-                  <p className="mt-1 font-solway text-xl font-bold text-gray-900">
-                    No active plan
+                  <p className="mt-1 font-inter text-sm text-gray-800">
+                    ₦{(subscription.amountKobo / 100).toLocaleString()} via{" "}
+                    {subscription.paymentMethod}
                   </p>
-                  <p className="mt-1 font-inter text-sm text-gray-600">
-                    Subscribe to unlock full access to all courses and AI features.
+                  <p className="font-mono text-xs text-gray-500">
+                    {subscription.paystackReference}
                   </p>
-                </>
+                </div>
               )}
             </div>
-            {subscription && (
-              <div className="rounded-xl bg-white p-4 shadow-xs ring-1 ring-gray-100 sm:max-w-xs">
-                <p className="font-inter text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                  Last payment
-                </p>
-                <p className="mt-1 font-inter text-sm text-gray-800">
-                  ₦{(subscription.amountKobo / 100).toLocaleString()} via{" "}
-                  {subscription.paymentMethod}
-                </p>
-                <p className="font-mono text-xs text-gray-500">
-                  {subscription.paystackReference}
-                </p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Plans */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div
+        className={cn(
+          "grid gap-3 sm:gap-4",
+          gateMode
+            ? "grid-cols-1 md:grid-cols-2"
+            : "lg:grid-cols-3"
+        )}
+      >
         {(Object.keys(PLAN_META) as PlanId[]).map((planId) => {
           const plan = PLAN_META[planId];
           const Icon = plan.icon;
@@ -903,13 +918,18 @@ const SubscriptionContent = () => {
             <Card
               key={planId}
               className={cn(
-                "relative overflow-hidden rounded-2xl border-0 shadow-none transition hover:shadow-md",
+                "relative min-w-0 overflow-hidden rounded-2xl border-0 shadow-none transition hover:shadow-md",
                 plan.borderAccent,
-                plan.popular && "lg:scale-[1.02] lg:shadow-lg"
+                plan.popular && !gateMode && "lg:scale-[1.02] lg:shadow-lg"
               )}
             >
               {plan.popular && (
-                <div className="absolute right-4 top-4">
+                <div
+                  className={cn(
+                    "absolute z-10",
+                    gateMode ? "right-3 top-3" : "right-4 top-4"
+                  )}
+                >
                   <Badge className="bg-[#0063F7] font-inter text-[10px] font-semibold uppercase tracking-wider text-white hover:bg-[#0063F7]">
                     Most popular
                   </Badge>
@@ -917,35 +937,63 @@ const SubscriptionContent = () => {
               )}
               <CardContent
                 className={cn(
-                  "flex h-full flex-col p-5 sm:p-6",
+                  "flex h-full min-w-0 flex-col",
+                  gateMode ? "p-4 sm:p-5" : "p-5 sm:p-6",
                   `bg-linear-to-br ${plan.accent}`
                 )}
               >
-                <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-white/90 shadow-sm ring-1 ring-white/60">
-                  <Icon className="size-5 text-primary" aria-hidden />
+                <div
+                  className={cn(
+                    "mb-3 flex size-10 items-center justify-center rounded-xl bg-white/90 shadow-sm ring-1 ring-white/60 sm:mb-4 sm:size-11"
+                  )}
+                >
+                  <Icon className="size-4 text-primary sm:size-5" aria-hidden />
                 </div>
-                <h3 className="font-solway text-lg font-bold text-gray-900">
+                <h3 className="font-solway text-base font-bold text-gray-900 sm:text-lg">
                   {plan.name}
                 </h3>
-                <p className="mt-1 font-inter text-sm text-gray-600">
+                <p
+                  className={cn(
+                    "mt-1 font-inter text-gray-600",
+                    gateMode ? "text-xs leading-snug sm:text-sm" : "text-sm"
+                  )}
+                >
                   {plan.tagline}
                 </p>
-                <div className="mt-4 flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
-                  <span className="font-solway text-3xl font-bold tracking-tight text-gray-900">
+                <div className="mt-3 flex flex-wrap items-baseline gap-x-1 gap-y-0.5 sm:mt-4">
+                  <span
+                    className={cn(
+                      "font-solway font-bold tracking-tight text-gray-900",
+                      gateMode ? "text-2xl sm:text-3xl" : "text-3xl"
+                    )}
+                  >
                     {plan.priceLabel}
                   </span>
-                  <span className="font-inter text-sm text-gray-600">
+                  <span
+                    className={cn(
+                      "font-inter text-gray-600",
+                      gateMode ? "text-xs sm:text-sm" : "text-sm"
+                    )}
+                  >
                     {plan.periodSuffix}
                   </span>
                 </div>
-                <ul className="mt-5 flex-1 space-y-2.5">
+                <ul
+                  className={cn(
+                    "flex-1",
+                    gateMode ? "mt-4 space-y-2" : "mt-5 space-y-2.5"
+                  )}
+                >
                   {plan.features.map((f) => (
                     <li
                       key={f}
-                      className="flex gap-2 font-inter text-sm text-gray-700"
+                      className={cn(
+                        "flex gap-2 font-inter text-gray-700",
+                        gateMode ? "text-xs leading-relaxed sm:text-sm" : "text-sm"
+                      )}
                     >
                       <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-                      <span>{f}</span>
+                      <span className="min-w-0">{f}</span>
                     </li>
                   ))}
                 </ul>
@@ -953,7 +1001,8 @@ const SubscriptionContent = () => {
                   type="button"
                   onClick={() => openCheckout(planId)}
                   className={cn(
-                    "mt-6 h-11 w-full rounded-xl font-solway font-semibold shadow-sm",
+                    "h-11 w-full rounded-xl font-solway font-semibold shadow-sm",
+                    gateMode ? "mt-4 sm:mt-5" : "mt-6",
                     plan.popular
                       ? "bg-[#0063F7] hover:bg-[#0056d9]"
                       : "bg-primary hover:bg-primary/90"
@@ -980,12 +1029,21 @@ const SubscriptionContent = () => {
       >
         <DialogContent
           className={cn(
-            "top-4 max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-lg translate-y-0 gap-0 overflow-hidden rounded-2xl border-0 p-0 sm:top-1/2 sm:max-h-[min(86dvh,760px)] sm:w-full sm:-translate-y-1/2",
-            "flex flex-col"
+            "flex min-w-0 flex-col gap-0 overflow-hidden border-0 p-0 shadow-xl",
+            "top-[max(0.5rem,env(safe-area-inset-top,0px))] max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-1rem)] w-[calc(100vw-1rem)] max-w-lg translate-y-0 rounded-xl",
+            "min-[480px]:w-[min(calc(100vw-1.25rem),32rem)]",
+            "sm:top-1/2 sm:max-h-[min(calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-1.5rem),820px)] sm:w-full sm:-translate-y-1/2 sm:rounded-2xl",
+            "md:max-h-[min(calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem),840px)]"
           )}
           showCloseButton={step !== "processing" && step !== "success"}
         >
-          <DialogHeader className="shrink-0 space-y-0 border-b border-gray-100 px-4 pb-3 pt-4 pr-12 text-left sm:px-6 sm:pb-4 sm:pt-5 sm:pr-14">
+          <DialogHeader
+            className={cn(
+              "shrink-0 space-y-0 border-b border-gray-100 pb-3 pt-4 pr-12 text-left sm:pb-4 sm:pt-5 sm:pr-14",
+              "pl-[max(1rem,env(safe-area-inset-left,0px))] sm:pl-6",
+              "pr-[max(3rem,env(safe-area-inset-right,0px))] sm:pr-14"
+            )}
+          >
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <img
                 src="https://website-v3-assets.s3.amazonaws.com/assets/img/hero/Paystack-mark-white-twitter.png"
@@ -998,14 +1056,21 @@ const SubscriptionContent = () => {
             </div>
           </DialogHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 py-3 sm:px-6 sm:py-4">
+          <div
+            className={cn(
+              "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain py-3 sm:py-4",
+              "pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:pl-6 sm:pr-6"
+            )}
+          >
             {renderCheckoutContent()}
           </div>
 
           {step !== "processing" && (
             <DialogFooter
               className={cn(
-                "shrink-0 flex-col gap-2 border-t border-gray-100 bg-white px-4 py-3 sm:flex-row sm:justify-end sm:gap-2 sm:px-6 sm:py-4"
+                "shrink-0 flex-col gap-2 border-t border-gray-100 bg-white py-3 sm:flex-row sm:justify-end sm:gap-2 sm:py-4",
+                "pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:pl-6 sm:pr-6",
+                "pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
               )}
             >
               {renderCheckoutFooter()}

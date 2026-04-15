@@ -16,7 +16,7 @@ interface NarratorAvatarRef {
   stopSpeaking: () => void;
 }
 
-// Preview text for each instructor
+// Preview text for settings / profile (how they look & sound)
 const getPreviewText = (instructor: InstructorType): string => {
   const greetings = {
     woman:
@@ -27,17 +27,34 @@ const getPreviewText = (instructor: InstructorType): string => {
   return greetings[instructor];
 };
 
+/** Short platform intro for subscription gate (keep brief for TTS). */
+const getGateIntroText = (instructor: InstructorType): string => {
+  if (instructor === "woman") {
+    return "Hi! On RYD I help you learn with courses and AI tools, and you can track your progress. Subscribe when you are ready to unlock the full platform.";
+  }
+  return "Hey! RYD gives you courses, AI guidance, and clear progress tracking. Subscribe when you want full access to everything.";
+};
+
 interface InstructorContentProps {
   hideHeader?: boolean;
+  /** Subscription gate: shorter platform pitch on hover / tap. */
+  gateIntroMode?: boolean;
+  /** Fires once the user first previews an instructor (hover or pointer). */
+  onInstructorEngaged?: () => void;
 }
 
-const InstructorContent = ({ hideHeader = false }: InstructorContentProps) => {
+const InstructorContent = ({
+  hideHeader = false,
+  gateIntroMode = false,
+  onInstructorEngaged,
+}: InstructorContentProps) => {
   const { selectedInstructor, setSelectedInstructor } = useInstructorStore();
   const [activePreview, setActivePreview] = useState<InstructorType | null>(
     null
   );
   const womanRef = useRef<NarratorAvatarRef | null>(null);
   const manRef = useRef<NarratorAvatarRef | null>(null);
+  const engagementReportedRef = useRef(false);
 
   // Pre-compute avatar configs
   const womanConfig = INSTRUCTORS.woman;
@@ -106,7 +123,9 @@ const InstructorContent = ({ hideHeader = false }: InstructorContentProps) => {
     }
 
     const ref = activePreview === "woman" ? womanRef : manRef;
-    const previewText = getPreviewText(activePreview);
+    const previewText = gateIntroMode
+      ? getGateIntroText(activePreview)
+      : getPreviewText(activePreview);
 
     const timeout = setTimeout(() => {
       if (ref.current && typeof ref.current.speakText === "function") {
@@ -122,7 +141,7 @@ const InstructorContent = ({ hideHeader = false }: InstructorContentProps) => {
       clearTimeout(timeout);
       stopAllAvatars();
     };
-  }, [activePreview, stopAllAvatars]);
+  }, [activePreview, gateIntroMode, stopAllAvatars]);
 
   const handleSelectInstructor = (instructor: InstructorType) => {
     setSelectedInstructor(instructor);
@@ -130,6 +149,10 @@ const InstructorContent = ({ hideHeader = false }: InstructorContentProps) => {
 
   const handlePreviewHover = (instructor: InstructorType) => {
     setActivePreview(instructor);
+    if (onInstructorEngaged && !engagementReportedRef.current) {
+      engagementReportedRef.current = true;
+      onInstructorEngaged();
+    }
   };
 
   const handlePreviewLeave = () => {
@@ -149,20 +172,27 @@ const InstructorContent = ({ hideHeader = false }: InstructorContentProps) => {
     return (
       <Card
         className={cn(
-          "relative cursor-pointer transition-all duration-300 overflow-hidden",
+          "relative cursor-pointer transition-all duration-300 overflow-hidden touch-manipulation",
           isSelected
             ? "ring-2 ring-primary shadow-lg"
             : "hover:shadow-md border-gray-200",
           isActive && "scale-[1.02]"
         )}
-        onMouseEnter={() => handlePreviewHover(instructor)}
-        onMouseLeave={handlePreviewLeave}
+        onPointerEnter={() => handlePreviewHover(instructor)}
+        onPointerLeave={handlePreviewLeave}
         onClick={() => handleSelectInstructor(instructor)}
       >
         <CardContent className="p-0">
           <div className="relative">
             {/* Preview Container */}
-            <div className="relative w-full h-[300px] bg-linear-to-b from-gray-50 to-gray-100 flex items-center justify-center overflow-hidden">
+            <div
+              className={cn(
+                "relative flex w-full items-center justify-center overflow-hidden bg-linear-to-b from-gray-50 to-gray-100",
+                gateIntroMode
+                  ? "h-[min(240px,40vh)] sm:h-[min(280px,42vh)] md:h-[300px]"
+                  : "h-[300px]"
+              )}
+            >
               <div className="w-full h-full flex items-center justify-center">
                 <NarratorAvatar
                   ref={ref}

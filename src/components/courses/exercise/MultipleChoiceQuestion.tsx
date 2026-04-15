@@ -1,4 +1,4 @@
-import type { Question } from "../../data/curriculumData";
+import type { Question } from "../../../data/curriculumData";
 import { CheckCircle2 } from "lucide-react";
 
 interface MultipleChoiceQuestionProps {
@@ -27,21 +27,18 @@ export default function MultipleChoiceQuestion({
             key={index}
             onClick={() => onSelect(option)}
             disabled={disabled}
-            className={`group relative w-full p-4 text-left rounded-xl border-2 transition-all duration-200 transform ${
-              disabled
+            className={`group relative w-full p-4 text-left rounded-xl border-2 transition-all duration-200 transform ${disabled
                 ? "opacity-60 cursor-not-allowed"
                 : "hover:scale-[1.02]"
-            } ${
-              isSelected
+              } ${isSelected
                 ? "bg-gradient-to-r from-primary via-primary/90 to-primary/80 text-white border-primary shadow-lg shadow-primary/40"
                 : "bg-white/80 backdrop-blur-sm text-gray-700 border-primary/20 hover:border-primary/50 hover:bg-primary/5 shadow-sm hover:shadow-md"
-            }`}
+              }`}
           >
             <div className="flex items-center justify-between">
               <span
-                className={`font-medium ${
-                  isSelected ? "text-white" : "text-gray-800"
-                }`}
+                className={`font-medium ${isSelected ? "text-white" : "text-gray-800"
+                  }`}
               >
                 {option}
               </span>

@@ -1,7 +1,7 @@
 import { forwardRef, useMemo } from "react";
 import { CurriculumLearning } from "@sage-rsc/talking-head-react";
-import { type Curriculum, curriculumData } from "../../data/curriculumData";
-import { useInstructorStore } from "../../stores/instructorStore";
+import { type Curriculum, curriculumData } from "../../../data/curriculumData";
+import { useInstructorStore } from "../../../stores/instructorStore";
 
 interface CurriculumLearningRef {
   isAvatarReady?: () => boolean;

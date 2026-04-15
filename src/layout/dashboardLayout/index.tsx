@@ -3,15 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SideNav from "./SideNav";
 import TopNav from "./TopNav";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import SubscriptionContent from "@/components/settings/SubscriptionContent";
+import SubscriptionGateFlow from "@/components/subscription/SubscriptionGateFlow";
 import { loadSubscription } from "@/utils/subscriptionSession";
 import { useAuthStore } from "@/stores/authStore";
 import { PUBLIC_PATHS } from "@/utils/routePaths";
@@ -60,68 +52,11 @@ const DashboardLayout = ({ children }: DashboardProps) => {
         </div>
       </div>
 
-      <Dialog
+      <SubscriptionGateFlow
         open={showSubscriptionGate}
-        onOpenChange={(open) => {
-          if (open) return;
-        }}
-      >
-        <DialogContent
-          showCloseButton={false}
-          className={cn(
-            "flex flex-col gap-0 overflow-hidden border-0 p-0 shadow-xl",
-            // Mobile: below status bar, use dynamic viewport & safe areas
-            "top-[max(0.5rem,env(safe-area-inset-top,0px))] max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-0.75rem)] w-[calc(100vw-1rem)] max-w-4xl translate-y-0 rounded-xl",
-            // Tablet portrait: a bit more margin; still top-anchored until sm centering
-            "min-[480px]:w-[calc(100vw-1.25rem)] min-[480px]:max-w-4xl",
-            // Tablet landscape & up: vertically centered, taller usable height
-            "sm:top-1/2 sm:max-h-[min(calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-1.5rem),920px)] sm:w-[min(calc(100vw-1.5rem),56rem)] sm:max-w-[min(calc(100vw-1.5rem),56rem)] sm:-translate-y-1/2 sm:rounded-2xl",
-            "md:w-[min(calc(100vw-2rem),56rem)] md:max-w-[min(calc(100vw-2rem),56rem)]",
-            // Large tablet / desktop
-            "lg:max-h-[min(calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem),940px)]"
-          )}
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <DialogHeader className="sr-only">
-            <DialogTitle>Activate your subscription</DialogTitle>
-            <DialogDescription>
-              Subscribe to a plan to access the dashboard and all platform features.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div
-            className={cn(
-              "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain py-3 sm:py-4 md:py-5",
-              "pl-[max(0.75rem,env(safe-area-inset-left,0px))] pr-[max(0.75rem,env(safe-area-inset-right,0px))]",
-              "sm:pl-5 sm:pr-5 md:pl-6 md:pr-6"
-            )}
-          >
-            <SubscriptionContent
-              gateMode
-              onSubscriptionComplete={handleSubscriptionComplete}
-            />
-          </div>
-
-          <div
-            className={cn(
-              "shrink-0 border-t border-gray-100 bg-white px-4 py-3 text-center sm:px-6",
-              "pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
-            )}
-          >
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="font-inter text-gray-600"
-              onClick={handleSignOutFromGate}
-            >
-              Sign out and use a different account
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        onSubscriptionComplete={handleSubscriptionComplete}
+        onSignOut={handleSignOutFromGate}
+      />
     </div>
   );
 };

@@ -15,7 +15,7 @@ import {
   getModuleIndexForLesson,
   getLessonIndexInCurriculum,
   getLessonByIndex,
-} from "../data/curriculumData";
+} from "../../data/curriculumData";
 import {
   QuestionInfo,
   CodeEditor,
@@ -23,10 +23,10 @@ import {
   MultipleChoiceQuestion,
   TrueFalseQuestion,
   FullscreenModal,
-} from "../components/exercise";
-import { useInstructorStore } from "../stores/instructorStore";
-import { useCoursesStore } from "../stores/coursesStore";
-import { cn } from "../lib/utils";
+} from "./exercise";
+import { useInstructorStore } from "../../stores/instructorStore";
+import { useCoursesStore } from "../../stores/coursesStore";
+import { cn } from "../../lib/utils";
 
 function useMediaQueryMinLg() {
   const [matches, setMatches] = useState(() =>
@@ -115,7 +115,7 @@ type PendingAction =
 // MAIN COMPONENT
 // ============================================================================
 
-function CodeExampleInner() {
+function CourseDetailInner() {
   const { exercise } = useParams<{ exercise: string }>();
   const { getInstructorConfig } = useInstructorStore();
   const instructorConfig = getInstructorConfig();
@@ -316,9 +316,9 @@ function CodeExampleInner() {
   // CODE EXAMPLE TYPING (for teaching code before questions)
   // ============================================================================
 
-  const typeCodeExample = useCallback(
+  const typeCourseDetail = useCallback(
     (
-      codeExample: { code: string; description?: string; explanation?: string },
+      CourseDetail: { code: string; description?: string; explanation?: string },
       question: Question
     ) => {
       // Clear any existing typing
@@ -331,13 +331,13 @@ function CodeExampleInner() {
       setCode("");
       setResults([]);
 
-      const codeToType = codeExample.code;
+      const codeToType = CourseDetail.code;
       const typingSpeed = 30; // ms per character
       let currentIndex = 0;
 
       // First, speak the description if available
-      if (codeExample.description) {
-        speak(codeExample.description);
+      if (CourseDetail.description) {
+        speak(CourseDetail.description);
       }
 
       // Start typing after a short delay (to let speech begin)
@@ -355,15 +355,15 @@ function CodeExampleInner() {
           } else {
             // Typing complete
             isTypingCodeRef.current = false;
-            console.log("Typing complete", codeExample);
+            console.log("Typing complete", CourseDetail);
 
             // After typing, speak the explanation if available
             // The explanation teaches what the code does - student sees code while listening
-            if (codeExample.explanation) {
+            if (CourseDetail.explanation) {
               // Wait a moment for the code to be fully visible before explaining
               setTimeout(() => {
                 // Speak the explanation - when done, we'll wait a bit, then clear and ask
-                speak(codeExample.explanation!, {
+                speak(CourseDetail.explanation!, {
                   type: "wait_then_clear_and_ask",
                   question,
                 });
@@ -384,10 +384,10 @@ function CodeExampleInner() {
       };
 
       // Start typing after description speech delay (estimate)
-      const descriptionDelay = codeExample.description
+      const descriptionDelay = CourseDetail.description
         ? Math.max(
           2000,
-          (codeExample.description.split(/\s+/).length / 2.5) * 1000
+          (CourseDetail.description.split(/\s+/).length / 2.5) * 1000
         )
         : 500;
 
@@ -623,7 +623,7 @@ function CodeExampleInner() {
       // Check if this is a code_test question with a code example to teach first
       if (nextQuestion.type === "code_test" && nextQuestion.code_example) {
         // Teach the code example first, then ask the question
-        typeCodeExample(nextQuestion.code_example, nextQuestion);
+        typeCourseDetail(nextQuestion.code_example, nextQuestion);
       } else {
         // For non-code questions or code questions without examples, just ask
         speak(nextQuestion.question);
@@ -716,7 +716,7 @@ function CodeExampleInner() {
     saveProgress,
     speak,
     stopCodeTyping,
-    typeCodeExample,
+    typeCourseDetail,
   ]);
 
   // Keep ref updated with latest function
@@ -930,7 +930,7 @@ function CodeExampleInner() {
 
     // Check if this is a code_test question with a code example to teach first
     if (prevQuestion.type === "code_test" && prevQuestion.code_example) {
-      typeCodeExample(prevQuestion.code_example, prevQuestion);
+      typeCourseDetail(prevQuestion.code_example, prevQuestion);
     } else {
       speak(prevQuestion.question);
     }
@@ -942,7 +942,7 @@ function CodeExampleInner() {
     speak,
     stopSpeaking,
     stopCodeTyping,
-    typeCodeExample,
+    typeCourseDetail,
   ]);
 
   const handlePrevious = useCallback(() => {
@@ -1001,7 +1001,7 @@ function CodeExampleInner() {
     // Check if this is a code_test question with a code example to teach first
     if (question.type === "code_test" && question.code_example) {
       // Teach the code example first, then ask the question
-      typeCodeExample(question.code_example, question);
+      typeCourseDetail(question.code_example, question);
     } else {
       // For non-code questions or code questions without examples, just ask
       speak(question.question);
@@ -1014,7 +1014,7 @@ function CodeExampleInner() {
     speak,
     stopSpeaking,
     stopCodeTyping,
-    typeCodeExample,
+    typeCourseDetail,
   ]);
 
   const handleNextLesson = useCallback(() => {
@@ -2070,6 +2070,6 @@ function CodeExampleInner() {
 // EXPORT
 // ============================================================================
 
-export default function CodeExample() {
-  return <CodeExampleInner />;
+export default function CourseDetail() {
+  return <CourseDetailInner />;
 }

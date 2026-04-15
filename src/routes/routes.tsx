@@ -18,7 +18,7 @@ import {
   WishlistPage,
   SupportPage,
 } from "@/pages/app";
-import CodeExample from "@/data/CodeExample";
+import CourseDetails from "@/components/courses/CourseDetails";
 
 interface AppRoute {
   path: string;
@@ -114,7 +114,7 @@ export const PRIVATE_ROUTES: AppRoute[] = [
   },
   {
     path: COURSE_QUIZ,
-    element: <CodeExample />,
+    element: <CourseDetails />,
   },
   {
     path: SETTINGS,

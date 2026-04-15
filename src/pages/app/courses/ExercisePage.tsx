@@ -18,7 +18,7 @@ import {
   TrueFalseQuestion,
   FullscreenModal,
   type ActionData,
-} from "../../../components/exercise";
+} from "../../../components/courses/exercise";
 
 interface CurriculumLearningRef {
   isAvatarReady?: () => boolean;
@@ -494,13 +494,12 @@ function CodingExerciseInner() {
           passed = true;
           question.testCriteria.testCases.forEach((testCase, index) => {
             try {
-              const funcCall = `${
-                question.testCriteria?.expectedFunction
-              }(${testCase.input
-                .map((v: unknown) =>
-                  typeof v === "string" ? `"${v}"` : String(v)
-                )
-                .join(", ")})`;
+              const funcCall = `${question.testCriteria?.expectedFunction
+                }(${testCase.input
+                  .map((v: unknown) =>
+                    typeof v === "string" ? `"${v}"` : String(v)
+                  )
+                  .join(", ")})`;
               const actualResult = eval(`${code}; ${funcCall}`);
               const testPassed = actualResult === testCase.expected;
               passed = passed && testPassed; // All tests must pass
@@ -537,13 +536,12 @@ function CodingExerciseInner() {
         if (r.passed) {
           return `✅ PASS: ${r.test}`;
         } else {
-          return `❌ FAIL: ${r.test}${
-            r.actual !== undefined || r.expected !== undefined
-              ? ` (got: ${JSON.stringify(r.actual)}, expected: ${JSON.stringify(
-                  r.expected
-                )})`
-              : ""
-          }`;
+          return `❌ FAIL: ${r.test}${r.actual !== undefined || r.expected !== undefined
+            ? ` (got: ${JSON.stringify(r.actual)}, expected: ${JSON.stringify(
+              r.expected
+            )})`
+            : ""
+            }`;
         }
       });
 
@@ -641,10 +639,10 @@ function CodingExerciseInner() {
         gutterStyle={(dimension, gutterSize) =>
           dimension === "width"
             ? {
-                width: `${gutterSize}px`,
-                cursor: "col-resize",
-                pointerEvents: "auto",
-              }
+              width: `${gutterSize}px`,
+              cursor: "col-resize",
+              pointerEvents: "auto",
+            }
             : {}
         }
       >
@@ -672,44 +670,40 @@ function CodingExerciseInner() {
                 <button
                   onClick={handleStartQuestionsFlow}
                   disabled={!canStartQuestions}
-                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                    canStartQuestions
-                      ? "bg-primary text-white shadow hover:bg-primary/90"
-                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  }`}
+                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${canStartQuestions
+                    ? "bg-primary text-white shadow hover:bg-primary/90"
+                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    }`}
                 >
                   Start Questions
                 </button>
                 <button
                   onClick={handleNextQuestionFlow}
                   disabled={!canNextQuestion}
-                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                    canNextQuestion
-                      ? "bg-amber-500 text-white shadow hover:bg-amber-600"
-                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  }`}
+                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${canNextQuestion
+                    ? "bg-amber-500 text-white shadow hover:bg-amber-600"
+                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    }`}
                 >
                   Next Question
                 </button>
                 <button
                   onClick={handleCompleteLessonFlow}
                   disabled={!canCompleteLesson}
-                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                    canCompleteLesson
-                      ? "bg-emerald-500 text-white shadow hover:bg-emerald-600"
-                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  }`}
+                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${canCompleteLesson
+                    ? "bg-emerald-500 text-white shadow hover:bg-emerald-600"
+                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    }`}
                 >
                   Complete Lesson
                 </button>
                 <button
                   onClick={handleNextLessonFlow}
                   disabled={!canNextLesson}
-                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-                    canNextLesson
-                      ? "bg-rose-500 text-white shadow hover:bg-rose-600"
-                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  }`}
+                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${canNextLesson
+                    ? "bg-rose-500 text-white shadow hover:bg-rose-600"
+                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    }`}
                 >
                   Next Lesson / Module
                 </button>
@@ -842,10 +836,10 @@ function CodingExerciseInner() {
                 gutterStyle={(dimension, gutterSize) =>
                   dimension === "height"
                     ? {
-                        height: `${gutterSize}px`,
-                        cursor: "row-resize",
-                        pointerEvents: "auto",
-                      }
+                      height: `${gutterSize}px`,
+                      cursor: "row-resize",
+                      pointerEvents: "auto",
+                    }
                     : {}
                 }
               >

@@ -1,4 +1,4 @@
-import type { Question } from "../../data/curriculumData";
+import type { Question } from "../../../data/curriculumData";
 
 interface QuestionInfoProps {
   question: Question;

@@ -2,6 +2,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { curriculaData, type Curriculum } from "../data/curriculumData";
+import {
+  getCategoryIdForCourseSlug,
+  type CourseCategoryId,
+} from "../data/courseCategories";
 
 export type CourseStatus = "not-started" | "ongoing" | "completed";
 
@@ -10,6 +14,7 @@ export interface Course {
   desc: string;
   img: string;
   slug: string;
+  categoryId: CourseCategoryId;
   status: CourseStatus;
   progress?: number; // 0-100
   duration?: string; // e.g., "4 weeks"
@@ -23,6 +28,10 @@ const defaultCourseImages: Record<string, string> = {
     "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=200&fit=crop",
   "web-development-basics":
     "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=400&h=200&fit=crop",
+  "css-basics":
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=200&fit=crop",
+  "html-css-combined":
+    "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=200&fit=crop",
   "data-structures-algorithms":
     "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=200&fit=crop",
   "python-programming":
@@ -84,6 +93,7 @@ function curriculumToCourse(curriculum: Curriculum): Course {
       defaultCourseImages[curriculum.slug] ||
       defaultCourseImages["intro-computer-science"],
     slug: curriculum.slug,
+    categoryId: getCategoryIdForCourseSlug(curriculum.slug),
     ...metadata,
   };
 }

@@ -474,9 +474,12 @@ function CodingExerciseInner() {
           actual: code.trim() || "(empty)",
           expected: expectedHTML,
         });
-      } else if (question.testCriteria?.expectedCSS) {
-        const criteria = question.testCriteria;
-        const normalizedExpected = criteria.expectedCSS
+      } else if (
+        question.testCriteria &&
+        question.testCriteria.expectedCSS !== undefined
+      ) {
+        const { expectedCSS } = question.testCriteria;
+        const normalizedExpected = expectedCSS
           .toLowerCase()
           .replace(/\s+/g, " ")
           .replace(/'/g, '"')
@@ -488,21 +491,24 @@ function CodingExerciseInner() {
           .trim();
         passed = normalizedCode.includes(normalizedExpected);
         testResults.push({
-          test: `Code contains expected CSS: ${criteria.expectedCSS}`,
+          test: `Code contains expected CSS: ${expectedCSS}`,
           passed: passed,
           actual: code.trim() || "(empty)",
-          expected: criteria.expectedCSS,
+          expected: expectedCSS,
         });
-      } else if (question.testCriteria?.expectedJS) {
-        const criteria = question.testCriteria;
+      } else if (
+        question.testCriteria &&
+        question.testCriteria.expectedJS !== undefined
+      ) {
+        const { expectedJS } = question.testCriteria;
         const haystack = code.toLowerCase();
-        const needle = criteria.expectedJS.toLowerCase();
+        const needle = expectedJS.toLowerCase();
         passed = haystack.includes(needle);
         testResults.push({
-          test: `Code includes required JavaScript: ${criteria.expectedJS}`,
+          test: `Code includes required JavaScript: ${expectedJS}`,
           passed: passed,
           actual: code.trim() || "(empty)",
-          expected: criteria.expectedJS,
+          expected: expectedJS,
         });
       } else if (question.testCriteria?.expectedCode) {
         const pattern = question.testCriteria.expectedCode;

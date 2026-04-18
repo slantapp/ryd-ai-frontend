@@ -30,9 +30,28 @@ const getPreviewText = (instructor: InstructorType): string => {
 /** Short platform intro for subscription gate (keep brief for TTS). */
 const getGateIntroText = (instructor: InstructorType): string => {
   if (instructor === "woman") {
-    return "Hi! On RYD I help you learn with courses and AI tools, and you can track your progress. Subscribe when you are ready to unlock the full platform.";
+    return [
+      "Hi.",
+      "I'm Franca, your AI learning companion.",
+      "I know learning something new can sometimes feel confusing, but you don't have to do it alone.",
+      "You'll get clear prompts, structured tasks, and instant feedback that will help you improve as you go.",
+      "I'm here to help you understand, practice, and get better; one step at a time.",
+      "There's no pressure, or rush, just steady progress.",
+      "Whenever you're ready to learn, I'm ready to help you.",
+      "Let's Get Started!",
+    ].join(" ");
   }
-  return "Hey! RYD gives you courses, AI guidance, and clear progress tracking. Subscribe when you want full access to everything.";
+
+  return [
+    "Hi there.",
+    "I'm Frank, your AI tutor.",
+    "I'm here to make your learning experience wholesome.",
+    "I'll walk you through each step with clear instructions, helpful prompts, and feedback that keeps you moving forward.",
+    "We'll practice together, fix mistakes, and build your confidence as you go.",
+    "Learning shouldn't feel frustrating.",
+    "It should feel like progress.",
+    "Ready to start? Let's get right to it.",
+  ].join(" ");
 };
 
 interface InstructorContentProps {
@@ -147,6 +166,23 @@ const InstructorContent = ({
     setSelectedInstructor(instructor);
   };
 
+  const handlePreviewClick = (instructor: InstructorType) => {
+    // On touch devices there is no real hover; use click/tap to trigger speech.
+    // Clicking a different instructor stops the previous one (effect cleanup) and starts the new one.
+    // Clicking the same instructor again re-triggers the speech.
+    if (activePreview === instructor) {
+      stopAllAvatars();
+      setActivePreview(null);
+      setTimeout(() => setActivePreview(instructor), 0);
+      return;
+    }
+    setActivePreview(instructor);
+    if (onInstructorEngaged && !engagementReportedRef.current) {
+      engagementReportedRef.current = true;
+      onInstructorEngaged();
+    }
+  };
+
   const handlePreviewHover = (instructor: InstructorType) => {
     setActivePreview(instructor);
     if (onInstructorEngaged && !engagementReportedRef.current) {
@@ -180,7 +216,10 @@ const InstructorContent = ({
         )}
         onPointerEnter={() => handlePreviewHover(instructor)}
         onPointerLeave={handlePreviewLeave}
-        onClick={() => handleSelectInstructor(instructor)}
+        onClick={() => {
+          handleSelectInstructor(instructor);
+          handlePreviewClick(instructor);
+        }}
       >
         <CardContent className="p-0">
           <div className="relative">

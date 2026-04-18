@@ -1,0 +1,686 @@
+{
+  "slug": "javascript-intermediate",
+  "curriculum": {
+    "title": "JavaScript: From Beginner to Intermediate",
+    "description": "Ready to level up? Learn arrays, objects, scope, async code, and more. Build confidence with practical examples and clear explanations. You've got the basics - now let's go deeper!",
+    "language": "en",
+    "modules": [
+      {
+        "id": "jsi_module_01",
+        "title": "Mastering Arrays and Objects",
+        "prerequisite": null,
+        "lessons": [
+          {
+            "id": "jsi_lesson_01",
+            "title": "Array Methods: Map, Filter, Reduce",
+            "body": "Array methods are powerful tools to transform lists. map() changes each item, filter() picks items that match a rule, and reduce() combines items into one result. They make code cleaner and more expressive.",
+            "avatar_script": "Think of array methods like kitchen tools: map() is a blender (transforms everything), filter() is a strainer (keeps what you want), and reduce() is a mixer (combines into one). Let's cook up some code!",
+            "media": {},
+            "code_example": {
+              "code": "const numbers = [1, 2, 3, 4, 5];\n\n// map: double each number\nconst doubled = numbers.map(n => n * 2);\n\n// filter: keep only even numbers\nconst evens = numbers.filter(n => n % 2 === 0);\n\n// reduce: sum all numbers\nconst sum = numbers.reduce((total, n) => total + n, 0);\n\nconsole.log(doubled); // [2, 4, 6, 8, 10]\nconsole.log(evens);   // [2, 4]\nconsole.log(sum);     // 15",
+              "language": "javascript",
+              "description": "Using map, filter, and reduce with arrow functions",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsi_q1_01",
+                "type": "multiple_choice",
+                "question": "What does the map() method return?",
+                "options": [
+                  "A single value",
+                  "A new array with transformed items",
+                  "The original array",
+                  "A boolean"
+                ],
+                "answer": "A new array with transformed items",
+                "explanation": "map() creates a brand new array by applying a function to each item. The original array stays unchanged!"
+              },
+              {
+                "id": "jsi_q1_02",
+                "type": "true_false",
+                "question": "filter() keeps items where the function returns true.",
+                "answer": true,
+                "explanation": "Exactly! filter() tests each item and only keeps the ones that pass the test (return true)."
+              },
+              {
+                "id": "jsi_q1_03",
+                "type": "code_test",
+                "question": "Use filter to get only names longer than 4 letters from ['Ana', 'Bob', 'Christina', 'Dan']",
+                "explanation": "The filter() method creates a new array with items that pass a test. Check each name's length property against 4.",
+                "code_example": {
+                  "code": "const names = ['Ana', 'Bob', 'Christina', 'Dan'];\nconst longNames = names.filter(name => name.length > 4);\nconsole.log(longNames); // ['Christina']",
+                  "language": "javascript",
+                  "description": "Filtering array by string length",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing a variable to store the list of names. Type const names = ['Ana', 'Bob', 'Christina', 'Dan'];. On the next line, create another variable to store the filtered result. Type const longNames = names.filter((name) => { return name.length > 4; });. Inside filter(), the word name stands for each item in the array one at a time. Use name.length to count how many letters are in each name. Then write > 4 to keep only the names with more than 4 letters. After that, log the result by writing console.log(longNames); so you can see the new array that contains only the names that match the condition."
+                },
+                "testCriteria": {
+                  "expectedCode": ".*filter\\(.*=>.*\\.length.*>.*4.*\\)"
+                }
+              }
+            ],
+            "next_lesson_id": "jsi_lesson_02"
+          },
+          {
+            "id": "jsi_lesson_02",
+            "title": "Object Destructuring and Spread",
+            "body": "Destructuring lets you unpack object properties into variables easily. The spread operator (...) copies or combines objects and arrays. Both make code shorter and clearer.",
+            "avatar_script": "Imagine unpacking a gift box: destructuring is like taking out each item and naming it. Spread is like copying all items into a new box. Both save time and keep things organized!",
+            "media": {},
+            "code_example": {
+              "code": "// Destructuring\nconst user = { name: 'Sam', age: 25, city: 'Paris' };\nconst { name, city } = user;\nconsole.log(name); // 'Sam'\n\n// Spread operator\nconst defaults = { theme: 'light', lang: 'en' };\nconst settings = { ...defaults, theme: 'dark' };\nconsole.log(settings); // { theme: 'dark', lang: 'en' }\n\n// Combining arrays\nconst arr1 = [1, 2];\nconst arr2 = [3, 4];\nconst combined = [...arr1, ...arr2]; // [1, 2, 3, 4]",
+              "language": "javascript",
+              "description": "Destructuring objects and using spread operator",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsi_q2_01",
+                "type": "multiple_choice",
+                "question": "What does the spread operator (...) do with arrays?",
+                "options": [
+                  "Deletes items",
+                  "Expands array items into individual elements",
+                  "Sorts the array",
+                  "Reverses the array"
+                ],
+                "answer": "Expands array items into individual elements",
+                "explanation": "Spread (...) takes an array and 'spreads' its items out. Perfect for copying or combining arrays!"
+              },
+              {
+                "id": "jsi_q2_02",
+                "type": "true_false",
+                "question": "Destructuring can extract multiple properties from an object in one line.",
+                "answer": true,
+                "explanation": "Yes! Destructuring is a clean way to grab several values at once without repeating the object name."
+              },
+              {
+                "id": "jsi_q2_03",
+                "type": "code_test",
+                "question": "Destructure 'title' and 'author' from a book object",
+                "explanation": "Destructuring uses curly braces on the left side of the equals sign to extract specific properties into variables.",
+                "code_example": {
+                  "code": "const book = { title: 'JS Guide', author: 'Alex', year: 2024 };\nconst { title, author } = book;\nconsole.log(`${title} by ${author}`);",
+                  "language": "javascript",
+                  "description": "Object destructuring example",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by creating or using an object named book. Make sure the object has properties called title and author. On the next line, write const { title, author } = book;. The curly brackets on the left side tell JavaScript to take those two properties out of the object and store them in variables with the same names. After that, write console.log(title); or console.log(`${title} by ${author}`); to confirm that the values were taken out correctly."
+                },
+                "testCriteria": {
+                  "expectedCode": "const\\s+\\{\\s*title\\s*,\\s*author\\s*\\}\\s*=\\s*book"
+                }
+              }
+            ],
+            "next_lesson_id": "jsi_lesson_03"
+          },
+          {
+            "id": "jsi_lesson_03",
+            "title": "Working with JSON Data",
+            "body": "JSON (JavaScript Object Notation) is a text format for storing and sharing data. It looks like JavaScript objects but is just text. Use JSON.parse() to turn text into objects, and JSON.stringify() to turn objects into text.",
+            "avatar_script": "Think of JSON like a universal translator for data. Websites, apps, and servers all speak JSON. Learning it helps your code talk to the world!",
+            "media": {},
+            "code_example": {
+              "code": "// JavaScript object\nconst user = { name: 'Lee', active: true };\n\n// Convert to JSON string (for sending/saving)\nconst jsonString = JSON.stringify(user);\nconsole.log(jsonString); // '{\"name\":\"Lee\",\"active\":true}'\n\n// Convert JSON string back to object\nconst parsed = JSON.parse(jsonString);\nconsole.log(parsed.name); // 'Lee'",
+              "language": "javascript",
+              "description": "Converting between objects and JSON strings",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsi_q3_01",
+                "type": "multiple_choice",
+                "question": "What does JSON.stringify() do?",
+                "options": [
+                  "Parses JSON text into an object",
+                  "Converts a JavaScript object to a JSON string",
+                  "Validates JSON syntax",
+                  "Formats JSON with indentation"
+                ],
+                "answer": "Converts a JavaScript object to a JSON string",
+                "explanation": "stringify() turns your object into text format - perfect for saving or sending over the internet!"
+              },
+              {
+                "id": "jsi_q3_02",
+                "type": "true_false",
+                "question": "JSON keys must always be wrapped in double quotes.",
+                "answer": true,
+                "explanation": "Yes! In valid JSON, all keys and string values must use double quotes, not single quotes."
+              },
+              {
+                "id": "jsi_q3_03",
+                "type": "code_test",
+                "question": "Parse this JSON string: '{\"score\": 95}'",
+                "explanation": "JSON.parse() converts a JSON string into a JavaScript object so you can access its properties.",
+                "code_example": {
+                  "code": "const data = '{\"score\": 95}';\nconst obj = JSON.parse(data);\nconsole.log(obj.score); // 95",
+                  "language": "javascript",
+                  "description": "Parsing a simple JSON string",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing a variable to store the JSON text exactly as a string. Type const data = '{\"score\": 95}';. On the next line, create another variable and write const obj = JSON.parse(data);. Inside JSON.parse(), place the variable that contains the JSON string so JavaScript can convert the text into a real object. After that, write console.log(obj.score); to access and display the score value from the new object."
+                },
+                "testCriteria": {
+                  "expectedCode": "JSON\\.parse\\(.*\\)"
+                }
+              }
+            ],
+            "next_lesson_id": "jsi_module_02"
+          }
+        ]
+      },
+      {
+        "id": "jsi_module_02",
+        "title": "Understanding Scope and Closures",
+        "prerequisite": "jsi_module_01",
+        "lessons": [
+          {
+            "id": "jsi_lesson_04",
+            "title": "Function Scope vs Block Scope",
+            "body": "Scope is where variables can be accessed. 'var' has function scope (visible inside the whole function). 'let' and 'const' have block scope (visible only inside { } brackets). Knowing scope prevents bugs!",
+            "avatar_script": "Think of scope like rooms in a house: block scope is like a closet - only things inside can see what's in there. Function scope is like a whole room - everything in the room can see the variables. Let's organize your code house!",
+            "media": {},
+            "code_example": {
+              "code": "function example() {\n  if (true) {\n    var a = 1;    // function-scoped\n    let b = 2;    // block-scoped\n    const c = 3;  // block-scoped\n  }\n  console.log(a); // Works: 1\n  // console.log(b); // Error: b is not defined\n  // console.log(c); // Error: c is not defined\n}\n\n// Prefer let/const for predictable scope!",
+              "language": "javascript",
+              "description": "Comparing var, let, and const scope behavior",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsi_q4_01",
+                "type": "multiple_choice",
+                "question": "Which variables are block-scoped?",
+                "options": [
+                  "var only",
+                  "let and const",
+                  "var and let",
+                  "All variables"
+                ],
+                "answer": "let and const",
+                "explanation": "let and const only exist inside the { } block where they're declared. var leaks out to the whole function."
+              },
+              {
+                "id": "jsi_q4_02",
+                "type": "true_false",
+                "question": "Using let/const instead of var helps avoid accidental variable reuse.",
+                "answer": true,
+                "explanation": "Yes! Block scope keeps variables contained, reducing bugs from unexpected overwrites."
+              },
+              {
+                "id": "jsi_q4_03",
+                "type": "code_test",
+                "question": "Declare a block-scoped variable 'x' inside an if block",
+                "explanation": "Use let or const inside curly braces to create block-scoped variables that only exist within that block.",
+                "code_example": {
+                  "code": "if (true) {\n  let x = 10;\n  console.log(x); // 10\n}\n// console.log(x); // Error: x is not defined here",
+                  "language": "javascript",
+                  "description": "Block-scoped variable example",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing an if statement such as if (true) {. The condition can be true because the main goal is to create a block. Inside the curly brackets, write let x = 10;. The keyword let makes x block-scoped, which means it exists only inside that pair of curly brackets. You can then write console.log(x); inside the block to show its value. After that, close the curly bracket. Do not try to use x outside the block, because it will no longer exist there."
+                },
+                "testCriteria": {
+                  "expectedCode": "let\\s+x\\s*=\\s*10"
+                }
+              }
+            ],
+            "next_lesson_id": "jsi_lesson_05"
+          },
+          {
+            "id": "jsi_lesson_05",
+            "title": "Closures: Functions That Remember",
+            "body": "A closure is a function that 'remembers' variables from where it was created, even after that code has finished running. It's like a function with a backpack full of variables it can use later.",
+            "avatar_script": "Imagine a chef who writes a recipe and puts secret ingredients in a backpack. Later, anyone who uses the recipe still has access to those secret ingredients. That's a closure!",
+            "media": {},
+            "code_example": {
+              "code": "function createCounter() {\n  let count = 0; // 'count' is in the closure\n  \n  return function() {\n    count++;\n    return count;\n  };\n}\n\nconst counter = createCounter();\nconsole.log(counter()); // 1\nconsole.log(counter()); // 2\n// 'count' is private and preserved between calls!",
+              "language": "javascript",
+              "description": "Simple closure example with a counter",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsi_q5_01",
+                "type": "multiple_choice",
+                "question": "What does a closure allow a function to do?",
+                "options": [
+                  "Access variables from its outer scope",
+                  "Run faster",
+                  "Delete variables",
+                  "Change the global scope"
+                ],
+                "answer": "Access variables from its outer scope",
+                "explanation": "Closures 'close over' variables from their creation context, keeping them alive for later use."
+              },
+              {
+                "id": "jsi_q5_02",
+                "type": "true_false",
+                "question": "Closures are commonly used for creating private variables.",
+                "answer": true,
+                "explanation": "Yes! Because the inner function can access outer variables, but code outside can't - perfect for privacy."
+              },
+              {
+                "id": "jsi_q5_03",
+                "type": "code_test",
+                "question": "Create a closure that remembers a 'name' and returns a greeting",
+                "explanation": "Return an inner function from an outer function. The inner function can access the outer function's parameters.",
+                "code_example": {
+                  "code": "function makeGreeter(name) {\n  return function() {\n    return 'Hello, ' + name;\n  };\n}\nconst greetAlex = makeGreeter('Alex');\nconsole.log(greetAlex()); // 'Hello, Alex'",
+                  "language": "javascript",
+                  "description": "Closure that captures and uses a parameter",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing an outer function, for example function makeGreeter(name) {. The parameter name will store the value you want the function to remember. Inside that outer function, return another function by writing return function() { return 'Hello, ' + name; };. The inner function uses name even after the outer function has finished running. After that, close the outer function. Then create a variable such as const greetAlex = makeGreeter('Alex'); and call it with console.log(greetAlex()); to see the greeting."
+                },
+                "testCriteria": {
+                  "expectedCode": "return\\s+function\\(\\).*name"
+                }
+              }
+            ],
+            "next_lesson_id": "jsi_lesson_06"
+          },
+          {
+            "id": "jsi_lesson_06",
+            "title": "The 'this' Keyword Explained",
+            "body": "'this' refers to the object that is currently running a function. Its value changes based on how the function is called. In methods, 'this' is the object. In regular functions, it can be global or undefined.",
+            "avatar_script": "Think of 'this' like a mirror: it shows you who's calling the function. If a dog.bark() runs, 'this' is the dog. If bark() runs alone, 'this' might be the window. Context is everything!",
+            "media": {},
+            "code_example": {
+              "code": "const person = {\n  name: 'Taylor',\n  greet: function() {\n    console.log('Hi, I\\'m ' + this.name);\n  }\n};\n\nperson.greet(); // 'Hi, I\\'m Taylor' - 'this' is person\n\n// Arrow functions handle 'this' differently!\nconst arrowGreet = () => {\n  console.log(this.name); // 'this' is NOT person here\n};",
+              "language": "javascript",
+              "description": "Understanding 'this' in methods vs regular functions",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsi_q6_01",
+                "type": "multiple_choice",
+                "question": "In a method call like obj.method(), what is 'this'?",
+                "options": [
+                  "The global object",
+                  "The method itself",
+                  "The obj",
+                  "undefined"
+                ],
+                "answer": "The obj",
+                "explanation": "When you call a function as a method (obj.method()), 'this' refers to the object before the dot."
+              },
+              {
+                "id": "jsi_q6_02",
+                "type": "true_false",
+                "question": "Arrow functions do not have their own 'this' binding.",
+                "answer": true,
+                "explanation": "Correct! Arrow functions inherit 'this' from their surrounding scope, which can be very useful."
+              },
+              {
+                "id": "jsi_q6_03",
+                "type": "code_test",
+                "question": "Write a method that logs 'this.name' for an object",
+                "explanation": "Inside an object method, 'this' refers to the object itself. Use this.name to access the object's name property.",
+                "code_example": {
+                  "code": "const user = {\n  name: 'Jordan',\n  showName: function() {\n    console.log(this.name);\n  }\n};\nuser.showName(); // 'Jordan'",
+                  "language": "javascript",
+                  "description": "Method using 'this' to access object property",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by creating an object and give it a name property, such as const user = { name: 'Jordan', ... }. Inside that object, add a method, for example showName: function() { console.log(this.name); }. The word this refers to the object that is running the method, so this.name means the name value stored inside that object. After you finish the object, call the method with user.showName();. This will log the name from the object."
+                },
+                "testCriteria": {
+                  "expectedCode": "console\\.log\\(\\s*this\\.name\\s*\\)"
+                }
+              }
+            ],
+            "next_lesson_id": "jsi_module_03"
+          }
+        ]
+      },
+      {
+        "id": "jsi_module_03",
+        "title": "Asynchronous JavaScript Basics",
+        "prerequisite": "jsi_module_02",
+        "lessons": [
+          {
+            "id": "jsi_lesson_07",
+            "title": "Callbacks: Functions That Wait",
+            "body": "A callback is a function passed to another function to run later. They're used for async tasks like fetching data or waiting for clicks. The callback runs when the task is done.",
+            "avatar_script": "Imagine ordering pizza: you give the shop your number (the callback). When the pizza is ready, they call you back. Callbacks let your code wait for things without freezing!",
+            "media": {},
+            "code_example": {
+              "code": "// Simulate async task with setTimeout\nfunction fetchData(callback) {\n  console.log('Fetching...');\n  setTimeout(() => {\n    const data = { user: 'Alex', score: 90 };\n    callback(data); // Run the callback with data\n  }, 1000);\n}\n\n// Use the function\nfetchData(function(result) {\n  console.log('Got data:', result);\n});\nconsole.log('This runs first!');",
+              "language": "javascript",
+              "description": "Using a callback to handle async data",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsi_q7_01",
+                "type": "multiple_choice",
+                "question": "When does a callback function run?",
+                "options": [
+                  "Immediately when defined",
+                  "When the outer function calls it",
+                  "Never, it's just stored",
+                  "At the end of the program"
+                ],
+                "answer": "When the outer function calls it",
+                "explanation": "Callbacks are passed around and executed later by the function that received them."
+              },
+              {
+                "id": "jsi_q7_02",
+                "type": "true_false",
+                "question": "setTimeout runs its callback after a delay.",
+                "answer": true,
+                "explanation": "Yes! setTimeout schedules a function to run after the specified milliseconds."
+              },
+              {
+                "id": "jsi_q7_03",
+                "type": "code_test",
+                "question": "Write a callback that logs 'Done!' after 2 seconds",
+                "explanation": "Use setTimeout() with a callback function as the first argument and the delay in milliseconds (2000) as the second.",
+                "code_example": {
+                  "code": "setTimeout(() => {\n  console.log('Done!');\n}, 2000);",
+                  "language": "javascript",
+                  "description": "Simple setTimeout with callback",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing setTimeout( and place a callback function inside the first set of brackets. You can write the callback as () => { console.log('Done!'); }. Inside that callback, write console.log('Done!'); so the message appears after the delay. After the callback, add a comma and write 2000 because 2000 milliseconds equals 2 seconds. Then close the final bracket and add a semicolon. Your complete line should be setTimeout(() => { console.log('Done!'); }, 2000);."
+                },
+                "testCriteria": {
+                  "expectedCode": "setTimeout\\(.*,\\s*2000\\)"
+                }
+              }
+            ],
+            "next_lesson_id": "jsi_lesson_08"
+          },
+          {
+            "id": "jsi_lesson_08",
+            "title": "Promises: Handling Async with .then()",
+            "body": "Promises represent a value that might be available now, later, or never. They have three states: pending, fulfilled, or rejected. Use .then() for success and .catch() for errors. Cleaner than nested callbacks!",
+            "avatar_script": "Think of a promise like a restaurant buzzer: you get it while waiting (pending). When your table is ready, it lights up (fulfilled). If there's a problem, it vibrates (rejected). Promises help you handle all three!",
+            "media": {},
+            "code_example": {
+              "code": "// Create a promise\nconst myPromise = new Promise((resolve, reject) => {\n  const success = true;\n  if (success) {\n    resolve('Data loaded!');\n  } else {\n    reject('Error loading data');\n  }\n});\n\n// Use the promise\nmyPromise\n  .then(message => console.log(message))      // On success\n  .catch(error => console.error(error));      // On error",
+              "language": "javascript",
+              "description": "Creating and consuming a Promise",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsi_q8_01",
+                "type": "multiple_choice",
+                "question": "What method handles a fulfilled promise?",
+                "options": [
+                  ".catch()",
+                  ".finally()",
+                  ".then()",
+                  ".done()"
+                ],
+                "answer": ".then()",
+                "explanation": ".then() runs when the promise is successfully resolved with a value."
+              },
+              {
+                "id": "jsi_q8_02",
+                "type": "true_false",
+                "question": "A promise can only be resolved or rejected once.",
+                "answer": true,
+                "explanation": "Yes! Once a promise settles (fulfilled or rejected), its state is fixed forever."
+              },
+              {
+                "id": "jsi_q8_03",
+                "type": "code_test",
+                "question": "Create a promise that resolves with 'Hello'",
+                "explanation": "Use new Promise() with a function that takes resolve as a parameter. Call resolve() with the value you want to return.",
+                "code_example": {
+                  "code": "const greeting = new Promise((resolve) => {\n  resolve('Hello');\n});\ngreeting.then(msg => console.log(msg));",
+                  "language": "javascript",
+                  "description": "Simple resolving promise",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by creating a variable to store the promise. Type const greeting = new Promise((resolve) => {. Inside the promise function, write resolve('Hello'); to tell the promise to finish successfully with the value Hello. Then close the function and the Promise constructor. On the next line, write greeting.then((msg) => { console.log(msg); }); so you can see the resolved value in the console when the promise completes."
+                },
+                "testCriteria": {
+                  "expectedCode": "resolve\\(\\s*['\"]Hello['\"]\\s*\\)"
+                }
+              }
+            ],
+            "next_lesson_id": "jsi_lesson_09"
+          },
+          {
+            "id": "jsi_lesson_09",
+            "title": "Async/Await: Async Code That Looks Sync",
+            "body": "async/await is syntactic sugar over promises. Mark a function with 'async', then use 'await' to pause until a promise resolves. The code reads top-to-bottom, making async logic much clearer!",
+            "avatar_script": "Imagine reading a recipe: async/await lets you write 'wait for water to boil' as a simple line, instead of a complicated callback chain. It's async code that reads like a story!",
+            "media": {},
+            "code_example": {
+              "code": "// Async function\nasync function getUser() {\n  try {\n    console.log('Fetching...');\n    const response = await fetch('https://api.example.com/user');\n    const data = await response.json();\n    console.log('User:', data);\n    return data;\n  } catch (error) {\n    console.error('Failed:', error);\n  }\n}\n\n// Call it\ngetUser();",
+              "language": "javascript",
+              "description": "Using async/await with fetch and error handling",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsi_q9_01",
+                "type": "multiple_choice",
+                "question": "What keyword must precede 'await'?",
+                "options": [
+                  "function",
+                  "async",
+                  "promise",
+                  "await"
+                ],
+                "answer": "async",
+                "explanation": "You can only use 'await' inside a function marked with 'async'."
+              },
+              {
+                "id": "jsi_q9_02",
+                "type": "true_false",
+                "question": "await pauses the function until the promise settles.",
+                "answer": true,
+                "explanation": "Yes! await makes the function wait for the promise, then continues with the result."
+              },
+              {
+                "id": "jsi_q9_03",
+                "type": "code_test",
+                "question": "Write an async function that awaits a promise and logs the result",
+                "explanation": "Mark your function with async, then use await before any promise to pause until it resolves and get the value.",
+                "code_example": {
+                  "code": "async function loadData() {\n  const result = await somePromise;\n  console.log(result);\n}",
+                  "language": "javascript",
+                  "description": "Basic async/await pattern",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing an async function, such as async function loadData() {. Inside the function, create a variable to hold the resolved value. Type const result = await somePromise;. The word await tells JavaScript to pause until the promise finishes and gives back a value. On the next line, write console.log(result); to display that value. Finally, close the function with a curly bracket. Make sure await is used only inside a function marked with async."
+                },
+                "testCriteria": {
+                  "expectedCode": "async\\s+function.*await"
+                }
+              }
+            ],
+            "next_lesson_id": "jsi_module_04"
+          }
+        ]
+      },
+      {
+        "id": "jsi_module_04",
+        "title": "Error Handling and Debugging",
+        "prerequisite": "jsi_module_03",
+        "lessons": [
+          {
+            "id": "jsi_lesson_10",
+            "title": "Try/Catch: Graceful Error Handling",
+            "body": "Use try/catch to handle errors without crashing your app. Put risky code in 'try'. If an error happens, 'catch' runs with the error object. Add 'finally' for code that always runs.",
+            "avatar_script": "Think of try/catch like a safety net: you try a risky move (try), and if you fall, the net catches you (catch). Finally, you always bow to the audience (finally). Safe coding!",
+            "media": {},
+            "code_example": {
+              "code": "function divide(a, b) {\n  try {\n    if (b === 0) throw new Error('Cannot divide by zero');\n    return a / b;\n  } catch (error) {\n    console.error('Error:', error.message);\n    return null;\n  } finally {\n    console.log('Division attempt finished');\n  }\n}\n\ndivide(10, 2); // 5\ndivide(10, 0); // Error + null",
+              "language": "javascript",
+              "description": "Try/catch/finally with custom error throwing",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsi_q10_01",
+                "type": "multiple_choice",
+                "question": "What runs if no error occurs in the try block?",
+                "options": [
+                  "catch only",
+                  "finally only",
+                  "catch and finally",
+                  "finally (if present)"
+                ],
+                "answer": "finally (if present)",
+                "explanation": "finally always runs after try (and catch if there was an error). It's for cleanup code."
+              },
+              {
+                "id": "jsi_q10_02",
+                "type": "true_false",
+                "question": "You can throw custom errors with 'throw new Error()'.",
+                "answer": true,
+                "explanation": "Yes! Throwing custom errors helps you signal specific problems in your code."
+              },
+              {
+                "id": "jsi_q10_03",
+                "type": "code_test",
+                "question": "Wrap a risky operation in try/catch and log the error",
+                "explanation": "Put code that might fail inside a try block. The catch block receives the error object when something goes wrong.",
+                "code_example": {
+                  "code": "try {\n  riskyOperation();\n} catch (err) {\n  console.error('Something went wrong:', err.message);\n}",
+                  "language": "javascript",
+                  "description": "Basic try/catch pattern",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing try and add an opening curly bracket. Inside the try block, place the risky code, such as riskyOperation();. After that, close the try block and write catch (err) {. The variable err will store information about the error if one happens. Inside the catch block, write console.error('Something went wrong:', err.message); to display the error message. Finally, close the catch block with a curly bracket."
+                },
+                "testCriteria": {
+                  "expectedCode": "try\\s*\\{.*\\}\\s*catch\\s*\\(.*\\)\\s*\\{.*console\\.error"
+                }
+              }
+            ],
+            "next_lesson_id": "jsi_lesson_11"
+          },
+          {
+            "id": "jsi_lesson_11",
+            "title": "Debugging with Console and DevTools",
+            "body": "console.log() is just the start! Use console.table() for arrays, console.group() to organize logs, and debugger; to pause code. Browser DevTools let you inspect variables, step through code, and watch the call stack.",
+            "avatar_script": "Debugging is like being a detective: console logs are your clues, breakpoints are your magnifying glass, and the call stack is your timeline. Let's solve some code mysteries!",
+            "media": {},
+            "code_example": {
+              "code": "const users = [\n  { name: 'Ana', age: 25 },\n  { name: 'Bob', age: 30 }\n];\n\nconsole.log('Simple log');\nconsole.table(users); // Pretty table view\nconsole.group('User Details');\nusers.forEach(u => console.log(`${u.name}: ${u.age}`));\nconsole.groupEnd();\n\n// Add 'debugger;' and open DevTools to pause here\ndebugger;\nconsole.log('After breakpoint');",
+              "language": "javascript",
+              "description": "Advanced console methods and debugger statement",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsi_q11_01",
+                "type": "multiple_choice",
+                "question": "Which console method displays data in a table format?",
+                "options": [
+                  "console.log()",
+                  "console.table()",
+                  "console.list()",
+                  "console.grid()"
+                ],
+                "answer": "console.table()",
+                "explanation": "console.table() formats arrays of objects into a readable table - great for debugging data!"
+              },
+              {
+                "id": "jsi_q11_02",
+                "type": "true_false",
+                "question": "The 'debugger;' statement pauses code execution when DevTools is open.",
+                "answer": true,
+                "explanation": "Yes! It's like setting a breakpoint directly in your source code."
+              },
+              {
+                "id": "jsi_q11_03",
+                "type": "code_test",
+                "question": "Log an object using console.table()",
+                "explanation": "console.table() displays objects and arrays in a formatted table view, making data easier to read in the console.",
+                "code_example": {
+                  "code": "const product = { name: 'Laptop', price: 999 };\nconsole.table(product);",
+                  "language": "javascript",
+                  "description": "Using console.table for object logging",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by creating or choosing the object you want to inspect, such as const product = { name: 'Laptop', price: 999 };. On the next line, write console.table(product);. The console.table() method displays the object in a table format in the console, which makes it easier to read key-value pairs. End each line with a semicolon."
+                },
+                "testCriteria": {
+                  "expectedCode": "console\\.table\\("
+                }
+              }
+            ],
+            "next_lesson_id": "jsi_lesson_12"
+          },
+          {
+            "id": "jsi_lesson_12",
+            "title": "Project: Fetch and Display API Data",
+            "body": "Let's build a real feature: fetch user data from an API, handle errors, and display it on the page. We'll use async/await, try/catch, DOM manipulation, and JSON - all together!",
+            "avatar_script": "Time to combine everything! Fetching live data is a core skill for modern web apps. Don't worry - we'll build it step by step. You're ready for this!",
+            "media": {},
+            "code_example": {
+              "code": "async function loadUserProfile(userId) {\n  const display = document.getElementById('profile');\n  \n  try {\n    display.textContent = 'Loading...';\n    \n    const response = await fetch(`https://api.example.com/users/${userId}`);\n    if (!response.ok) throw new Error('User not found');\n    \n    const user = await response.json();\n    display.innerHTML = `\n      <h2>${user.name}</h2>\n      <p>Email: ${user.email}</p>\n      <p>Joined: ${new Date(user.joined).toLocaleDateString()}</p>\n    `;\n  } catch (error) {\n    display.textContent = `Error: ${error.message}`;\n    console.error('Load failed:', error);\n  }\n}\n\n// Usage: loadUserProfile(123);",
+              "language": "javascript",
+              "description": "Complete async function fetching and displaying API data",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsi_q12_01",
+                "type": "multiple_choice",
+                "question": "What does response.ok check?",
+                "options": [
+                  "If the response is JSON",
+                  "If the HTTP status is 200-299",
+                  "If the fetch completed",
+                  "If the user is logged in"
+                ],
+                "answer": "If the HTTP status is 200-299",
+                "explanation": "response.ok is true for successful HTTP responses (2xx status codes)."
+              },
+              {
+                "id": "jsi_q12_02",
+                "type": "true_false",
+                "question": "You should always handle errors when fetching data.",
+                "answer": true,
+                "explanation": "Yes! Network requests can fail for many reasons. Good error handling creates a better user experience."
+              },
+              {
+                "id": "jsi_q12_03",
+                "type": "code_test",
+                "question": "Write a try/catch block that fetches from '/api/data' and logs the result",
+                "explanation": "Combine async/await with try/catch: await the fetch, then await response.json(), and handle errors in catch.",
+                "code_example": {
+                  "code": "async function getData() {\n  try {\n    const res = await fetch('/api/data');\n    const data = await res.json();\n    console.log(data);\n  } catch (err) {\n    console.error('Fetch failed:', err);\n  }\n}",
+                  "language": "javascript",
+                  "description": "Async fetch with error handling",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing an async function, such as async function getData() {. Inside the function, start a try block. In the try block, write const res = await fetch('/api/data'); to request data from the API. On the next line, write const data = await res.json(); to convert the response into usable JavaScript data. Then write console.log(data); to display the result. After that, close the try block and add a catch (err) block. Inside catch, write console.error('Fetch failed:', err); so any error will be shown clearly. Finally, close the function."
+                },
+                "testCriteria": {
+                  "expectedCode": "await\\s+fetch\\(.*\\).*catch"
+                }
+              }
+            ],
+            "next_lesson_id": null
+          }
+        ]
+      }
+    ]
+  }
+}

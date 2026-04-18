@@ -1,0 +1,416 @@
+{
+  "slug": "web-basics",
+  "curriculum": {
+    "title": "HTML, CSS and JavaScript Fundamentals",
+    "description": "Learn how to build webpages, style them with colors and layouts, and make them interactive using HTML, CSS, and JavaScript.",
+    "language": "en",
+    "modules": [
+      {
+        "id": "web_module_01",
+        "title": "Introduction to Webpages",
+        "prerequisite": null,
+        "lessons": [
+          {
+            "id": "web_lesson_01",
+            "title": "What is HTML?",
+            "body": "HTML stands for HyperText Markup Language. It is used to create the structure of a webpage.",
+            "avatar_script": "Think of HTML like the skeleton of a webpage. It tells the browser where headings, paragraphs, and images should go.",
+            "media": {},
+            "code_example": {
+              "code": "<h1>Hello World</h1>\n<p>This is my first webpage.</p>",
+              "language": "html",
+              "description": "Simple HTML structure",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "web_q01",
+                "type": "multiple_choice",
+                "question": "What is HTML used for?",
+                "options": [
+                  "Structuring webpages",
+                  "Playing music",
+                  "Sending emails",
+                  "Drawing pictures"
+                ],
+                "answer": "Structuring webpages",
+                "explanation": "HTML builds the structure of webpages."
+              },
+              {
+                "id": "web_q02",
+                "type": "true_false",
+                "question": "HTML creates the structure of a webpage.",
+                "answer": true,
+                "explanation": "HTML organizes content like headings and paragraphs."
+              },
+              {
+                "id": "web_q03",
+                "type": "code_test",
+                "question": "Create a heading that says Hello.",
+                "explanation": "Use the h1 tag for main headings. Write an opening tag, your text, then a closing tag with a forward slash.",
+                "code_example": {
+                  "code": "<h1>Hello</h1>",
+                  "language": "html",
+                  "description": "Heading example",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Use the h1 tag to create a heading by writing an opening angle bracket, then h1, close the bracket, write Hello, then close the tag with slash h1."
+                },
+                "testCriteria": {
+                  "expectedHTML": "<h1>"
+                }
+              }
+            ],
+            "next_lesson_id": "web_lesson_02"
+          },
+          {
+            "id": "web_lesson_02",
+            "title": "What is CSS?",
+            "body": "CSS stands for Cascading Style Sheets. It is used to make webpages colorful and visually appealing.",
+            "avatar_script": "If HTML builds the house, CSS decorates it. CSS adds colors, spacing, and styles.",
+            "media": {},
+            "code_example": {
+              "code": "p {\n  color: blue;\n}",
+              "language": "css",
+              "description": "Changing text color",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "web_q04",
+                "type": "multiple_choice",
+                "question": "What does CSS do?",
+                "options": [
+                  "Styles webpages",
+                  "Builds computers",
+                  "Runs games",
+                  "Stores files"
+                ],
+                "answer": "Styles webpages",
+                "explanation": "CSS controls how webpages look."
+              },
+              {
+                "id": "web_q05",
+                "type": "true_false",
+                "question": "CSS changes how a webpage looks.",
+                "answer": true,
+                "explanation": "CSS adds visual style."
+              },
+              {
+                "id": "web_q06",
+                "type": "code_test",
+                "question": "Change paragraph text color to red.",
+                "explanation": "Target the p element with a CSS rule and use the color property to set the text color value.",
+                "code_example": {
+                  "code": "p {\n  color: red;\n}",
+                  "language": "css",
+                  "description": "Red text",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Write p followed by curly brackets. Inside write color colon red semicolon."
+                },
+                "testCriteria": {
+                  "expectedCSS": "color: red;"
+                }
+              }
+            ],
+            "next_lesson_id": "web_lesson_03"
+          },
+          {
+            "id": "web_lesson_03",
+            "title": "What is JavaScript?",
+            "body": "JavaScript adds interactivity to webpages.",
+            "avatar_script": "JavaScript makes webpages interactive. It can respond to clicks, show messages, and update content.",
+            "media": {},
+            "code_example": {
+              "code": "alert('Welcome to my webpage!');",
+              "language": "javascript",
+              "description": "Simple alert",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "web_q07",
+                "type": "multiple_choice",
+                "question": "What does JavaScript do?",
+                "options": [
+                  "Adds interactivity",
+                  "Styles text",
+                  "Creates images",
+                  "Builds hardware"
+                ],
+                "answer": "Adds interactivity",
+                "explanation": "JavaScript makes webpages interactive."
+              },
+              {
+                "id": "web_q08",
+                "type": "true_false",
+                "question": "JavaScript can show messages on a webpage.",
+                "answer": true,
+                "explanation": "JavaScript can create alerts and responses."
+              },
+              {
+                "id": "web_q09",
+                "type": "code_test",
+                "question": "Show an alert that says Hello.",
+                "explanation": "The alert() function displays a pop-up message. Put your text inside parentheses wrapped in quotation marks.",
+                "code_example": {
+                  "code": "alert('Hello');",
+                  "language": "javascript",
+                  "description": "Alert message",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Use alert followed by parentheses and quotation marks with the word Hello inside."
+                },
+                "testCriteria": {
+                  "expectedJS": "alert"
+                }
+              }
+            ],
+            "next_lesson_id": "web_module_02"
+          }
+        ]
+      },
+      {
+        "id": "web_module_02",
+        "title": "Building a Webpage",
+        "prerequisite": "web_module_01",
+        "lessons": [
+          {
+            "id": "web_lesson_01",
+            "title": "Headings and Paragraphs",
+            "body": "HTML uses tags to organize text content.",
+            "avatar_script": "Headings show titles and paragraphs show text.",
+            "media": {},
+            "code_example": {
+              "code": "<h1>My Page</h1>\n<p>This is my paragraph.</p>",
+              "language": "html",
+              "description": "Text structure",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "web_q01",
+                "type": "multiple_choice",
+                "question": "Which tag creates a paragraph?",
+                "options": [
+                  "p",
+                  "h1",
+                  "div",
+                  "img"
+                ],
+                "answer": "p",
+                "explanation": "The p tag creates paragraphs."
+              },
+              {
+                "id": "web_q02",
+                "type": "true_false",
+                "question": "Headings make titles on webpages.",
+                "answer": true,
+                "explanation": "Heading tags create titles."
+              },
+              {
+                "id": "web_q03",
+                "type": "code_test",
+                "question": "Create a paragraph that says Learning Web Design.",
+                "explanation": "Use the p tag to create paragraphs. Write an opening p tag, your text content, then a closing p tag.",
+                "code_example": {
+                  "code": "<p>Learning Web Design</p>",
+                  "language": "html",
+                  "description": "Paragraph example",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Write p tags with the sentence inside."
+                },
+                "testCriteria": {
+                  "expectedHTML": "<p>"
+                }
+              }
+            ],
+            "next_lesson_id": "web_lesson_02"
+          },
+          {
+            "id": "web_lesson_02",
+            "title": "Styling Text with CSS",
+            "body": "CSS can change text color and size.",
+            "avatar_script": "You can style headings and paragraphs using CSS rules.",
+            "media": {},
+            "code_example": {
+              "code": "h1 {\n  color: purple;\n  font-size: 30px;\n}",
+              "language": "css",
+              "description": "Styled heading",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "web_q04",
+                "type": "multiple_choice",
+                "question": "Which property changes text size?",
+                "options": [
+                  "font-size",
+                  "color",
+                  "margin",
+                  "padding"
+                ],
+                "answer": "font-size",
+                "explanation": "font-size controls text size."
+              },
+              {
+                "id": "web_q05",
+                "type": "true_false",
+                "question": "CSS can style HTML headings.",
+                "answer": true,
+                "explanation": "CSS can style any HTML element."
+              },
+              {
+                "id": "web_q06",
+                "type": "code_test",
+                "question": "Make a heading blue.",
+                "explanation": "Write a CSS rule targeting the h1 element and set the color property to blue inside curly braces.",
+                "code_example": {
+                  "code": "h1 {\n  color: blue;\n}",
+                  "language": "css",
+                  "description": "Blue heading",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Use the color property in a CSS rule targeting h1."
+                },
+                "testCriteria": {
+                  "expectedCSS": "color: blue;"
+                }
+              }
+            ],
+            "next_lesson_id": "web_module_03"
+          }
+        ]
+      },
+      {
+        "id": "web_module_03",
+        "title": "JavaScript Interactions",
+        "prerequisite": "web_module_02",
+        "lessons": [
+          {
+            "id": "web_lesson_01",
+            "title": "Buttons and Click Events",
+            "body": "JavaScript can respond when users click buttons.",
+            "avatar_script": "Buttons let users interact with webpages.",
+            "media": {},
+            "code_example": {
+              "code": "document.querySelector('button').onclick = function() {\n  alert('Button clicked!');\n};",
+              "language": "javascript",
+              "description": "Button click alert",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "web_q01",
+                "type": "multiple_choice",
+                "question": "What happens when a button is clicked in this example?",
+                "options": [
+                  "An alert appears",
+                  "The page closes",
+                  "The computer restarts",
+                  "The text disappears"
+                ],
+                "answer": "An alert appears",
+                "explanation": "The code triggers an alert."
+              },
+              {
+                "id": "web_q02",
+                "type": "true_false",
+                "question": "JavaScript can detect button clicks.",
+                "answer": true,
+                "explanation": "JavaScript listens for events."
+              },
+              {
+                "id": "web_q03",
+                "type": "code_test",
+                "question": "Create an alert that says You clicked.",
+                "explanation": "Call the alert() function with your message text inside parentheses, wrapped in quotation marks.",
+                "code_example": {
+                  "code": "alert('You clicked');",
+                  "language": "javascript",
+                  "description": "Click message",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Use the alert function with the message inside parentheses."
+                },
+                "testCriteria": {
+                  "expectedJS": "alert"
+                }
+              }
+            ],
+            "next_lesson_id": "web_module_04"
+          }
+        ]
+      },
+      {
+        "id": "web_module_04",
+        "title": "Build a Simple Interactive Page",
+        "prerequisite": "web_module_03",
+        "lessons": [
+          {
+            "id": "web_lesson_01",
+            "title": "Putting Everything Together",
+            "body": "HTML builds the page, CSS styles it, and JavaScript makes it interactive.",
+            "avatar_script": "Now you can combine all three technologies to build a complete webpage.",
+            "media": {},
+            "code_example": {
+              "code": "<h1 id=\"title\">My Page</h1>\n<button onclick=\"changeText()\">Click Me</button>\n\n<script>\nfunction changeText(){\n document.getElementById('title').innerText='You Clicked!';\n}\n</script>",
+              "language": "html",
+              "description": "Interactive webpage example",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "web_q01",
+                "type": "true_false",
+                "question": "JavaScript can change text on a webpage.",
+                "answer": true,
+                "explanation": "JavaScript can update HTML content."
+              },
+              {
+                "id": "web_q02",
+                "type": "multiple_choice",
+                "question": "Which language makes webpages interactive?",
+                "options": [
+                  "JavaScript",
+                  "HTML",
+                  "CSS",
+                  "XML"
+                ],
+                "answer": "JavaScript",
+                "explanation": "JavaScript adds interactivity."
+              },
+              {
+                "id": "web_q03",
+                "type": "code_test",
+                "question": "Write JavaScript that changes text to Hello World.",
+                "explanation": "Use getElementById() to find the element, then set its innerText property to the new text value.",
+                "code_example": {
+                  "code": "document.getElementById('title').innerText='Hello World';",
+                  "language": "javascript",
+                  "description": "Change text",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Use innerText to change the content of an element."
+                },
+                "testCriteria": {
+                  "expectedJS": "innerText"
+                }
+              }
+            ],
+            "next_lesson_id": null
+          }
+        ]
+      }
+    ]
+  }
+}

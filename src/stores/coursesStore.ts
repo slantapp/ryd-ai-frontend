@@ -32,6 +32,14 @@ const defaultCourseImages: Record<string, string> = {
     "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=200&fit=crop",
   "html-css-combined":
     "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=200&fit=crop",
+  "javascript-beginner":
+    "https://images.unsplash.com/photo-1627398242454-45a5d1b07c2c?w=400&h=200&fit=crop",
+  "web-basics":
+    "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=200&fit=crop",
+  "javascript-intermediate":
+    "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=200&fit=crop",
+  "javascript-professional":
+    "https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=400&h=200&fit=crop",
   "data-structures-algorithms":
     "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=200&fit=crop",
   "python-programming":
@@ -74,6 +82,30 @@ const defaultCourseMetadata: Record<
     duration: "4 weeks",
     level: "Beginner",
     rating: 4.9,
+  },
+  "javascript-beginner": {
+    status: "not-started",
+    duration: "5 weeks",
+    level: "Beginner",
+    rating: 4.6,
+  },
+  "web-basics": {
+    status: "not-started",
+    duration: "3 weeks",
+    level: "Beginner",
+    rating: 4.5,
+  },
+  "javascript-intermediate": {
+    status: "not-started",
+    duration: "6 weeks",
+    level: "Intermediate",
+    rating: 4.7,
+  },
+  "javascript-professional": {
+    status: "not-started",
+    duration: "8 weeks",
+    level: "Advanced",
+    rating: 4.8,
   },
 };
 

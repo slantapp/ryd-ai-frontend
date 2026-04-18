@@ -1241,6 +1241,38 @@ function CourseDetailInner() {
           actual: code.trim() || "(empty)",
           expected: criteria.expectedCSS,
         });
+      } else if (criteria?.expectedJS) {
+        const haystack = code.toLowerCase();
+        const needle = criteria.expectedJS.toLowerCase();
+        passed = haystack.includes(needle);
+        testResults.push({
+          test: `Code includes required JavaScript: ${criteria.expectedJS}`,
+          passed,
+          actual: code.trim() || "(empty)",
+          expected: criteria.expectedJS,
+        });
+      } else if (criteria?.expectedCode) {
+        try {
+          const re = new RegExp(criteria.expectedCode, "i");
+          passed = re.test(code);
+        } catch {
+          const normalized = code
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+          const literal = criteria.expectedCode
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .replace(/\\n/g, " ")
+            .trim();
+          passed = normalized.includes(literal);
+        }
+        testResults.push({
+          test: "Code matches the required pattern",
+          passed,
+          actual: code.trim() || "(empty)",
+          expected: criteria.expectedCode,
+        });
       } else if (criteria?.expectedFunction) {
         const funcExists = eval(
           `${code}; typeof ${criteria.expectedFunction} === 'function'`

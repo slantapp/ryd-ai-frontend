@@ -1,0 +1,686 @@
+{
+  "slug": "javascript-beginner",
+  "curriculum": {
+    "title": "JavaScript for Absolute Beginners",
+    "description": "Start your coding journey! Learn the very basics of JavaScript with simple explanations, fun analogies, and hands-on practice. No experience needed!",
+    "language": "en",
+    "modules": [
+      {
+        "id": "jsb_module_01",
+        "title": "Meeting JavaScript",
+        "prerequisite": null,
+        "lessons": [
+          {
+            "id": "jsb_lesson_01",
+            "title": "What is JavaScript?",
+            "body": "JavaScript is a programming language that makes websites interactive. Think of HTML as the skeleton of a webpage, CSS as the clothes, and JavaScript as the muscles that make it move!",
+            "avatar_script": "Hi there! I'm so happy you're here! JavaScript is like magic for websites. It lets buttons click, forms check your answers, and games come alive. Ready to learn some magic?",
+            "media": {},
+            "code_example": {
+              "code": "// This is a comment - the computer ignores it!\nconsole.log('Hello, World!');\nalert('Welcome to JavaScript!');",
+              "language": "javascript",
+              "description": "Your first JavaScript code - printing and showing messages",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsb_q1_01",
+                "type": "multiple_choice",
+                "question": "What does JavaScript do for websites?",
+                "options": [
+                  "Makes them look pretty",
+                  "Makes them interactive and dynamic",
+                  "Stores them on the internet",
+                  "Prints them on paper"
+                ],
+                "answer": "Makes them interactive and dynamic",
+                "explanation": "JavaScript adds behavior to websites - like making buttons work, checking forms, or creating animations!"
+              },
+              {
+                "id": "jsb_q1_02",
+                "type": "true_false",
+                "question": "console.log() shows a message in the browser's console.",
+                "answer": true,
+                "explanation": "Yes! console.log() is like leaving a note for yourself in the browser's developer tools."
+              },
+              {
+                "id": "jsb_q1_03",
+                "type": "code_test",
+                "question": "Write code to show an alert that says 'Hello!'",
+                "explanation": "The alert() function displays a pop-up message box in the browser. You pass the message you want to show as text inside the parentheses.",
+                "code_example": {
+                  "code": "alert('Hello!');",
+                  "language": "javascript",
+                  "description": "Simple alert message",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by typing alert and then add opening brackets. Inside the brackets, write the message 'Hello!' inside quotation marks so JavaScript knows it is text. After the closing quotation mark, close the bracket and add a semicolon to finish the line. Your full line should be alert('Hello!');. When this code runs, a pop-up message will appear on the screen."
+                },
+                "testCriteria": {
+                  "expectedCode": "alert('Hello!');"
+                }
+              }
+            ],
+            "next_lesson_id": "jsb_lesson_02"
+          },
+          {
+            "id": "jsb_lesson_02",
+            "title": "Variables: Your Code's Storage Boxes",
+            "body": "Variables are like labeled boxes where you store information. You give each box a name, put something inside, and can use it later. In JavaScript, we use 'let', 'const', or 'var' to create variables.",
+            "avatar_script": "Imagine you have a toy box labeled 'favoriteToy'. You put your favorite toy inside. Later, you can open the box and play with it! Variables work the same way in code.",
+            "media": {},
+            "code_example": {
+              "code": "let name = 'Alex';\nconst age = 10;\nvar city = 'New York';\n\nconsole.log(name); // Shows: Alex",
+              "language": "javascript",
+              "description": "Creating and using variables with let, const, and var",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsb_q2_01",
+                "type": "multiple_choice",
+                "question": "Which keyword creates a variable that cannot change?",
+                "options": [
+                  "let",
+                  "var",
+                  "const",
+                  "fixed"
+                ],
+                "answer": "const",
+                "explanation": "const creates a constant - once you set it, it stays the same forever (like your birthday!)"
+              },
+              {
+                "id": "jsb_q2_02",
+                "type": "true_false",
+                "question": "You can change the value of a variable created with 'let'.",
+                "answer": true,
+                "explanation": "Yes! 'let' variables are flexible - you can update them whenever you need to."
+              },
+              {
+                "id": "jsb_q2_03",
+                "type": "code_test",
+                "question": "Create a variable called 'pet' and set it to 'dog'",
+                "explanation": "Use the let keyword to declare a variable, followed by the variable name and an equals sign to assign a string value in quotes.",
+                "code_example": {
+                  "code": "let pet = 'dog';\nconsole.log(pet);",
+                  "language": "javascript",
+                  "description": "Creating a simple variable",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing the keyword let to create a variable. After let, type the variable name pet. Next, add an equals sign to assign a value to the variable. After the equals sign, write 'dog' inside quotation marks because dog is text. Finally, add a semicolon to complete the statement. Your line should look like let pet = 'dog';."
+                },
+                "testCriteria": {
+                  "expectedCode": "let pet = 'dog';"
+                }
+              }
+            ],
+            "next_lesson_id": "jsb_lesson_03"
+          },
+          {
+            "id": "jsb_lesson_03",
+            "title": "Data Types: Different Kinds of Information",
+            "body": "JavaScript stores different kinds of data: numbers (like 5 or 3.14), strings (text in quotes like 'hello'), booleans (true or false), and more. Each type is used for different jobs.",
+            "avatar_script": "Think of data types like different containers: numbers go in number cups, text goes in string jars, and true/false goes in boolean boxes. Using the right container helps your code work correctly!",
+            "media": {},
+            "code_example": {
+              "code": "let score = 100;                    // number\nlet playerName = 'Sam';              // string\nlet isPlaying = true;                // boolean\nlet highScore = null;                // null (empty on purpose)\n\nconsole.log(typeof score); // Shows: 'number'",
+              "language": "javascript",
+              "description": "Common JavaScript data types with examples",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsb_q3_01",
+                "type": "multiple_choice",
+                "question": "What data type is 'Hello World'?",
+                "options": [
+                  "number",
+                  "string",
+                  "boolean",
+                  "array"
+                ],
+                "answer": "string",
+                "explanation": "Text wrapped in quotes is always a string - like a string of letters!"
+              },
+              {
+                "id": "jsb_q3_02",
+                "type": "true_false",
+                "question": "true and false are boolean values.",
+                "answer": true,
+                "explanation": "Yes! Booleans only have two possible values: true or false. They're perfect for yes/no questions."
+              },
+              {
+                "id": "jsb_q3_03",
+                "type": "code_test",
+                "question": "Create a boolean variable called 'isRaining' set to false",
+                "explanation": "Boolean values are either true or false without quotes. They represent yes/no or on/off states in your code.",
+                "code_example": {
+                  "code": "let isRaining = false;\nif (!isRaining) {\n  console.log('Let\\'s go outside!');\n}",
+                  "language": "javascript",
+                  "description": "Using a boolean in a simple decision",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing let to declare a variable. Next, type the variable name isRaining. Add an equals sign after the variable name. Then write false without quotation marks because false is a boolean value, not a text value. Finish the line with a semicolon. Your code should be let isRaining = false;."
+                },
+                "testCriteria": {
+                  "expectedCode": "let isRaining = false;"
+                }
+              }
+            ],
+            "next_lesson_id": "jsb_module_02"
+          }
+        ]
+      },
+      {
+        "id": "jsb_module_02",
+        "title": "Making Decisions and Repeating Tasks",
+        "prerequisite": "jsb_module_01",
+        "lessons": [
+          {
+            "id": "jsb_lesson_04",
+            "title": "If/Else: Teaching Code to Choose",
+            "body": "Just like you decide what to wear based on the weather, code can make choices using if/else statements. If a condition is true, do one thing. Otherwise, do something else.",
+            "avatar_script": "Imagine a robot that checks the weather: IF it's raining, take an umbrella. ELSE, wear sunglasses. That's exactly how if/else works in JavaScript!",
+            "media": {},
+            "code_example": {
+              "code": "let temperature = 25;\n\nif (temperature > 30) {\n  console.log('It\\'s hot! Wear shorts.');\n} else if (temperature > 15) {\n  console.log('Nice weather! T-shirt is perfect.');\n} else {\n  console.log('Brrr! Grab a jacket.');\n}",
+              "language": "javascript",
+              "description": "Using if/else to make decisions based on conditions",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsb_q4_01",
+                "type": "multiple_choice",
+                "question": "What symbol checks if two values are equal in JavaScript?",
+                "options": [
+                  "=",
+                  "==",
+                  "===",
+                  ":="
+                ],
+                "answer": "===",
+                "explanation": "=== checks both value AND type. It's the safest way to compare in JavaScript!"
+              },
+              {
+                "id": "jsb_q4_02",
+                "type": "true_false",
+                "question": "You can have multiple else if statements in one if block.",
+                "answer": true,
+                "explanation": "Yes! You can check as many conditions as you need with else if."
+              },
+              {
+                "id": "jsb_q4_03",
+                "type": "code_test",
+                "question": "Write an if statement that logs 'You win!' if score is greater than 10",
+                "explanation": "An if statement checks a condition inside parentheses. If the condition is true, the code inside the curly braces runs.",
+                "code_example": {
+                  "code": "let score = 15;\nif (score > 10) {\n  console.log('You win!');\n}",
+                  "language": "javascript",
+                  "description": "Simple if statement example",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by making sure you have a variable called score. On the next line, write if and add brackets. Inside the brackets, type the condition score > 10 to check whether score is greater than 10. After the closing bracket, add an opening curly bracket. Inside the curly brackets, write console.log('You win!'); so the message will be shown when the condition is true. Finally, close the curly bracket to complete the if statement."
+                },
+                "testCriteria": {
+                  "expectedCode": "if (score > 10) {\\n console.log('You win!');\\n}"
+                }
+              }
+            ],
+            "next_lesson_id": "jsb_lesson_05"
+          },
+          {
+            "id": "jsb_lesson_05",
+            "title": "Loops: Doing Things Again and Again",
+            "body": "Loops let your code repeat actions without writing the same thing over and over. A for loop is like saying 'do this 5 times'. A while loop says 'keep doing this while something is true'.",
+            "avatar_script": "Think of a loop like a playlist on repeat! Instead of pressing play 10 times, you just set it to repeat. Loops save you time and make your code cleaner.",
+            "media": {},
+            "code_example": {
+              "code": "// For loop: count from 1 to 5\nfor (let i = 1; i <= 5; i++) {\n  console.log('Count: ' + i);\n}\n\n// While loop: keep going while condition is true\nlet count = 3;\nwhile (count > 0) {\n  console.log('Blast off in ' + count + '...');\n  count--;\n}",
+              "language": "javascript",
+              "description": "For and while loops with practical examples",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsb_q5_01",
+                "type": "multiple_choice",
+                "question": "What does i++ do in a for loop?",
+                "options": [
+                  "Decreases i by 1",
+                  "Increases i by 1",
+                  "Multiplies i by 2",
+                  "Resets i to 0"
+                ],
+                "answer": "Increases i by 1",
+                "explanation": "i++ is shorthand for 'i = i + 1'. It's how the loop moves to the next number!"
+              },
+              {
+                "id": "jsb_q5_02",
+                "type": "true_false",
+                "question": "A while loop will run forever if its condition never becomes false.",
+                "answer": true,
+                "explanation": "Yes! That's called an infinite loop. Always make sure your while loop has a way to stop!"
+              },
+              {
+                "id": "jsb_q5_03",
+                "type": "code_test",
+                "question": "Write a for loop that logs numbers 1 to 3",
+                "explanation": "A for loop has three parts: initialization (let i = 1), condition (i <= 3), and increment (i++). The loop repeats while the condition is true.",
+                "code_example": {
+                  "code": "for (let i = 1; i <= 3; i++) {\n  console.log(i);\n}",
+                  "language": "javascript",
+                  "description": "Simple counting loop",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing for and then add opening brackets. Inside the brackets, first create a counter by typing let i = 1. After the first semicolon, write the condition i <= 3 so the loop will continue while i is 1, 2, or 3. After the second semicolon, write i++ to increase the counter by 1 each time the loop runs. Next, add an opening curly bracket. Inside the loop, write console.log(i); to print each number. Finally, close the curly bracket. This will log 1, then 2, then 3."
+                },
+                "testCriteria": {
+                  "expectedCode": "for (let i = 1; i <= 3; i++) {\\n console.log(i);\\n}"
+                }
+              }
+            ],
+            "next_lesson_id": "jsb_lesson_06"
+          },
+          {
+            "id": "jsb_lesson_06",
+            "title": "Functions: Reusable Code Recipes",
+            "body": "Functions are like recipes: you write the steps once, then use them whenever you need. You give a function a name, write what it does, and call it anytime. You can even give it ingredients (parameters) to work with!",
+            "avatar_script": "Imagine a cookie recipe: you don't rewrite it every time you bake. You just say 'make cookies!' Functions work the same way. Write once, use many times!",
+            "media": {},
+            "code_example": {
+              "code": "// Define a function\nfunction greet(name) {\n  return 'Hello, ' + name + '!';\n}\n\n// Use the function\nconsole.log(greet('Maria')); // Shows: Hello, Maria!\nconsole.log(greet('Tom'));   // Shows: Hello, Tom!",
+              "language": "javascript",
+              "description": "Creating and calling a simple function with a parameter",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsb_q6_01",
+                "type": "multiple_choice",
+                "question": "What keyword is used to create a function?",
+                "options": [
+                  "func",
+                  "function",
+                  "def",
+                  "create"
+                ],
+                "answer": "function",
+                "explanation": "In JavaScript, we use the 'function' keyword to define a new function."
+              },
+              {
+                "id": "jsb_q6_02",
+                "type": "true_false",
+                "question": "A function can return a value using the 'return' keyword.",
+                "answer": true,
+                "explanation": "Yes! return sends a result back from the function to wherever it was called."
+              },
+              {
+                "id": "jsb_q6_03",
+                "type": "code_test",
+                "question": "Create a function called 'add' that takes two numbers and returns their sum",
+                "explanation": "Functions use parameters to receive input values. The return keyword sends a result back to wherever the function was called.",
+                "code_example": {
+                  "code": "function add(a, b) {\n  return a + b;\n}\nconsole.log(add(3, 4)); // Shows: 7",
+                  "language": "javascript",
+                  "description": "Simple function that adds two numbers",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing the function keyword, followed by the function name add. Inside the brackets, type two parameters, a and b, separated by a comma, because the function needs two numbers. After the closing bracket, add an opening curly bracket for the function body. Inside the function, write return a + b; so the function sends back the sum of the two numbers. Then add the closing curly bracket. Your function should be written as function add(a, b) { return a + b; } with the return statement placed on its own line."
+                },
+                "testCriteria": {
+                  "expectedCode": "function add(a, b) {\\n return a + b;\\n}"
+                }
+              }
+            ],
+            "next_lesson_id": "jsb_module_03"
+          }
+        ]
+      },
+      {
+        "id": "jsb_module_03",
+        "title": "Working with Lists and Objects",
+        "prerequisite": "jsb_module_02",
+        "lessons": [
+          {
+            "id": "jsb_lesson_07",
+            "title": "Arrays: Lists of Items",
+            "body": "Arrays are like shopping lists or backpacks - they hold multiple items in order. You can add, remove, or find items. Each item has a number (index) starting at 0.",
+            "avatar_script": "Think of an array like a train! Each car holds one item, and they're numbered starting from 0. The engine is index 0, the next car is index 1, and so on!",
+            "media": {},
+            "code_example": {
+              "code": "let fruits = ['apple', 'banana', 'cherry'];\n\nconsole.log(fruits[0]); // Shows: apple\nconsole.log(fruits.length); // Shows: 3\n\nfruits.push('orange'); // Add to end\nconsole.log(fruits); // Shows: ['apple', 'banana', 'cherry', 'orange']",
+              "language": "javascript",
+              "description": "Creating and using arrays with common methods",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsb_q7_01",
+                "type": "multiple_choice",
+                "question": "What is the index of the first item in an array?",
+                "options": [
+                  "1",
+                  "0",
+                  "first",
+                  "start"
+                ],
+                "answer": "0",
+                "explanation": "JavaScript arrays start counting at 0, not 1. It's a common surprise for beginners!"
+              },
+              {
+                "id": "jsb_q7_02",
+                "type": "true_false",
+                "question": "You can store different data types in the same array.",
+                "answer": true,
+                "explanation": "Yes! Arrays can hold numbers, strings, booleans, or even other arrays - very flexible!"
+              },
+              {
+                "id": "jsb_q7_03",
+                "type": "code_test",
+                "question": "Create an array called 'colors' with three color names",
+                "explanation": "Arrays use square brackets to hold multiple items. Each item is separated by a comma, and strings need quotation marks.",
+                "code_example": {
+                  "code": "let colors = ['red', 'blue', 'green'];\nconsole.log(colors[1]); // Shows: blue",
+                  "language": "javascript",
+                  "description": "Simple array of strings",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing let colors = [ to start an array. Inside the square brackets, write three color names as strings, such as 'red', 'blue', and 'green'. Make sure each color name is inside quotation marks because they are text values. Separate each item with a comma. After the last item, close the square bracket and add a semicolon. Your code should look like let colors = ['red', 'blue', 'green'];."
+                },
+                "testCriteria": {
+                  "expectedCode": "let colors = ['red', 'blue', 'green'];"
+                }
+              }
+            ],
+            "next_lesson_id": "jsb_lesson_08"
+          },
+          {
+            "id": "jsb_lesson_08",
+            "title": "Objects: Describing Things with Properties",
+            "body": "Objects let you group related information about one thing. Like a profile card: name, age, favorite color. Each piece of info is a property with a name and value.",
+            "avatar_script": "Imagine a name tag at a party: it has your name, maybe your job, and a fun fact. Objects work the same way - they bundle details about one person, place, or thing!",
+            "media": {},
+            "code_example": {
+              "code": "let person = {\n  name: 'Jamie',\n  age: 12,\n  hobby: 'drawing',\n  greet: function() {\n    return 'Hi, I\\'m ' + this.name;\n  }\n};\n\nconsole.log(person.name); // Shows: Jamie\nconsole.log(person.greet()); // Shows: Hi, I'm Jamie",
+              "language": "javascript",
+              "description": "Creating an object with properties and a method",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsb_q8_01",
+                "type": "multiple_choice",
+                "question": "How do you access the 'name' property of an object called 'user'?",
+                "options": [
+                  "user->name",
+                  "user.name",
+                  "user[name]",
+                  "name.user"
+                ],
+                "answer": "user.name",
+                "explanation": "Use dot notation: objectName.propertyName. It's clean and easy to read!"
+              },
+              {
+                "id": "jsb_q8_02",
+                "type": "true_false",
+                "question": "Objects can contain functions as properties.",
+                "answer": true,
+                "explanation": "Yes! Functions inside objects are called methods. They let objects do things!"
+              },
+              {
+                "id": "jsb_q8_03",
+                "type": "code_test",
+                "question": "Create an object 'book' with properties 'title' and 'author'",
+                "explanation": "Objects use curly braces and contain key-value pairs. Each property has a name followed by a colon and its value.",
+                "code_example": {
+                  "code": "let book = {\n  title: 'The Great Adventure',\n  author: 'Alex Writer'\n};\nconsole.log(book.title);",
+                  "language": "javascript",
+                  "description": "Simple object with two properties",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing let book = { to start the object. On the next line, add a property named title, followed by a colon, and then write the book title inside quotation marks. Add a comma at the end of that line because another property will follow. On the next line, add a property named author, followed by a colon, and then write the author's name inside quotation marks. Finally, close the object with a curly bracket and add a semicolon. This creates an object with two properties: title and author."
+                },
+                "testCriteria": {
+                  "expectedCode": "let book = {\\n title: '.*',\\n author: '.*'\\n};"
+                }
+              }
+            ],
+            "next_lesson_id": "jsb_lesson_09"
+          },
+          {
+            "id": "jsb_lesson_09",
+            "title": "Basic DOM: Talking to the Webpage",
+            "body": "The DOM is how JavaScript talks to your HTML page. You can find elements, change their text, update styles, or respond to clicks. It's like giving your webpage a remote control!",
+            "avatar_script": "Imagine your webpage is a robot. The DOM is the remote that lets you press buttons to change what it shows or how it acts. JavaScript holds the remote!",
+            "media": {},
+            "code_example": {
+              "code": "// Find an element by its ID\nlet heading = document.getElementById('mainTitle');\n\n// Change its text\nheading.textContent = 'Welcome to My Page!';\n\n// Change its color\nheading.style.color = 'blue';\n\n// Add a click event\nheading.addEventListener('click', function() {\n  alert('You clicked the heading!');\n});",
+              "language": "javascript",
+              "description": "Basic DOM manipulation: selecting, changing, and adding events",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsb_q9_01",
+                "type": "multiple_choice",
+                "question": "What does document.getElementById() do?",
+                "options": [
+                  "Creates a new element",
+                  "Finds an element with a specific ID",
+                  "Deletes an element",
+                  "Changes the page title"
+                ],
+                "answer": "Finds an element with a specific ID",
+                "explanation": "getElementById() searches the page for an element that has the matching id attribute."
+              },
+              {
+                "id": "jsb_q9_02",
+                "type": "true_false",
+                "question": "You can change an element's style using JavaScript.",
+                "answer": true,
+                "explanation": "Yes! Use element.style.propertyName to update CSS styles dynamically."
+              },
+              {
+                "id": "jsb_q9_03",
+                "type": "code_test",
+                "question": "Write code to change the text of an element with id 'message' to 'Hello!'",
+                "explanation": "Use getElementById() to find an element, then set its textContent property to change what text it displays.",
+                "code_example": {
+                  "code": "let message = document.getElementById('message');\nmessage.textContent = 'Hello!';",
+                  "language": "javascript",
+                  "description": "Changing element text content",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing a variable to store the element from the webpage. Type let message = document.getElementById('message'); so JavaScript can find the element with the id message. On the next line, type message.textContent = 'Hello!';. This changes the text inside that element to Hello!. Make sure Hello! is written inside quotation marks because it is text. End both lines with semicolons."
+                },
+                "testCriteria": {
+                  "expectedCode": ".*getElementById\\('message'\\).*textContent.*=.*'Hello!'"
+                }
+              }
+            ],
+            "next_lesson_id": "jsb_module_04"
+          }
+        ]
+      },
+      {
+        "id": "jsb_module_04",
+        "title": "Putting It All Together: Mini Projects",
+        "prerequisite": "jsb_module_03",
+        "lessons": [
+          {
+            "id": "jsb_lesson_10",
+            "title": "Project: Simple Counter",
+            "body": "Let's build a click counter! We'll use variables to store the count, functions to update it, and DOM methods to show changes on the page. Small project, big learning!",
+            "avatar_script": "Time to build something real! A counter seems simple, but it uses variables, functions, events, and DOM - all the basics you've learned. You've got this!",
+            "media": {},
+            "code_example": {
+              "code": "// HTML needed: <button id=\"countBtn\">Click me</button><p id=\"display\">0</p>\n\nlet count = 0;\nconst display = document.getElementById('display');\nconst button = document.getElementById('countBtn');\n\nbutton.addEventListener('click', function() {\n  count++;\n  display.textContent = count;\n});",
+              "language": "javascript",
+              "description": "Interactive counter with button and display",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsb_q10_01",
+                "type": "multiple_choice",
+                "question": "What does count++ do?",
+                "options": [
+                  "Resets count to 0",
+                  "Adds 1 to count",
+                  "Multiplies count by 2",
+                  "Subtracts 1 from count"
+                ],
+                "answer": "Adds 1 to count",
+                "explanation": "count++ is a shortcut for count = count + 1. Very handy for counters!"
+              },
+              {
+                "id": "jsb_q10_02",
+                "type": "true_false",
+                "question": "addEventListener waits for a user action before running code.",
+                "answer": true,
+                "explanation": "Exactly! It 'listens' for events like clicks, then runs your function when they happen."
+              },
+              {
+                "id": "jsb_q10_03",
+                "type": "code_test",
+                "question": "Write code to increase a variable 'score' by 1 and log it",
+                "explanation": "The ++ operator adds 1 to a variable. Use console.log() to display the updated value and verify your code works.",
+                "code_example": {
+                  "code": "let score = 0;\nscore++;\nconsole.log(score);",
+                  "language": "javascript",
+                  "description": "Increment and display a score",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by making sure the variable score already exists. On the next line, type score++; to increase its value by 1. The ++ tells JavaScript to add one to the current value. After that, go to the next line and write console.log(score); to display the new value in the console. This lets you confirm that the score increased correctly."
+                },
+                "testCriteria": {
+                  "expectedCode": "score\\+\\+;"
+                }
+              }
+            ],
+            "next_lesson_id": "jsb_lesson_11"
+          },
+          {
+            "id": "jsb_lesson_11",
+            "title": "Project: Color Changer",
+            "body": "Let's make a button that changes the page background color! We'll use arrays to store colors, Math.random() to pick one, and style.backgroundColor to apply it. Fun and colorful!",
+            "avatar_script": "Who doesn't love colors? This project teaches random selection, arrays, and styling - all while making something fun to play with. Let's paint the web!",
+            "media": {},
+            "code_example": {
+              "code": "const colors = ['red', 'blue', 'green', 'yellow', 'purple'];\nconst button = document.getElementById('colorBtn');\n\nbutton.addEventListener('click', function() {\n  const randomIndex = Math.floor(Math.random() * colors.length);\n  document.body.style.backgroundColor = colors[randomIndex];\n});",
+              "language": "javascript",
+              "description": "Random color picker using array and Math.random()",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsb_q11_01",
+                "type": "multiple_choice",
+                "question": "What does Math.random() return?",
+                "options": [
+                  "A random integer",
+                  "A random decimal between 0 and 1",
+                  "A random color",
+                  "A random array item"
+                ],
+                "answer": "A random decimal between 0 and 1",
+                "explanation": "Math.random() gives a number from 0 (inclusive) to 1 (exclusive). Multiply and round to get useful ranges!"
+              },
+              {
+                "id": "jsb_q11_02",
+                "type": "true_false",
+                "question": "document.body refers to the entire webpage's body section.",
+                "answer": true,
+                "explanation": "Yes! document.body is a shortcut to access and style the main content area of your page."
+              },
+              {
+                "id": "jsb_q11_03",
+                "type": "code_test",
+                "question": "Write code to set the background color to 'lightblue'",
+                "explanation": "Access the page body through document.body, then use the style.backgroundColor property to change the background color.",
+                "code_example": {
+                  "code": "document.body.style.backgroundColor = 'lightblue';",
+                  "language": "javascript",
+                  "description": "Changing page background color",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing document.body.style.backgroundColor to target the page background color. Next, add an equals sign to assign a new value. After the equals sign, write 'lightblue' inside quotation marks because lightblue is a color name written as text. Finish the line with a semicolon. Your full code should be document.body.style.backgroundColor = 'lightblue';."
+                },
+                "testCriteria": {
+                  "expectedCode": "document\\.body\\.style\\.backgroundColor.*=.*['\"]lightblue['\"]"
+                }
+              }
+            ],
+            "next_lesson_id": "jsb_lesson_12"
+          },
+          {
+            "id": "jsb_lesson_12",
+            "title": "Project: Simple To-Do List",
+            "body": "Let's build a tiny to-do app! We'll use arrays to store tasks, functions to add/remove them, and DOM methods to show the list. Real-world practice with beginner tools!",
+            "avatar_script": "You're ready for a bigger challenge! A to-do list uses almost everything you've learned. Don't worry - we'll build it step by step. You're doing amazing!",
+            "media": {},
+            "code_example": {
+              "code": "let tasks = [];\nconst input = document.getElementById('taskInput');\nconst list = document.getElementById('taskList');\n\nfunction addTask() {\n  const task = input.value;\n  if (task) {\n    tasks.push(task);\n    renderTasks();\n    input.value = '';\n  }\n}\n\nfunction renderTasks() {\n  list.innerHTML = '';\n  tasks.forEach(function(task) {\n    const li = document.createElement('li');\n    li.textContent = task;\n    list.appendChild(li);\n  });\n}",
+              "language": "javascript",
+              "description": "Basic to-do list with add and display functionality",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsb_q12_01",
+                "type": "multiple_choice",
+                "question": "What does array.push() do?",
+                "options": [
+                  "Removes the last item",
+                  "Adds an item to the end",
+                  "Sorts the array",
+                  "Reverses the array"
+                ],
+                "answer": "Adds an item to the end",
+                "explanation": "push() is like adding a new item to the end of your shopping list. Simple and useful!"
+              },
+              {
+                "id": "jsb_q12_02",
+                "type": "true_false",
+                "question": "forEach() runs a function for each item in an array.",
+                "answer": true,
+                "explanation": "Yes! forEach() is a clean way to loop through arrays and do something with each item."
+              },
+              {
+                "id": "jsb_q12_03",
+                "type": "code_test",
+                "question": "Write code to add 'Buy milk' to an array called 'groceries'",
+                "explanation": "The push() method adds a new item to the end of an array. Pass the item you want to add inside the parentheses.",
+                "code_example": {
+                  "code": "let groceries = [];\ngroceries.push('Buy milk');\nconsole.log(groceries);",
+                  "language": "javascript",
+                  "description": "Adding an item to an array",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by making sure you already have an array called groceries. On the next line, write groceries.push('Buy milk');. The push() method adds a new item to the end of the array. Inside the brackets, write 'Buy milk' inside quotation marks because it is text. After that, you may write console.log(groceries); on the next line to check that the item was added successfully."
+                },
+                "testCriteria": {
+                  "expectedCode": "groceries\\.push\\(['\"]Buy milk['\"]\\)"
+                }
+              }
+            ],
+            "next_lesson_id": null
+          }
+        ]
+      }
+    ]
+  }
+}

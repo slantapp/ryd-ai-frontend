@@ -474,6 +474,59 @@ function CodingExerciseInner() {
           actual: code.trim() || "(empty)",
           expected: expectedHTML,
         });
+      } else if (question.testCriteria?.expectedCSS) {
+        const criteria = question.testCriteria;
+        const normalizedExpected = criteria.expectedCSS
+          .toLowerCase()
+          .replace(/\s+/g, " ")
+          .replace(/'/g, '"')
+          .trim();
+        const normalizedCode = code
+          .toLowerCase()
+          .replace(/\s+/g, " ")
+          .replace(/'/g, '"')
+          .trim();
+        passed = normalizedCode.includes(normalizedExpected);
+        testResults.push({
+          test: `Code contains expected CSS: ${criteria.expectedCSS}`,
+          passed: passed,
+          actual: code.trim() || "(empty)",
+          expected: criteria.expectedCSS,
+        });
+      } else if (question.testCriteria?.expectedJS) {
+        const criteria = question.testCriteria;
+        const haystack = code.toLowerCase();
+        const needle = criteria.expectedJS.toLowerCase();
+        passed = haystack.includes(needle);
+        testResults.push({
+          test: `Code includes required JavaScript: ${criteria.expectedJS}`,
+          passed: passed,
+          actual: code.trim() || "(empty)",
+          expected: criteria.expectedJS,
+        });
+      } else if (question.testCriteria?.expectedCode) {
+        const pattern = question.testCriteria.expectedCode;
+        try {
+          const re = new RegExp(pattern, "i");
+          passed = re.test(code);
+        } catch {
+          const normalized = code
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+          const literal = pattern
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .replace(/\\n/g, " ")
+            .trim();
+          passed = normalized.includes(literal);
+        }
+        testResults.push({
+          test: "Code matches the required pattern",
+          passed: passed,
+          actual: code.trim() || "(empty)",
+          expected: pattern,
+        });
       } else if (question.testCriteria?.expectedFunction) {
         // Test function
         const testCode = `${code}; typeof ${question.testCriteria.expectedFunction} === 'function'`;

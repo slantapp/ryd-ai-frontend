@@ -1,0 +1,686 @@
+{
+  "slug": "javascript-professional",
+  "curriculum": {
+    "title": "JavaScript: Intermediate to Professional",
+    "description": "Become a JavaScript expert! Master advanced patterns, performance, testing, and modern tooling. Learn how pros write clean, scalable, production-ready code. You're ready to level up!",
+    "language": "en",
+    "modules": [
+      {
+        "id": "jsp_module_01",
+        "title": "Advanced Patterns and Architecture",
+        "prerequisite": null,
+        "lessons": [
+          {
+            "id": "jsp_lesson_01",
+            "title": "Module Pattern and ES6 Modules",
+            "body": "Modules help you organize code into reusable, isolated files. The Module Pattern uses IIFEs for privacy. ES6 modules use import/export for clean dependency management. Both prevent global namespace pollution.",
+            "avatar_script": "Think of modules like rooms in a house: each has a purpose, and you only bring in what you need. No more cluttered global space! Let's build clean, maintainable code.",
+            "media": {},
+            "code_example": {
+              "code": "// ES6 Module: mathUtils.js\nexport const add = (a, b) => a + b;\nexport const PI = 3.14159;\nexport default function multiply(a, b) { return a * b; }\n\n// Using the module: main.js\nimport multiply, { add, PI } from './mathUtils.js';\n\nconsole.log(add(2, 3));      // 5\nconsole.log(multiply(4, 5)); // 20\nconsole.log(PI);             // 3.14159",
+              "language": "javascript",
+              "description": "ES6 module syntax: named and default exports/imports",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsp_q1_01",
+                "type": "multiple_choice",
+                "question": "What does 'export default' allow?",
+                "options": [
+                  "Multiple exports per file",
+                  "One primary export that can be imported without curly braces",
+                  "Private functions only",
+                  "Automatic async behavior"
+                ],
+                "answer": "One primary export that can be imported without curly braces",
+                "explanation": "Default exports are imported without { }, making them convenient for the main export of a module."
+              },
+              {
+                "id": "jsp_q1_02",
+                "type": "true_false",
+                "question": "ES6 modules are statically analyzed at compile time.",
+                "answer": true,
+                "explanation": "Yes! Import/export are resolved before code runs, enabling better tree-shaking and optimization."
+              },
+              {
+                "id": "jsp_q1_03",
+                "type": "code_test",
+                "question": "Export a function 'greet' as the default export",
+                "explanation": "Use 'export default' before your function declaration to make it the primary export of the module.",
+                "code_example": {
+                  "code": "// greetings.js\nexport default function greet(name) {\n  return `Hello, ${name}!`;\n}\n\n// Usage:\n// import greet from './greetings.js';",
+                  "language": "javascript",
+                  "description": "Default export example",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing export default function greet(name) {. The words export default make this function the main value being sent out from the file. Inside the brackets, add the parameter name because the function needs a name to greet. On the next line, write return `Hello, ${name}!`; so the function sends back a greeting message. Then close the function with a curly bracket. This allows another file to import the function without using curly braces."
+                },
+                "testCriteria": {
+                  "expectedCode": "export\\s+default\\s+function\\s+greet"
+                }
+              }
+            ],
+            "next_lesson_id": "jsp_lesson_02"
+          },
+          {
+            "id": "jsp_lesson_02",
+            "title": "Prototypes and Classical Inheritance",
+            "body": "JavaScript uses prototypal inheritance: objects can inherit properties/methods from other objects. The prototype chain lets you share behavior efficiently. Understanding this unlocks powerful patterns.",
+            "avatar_script": "Imagine a family tree: children inherit traits from parents, who inherited from grandparents. JavaScript's prototype chain works similarly - objects share behavior up the chain!",
+            "media": {},
+            "code_example": {
+              "code": "// Constructor function\nfunction Animal(name) {\n  this.name = name;\n}\n\n// Add method to prototype (shared by all instances)\nAnimal.prototype.speak = function() {\n  console.log(`${this.name} makes a sound`);\n};\n\n// Inheritance\nfunction Dog(name, breed) {\n  Animal.call(this, name); // Call parent constructor\n  this.breed = breed;\n}\n\n// Set up prototype chain\nDog.prototype = Object.create(Animal.prototype);\nDog.prototype.constructor = Dog;\n\n// Override method\nDog.prototype.speak = function() {\n  console.log(`${this.name} barks`);\n};\n\nconst dog = new Dog('Rex', 'Shepherd');\ndog.speak(); // 'Rex barks'",
+              "language": "javascript",
+              "description": "Prototypal inheritance with constructor functions",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsp_q2_01",
+                "type": "multiple_choice",
+                "question": "What does Object.create(proto) do?",
+                "options": [
+                  "Copies all properties from proto",
+                  "Creates a new object with proto as its prototype",
+                  "Converts proto to a string",
+                  "Deletes the prototype chain"
+                ],
+                "answer": "Creates a new object with proto as its prototype",
+                "explanation": "Object.create() sets up the prototype chain directly, which is key for inheritance."
+              },
+              {
+                "id": "jsp_q2_02",
+                "type": "true_false",
+                "question": "Methods on the prototype are shared across all instances.",
+                "answer": true,
+                "explanation": "Yes! This saves memory because all instances reference the same function, not copies."
+              },
+              {
+                "id": "jsp_q2_03",
+                "type": "code_test",
+                "question": "Add a method 'describe' to the prototype of 'Car'",
+                "explanation": "Assign a function to Constructor.prototype.methodName to share methods across all instances of that constructor.",
+                "code_example": {
+                  "code": "function Car(make, model) {\n  this.make = make;\n  this.model = model;\n}\n\nCar.prototype.describe = function() {\n  return `${this.make} ${this.model}`;\n};",
+                  "language": "javascript",
+                  "description": "Adding a method to a constructor's prototype",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by making sure the Car constructor already exists. After that, write Car.prototype.describe = function() {. This adds a shared method called describe to all Car objects created from the constructor. Inside the function body, write return `${this.make} ${this.model}`;. The word this refers to the current car object, so this.make and this.model access its values. Finally, close the function and add a semicolon."
+                },
+                "testCriteria": {
+                  "expectedCode": "Car\\.prototype\\.describe\\s*=\\s*function"
+                }
+              }
+            ],
+            "next_lesson_id": "jsp_lesson_03"
+          },
+          {
+            "id": "jsp_lesson_03",
+            "title": "Classes and Modern OOP",
+            "body": "ES6 classes provide cleaner syntax for prototypes. Use class, constructor, extends, and super for inheritance. Add static methods, getters/setters, and private fields (#) for encapsulation.",
+            "avatar_script": "Classes are like blueprints for objects. They make inheritance and encapsulation clearer. But remember: under the hood, it's still prototypes - just with nicer syntax!",
+            "media": {},
+            "code_example": {
+              "code": "class Vehicle {\n  #mileage = 0;\n\n  constructor(brand) {\n    this.brand = brand;\n  }\n  \n  drive(miles) {\n    this.#mileage += miles;\n    return this;\n  }\n  \n  get mileage() {\n    return this.#mileage;\n  }\n  \n  static compare(v1, v2) {\n    return v1.mileage - v2.mileage;\n  }\n}\n\nclass ElectricCar extends Vehicle {\n  constructor(brand, battery) {\n    super(brand);\n    this.battery = battery;\n  }\n  \n  charge() {\n    console.log(`${this.brand} is charging`);\n    return this;\n  }\n}\n\nconst tesla = new ElectricCar('Tesla', '100kWh');\ntesla.drive(50).charge();\nconsole.log(tesla.mileage); // 50",
+              "language": "javascript",
+              "description": "Modern class syntax with inheritance, private fields, and static methods",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsp_q3_01",
+                "type": "multiple_choice",
+                "question": "What does 'super()' do in a subclass constructor?",
+                "options": [
+                  "Creates a new parent instance",
+                  "Calls the parent class constructor",
+                  "Deletes parent methods",
+                  "Copies parent properties"
+                ],
+                "answer": "Calls the parent class constructor",
+                "explanation": "super() initializes the parent part of the object. It must be called before using 'this' in the subclass."
+              },
+              {
+                "id": "jsp_q3_02",
+                "type": "true_false",
+                "question": "Private fields (#field) are accessible only within the class.",
+                "answer": true,
+                "explanation": "Yes! # syntax creates truly private fields that can't be accessed from outside the class."
+              },
+              {
+                "id": "jsp_q3_03",
+                "type": "code_test",
+                "question": "Create a getter for a private field '#balance'",
+                "explanation": "Use the 'get' keyword to create a getter method that returns the value of the private field with the # prefix.",
+                "code_example": {
+                  "code": "class Account {\n  #balance = 0;\n  \n  get balance() {\n    return this.#balance;\n  }\n}",
+                  "language": "javascript",
+                  "description": "Getter for private field",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by creating a class, such as class Account {. Inside the class, declare the private field by writing #balance = 0;. The # symbol makes the field private so it can only be used inside the class. On the next line, write get balance() { to begin the getter. Inside the getter, write return this.#balance; so the getter sends back the private value. Then close the getter and the class. This lets outside code read the value through balance without directly touching #balance."
+                },
+                "testCriteria": {
+                  "expectedCode": "get\\s+balance\\s*\\(\\s*\\)\\s*\\{\\s*return\\s+this\\.#balance"
+                }
+              }
+            ],
+            "next_lesson_id": "jsp_module_02"
+          }
+        ]
+      },
+      {
+        "id": "jsp_module_02",
+        "title": "Functional Programming Concepts",
+        "prerequisite": "jsp_module_01",
+        "lessons": [
+          {
+            "id": "jsp_lesson_04",
+            "title": "Pure Functions and Immutability",
+            "body": "Pure functions always return the same output for the same input and have no side effects. Immutability means never changing data, only creating new versions. Together, they make code predictable and testable.",
+            "avatar_script": "Think of pure functions like math: 2+2 always equals 4, no matter what. No hidden changes, no surprises. This makes debugging and testing so much easier!",
+            "media": {},
+            "code_example": {
+              "code": "// IMPURE: modifies input and uses external state\nlet taxRate = 0.1;\nfunction calculateTotal(cart) {\n  cart.total = cart.subtotal * (1 + taxRate); // Side effect!\n  return cart;\n}\n\n// PURE: no side effects, same input = same output\nfunction calculateTotalPure(subtotal, rate) {\n  return subtotal * (1 + rate);\n}\n\n// Immutability example\nconst original = [1, 2, 3];\nconst doubled = original.map(n => n * 2); // New array\n// original is still [1, 2, 3]",
+              "language": "javascript",
+              "description": "Contrasting impure vs pure functions and immutable updates",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsp_q4_01",
+                "type": "multiple_choice",
+                "question": "What makes a function 'pure'?",
+                "options": [
+                  "It uses global variables",
+                  "It has no side effects and is deterministic",
+                  "It returns an object",
+                  "It uses arrow syntax"
+                ],
+                "answer": "It has no side effects and is deterministic",
+                "explanation": "Pure functions depend only on inputs and don't modify external state - making them reliable and testable."
+              },
+              {
+                "id": "jsp_q4_02",
+                "type": "true_false",
+                "question": "map() creates a new array without modifying the original.",
+                "answer": true,
+                "explanation": "Yes! Array methods like map, filter, and slice return new arrays, supporting immutability."
+              },
+              {
+                "id": "jsp_q4_03",
+                "type": "code_test",
+                "question": "Write a pure function that adds tax to a price without modifying inputs",
+                "explanation": "A pure function only uses its parameters and returns a new value. Multiply price by (1 + rate) and return the result.",
+                "code_example": {
+                  "code": "function addTax(price, rate) {\n  return price * (1 + rate);\n}\n// Usage: addTax(100, 0.08) returns 108",
+                  "language": "javascript",
+                  "description": "Pure function example",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing a function header such as function addTax(price, rate) {. The function should take price and rate as inputs so it does not depend on outside values. Inside the function, write return price * (1 + rate);. This creates and returns a new calculated value instead of changing any original data. After that, close the function. Because the function only uses its inputs and returns a result, it stays pure."
+                },
+                "testCriteria": {
+                  "expectedCode": "return\\s+price\\s*\\*\\s*\\(1\\s*\\+\\s*rate\\)"
+                }
+              }
+            ],
+            "next_lesson_id": "jsp_lesson_05"
+          },
+          {
+            "id": "jsp_lesson_05",
+            "title": "Higher-Order Functions and Composition",
+            "body": "Higher-order functions take functions as arguments or return them. Composition combines small functions to build complex behavior. This enables powerful, reusable patterns like middleware and pipelines.",
+            "avatar_script": "Imagine LEGO blocks: each function is a small piece. Higher-order functions let you snap them together in creative ways. Composition is your instruction manual for building big things from small parts!",
+            "media": {},
+            "code_example": {
+              "code": "// Higher-order function: returns a function\nconst multiplyBy = (factor) => (num) => num * factor;\nconst double = multiplyBy(2);\nconsole.log(double(5)); // 10\n\n// Function composition: pipe data through functions\nconst pipe = (...fns) => (value) => \n  fns.reduce((acc, fn) => fn(acc), value);\n\n// Small, focused functions\nconst addTax = price => price * 1.08;\nconst formatCurrency = price => `$${price.toFixed(2)}`;\nconst applyDiscount = price => price * 0.9;\n\n// Compose them\nconst calculateFinalPrice = pipe(\n  addTax,\n  applyDiscount,\n  formatCurrency\n);\n\nconsole.log(calculateFinalPrice(100)); // '$97.20'",
+              "language": "javascript",
+              "description": "Higher-order functions and function composition with pipe",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsp_q5_01",
+                "type": "multiple_choice",
+                "question": "What is a higher-order function?",
+                "options": [
+                  "A function that only works with arrays",
+                  "A function that takes or returns other functions",
+                  "A function with many parameters",
+                  "A function that uses recursion"
+                ],
+                "answer": "A function that takes or returns other functions",
+                "explanation": "Higher-order functions treat functions as values - enabling powerful abstractions and reuse."
+              },
+              {
+                "id": "jsp_q5_02",
+                "type": "true_false",
+                "question": "Function composition applies functions right-to-left by default.",
+                "answer": false,
+                "explanation": "It depends on implementation! Our pipe() example applies left-to-right. Compose() often does right-to-left."
+              },
+              {
+                "id": "jsp_q5_03",
+                "type": "code_test",
+                "question": "Create a function that returns another function adding a fixed value",
+                "explanation": "Use currying: the outer function takes the fixed value, returns an inner function that adds that value to its input.",
+                "code_example": {
+                  "code": "const add = (x) => (y) => x + y;\nconst add5 = add(5);\nconsole.log(add5(3)); // 8",
+                  "language": "javascript",
+                  "description": "Curried add function example",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing an outer function that takes a fixed value, such as const add = (x) =>. After that arrow, return another function by writing (y) => x + y. The outer function stores the fixed value x, and the inner function receives a new value y later. When the inner function runs, it adds y to the saved value x. You can then create a new function like const add5 = add(5); and test it with console.log(add5(3));."
+                },
+                "testCriteria": {
+                  "expectedCode": "\\(x\\)\\s*=>\\s*\\(y\\)\\s*=>\\s*x\\s*\\+\\s*y"
+                }
+              }
+            ],
+            "next_lesson_id": "jsp_lesson_06"
+          },
+          {
+            "id": "jsp_lesson_06",
+            "title": "Recursion and Advanced Iteration",
+            "body": "Recursion is when a function calls itself to solve smaller versions of a problem. It's elegant for trees, nested data, and mathematical sequences. Always define a base case to avoid infinite loops!",
+            "avatar_script": "Recursion is like a set of Russian dolls: each doll contains a smaller one, until you reach the tiniest doll (the base case). Then you build back up with the answers!",
+            "media": {},
+            "code_example": {
+              "code": "// Recursive factorial: n! = n * (n-1)!\nfunction factorial(n) {\n  if (n <= 1) return 1; // Base case\n  return n * factorial(n - 1); // Recursive case\n}\n\n// Flatten nested array recursively\nfunction flatten(arr) {\n  return arr.reduce((acc, val) => \n    Array.isArray(val) \n      ? acc.concat(flatten(val)) \n      : acc.concat(val)\n  , []);\n}\n\nconsole.log(factorial(5)); // 120\nconsole.log(flatten([1, [2, [3, 4]], 5])); // [1,2,3,4,5]",
+              "language": "javascript",
+              "description": "Recursive functions for factorial and array flattening",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsp_q6_01",
+                "type": "multiple_choice",
+                "question": "What is the base case in recursion?",
+                "options": [
+                  "The most complex case",
+                  "The condition that stops further recursion",
+                  "The first function call",
+                  "The return value"
+                ],
+                "answer": "The condition that stops further recursion",
+                "explanation": "The base case prevents infinite recursion by providing a direct answer for the simplest input."
+              },
+              {
+                "id": "jsp_q6_02",
+                "type": "true_false",
+                "question": "Every recursive function must have a base case.",
+                "answer": true,
+                "explanation": "Yes! Without a base case, recursion would continue forever and crash with a stack overflow."
+              },
+              {
+                "id": "jsp_q6_03",
+                "type": "code_test",
+                "question": "Write a recursive function that sums numbers from 1 to n",
+                "explanation": "Define a base case (return 0 when n is 0) and a recursive case (return n plus the sum of 1 to n-1).",
+                "code_example": {
+                  "code": "function sumTo(n) {\n  if (n <= 0) return 0;\n  return n + sumTo(n - 1);\n}\nconsole.log(sumTo(5)); // 15",
+                  "language": "javascript",
+                  "description": "Recursive sum function",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing a function header such as function sumTo(n) {. Inside the function, start with a base case by writing if (n <= 0) return 0;. This stops the function from calling itself forever. After that, write return n + sumTo(n - 1);. This is the recursive part, where the function calls itself with a smaller number each time. Finally, close the function. When you call sumTo(5), it adds 5 + 4 + 3 + 2 + 1."
+                },
+                "testCriteria": {
+                  "expectedCode": "return\\s+n\\s*\\+\\s+sumTo\\(n\\s*-\\s*1\\)"
+                }
+              }
+            ],
+            "next_lesson_id": "jsp_module_03"
+          }
+        ]
+      },
+      {
+        "id": "jsp_module_03",
+        "title": "Performance, Testing, and Tooling",
+        "prerequisite": "jsp_module_02",
+        "lessons": [
+          {
+            "id": "jsp_lesson_07",
+            "title": "Optimizing JavaScript Performance",
+            "body": "Performance matters! Use debouncing/throttling for frequent events, memoization for expensive calculations, and lazy loading for resources. Profile with DevTools to find real bottlenecks, not guesses.",
+            "avatar_script": "Think of performance like a race car: you don't upgrade everything - you find the slowest part and fix that first. Profiling tells you where to focus your optimization efforts!",
+            "media": {},
+            "code_example": {
+              "code": "// Debounce: limit function calls during rapid events\nfunction debounce(fn, delay) {\n  let timer;\n  return (...args) => {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn.apply(this, args), delay);\n  };\n}\n\n// Memoization: cache expensive function results\nfunction memoize(fn) {\n  const cache = new Map();\n  return (...args) => {\n    const key = JSON.stringify(args);\n    if (cache.has(key)) return cache.get(key);\n    const result = fn(...args);\n    cache.set(key, result);\n    return result;\n  };\n}\n\n// Usage: optimize scroll handler\nwindow.addEventListener('scroll', debounce(handleScroll, 200));\n\n// Usage: cache Fibonacci\nconst fib = memoize(n => n <= 1 ? n : fib(n-1) + fib(n-2));",
+              "language": "javascript",
+              "description": "Debouncing and memoization for performance optimization",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsp_q7_01",
+                "type": "multiple_choice",
+                "question": "What does debouncing do?",
+                "options": [
+                  "Runs a function immediately on every event",
+                  "Delays function execution until events stop",
+                  "Runs a function at fixed intervals",
+                  "Cancels all future function calls"
+                ],
+                "answer": "Delays function execution until events stop",
+                "explanation": "Debouncing waits for a pause in rapid events before running the function - perfect for search inputs or resizing."
+              },
+              {
+                "id": "jsp_q7_02",
+                "type": "true_false",
+                "question": "Memoization trades memory for speed by caching results.",
+                "answer": true,
+                "explanation": "Yes! Memoization stores previous results to avoid recalculating - great for pure functions with expensive operations."
+              },
+              {
+                "id": "jsp_q7_03",
+                "type": "code_test",
+                "question": "Write a simple debounce function that delays execution by 'ms' milliseconds",
+                "explanation": "Store a timer ID, clear any existing timer on each call, then set a new timeout to run the function after the delay.",
+                "code_example": {
+                  "code": "function debounce(fn, ms) {\n  let timeout;\n  return function(...args) {\n    clearTimeout(timeout);\n    timeout = setTimeout(() => fn.apply(this, args), ms);\n  };\n}",
+                  "language": "javascript",
+                  "description": "Basic debounce implementation",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing a function named debounce that accepts fn and ms as parameters. Inside the function, create a variable such as let timeout; to store the timer id. Next, return a new function that can receive any arguments by writing return function(...args) {. Inside that returned function, first write clearTimeout(timeout); so any old timer is removed. Then write timeout = setTimeout(() => fn.apply(this, args), ms);. This creates a new timer and waits for the number of milliseconds stored in ms before calling fn. Finally, close both functions."
+                },
+                "testCriteria": {
+                  "expectedCode": "setTimeout\\(.*ms\\)"
+                }
+              }
+            ],
+            "next_lesson_id": "jsp_lesson_08"
+          },
+          {
+            "id": "jsp_lesson_08",
+            "title": "Testing with Jest: Unit and Integration",
+            "body": "Testing ensures your code works now and later. Jest is a popular test runner. Write unit tests for small functions, integration tests for combined parts. Use describe, test/it, and expect for clear, maintainable tests.",
+            "avatar_script": "Testing is like a safety net for your code: it catches bugs before users do. Write tests as you code, and you'll refactor with confidence. Let's make your code bulletproof!",
+            "media": {},
+            "code_example": {
+              "code": "// math.js - code to test\nexport const add = (a, b) => a + b;\nexport const divide = (a, b) => {\n  if (b === 0) throw new Error('Division by zero');\n  return a / b;\n};\n\n// math.test.js - Jest tests\nimport { add, divide } from './math.js';\n\ndescribe('Math functions', () => {\n  test('add returns sum of two numbers', () => {\n    expect(add(2, 3)).toBe(5);\n  });\n\n  test('divide throws error for zero divisor', () => {\n    expect(() => divide(10, 0)).toThrow('Division by zero');\n  });\n\n  test('divide returns correct result', () => {\n    expect(divide(10, 2)).toBe(5);\n  });\n});",
+              "language": "javascript",
+              "description": "Jest unit tests with describe, test, and expect assertions",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsp_q8_01",
+                "type": "multiple_choice",
+                "question": "What does expect(value).toBe(expected) check?",
+                "options": [
+                  "Object identity (===)",
+                  "Deep equality of objects",
+                  "String matching with regex",
+                  "Approximate number equality"
+                ],
+                "answer": "Object identity (===)",
+                "explanation": "toBe() uses strict equality (===). For objects, use toEqual() for deep comparison."
+              },
+              {
+                "id": "jsp_q8_02",
+                "type": "true_false",
+                "question": "describe() groups related tests together.",
+                "answer": true,
+                "explanation": "Yes! describe() creates test suites for better organization and reporting."
+              },
+              {
+                "id": "jsp_q8_03",
+                "type": "code_test",
+                "question": "Write a Jest test that checks if multiply(3, 4) equals 12",
+                "explanation": "Use test() with a description, then expect(multiply(3, 4)).toBe(12) to assert the function returns the correct value.",
+                "code_example": {
+                  "code": "test('multiply returns product', () => {\n  expect(multiply(3, 4)).toBe(12);\n});",
+                  "language": "javascript",
+                  "description": "Simple Jest test example",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing test( and give the test a clear name, such as 'multiply returns product'. After the comma, write a callback function using () => {. Inside the callback, write expect(multiply(3, 4)).toBe(12);. The expect() part runs the function, and .toBe(12) checks that the result is exactly 12. Then close the callback and the test function. This creates one Jest test for the multiply function."
+                },
+                "testCriteria": {
+                  "expectedCode": "expect\\(\\s*multiply\\(3,\\s*4\\)\\s*\\)\\.toBe\\(12\\)"
+                }
+              }
+            ],
+            "next_lesson_id": "jsp_lesson_09"
+          },
+          {
+            "id": "jsp_lesson_09",
+            "title": "Modern Tooling: Bundlers, Linters, and TypeScript",
+            "body": "Professional JavaScript uses tools: Webpack/Vite bundle code, ESLint/Prettier enforce style, TypeScript adds static types. These catch errors early, improve collaboration, and scale with your team.",
+            "avatar_script": "Tooling is like a pro chef's kitchen: sharp knives (linters), organized stations (bundlers), and recipe notes (TypeScript). The right tools make great code easier to write and maintain!",
+            "media": {},
+            "code_example": {
+              "code": "// TypeScript example: types catch errors at compile time\ninterface User {\n  id: number;\n  name: string;\n  email?: string; // Optional property\n}\n\nfunction greetUser(user: User): string {\n  // TypeScript ensures 'user' has required properties\n  return `Hello, ${user.name}!`;\n}\n\n// This would cause a TypeScript error:\n// greetUser({ name: 'Alex' }); // Missing required 'id'\n\n// ESLint + Prettier config snippet (package.json):\n// {\n//   \"scripts\": {\n//     \"lint\": \"eslint src/\",\n//     \"format\": \"prettier --write src/\"\n//   }\n// }",
+              "language": "javascript",
+              "description": "TypeScript interfaces and tooling configuration examples",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsp_q9_01",
+                "type": "multiple_choice",
+                "question": "What does TypeScript add to JavaScript?",
+                "options": [
+                  "New runtime features",
+                  "Static type checking at compile time",
+                  "Automatic performance optimization",
+                  "Built-in testing framework"
+                ],
+                "answer": "Static type checking at compile time",
+                "explanation": "TypeScript adds types that are checked before code runs, catching many errors during development."
+              },
+              {
+                "id": "jsp_q9_02",
+                "type": "true_false",
+                "question": "ESLint can automatically fix some code style issues.",
+                "answer": true,
+                "explanation": "Yes! With --fix flag, ESLint can auto-correct many formatting and style problems."
+              },
+              {
+                "id": "jsp_q9_03",
+                "type": "code_test",
+                "question": "Define a TypeScript interface 'Product' with 'id' (number) and 'name' (string)",
+                "explanation": "Use the interface keyword followed by the name, then define each property with its type using colon syntax.",
+                "code_example": {
+                  "code": "interface Product {\n  id: number;\n  name: string;\n}",
+                  "language": "typescript",
+                  "description": "Simple TypeScript interface",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing interface Product { on one line. Inside the interface, add id: number; to describe the id property and show that it must store a number. On the next line, add name: string; to describe the name property and show that it must store text. After that, close the interface with a curly bracket. This tells TypeScript that any Product object must include both id and name with the correct types."
+                },
+                "testCriteria": {
+                  "expectedCode": "interface\\s+Product\\s*\\{[^}]*id:\\s*number[^}]*name:\\s*string"
+                }
+              }
+            ],
+            "next_lesson_id": "jsp_module_04"
+          }
+        ]
+      },
+      {
+        "id": "jsp_module_04",
+        "title": "Professional Project Patterns",
+        "prerequisite": "jsp_module_03",
+        "lessons": [
+          {
+            "id": "jsp_lesson_10",
+            "title": "State Management Patterns",
+            "body": "As apps grow, managing state gets complex. Patterns like Observer, Redux-style stores, or Context API help keep state predictable. The key: single source of truth, unidirectional data flow, and pure updates.",
+            "avatar_script": "State management is like air traffic control: many moving parts, but clear rules prevent collisions. Good patterns keep your app predictable even as it scales!",
+            "media": {},
+            "code_example": {
+              "code": "// Simple observable store pattern\nclass Store {\n  #state = {};\n  #listeners = [];\n\n  constructor(initialState) {\n    this.#state = initialState;\n  }\n\n  getState() {\n    return { ...this.#state }; // Return copy for immutability\n  }\n\n  subscribe(listener) {\n    this.#listeners.push(listener);\n    return () => {\n      // Unsubscribe: remove listener\n      this.#listeners = this.#listeners.filter(l => l !== listener);\n    };\n  }\n\n  dispatch(action) {\n    // Pure reducer function updates state\n    this.#state = reducer(this.#state, action);\n    // Notify all listeners\n    this.#listeners.forEach(fn => fn(this.#state));\n  }\n}\n\n// Pure reducer: (state, action) => newState\nfunction reducer(state, action) {\n  switch (action.type) {\n    case 'ADD_ITEM':\n      return { ...state, items: [...state.items, action.payload] };\n    default:\n      return state;\n  }\n}",
+              "language": "javascript",
+              "description": "Observable store pattern with immutable updates and pure reducer",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsp_q10_01",
+                "type": "multiple_choice",
+                "question": "Why return a copy of state in getState()?",
+                "options": [
+                  "To save memory",
+                  "To prevent external code from mutating internal state",
+                  "To make it serializable",
+                  "To improve performance"
+                ],
+                "answer": "To prevent external code from mutating internal state",
+                "explanation": "Returning a copy enforces immutability - a core principle for predictable state management."
+              },
+              {
+                "id": "jsp_q10_02",
+                "type": "true_false",
+                "question": "Reducers should be pure functions.",
+                "answer": true,
+                "explanation": "Yes! Pure reducers make state changes predictable, testable, and debuggable."
+              },
+              {
+                "id": "jsp_q10_03",
+                "type": "code_test",
+                "question": "Write a pure reducer case that updates 'count' by adding payload",
+                "explanation": "Return a new state object using spread syntax, then update count by adding action.payload to the existing value.",
+                "code_example": {
+                  "code": "case 'INCREMENT':\n  return { ...state, count: state.count + action.payload };",
+                  "language": "javascript",
+                  "description": "Pure reducer case example",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing the reducer case label, such as case 'INCREMENT':. On the next line, write return { ...state, count: state.count + action.payload };. The ...state part copies the existing state into a new object. Then count: state.count + action.payload creates an updated count value without changing the old state directly. This keeps the reducer pure because it returns a new state object instead of mutating the original one."
+                },
+                "testCriteria": {
+                  "expectedCode": "return\\s+\\{\\s*\\.\\.\\.state.*count.*action\\.payload"
+                }
+              }
+            ],
+            "next_lesson_id": "jsp_lesson_11"
+          },
+          {
+            "id": "jsp_lesson_11",
+            "title": "Error Boundaries and Resilient Design",
+            "body": "Professional apps handle failures gracefully. Use error boundaries to catch UI errors, retry logic for network failures, and fallback UIs. Design for failure: assume things will go wrong, and plan for it.",
+            "avatar_script": "Resilient design is like building a bridge: you expect strong winds and heavy traffic, so you add supports and safety margins. Your code should handle real-world chaos gracefully!",
+            "media": {},
+            "code_example": {
+              "code": "// React Error Boundary example (conceptual)\nclass ErrorBoundary extends React.Component {\n  state = { hasError: false };\n\n  static getDerivedStateFromError(error) {\n    // Update state to show fallback UI\n    return { hasError: true };\n  }\n\n  componentDidCatch(error, info) {\n    // Log error to reporting service\n    logErrorToService(error, info.componentStack);\n  }\n\n  render() {\n    if (this.state.hasError) {\n      return <FallbackUI onRetry={() => this.setState({ hasError: false })} />;\n    }\n    return this.props.children;\n  }\n}\n\n// Retry logic for fetch\nasync function fetchWithRetry(url, options, retries = 3) {\n  for (let i = 0; i < retries; i++) {\n    try {\n      return await fetch(url, options);\n    } catch (err) {\n      if (i === retries - 1) throw err;\n      await new Promise(res => setTimeout(res, 1000 * (i + 1))); // Exponential backoff\n    }\n  }\n}",
+              "language": "javascript",
+              "description": "Error boundary pattern and retry logic for resilience",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsp_q11_01",
+                "type": "multiple_choice",
+                "question": "What is the purpose of an error boundary?",
+                "options": [
+                  "Prevent all errors from occurring",
+                  "Catch errors in child components and show fallback UI",
+                  "Automatically fix runtime errors",
+                  "Log errors to the console only"
+                ],
+                "answer": "Catch errors in child components and show fallback UI",
+                "explanation": "Error boundaries isolate failures so one broken component doesn't crash the entire app."
+              },
+              {
+                "id": "jsp_q11_02",
+                "type": "true_false",
+                "question": "Exponential backoff increases wait time between retries.",
+                "answer": true,
+                "explanation": "Yes! Waiting longer after each failure reduces load on struggling services and improves success rates."
+              },
+              {
+                "id": "jsp_q11_03",
+                "type": "code_test",
+                "question": "Write a simple retry wrapper that tries a function up to 3 times",
+                "explanation": "Use a for loop with try/catch inside. On each iteration, try to return the result. Only throw the error on the final attempt.",
+                "code_example": {
+                  "code": "async function retry(fn, attempts = 3) {\n  for (let i = 0; i < attempts; i++) {\n    try {\n      return await fn();\n    } catch (err) {\n      if (i === attempts - 1) throw err;\n    }\n  }\n}",
+                  "language": "javascript",
+                  "description": "Basic retry wrapper function",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing an async function header such as async function retry(fn, attempts = 3) {. Inside the function, create a for loop that starts at 0 and continues while i < attempts. Inside the loop, add a try block and write return await fn(); so the function tries to run fn. After the try block, add a catch block. Inside catch, check whether this is the last attempt by writing if (i === attempts - 1) throw err;. This means the error will only be thrown after all retry attempts have failed. Then close the loop and the function."
+                },
+                "testCriteria": {
+                  "expectedCode": "for\\s*\\(.*attempts.*\\).*try.*await\\s+fn\\(\\)"
+                }
+              }
+            ],
+            "next_lesson_id": "jsp_lesson_12"
+          },
+          {
+            "id": "jsp_lesson_12",
+            "title": "Capstone: Build a Production-Ready Feature",
+            "body": "Let's combine everything: build a searchable, paginated, cached data table with error handling, loading states, and tests. We'll use modules, async/await, pure functions, and professional patterns.",
+            "avatar_script": "This is your graduation project! You'll apply every concept we've learned to build something real. Take your time, think through each decision, and trust your skills. You've earned this!",
+            "media": {},
+            "code_example": {
+              "code": "// Professional feature: Searchable data table with caching\n// dataService.js - Pure, testable data layer\nexport async function fetchUsers(filters, { cache = new Map() } = {}) {\n  const key = JSON.stringify(filters);\n  \n  // Check cache first\n  if (cache.has(key)) {\n    return cache.get(key);\n  }\n  \n  // Fetch with error handling\n  try {\n    const response = await fetch(`/api/users?${new URLSearchParams(filters)}`);\n    if (!response.ok) throw new Error(`HTTP ${response.status}`);\n    \n    const users = await response.json();\n    cache.set(key, users); // Cache successful result\n    return users;\n  } catch (error) {\n    console.error('Fetch failed:', error);\n    throw error; // Let UI handle error state\n  }\n}\n\n// UI component (conceptual) - handles loading, error, success states\nfunction UserTable({ filters }) {\n  const [state, setState] = useState({ loading: false, error: null, data: [] });\n  \n  useEffect(() => {\n    let cancelled = false;\n    setState({ loading: true, error: null, data: [] });\n    \n    fetchUsers(filters)\n      .then(data => { if (!cancelled) setState({ loading: false, data }); })\n      .catch(error => { if (!cancelled) setState({ loading: false, error }); });\n    \n    return () => { cancelled = true }; // Cleanup\n  }, [filters]);\n  \n  // Render based on state...\n}",
+              "language": "javascript",
+              "description": "Production-ready pattern: cached async fetch with state management",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "jsp_q12_01",
+                "type": "multiple_choice",
+                "question": "Why check 'cancelled' in the useEffect cleanup?",
+                "options": [
+                  "To improve performance",
+                  "To prevent state updates on unmounted components",
+                  "To clear the cache",
+                  "To retry the fetch"
+                ],
+                "answer": "To prevent state updates on unmounted components",
+                "explanation": "Updating state after a component unmounts causes memory leaks and warnings. Cleanup prevents this."
+              },
+              {
+                "id": "jsp_q12_02",
+                "type": "true_false",
+                "question": "Caching fetch results reduces network requests and improves UX.",
+                "answer": true,
+                "explanation": "Yes! Smart caching avoids redundant work, speeds up repeated views, and reduces server load."
+              },
+              {
+                "id": "jsp_q12_03",
+                "type": "code_test",
+                "question": "Write a cache check: if key exists in map, return cached value",
+                "explanation": "Use Map's has() method to check if the key exists, then get() to retrieve and return the cached value.",
+                "code_example": {
+                  "code": "if (cache.has(key)) {\n  return cache.get(key);\n}",
+                  "language": "javascript",
+                  "description": "Simple cache lookup pattern",
+                  "autoRun": false,
+                  "typingSpeed": 80,
+                  "explanation": "Begin by writing an if statement that checks whether the map already contains the key. Type if (cache.has(key)) {. Inside the curly brackets, write return cache.get(key);. The has() method checks whether the key exists, and get() retrieves the saved value for that key. After that, close the curly bracket. This pattern lets your program reuse stored data instead of doing the same work again."
+                },
+                "testCriteria": {
+                  "expectedCode": "cache\\.has\\(key\\).*return\\s+cache\\.get\\(key\\)"
+                }
+              }
+            ],
+            "next_lesson_id": null
+          }
+        ]
+      }
+    ]
+  }
+}

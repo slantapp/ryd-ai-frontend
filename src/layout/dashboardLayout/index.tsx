@@ -17,12 +17,13 @@ const DashboardLayout = ({ children }: DashboardProps) => {
   const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
+  const canAccessAi = useAuthStore((s) => s.user?.canAccessAi === true);
 
   const [hasActiveSubscription, setHasActiveSubscription] = useState(
     () => loadSubscription() !== null
   );
 
-  const showSubscriptionGate = !hasActiveSubscription;
+  const showSubscriptionGate = !canAccessAi && !hasActiveSubscription;
 
   const handleSubscriptionComplete = useCallback(() => {
     setHasActiveSubscription(true);
@@ -43,7 +44,7 @@ const DashboardLayout = ({ children }: DashboardProps) => {
         />
         <div
           className={cn(
-            "min-h-0 w-full min-w-0 flex-1 overflow-y-auto rounded-[20px] bg-white p-3 shadow-lg scrollbar-hide sm:p-4 lg:ml-[19rem]",
+            "min-h-0 w-full min-w-0 flex-1 overflow-y-auto rounded-[20px] bg-white p-3 shadow-lg scrollbar-hide sm:p-4 lg:ml-76",
             mobileNavOpen && "max-lg:overflow-hidden",
           )}
           inert={showSubscriptionGate ? true : undefined}

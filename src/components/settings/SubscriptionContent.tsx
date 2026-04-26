@@ -20,7 +20,6 @@ import {
   Smartphone,
   Loader2,
   ShieldCheck,
-  Sparkles,
   Zap,
   Lock,
 } from "lucide-react";
@@ -46,7 +45,7 @@ const PLAN_META: Record<
     periodSuffix: string;
     accent: string;
     borderAccent: string;
-    icon: typeof Sparkles;
+    icon: typeof Zap;
     features: string[];
     popular?: boolean;
   }
@@ -68,24 +67,6 @@ const PLAN_META: Record<
       "Renews monthly unless cancelled",
     ],
   },
-  quarterly: {
-    name: "Quarterly",
-    tagline: "Balanced — one payment every 3 months",
-    durationLabel: "3-month access",
-    durationMonths: 3,
-    priceLabel: "₦11,500",
-    amountNgn: 11_500,
-    periodSuffix: "/ quarter",
-    accent: "from-[#CCE0FD] to-[#E8F0FF]",
-    borderAccent: "ring-2 ring-[#0063F7]/35",
-    icon: Sparkles,
-    popular: true,
-    features: [
-      "Full AI LMS access for the entire quarter",
-      "Fewer transactions — convenient for steady learners",
-      "Renews every 3 months unless cancelled",
-    ],
-  },
   annual: {
     name: "Annual",
     tagline: "Best value — pay once per year",
@@ -95,8 +76,9 @@ const PLAN_META: Record<
     amountNgn: 38_000,
     periodSuffix: "/ year",
     accent: "from-[#FCE7F3] to-[#F3ECFE]",
-    borderAccent: "border-transparent",
+    borderAccent: "ring-2 ring-[#0063F7]/35",
     icon: ShieldCheck,
+    popular: true,
     features: [
       "Full AI LMS access for 12 months",
       "Lowest cost per month — best savings",
@@ -907,7 +889,7 @@ const SubscriptionContent = ({
           "grid gap-3 sm:gap-4",
           gateMode
             ? "grid-cols-1 md:grid-cols-2"
-            : "lg:grid-cols-3"
+            : "md:grid-cols-2"
         )}
       >
         {(Object.keys(PLAN_META) as PlanId[]).map((planId) => {

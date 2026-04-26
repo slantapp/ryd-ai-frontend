@@ -1,7 +1,7 @@
 /** Client-side subscription record (demo / Paystack-style flow). Session-scoped. */
 export const SUBSCRIPTION_STORAGE_KEY = "ryd-ai-subscription-v3";
 
-export type PlanId = "monthly" | "quarterly" | "annual";
+export type PlanId = "monthly" | "annual";
 
 export interface Subscription {
   planId: PlanId;
@@ -18,7 +18,25 @@ export function loadSubscription(): Subscription | null {
   try {
     const raw = sessionStorage.getItem(SUBSCRIPTION_STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as Subscription;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const planId = parsed.planId;
+
+    if (planId === "quarterly") {
+      const sub = parsed as unknown as Subscription;
+      const migrated: Subscription = {
+        ...sub,
+        planId: "annual",
+        planName: "Annual",
+      };
+      saveSubscription(migrated);
+      return migrated;
+    }
+
+    if (planId !== "monthly" && planId !== "annual") {
+      return null;
+    }
+
+    return parsed as unknown as Subscription;
   } catch {
     return null;
   }

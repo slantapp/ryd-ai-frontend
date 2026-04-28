@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import axiosInstance from "@/lib/axios";
 import type { LoginPayload } from "@/utils/loginCode";
+import { useCoursesStore } from "@/stores/coursesStore";
 
 /**
  * Parent profile from `/parent/auth/login/ai` (and similar) — stored without
@@ -167,6 +168,9 @@ export const useAuthStore = create<AuthState>()(
           expiresAt: null,
           isLoggedIn: false,
         });
+        // Avoid leaking the previous user's in-memory progress/wishlist into the next session.
+        // Persisted course data remains stored under the previous user's scoped key.
+        useCoursesStore.getState().reset();
       },
     }),
     {

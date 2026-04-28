@@ -26,7 +26,7 @@ const CourseCategoryFolder = ({
       )}
     >
       <Card className="h-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:border-primary/25 hover:shadow-md p-0">
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5 sm:p-6">
+        <CardContent className="flex flex-col gap-4 p-2 sm:flex-row sm:items-center sm:gap-5 sm:p-4">
           <div className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 text-primary sm:size-16">
             <FolderOpen
               className="pointer-events-none absolute left-1/2 top-1/2 size-12 -translate-x-1/2 -translate-y-1/2 text-primary/15 sm:size-14"

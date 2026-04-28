@@ -193,7 +193,6 @@ function CourseDetailInner() {
   const curriculum = exercise
     ? getCurriculumBySlug(exercise)?.curriculum || null
     : null;
-  const progressKey = exercise ? `course-progress-${exercise}` : null;
   const isCodeTestQuestion = currentQuestion?.type === "code_test";
   const isLgUp = useMediaQueryMinLg();
 
@@ -408,57 +407,19 @@ function CourseDetailInner() {
   // PROGRESS HELPERS
   // ============================================================================
 
-  const loadProgress = useCallback((): CourseProgress | null => {
-    if (!progressKey) return null;
-    try {
-      const saved = localStorage.getItem(progressKey);
-      if (saved) {
-        const raw = JSON.parse(saved) as Partial<CourseProgress> & {
-          lastUpdated?: number;
-        };
-        // Only expire if lastUpdated exists and is older than 30 days (backwards compatible with old saves)
-        const lastUpdated = raw.lastUpdated;
-        if (typeof lastUpdated === "number") {
-          const daysSinceUpdate =
-            (Date.now() - lastUpdated) / (1000 * 60 * 60 * 24);
-          if (daysSinceUpdate >= 30) return null;
-        }
-        return {
-          lessonId: raw.lessonId ?? null,
-          lessonIndex: typeof raw.lessonIndex === "number" ? raw.lessonIndex : undefined,
-          questionIndex: typeof raw.questionIndex === "number" ? raw.questionIndex : 0,
-          lessonStarted: raw.lessonStarted ?? false,
-          canStartQuestions: raw.canStartQuestions ?? false,
-          lastUpdated: typeof raw.lastUpdated === "number" ? raw.lastUpdated : 0,
-        };
-      }
-    } catch (error) {
-      console.warn("Failed to load course progress:", error);
-    }
-    return null;
-  }, [progressKey]);
-
-  const saveProgress = useCallback(
+  const persistCoursePosition = useCallback(
     (progress: Partial<CourseProgress>) => {
-      if (!progressKey) return;
-      try {
-        const current = loadProgress();
-        const updated: CourseProgress = {
-          lessonId: progress.lessonId ?? current?.lessonId ?? null,
-          lessonIndex: progress.lessonIndex ?? current?.lessonIndex,
-          questionIndex: progress.questionIndex ?? current?.questionIndex ?? 0,
-          lessonStarted:
-            progress.lessonStarted ?? current?.lessonStarted ?? false,
-          canStartQuestions:
-            progress.canStartQuestions ?? current?.canStartQuestions ?? false,
-          lastUpdated: Date.now(),
-        };
-        localStorage.setItem(progressKey, JSON.stringify(updated));
-      } catch (error) {
-        console.warn("Failed to save course progress:", error);
-      }
+      if (!exercise) return;
+      updateCourseProgress(exercise, {
+        currentLessonId: progress.lessonId ?? null,
+        lessonIndex: progress.lessonIndex,
+        questionIndex: progress.questionIndex,
+        lessonStarted: progress.lessonStarted,
+        canStartQuestions: progress.canStartQuestions,
+        lastUpdated: Date.now(),
+      });
     },
-    [progressKey, loadProgress]
+    [exercise, updateCourseProgress]
   );
 
   const calculateProgress = useCallback(
@@ -606,7 +567,7 @@ function CourseDetailInner() {
       setCode("");
       setResults([]);
 
-      saveProgress({
+      persistCoursePosition({
         lessonId: currentLesson.id,
         lessonIndex: curriculum ? getLessonIndexInCurriculum(currentLesson, curriculum) : undefined,
         questionIndex: nextIndex,
@@ -682,7 +643,7 @@ function CourseDetailInner() {
       }
 
       // Persist "lesson completed" state so returning users see completion screen, not first lesson
-      saveProgress({
+      persistCoursePosition({
         lessonId: currentLesson.id,
         lessonIndex: curriculum ? getLessonIndexInCurriculum(currentLesson, curriculum) : undefined,
         questionIndex: totalQuestions,
@@ -713,7 +674,7 @@ function CourseDetailInner() {
     moduleCorrectCount,
     moduleTotalAnswered,
     curriculum,
-    saveProgress,
+    persistCoursePosition,
     speak,
     stopCodeTyping,
     typeCourseDetail,
@@ -793,7 +754,7 @@ function CourseDetailInner() {
     setModuleCorrectCount(0);
     setModuleTotalAnswered(0);
 
-    saveProgress({
+    persistCoursePosition({
       lessonId: firstLesson.id,
       lessonIndex: curriculum ? getLessonIndexInCurriculum(firstLesson, curriculum) : undefined,
       questionIndex: 0,
@@ -810,17 +771,21 @@ function CourseDetailInner() {
         setCanNextLesson(true);
       }
     });
-  }, [curriculum, saveProgress, speakLessonContent]);
+  }, [curriculum, persistCoursePosition, speakLessonContent]);
 
   const handleRestartCourse = useCallback(() => {
-    if (!exercise || !curriculum || !progressKey) return;
+    if (!exercise || !curriculum) return;
     stopSpeaking();
-    localStorage.removeItem(progressKey);
     updateCourseProgress(exercise, {
       status: "not-started",
       progress: 0,
       currentLessonId: null,
       completedLessons: [],
+      lessonIndex: undefined,
+      questionIndex: 0,
+      lessonStarted: false,
+      canStartQuestions: false,
+      lastUpdated: Date.now(),
     });
     setCurrentLesson(null);
     setCurrentQuestion(null);
@@ -836,7 +801,7 @@ function CourseDetailInner() {
     setTotalQuestionsAnswered(0);
     setModuleCorrectCount(0);
     setModuleTotalAnswered(0);
-  }, [exercise, curriculum, progressKey, updateCourseProgress, stopSpeaking]);
+  }, [exercise, curriculum, updateCourseProgress, stopSpeaking]);
 
   const handlePreviousLesson = useCallback(() => {
     if (!currentLesson || !curriculum) return;
@@ -870,7 +835,7 @@ function CourseDetailInner() {
       setModuleTotalAnswered(0);
     }
 
-    saveProgress({
+    persistCoursePosition({
       lessonId: prevLesson.id,
       lessonIndex: curriculum ? getLessonIndexInCurriculum(prevLesson, curriculum) : undefined,
       questionIndex: 0,
@@ -894,7 +859,7 @@ function CourseDetailInner() {
   }, [
     currentLesson,
     curriculum,
-    saveProgress,
+    persistCoursePosition,
     speakLessonContent,
     stopSpeaking,
   ]);
@@ -915,7 +880,7 @@ function CourseDetailInner() {
     setCode("");
     setResults([]);
 
-    saveProgress({
+    persistCoursePosition({
       lessonId: currentLesson.id,
       lessonIndex: curriculum ? getLessonIndexInCurriculum(currentLesson, curriculum) : undefined,
       questionIndex: prevIndex,
@@ -938,7 +903,7 @@ function CourseDetailInner() {
     currentLesson,
     currentQuestionIndex,
     curriculum,
-    saveProgress,
+    persistCoursePosition,
     speak,
     stopSpeaking,
     stopCodeTyping,
@@ -984,7 +949,7 @@ function CourseDetailInner() {
     setCorrectAnswersCount(0);
     setTotalQuestionsAnswered(0);
 
-    saveProgress({
+    persistCoursePosition({
       lessonId: currentLesson.id,
       lessonIndex: curriculum ? getLessonIndexInCurriculum(currentLesson, curriculum) : undefined,
       questionIndex: 0,
@@ -1010,7 +975,7 @@ function CourseDetailInner() {
     canStartQuestions,
     currentLesson,
     curriculum,
-    saveProgress,
+    persistCoursePosition,
     speak,
     stopSpeaking,
     stopCodeTyping,
@@ -1051,7 +1016,7 @@ function CourseDetailInner() {
       setModuleTotalAnswered(0);
     }
 
-    saveProgress({
+    persistCoursePosition({
       lessonId: nextLesson.id,
       lessonIndex: curriculum ? getLessonIndexInCurriculum(nextLesson, curriculum) : undefined,
       questionIndex: 0,
@@ -1076,7 +1041,7 @@ function CourseDetailInner() {
     canNextLesson,
     currentLesson,
     curriculum,
-    saveProgress,
+    persistCoursePosition,
     speakLessonContent,
     stopSpeaking,
   ]);
@@ -1378,7 +1343,16 @@ function CourseDetailInner() {
     if (lastRestoredExerciseRef.current === exercise) return;
     lastRestoredExerciseRef.current = exercise;
 
-    const saved = loadProgress();
+    const stored = useCoursesStore.getState().getCourseProgress(exercise);
+    if (!stored) return;
+    const saved: CourseProgress = {
+      lessonId: stored.currentLessonId ?? null,
+      lessonIndex: typeof stored.lessonIndex === "number" ? stored.lessonIndex : undefined,
+      questionIndex: typeof stored.questionIndex === "number" ? stored.questionIndex : 0,
+      lessonStarted: stored.lessonStarted ?? false,
+      canStartQuestions: stored.canStartQuestions ?? false,
+      lastUpdated: typeof stored.lastUpdated === "number" ? stored.lastUpdated : 0,
+    };
     // Prefer lessonIndex (position in curriculum) so we restore the correct lesson when IDs repeat across modules
     const lesson =
       typeof saved?.lessonIndex === "number"
@@ -1421,7 +1395,7 @@ function CourseDetailInner() {
         setCanPrevious(hasPrevLesson);
       }
     }
-  }, [curriculum, exercise, loadProgress]);
+  }, [curriculum, exercise]);
 
   // Keep Previous/Next lesson buttons in sync whenever we're on a lesson.
   // Previous: enabled whenever there's a previous question OR previous lesson.

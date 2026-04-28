@@ -68,6 +68,11 @@ const CourseCard = ({
     }
   };
 
+  const ageLabel =
+    course.ageRange && Number.isFinite(course.ageRange.min) && Number.isFinite(course.ageRange.max)
+      ? `Ages ${course.ageRange.min}–${course.ageRange.max}`
+      : null;
+
   const handleWishlistClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onWishlistToggle) {
@@ -76,7 +81,7 @@ const CourseCard = ({
   };
 
   return (
-    <Card className="group relative overflow-hidden rounded-2xl border-0 bg-white shadow-sm transition-all duration-300 hover:shadow-md">
+    <Card className="group relative overflow-hidden rounded-2xl border bg-white shadow-none transition-all duration-300 hover:shadow-md">
       {/* Image Container */}
       <div className="relative h-40 overflow-hidden sm:h-48">
         <img
@@ -125,8 +130,8 @@ const CourseCard = ({
       {/* Content */}
       <CardContent className="px-3 pb-4 pt-0 sm:px-4 sm:pb-4">
         {/* Level Badge */}
-        {course.level && (
-          <div className="mb-2">
+        {(course.level || ageLabel) && (
+          <div className="mb-2 flex flex-wrap gap-2">
             <span
               className={cn(
                 "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium",
@@ -135,6 +140,11 @@ const CourseCard = ({
             >
               {course.level}
             </span>
+            {ageLabel && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-700">
+                {ageLabel}
+              </span>
+            )}
           </div>
         )}
 

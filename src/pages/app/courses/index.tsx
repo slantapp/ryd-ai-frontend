@@ -2,6 +2,13 @@ import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
@@ -31,6 +38,9 @@ const CATEGORY_ICONS: Record<CourseCategoryId, LucideIcon> = {
 const CoursesPage = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [ageFilter, setAgeFilter] = useState<
+    "all" | "6-8" | "9-11" | "12-14" | "15-18"
+  >("all");
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CourseCategoryId | null>(null);
   const coursesPerPage = 6;
@@ -53,12 +63,20 @@ const CoursesPage = () => {
     } else {
       courses = getAllCourses();
     }
-    return courses.map((course) =>
+    const withCompletedProgress = courses.map((course) =>
       course.status === "completed"
         ? { ...course, progress: 100 }
         : course
     );
-  }, [activeTab, getAllCourses, getOngoingCourses, getCompletedCourses]);
+
+    if (ageFilter === "all") return withCompletedProgress;
+    const [min, max] = ageFilter.split("-").map((n) => Number(n));
+    return withCompletedProgress.filter((c) => {
+      const r = c.ageRange;
+      if (!r) return false;
+      return r.min <= max && r.max >= min;
+    });
+  }, [activeTab, ageFilter, getAllCourses, getOngoingCourses, getCompletedCourses]);
 
   const coursesInCategory = useMemo(() => {
     if (!selectedCategoryId) return [];
@@ -83,6 +101,11 @@ const CoursesPage = () => {
     setCurrentPage(1);
     setSelectedCategoryId(null);
   }, [activeTab]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedCategoryId(null);
+  }, [ageFilter]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -140,18 +163,45 @@ const CoursesPage = () => {
           }}
           className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 sm:gap-4"
         >
-          <div className="min-w-0 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] scrollbar-hide">
-            <TabsList className="inline-flex h-auto min-w-min gap-1 rounded-xl bg-gray-100/50 p-1 sm:w-fit">
-              <TabsTrigger className={tabTriggerClass} value="all">
-                All ({getAllCourses().length})
-              </TabsTrigger>
-              <TabsTrigger className={tabTriggerClass} value="ongoing">
-                Ongoing ({getOngoingCourses().length})
-              </TabsTrigger>
-              <TabsTrigger className={tabTriggerClass} value="completed">
-                Completed ({getCompletedCourses().length})
-              </TabsTrigger>
-            </TabsList>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] scrollbar-hide">
+              <TabsList className="inline-flex h-auto min-w-min gap-1 rounded-xl bg-gray-100/50 p-1 sm:w-fit">
+                <TabsTrigger className={tabTriggerClass} value="all">
+                  All ({getAllCourses().length})
+                </TabsTrigger>
+                <TabsTrigger className={tabTriggerClass} value="ongoing">
+                  Ongoing ({getOngoingCourses().length})
+                </TabsTrigger>
+                <TabsTrigger className={tabTriggerClass} value="completed">
+                  Completed ({getCompletedCourses().length})
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
+              <label className="font-inter text-xs font-medium text-gray-600">
+                Age
+              </label>
+              <div className="min-w-[160px]">
+                <Select
+                  value={ageFilter}
+                  onValueChange={(v) =>
+                    setAgeFilter(v as "all" | "6-8" | "9-11" | "12-14" | "15-18")
+                  }
+                >
+                  <SelectTrigger className="h-10 shadow-none">
+                    <SelectValue placeholder="All ages" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All ages</SelectItem>
+                    <SelectItem value="6-8">6–8</SelectItem>
+                    <SelectItem value="9-11">9–11</SelectItem>
+                    <SelectItem value="12-14">12–14</SelectItem>
+                    <SelectItem value="15-18">15–18</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -174,7 +224,7 @@ const CoursesPage = () => {
                 <p className="font-inter text-sm font-medium text-gray-800">
                   Categories
                 </p>
-                <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {categoryFolders.map(({ category, count }) => (
                     <CourseCategoryFolder
                       key={category.id}

@@ -9,6 +9,11 @@ import {
 
 export type CourseStatus = "not-started" | "ongoing" | "completed";
 
+export type AgeRange = {
+  min: number;
+  max: number;
+};
+
 export interface Course {
   title: string;
   desc: string;
@@ -17,6 +22,7 @@ export interface Course {
   categoryId: CourseCategoryId;
   status: CourseStatus;
   progress?: number; // 0-100
+  ageRange?: AgeRange;
   duration?: string; // e.g., "4 weeks"
   level?: "Beginner" | "Intermediate" | "Advanced";
   rating?: number; // 1-5
@@ -64,6 +70,7 @@ const defaultCourseMetadata: Record<
   {
     status: CourseStatus;
     progress?: number;
+    ageRange?: AgeRange;
     duration?: string;
     level?: "Beginner" | "Intermediate" | "Advanced";
     rating?: number;
@@ -72,6 +79,7 @@ const defaultCourseMetadata: Record<
   "intro-computer-science": {
     status: "not-started",
     progress: 45,
+    ageRange: { min: 9, max: 14 },
     duration: "6 weeks",
     level: "Beginner",
     rating: 4.8,
@@ -79,30 +87,35 @@ const defaultCourseMetadata: Record<
   "web-development-basics": {
     status: "not-started",
     progress: 100,
+    ageRange: { min: 10, max: 16 },
     duration: "4 weeks",
     level: "Beginner",
     rating: 4.9,
   },
   "javascript-beginner": {
     status: "not-started",
+    ageRange: { min: 11, max: 16 },
     duration: "5 weeks",
     level: "Beginner",
     rating: 4.6,
   },
   "web-basics": {
     status: "not-started",
+    ageRange: { min: 9, max: 14 },
     duration: "3 weeks",
     level: "Beginner",
     rating: 4.5,
   },
   "javascript-intermediate": {
     status: "not-started",
+    ageRange: { min: 12, max: 16 },
     duration: "6 weeks",
     level: "Intermediate",
     rating: 4.7,
   },
   "javascript-professional": {
     status: "not-started",
+    ageRange: { min: 13, max: 18 },
     duration: "8 weeks",
     level: "Advanced",
     rating: 4.8,
@@ -113,6 +126,7 @@ const defaultCourseMetadata: Record<
 function curriculumToCourse(curriculum: Curriculum): Course {
   const metadata = defaultCourseMetadata[curriculum.slug] || {
     status: "not-started" as CourseStatus,
+    ageRange: { min: 8, max: 16 },
     duration: "4 weeks",
     level: "Beginner" as const,
     rating: 4.5,
@@ -133,12 +147,40 @@ function curriculumToCourse(curriculum: Curriculum): Course {
 // Generate courses data from curriculaData
 export const coursesData: Course[] = curriculaData.map(curriculumToCourse);
 
+const AUTH_PERSIST_KEY = "ryd-ai-platform-auth";
+const USER_SCOPED_KEY_SEPARATOR = ":";
+
+function getActiveUserStorageSuffix(): string {
+  try {
+    const raw = localStorage.getItem(AUTH_PERSIST_KEY);
+    if (!raw) return "guest";
+    const parsed = JSON.parse(raw) as { state?: { user?: { id?: unknown } } };
+    const id = parsed?.state?.user?.id;
+    if (typeof id === "string" && id.trim()) return id.trim();
+    if (typeof id === "number" && Number.isFinite(id)) return String(id);
+    return "guest";
+  } catch {
+    return "guest";
+  }
+}
+
+function userScopedKey(baseKey: string): string {
+  return `${baseKey}${USER_SCOPED_KEY_SEPARATOR}${getActiveUserStorageSuffix()}`;
+}
+
 interface CourseProgressData {
   [slug: string]: {
     status: CourseStatus;
     progress: number;
     currentLessonId: string | null;
     completedLessons: string[]; // Array of completed lesson IDs
+    /** Flat index in curriculum (all modules in order). */
+    lessonIndex?: number;
+    /** Index in current lesson's `questions` array. */
+    questionIndex?: number;
+    lessonStarted?: boolean;
+    canStartQuestions?: boolean;
+    lastUpdated?: number;
   };
 }
 
@@ -158,6 +200,8 @@ interface CoursesState {
   getCompletedCourses: () => Course[];
   getOngoingCourses: () => Course[];
   getEnrolledCourses: () => Course[]; // ongoing + completed
+  /** Reset in-memory state (does not delete persisted data). */
+  reset: () => void;
 }
 
 export const useCoursesStore = create<CoursesState>()(
@@ -165,6 +209,7 @@ export const useCoursesStore = create<CoursesState>()(
     (set, get) => ({
       wishlist: new Set<string>(),
       courseProgress: {},
+      reset: () => set({ wishlist: new Set<string>(), courseProgress: {} }),
       addToWishlist: (slug: string) => {
         set((state) => {
           const newWishlist = new Set(state.wishlist);
@@ -289,7 +334,8 @@ export const useCoursesStore = create<CoursesState>()(
       // Custom storage to handle Set serialization
       storage: {
         getItem: (name) => {
-          const str = localStorage.getItem(name);
+          const scoped = userScopedKey(name);
+          const str = localStorage.getItem(scoped) ?? localStorage.getItem(name);
           if (!str) return null;
           const parsed = JSON.parse(str);
           return {
@@ -301,6 +347,7 @@ export const useCoursesStore = create<CoursesState>()(
           };
         },
         setItem: (name, value) => {
+          const scoped = userScopedKey(name);
           const toStore = {
             ...value,
             state: {
@@ -309,9 +356,9 @@ export const useCoursesStore = create<CoursesState>()(
               courseProgress: value.state.courseProgress || {},
             },
           };
-          localStorage.setItem(name, JSON.stringify(toStore));
+          localStorage.setItem(scoped, JSON.stringify(toStore));
         },
-        removeItem: (name) => localStorage.removeItem(name),
+        removeItem: (name) => localStorage.removeItem(userScopedKey(name)),
       },
     }
   )

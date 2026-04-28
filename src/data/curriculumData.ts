@@ -2,6 +2,10 @@ import beginnerDetailed from "./beginner_detailed.json";
 import htmlcssJavascriptCurriculum from "./htmlcss-jacascript-curriculum.json";
 import intermediateDetailed from "./intermediate_detailed.json";
 import professionalDetailed from "./professional_detailed.json";
+import pythonBeginner from "./python-beginner.json";
+import pythonIntermediate from "./python-intermediate.json";
+import pythonAdvance from "./python-advance.json";
+import cssFlexGridLessons from "./css_flex_grid_lessons.json";
 
 export interface Question {
   id?: string;
@@ -2040,6 +2044,10 @@ export const curriculaData: Curriculum[] = [
   htmlcssJavascriptCurriculum as Curriculum,
   intermediateDetailed as Curriculum,
   professionalDetailed as Curriculum,
+  pythonBeginner as Curriculum,
+  pythonIntermediate as Curriculum,
+  pythonAdvance as Curriculum,
+  cssFlexGridLessons as Curriculum,
 ];
 
 // Legacy export for backward compatibility (uses first curriculum)

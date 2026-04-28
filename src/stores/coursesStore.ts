@@ -50,6 +50,14 @@ const defaultCourseImages: Record<string, string> = {
     "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=200&fit=crop",
   "python-programming":
     "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=200&fit=crop",
+  "python-beginner":
+    "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=200&fit=crop",
+  "python-intermediate":
+    "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=200&fit=crop",
+  "python-advance":
+    "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=200&fit=crop",
+  "css_flex_grid_lessons":
+    "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=200&fit=crop",
   "javascript-fundamentals":
     "https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=400&h=200&fit=crop",
   "machine-learning-basics":
@@ -119,6 +127,34 @@ const defaultCourseMetadata: Record<
     duration: "8 weeks",
     level: "Advanced",
     rating: 4.8,
+  },
+  "python-beginner": {
+    status: "not-started",
+    ageRange: { min: 9, max: 14 },
+    duration: "6 weeks",
+    level: "Beginner",
+    rating: 4.7,
+  },
+  "python-intermediate": {
+    status: "not-started",
+    ageRange: { min: 12, max: 16 },
+    duration: "8 weeks",
+    level: "Intermediate",
+    rating: 4.8,
+  },
+  "python-advance": {
+    status: "not-started",
+    ageRange: { min: 14, max: 18 },
+    duration: "10 weeks",
+    level: "Advanced",
+    rating: 4.9,
+  },
+  "css_flex_grid_lessons": {
+    status: "not-started",
+    ageRange: { min: 10, max: 16 },
+    duration: "4 weeks",
+    level: "Intermediate",
+    rating: 4.7,
   },
 };
 

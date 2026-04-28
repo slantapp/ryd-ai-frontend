@@ -1,0 +1,518 @@
+{
+    "slug": "python-intermediate",
+    "curriculum": {
+        "title": "Python for Intermediate Learners",
+        "description": "Build on your Python basics! Master data manipulation, object-oriented programming, file handling, and real-world applications. Perfect for those ready to take their coding skills to the next level.",
+        "language": "en",
+        "modules": [
+            {
+                "id": "py_module_05",
+                "title": "Advanced Data Structures",
+                "prerequisite": "py_module_04",
+                "lessons": [
+                    {
+                        "id": "py_lesson_10",
+                        "title": "List Comprehensions",
+                        "body": "Create lists efficiently using comprehensions and learn advanced list operations.",
+                        "avatar_script": "Lists have hidden powers! Let's unlock them.",
+                        "media": {},
+                        "code_example": {
+                            "code": "numbers = [1, 2, 3, 4, 5]\nsquares = [x**2 for x in numbers]",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q28",
+                                "type": "multiple_choice",
+                                "question": "What does a list comprehension create?",
+                                "options": [
+                                    "A new list",
+                                    "A loop",
+                                    "A function",
+                                    "A dictionary"
+                                ],
+                                "answer": "A new list",
+                                "explanation": "List comprehensions create new lists efficiently in a single line."
+                            },
+                            {
+                                "id": "q29",
+                                "type": "true_false",
+                                "question": "List comprehensions are faster than loops.",
+                                "answer": true,
+                                "explanation": "Comprehensions are more efficient and readable than traditional loops."
+                            },
+                            {
+                                "id": "q30",
+                                "type": "code_test",
+                                "question": "Create squared numbers 1 to 5",
+                                "explanation": "Create a list named squares that contains the squares of numbers 1 through 5.",
+                                "code_example": {
+                                    "code": "squares = [x**2 for x in range(1,6)]",
+                                    "language": "python",
+                                    "explanation": "Start by typing the variable name squares to store the result. Add an equals sign = to begin your comprehension. Then open a square bracket [ to start the list comprehension. Type x**2 which represents squaring each number. Next, type 'for x in range(1,6):' to iterate through numbers 1 to 5. Finally, close with a square bracket ]. The range(1,6) gives us 1, 2, 3, 4, 5 because range excludes the end value. Your complete answer should be: squares = [x**2 for x in range(1,6)]"
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "for x in range"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_lesson_11"
+                    },
+                    {
+                        "id": "py_lesson_11",
+                        "title": "Tuples and Sets",
+                        "body": "Work with immutable tuples and unique sets for different data organization needs.",
+                        "avatar_script": "Different structures for different tasks!",
+                        "media": {},
+                        "code_example": {
+                            "code": "coordinates = (10, 20)\nunique_nums = {1, 2, 3, 2, 1}",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q31",
+                                "type": "multiple_choice",
+                                "question": "What property makes tuples special?",
+                                "options": [
+                                    "They are editable",
+                                    "They are immutable",
+                                    "They are sorted",
+                                    "They are empty"
+                                ],
+                                "answer": "They are immutable",
+                                "explanation": "Tuples cannot be modified after creation, making them safe for constants."
+                            },
+                            {
+                                "id": "q32",
+                                "type": "true_false",
+                                "question": "Sets automatically remove duplicates.",
+                                "answer": true,
+                                "explanation": "Sets store only unique values and remove any duplicates automatically."
+                            },
+                            {
+                                "id": "q33",
+                                "type": "code_test",
+                                "question": "Create a set of unique values",
+                                "explanation": "Create a set named unique that contains 1, 2, and 3.",
+                                "code_example": {
+                                    "code": "unique = {1, 2, 3}",
+                                    "language": "python",
+                                    "explanation": "Start by typing the variable name unique to store your set. Add an equals sign = to assign a value. Then open a curly brace { to begin creating a set. Type the numbers 1, 2, 3 separated by commas. Remember that sets use curly braces just like dictionaries, but without key-value pairs. Close with a curly brace }. Sets automatically keep only unique elements, so if you add duplicates, they will be removed. Your final answer should be: unique = {1, 2, 3}"
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "unique"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_lesson_12"
+                    },
+                    {
+                        "id": "py_lesson_12",
+                        "title": "Nested Data Structures",
+                        "body": "Master working with dictionaries containing lists, tuples, and other complex nested data.",
+                        "avatar_script": "Organize complex data hierarchies!",
+                        "media": {},
+                        "code_example": {
+                            "code": "student = {'name': 'Alice', 'grades': [85, 90, 88], 'info': {'age': 20}}\nfirst_grade = student['grades'][0]",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q34",
+                                "type": "multiple_choice",
+                                "question": "How do you access nested data?",
+                                "options": [
+                                    "Using single brackets",
+                                    "Using chained brackets",
+                                    "Using dot notation",
+                                    "Using slash notation"
+                                ],
+                                "answer": "Using chained brackets",
+                                "explanation": "Nested data is accessed by chaining bracket notation: dict['key'][index]"
+                            },
+                            {
+                                "id": "q35",
+                                "type": "true_false",
+                                "question": "You can nest any data structure inside dictionaries.",
+                                "answer": true,
+                                "explanation": "Dictionaries can contain lists, tuples, other dicts, and any Python object."
+                            },
+                            {
+                                "id": "q36",
+                                "type": "code_test",
+                                "question": "Access nested dictionary value",
+                                "explanation": "Read the email value from a nested dictionary and store it in a variable named email.",
+                                "code_example": {
+                                    "code": "email = person['contact']['email']",
+                                    "language": "python",
+                                    "explanation": "Given a dictionary person with a nested key 'contact' that contains another dictionary with the key 'email', you need to access that email value. Start by typing the variable name email to store the result. Add an equals sign = to assign a value. Type person which is the main dictionary. Add square brackets and type 'contact' in quotes to access the nested dictionary. Then immediately add another set of square brackets and type 'email' in quotes to access the email value inside the contact dictionary. This chaining of brackets allows you to access deeply nested values. Your complete answer should be: email = person['contact']['email']"
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "['contact']['email']"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_module_06"
+                    }
+                ]
+            },
+            {
+                "id": "py_module_06",
+                "title": "Object-Oriented Programming",
+                "prerequisite": "py_module_05",
+                "lessons": [
+                    {
+                        "id": "py_lesson_13",
+                        "title": "Classes and Objects",
+                        "body": "Create custom data types using classes and instantiate objects with attributes.",
+                        "avatar_script": "Think of classes as blueprints for objects!",
+                        "media": {},
+                        "code_example": {
+                            "code": "class Dog:\n    def __init__(self, name):\n        self.name = name\n\nmy_dog = Dog('Buddy')",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q37",
+                                "type": "multiple_choice",
+                                "question": "What is __init__ used for?",
+                                "options": [
+                                    "Initialization of objects",
+                                    "Printing output",
+                                    "Creating loops",
+                                    "Returning values"
+                                ],
+                                "answer": "Initialization of objects",
+                                "explanation": "__init__ initializes objects when they are created by setting attributes."
+                            },
+                            {
+                                "id": "q38",
+                                "type": "true_false",
+                                "question": "self refers to the object instance.",
+                                "answer": true,
+                                "explanation": "self is used inside classes to reference the object's own attributes and methods."
+                            },
+                            {
+                                "id": "q39",
+                                "type": "code_test",
+                                "question": "Create a Person class with name",
+                                "explanation": "Define a Person class where each instance stores a name on self.name.",
+                                "code_example": {
+                                    "code": "class Person:\n    def __init__(self, name):\n        self.name = name",
+                                    "language": "python",
+                                    "explanation": "Start by typing the keyword class followed by the class name Person with a colon at the end. Press Enter and indent the next line. Then type the special method __init__ with self and a name parameter inside parentheses, followed by a colon. Press Enter again and indent the method body. Inside __init__, type self.name = name to store the name parameter as an instance attribute. This creates a blueprint where any Person object will have a name attribute. Make sure to use proper indentation for both the class body and the method body. Your final answer should be: class Person: followed by def __init__(self, name): and then self.name = name"
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "class Person"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_lesson_14"
+                    },
+                    {
+                        "id": "py_lesson_14",
+                        "title": "Methods and Inheritance",
+                        "body": "Add methods to classes and create class hierarchies using inheritance.",
+                        "avatar_script": "Give objects actions and build relationships!",
+                        "media": {},
+                        "code_example": {
+                            "code": "class Animal:\n    def sound(self):\n                                return 'Generic sound'\n\nclass Dog(Animal):\n    def sound(self):\n        return 'Woof'",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q40",
+                                "type": "multiple_choice",
+                                "question": "What is a method?",
+                                "options": [
+                                    "A variable in a class",
+                                    "A function in a class",
+                                    "A loop",
+                                    "A string"
+                                ],
+                                "answer": "A function in a class",
+                                "explanation": "Methods are functions that belong to a class and define behavior."
+                            },
+                            {
+                                "id": "q41",
+                                "type": "true_false",
+                                "question": "Child classes can override parent methods.",
+                                "answer": true,
+                                "explanation": "Inheritance allows child classes to redefine parent methods with custom behavior."
+                            },
+                            {
+                                "id": "q42",
+                                "type": "code_test",
+                                "question": "Create Cat inheriting from Animal",
+                                "explanation": "Define a Cat class that inherits from Animal and returns 'Meow' from its sound method.",
+                                "code_example": {
+                                    "code": "class Cat(Animal):\n    def sound(self):\n        return 'Meow'",
+                                    "language": "python",
+                                    "explanation": "Start by typing the keyword class followed by Cat. Inside the parentheses, write Animal to indicate that Cat inherits from the Animal class. Add a colon at the end. Press Enter and indent to create the method body. Define a method called sound by typing def sound(self): followed by a colon. Press Enter and indent again for the method body. Type return 'Meow' to specify what the Cat's sound method returns. This overrides the parent Animal class's sound method so that cats meow instead of making a generic sound. Ensure proper indentation for the class body and method body. Your complete answer should be: class Cat(Animal): followed by def sound(self): and then return 'Meow'"
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "class Cat(Animal)"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_lesson_15"
+                    },
+                    {
+                        "id": "py_lesson_15",
+                        "title": "Polymorphism and Encapsulation",
+                        "body": "Use polymorphism to call methods on different objects and control data access with encapsulation.",
+                        "avatar_script": "Write flexible, secure code!",
+                        "media": {},
+                        "code_example": {
+                            "code": "class BankAccount:\n    def __init__(self, balance):\n        self.__balance = balance\n    \n    def get_balance(self):\n        return self.__balance",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q43",
+                                "type": "multiple_choice",
+                                "question": "What does __ prefix do?",
+                                "options": [
+                                    "Makes attribute public",
+                                    "Makes attribute private",
+                                    "Creates a method",
+                                    "Adds a comment"
+                                ],
+                                "answer": "Makes attribute private",
+                                "explanation": "Double underscore __ makes attributes private by name mangling."
+                            },
+                            {
+                                "id": "q44",
+                                "type": "true_false",
+                                "question": "Polymorphism allows different objects to respond to the same method call differently.",
+                                "answer": true,
+                                "explanation": "Polymorphism enables flexibility by allowing subclasses to implement methods in their own way."
+                            },
+                            {
+                                "id": "q45",
+                                "type": "code_test",
+                                "question": "Create private attribute",
+                                "explanation": "Create a private attribute named __password by assigning it inside a class (for example in __init__).",
+                                "code_example": {
+                                    "code": "self.__password = password",
+                                    "language": "python",
+                                    "explanation": "Within a class method like __init__, you create a private attribute by typing self followed by two underscores and then the attribute name. For example, to create a private password attribute, type self.__password. Then add an equals sign = to assign it a value, such as the password parameter passed to the method. The double underscore prefix tells Python that this attribute should be treated as private and cannot be accessed directly from outside the class. This prevents accidental or malicious modification of sensitive data. Your answer should be: self.__password = password"
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "__password"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_module_07"
+                    }
+                ]
+            },
+            {
+                "id": "py_module_07",
+                "title": "File Handling and Exceptions",
+                "prerequisite": "py_module_06",
+                "lessons": [
+                    {
+                        "id": "py_lesson_16",
+                        "title": "Working with Files",
+                        "body": "Read, write, and manipulate files using context managers and file operations.",
+                        "avatar_script": "Store and retrieve data from files!",
+                        "media": {},
+                        "code_example": {
+                            "code": "with open('data.txt', 'r') as file:\n    content = file.read()\n    print(content)",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q46",
+                                "type": "multiple_choice",
+                                "question": "What does 'w' mode do when opening files?",
+                                "options": [
+                                    "Reads the file",
+                                    "Writes or overwrites the file",
+                                    "Appends to the file",
+                                    "Executes the file"
+                                ],
+                                "answer": "Writes or overwrites the file",
+                                "explanation": "'w' mode creates a new file or overwrites an existing one."
+                            },
+                            {
+                                "id": "q47",
+                                "type": "true_false",
+                                "question": "The 'with' statement automatically closes files.",
+                                "answer": true,
+                                "explanation": "The 'with' statement ensures proper file closure even if errors occur."
+                            },
+                            {
+                                "id": "q48",
+                                "type": "code_test",
+                                "question": "Write text to a file",
+                                "explanation": "Open a file in write mode and write the text 'Hello World' into it.",
+                                "code_example": {
+                                    "code": "with open('output.txt', 'w') as f:\n    f.write('Hello World')",
+                                    "language": "python",
+                                    "explanation": "Start with the keyword with followed by open(). Inside the parentheses, type the filename in quotes 'output.txt'. Add a comma and type 'w' in quotes to specify write mode. Add another comma and type as followed by a variable name file to store the file object. End with a colon. Press Enter and indent the next line. Inside the with block, type file.write() with the text you want to write in quotes. This could be 'Hello World'. The write() method outputs the string to the file. Using the with statement ensures the file is automatically closed after the block completes, even if an error occurs. Your complete answer should be: with open('output.txt', 'w') as f: followed by f.write('Hello World')"
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "f.write"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_lesson_17"
+                    },
+                    {
+                        "id": "py_lesson_17",
+                        "title": "Exception Handling",
+                        "body": "Handle errors gracefully with try-except blocks and raise custom exceptions.",
+                        "avatar_script": "Handle errors like a pro!",
+                        "media": {},
+                        "code_example": {
+                            "code": "try:\n    result = 10 / 0\nexcept ZeroDivisionError:\n    print('Cannot divide by zero')\nfinally:\n    print('Done')",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q49",
+                                "type": "multiple_choice",
+                                "question": "What does the finally block do?",
+                                "options": [
+                                    "Catches errors",
+                                    "Runs regardless of exceptions",
+                                    "Skips execution",
+                                    "Raises exceptions"
+                                ],
+                                "answer": "Runs regardless of exceptions",
+                                "explanation": "finally executes whether an exception occurs or not, useful for cleanup."
+                            },
+                            {
+                                "id": "q50",
+                                "type": "true_false",
+                                "question": "You can have multiple except blocks.",
+                                "answer": true,
+                                "explanation": "Multiple except blocks can catch different exception types."
+                            },
+                            {
+                                "id": "q51",
+                                "type": "code_test",
+                                "question": "Handle ValueError",
+                                "explanation": "Write a try/except block that catches a ValueError and prints a friendly message.",
+                                "code_example": {
+                                    "code": "try:\n    x = int('abc')\nexcept ValueError:\n    print('Invalid')",
+                                    "language": "python",
+                                    "explanation": "Start with the keyword try followed by a colon. Press Enter and indent to write code that might cause an error, such as x = int('abc'). Since 'abc' cannot be converted to an integer, this will raise a ValueError. Press Backspace to unindent and type except followed by the specific exception type ValueError and a colon. Press Enter and indent the exception handler. Type print() with a message in quotes like 'Invalid' that will display if the error occurs. This structure allows your program to catch and handle the error gracefully instead of crashing. Your complete answer should be: try: followed by x = int('abc') on the next indented line, then except ValueError: and finally print('Invalid') on the indented line below that."
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "except ValueError"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_lesson_18"
+                    },
+                    {
+                        "id": "py_lesson_18",
+                        "title": "Working with JSON and CSV",
+                        "body": "Parse and generate JSON and CSV files for data storage and exchange.",
+                        "avatar_script": "Work with real-world data formats!",
+                        "media": {},
+                        "code_example": {
+                            "code": "import json\ndata = {'name': 'Alice', 'age': 30}\njson_string = json.dumps(data)\nloaded = json.loads(json_string)",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q52",
+                                "type": "multiple_choice",
+                                "question": "What does json.dumps() return?",
+                                "options": [
+                                    "A Python dictionary",
+                                    "A JSON string",
+                                    "A file",
+                                    "A list"
+                                ],
+                                "answer": "A JSON string",
+                                "explanation": "json.dumps() serializes a Python object into a JSON formatted string."
+                            },
+                            {
+                                "id": "q53",
+                                "type": "true_false",
+                                "question": "CSV files can only contain text.",
+                                "answer": false,
+                                "explanation": "CSV can represent various data types, though they are stored as text."
+                            },
+                            {
+                                "id": "q54",
+                                "type": "code_test",
+                                "question": "Parse JSON string",
+                                "explanation": "Convert a JSON-formatted string into a Python object using json.loads().",
+                                "code_example": {
+                                    "code": "data = json.loads('{\"name\":\"Bob\"}')",
+                                    "language": "python",
+                                    "explanation": "To convert a JSON formatted string back into a Python dictionary, you use the json.loads() function. Start by typing the variable name data to store the result. Add an equals sign = to assign a value. Type json.loads() and inside the parentheses, add a JSON string. A valid JSON string must use double quotes around keys and string values. For example, '{\"name\":\"Bob\"}' is valid JSON representing a dictionary with a key 'name' and value 'Bob'. The loads() function (note: loads, not load) specifically works with strings. If you were reading from a file, you would use load() instead. Your complete answer should be: data = json.loads('{\"name\":\"Bob\"}')"
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "json.loads"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_module_08"
+                    }
+                ]
+            },
+            {
+                "id": "py_module_08",
+                "title": "Advanced Projects",
+                "prerequisite": "py_module_07",
+                "lessons": [
+                    {
+                        "id": "py_lesson_19",
+                        "title": "Building a Complete Application",
+                        "body": "Combine all concepts to build a comprehensive todo list application with file persistence.",
+                        "avatar_script": "Build a real-world application!",
+                        "media": {},
+                        "code_example": {
+                            "code": "class TodoList:\n    def __init__(self, filename):\n        self.filename = filename\n        self.tasks = []\n    \n    def add_task(self, task):\n        self.tasks.append(task)\n    \n    def save(self):\n        with open(self.filename, 'w') as f:\n            json.dump(self.tasks, f)",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q55",
+                                "type": "multiple_choice",
+                                "question": "What design pattern is used here?",
+                                "options": [
+                                    "Functional programming",
+                                    "Object-Oriented Programming",
+                                    "Procedural programming",
+                                    "Declarative programming"
+                                ],
+                                "answer": "Object-Oriented Programming",
+                                "explanation": "Classes encapsulate data and methods to create well-organized applications."
+                            },
+                            {
+                                "id": "q56",
+                                "type": "true_false",
+                                "question": "This application persists data to a file.",
+                                "answer": true,
+                                "explanation": "The save() method stores tasks to a file so they persist between sessions."
+                            },
+                            {
+                                "id": "q57",
+                                "type": "code_test",
+                                "question": "Add load method to TodoList",
+                                "explanation": "Add a load() method that reads saved tasks from disk and assigns them back to self.tasks.",
+                                "code_example": {
+                                    "code": "def load(self):\n    with open(self.filename, 'r') as f:\n        self.tasks = json.load(f)",
+                                    "language": "python",
+                                    "explanation": "Inside the TodoList class, create a new method called load that retrieves tasks from the saved file. Start by typing def load(self): followed by a colon and press Enter to indent. Using the same pattern as the save method, use the with statement to open the file. Type with open(self.filename, 'r') with 'r' mode to read the file. Add as f: to assign the file object. Press Enter and indent. Instead of json.dump() which writes to a file, use json.load() which reads from a file. Type self.tasks = json.load(f) to load the tasks from the file and store them in the instance variable. This is the reverse operation of save(), allowing the application to restore previously saved tasks. Your complete answer should be: def load(self): followed by with open(self.filename, 'r') as f: and then self.tasks = json.load(f) on the properly indented line."
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "def load"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": null
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -1,0 +1,463 @@
+{
+  "slug": "css_flex_grid_lessons",
+  "curriculum": {
+    "title": "CSS Flexbox and Grid Mastery",
+    "description": "Build a strong understanding of Flexbox and Grid. Learn how to arrange items, control spacing, create responsive layouts, and choose the right layout tool for each design problem.",
+    "language": "en",
+    "modules": [
+      {
+        "id": "cssfg_module_01",
+        "title": "Learning Flexbox",
+        "prerequisite": null,
+        "lessons": [
+          {
+            "id": "cssfg_lesson_01",
+            "title": "What Flexbox Is and When to Use It",
+            "body": "Flexbox is a layout system used for arranging items in one direction at a time. That direction can be a row or a column. It is very useful when you want to line items up, center them, or spread space between them. Flexbox works well for menus, button rows, small card groups, and simple sections where the layout mainly moves in one line.",
+            "avatar_script": "In this lesson, the student learns that Flexbox is best when items need to be arranged in a single direction. The main goal is to help the student notice that Flexbox is excellent for alignment and spacing.",
+            "media": {},
+            "code_example": {
+              "code": "/* HTML\n<div class=\"menu\">\n  <div>Home</div>\n  <div>About</div>\n  <div>Contact</div>\n</div>\n*/\n\n.menu {\n  display: flex;\n  gap: 16px;\n  padding: 12px;\n  border: 2px solid black;\n}",
+              "language": "css",
+              "description": "A simple row layout using display: flex",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "cssfg_q1_01",
+                "type": "multiple_choice",
+                "question": "When is Flexbox usually the better choice?",
+                "options": [
+                  "When you want to control a row or a column of items",
+                  "When you need a complex full-page layout with many rows and columns",
+                  "When you want to write JavaScript",
+                  "When you want to store data"
+                ],
+                "answer": "When you want to control a row or a column of items",
+                "explanation": "Flexbox is best for one-direction layout problems, such as placing items in a row or in a column."
+              },
+              {
+                "id": "cssfg_q1_02",
+                "type": "true_false",
+                "question": "Flexbox is mainly used for one-dimensional layouts.",
+                "answer": true,
+                "explanation": "That is correct. Flexbox controls layout in one direction at a time."
+              },
+              {
+                "id": "cssfg_q1_03",
+                "type": "code_test",
+                "question": "Make a container use Flexbox so its items appear in a row.",
+                "explanation": "Write a CSS rule that turns .container into a flex container so its children line up in a row.",
+                "code_example": {
+                  "code": ".container {\n  display: flex;\n}",
+                  "language": "css",
+                  "explanation": "Begin by writing the selector for the container you want to style. Type .container and then open a curly bracket. On the next line, add the property display followed by a colon. Then type flex and end the line with a semicolon so the browser knows this container should use Flexbox. This will place the child items in a row by default. After that, close the curly bracket. Your code should look like a CSS rule that turns the container into a flex container.",
+                  "description": "Turning a container into a flex container",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCode": "\\.container\\s*\\{[^}]*display\\s*:\\s*flex\\s*;"
+                }
+              }
+            ],
+            "next_lesson_id": "cssfg_lesson_02"
+          },
+          {
+            "id": "cssfg_lesson_02",
+            "title": "Flex Direction, Justify Content, and Align Items",
+            "body": "Flexbox has a main axis and a cross axis. flex-direction decides whether items move in a row or a column. justify-content controls spacing along the main axis. align-items controls alignment across the cross axis. These properties help you center items, push them apart, or stack them in the direction you want.",
+            "avatar_script": "In this lesson, the student learns how Flexbox controls direction and alignment. The goal is to understand the difference between placing items along the main axis and aligning them on the cross axis.",
+            "media": {},
+            "code_example": {
+              "code": "/* HTML\n<div class=\"box-row\">\n  <div>One</div>\n  <div>Two</div>\n  <div>Three</div>\n</div>\n*/\n\n.box-row {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  height: 120px;\n  border: 2px solid black;\n}",
+              "language": "css",
+              "description": "Using justify-content and align-items to control spacing and alignment",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "cssfg_q2_01",
+                "type": "multiple_choice",
+                "question": "Which property changes a flex layout from a row to a column?",
+                "options": [
+                  "justify-content",
+                  "align-items",
+                  "flex-direction",
+                  "gap"
+                ],
+                "answer": "flex-direction",
+                "explanation": "flex-direction changes the direction of the main axis."
+              },
+              {
+                "id": "cssfg_q2_02",
+                "type": "true_false",
+                "question": "justify-content controls spacing on the main axis.",
+                "answer": true,
+                "explanation": "Yes. It controls how items are placed along the main direction of the flex container."
+              },
+              {
+                "id": "cssfg_q2_03",
+                "type": "code_test",
+                "question": "Center flex items horizontally and vertically inside a container.",
+                "explanation": "Write CSS that centers the items inside a flex container both horizontally and vertically.",
+                "code_example": {
+                  "code": ".container {\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 150px;\n}",
+                  "language": "css",
+                  "explanation": "Begin by writing the selector for the container. Open a curly bracket and turn the container into a flex container by writing display: flex;. On the next line, write justify-content: center; so the items move to the center of the main axis. After that, write align-items: center; so the items also move to the center of the cross axis. If you want to clearly see the centering, make sure the container has some height, such as height: 150px;. Finally, close the curly bracket. This combination centers the child items in both directions.",
+                  "description": "Centering items in a flex container",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCode": "justify-content\\s*:\\s*center\\s*;[\\s\\S]*align-items\\s*:\\s*center\\s*;"
+                }
+              }
+            ],
+            "next_lesson_id": "cssfg_lesson_03"
+          },
+          {
+            "id": "cssfg_lesson_03",
+            "title": "Flex Wrap, Gap, and Flexible Item Sizing",
+            "body": "Sometimes items do not fit on one line. flex-wrap lets them move onto a new line instead of squeezing too tightly. gap adds space between items. Properties such as flex-grow, flex-shrink, and flex-basis help control how each item uses space. These tools are useful when making card rows, small galleries, and responsive groups of items.",
+            "avatar_script": "In this lesson, the student learns how Flexbox handles extra items and changing screen sizes. The main goal is to understand wrapping, spacing, and flexible sizing.",
+            "media": {},
+            "code_example": {
+              "code": "/* HTML\n<div class=\"cards\">\n  <div class=\"card\">Card 1</div>\n  <div class=\"card\">Card 2</div>\n  <div class=\"card\">Card 3</div>\n  <div class=\"card\">Card 4</div>\n</div>\n*/\n\n.cards {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 16px;\n}\n\n.card {\n  flex: 1 1 180px;\n  border: 2px solid black;\n  padding: 16px;\n}",
+              "language": "css",
+              "description": "Wrapping cards with gap and flexible widths",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "cssfg_q3_01",
+                "type": "multiple_choice",
+                "question": "Which property lets flex items move to a new line?",
+                "options": [
+                  "flex-wrap",
+                  "flex-basis",
+                  "align-content",
+                  "order"
+                ],
+                "answer": "flex-wrap",
+                "explanation": "flex-wrap allows items to continue on another line when there is not enough space."
+              },
+              {
+                "id": "cssfg_q3_02",
+                "type": "true_false",
+                "question": "gap adds space between flex items without needing margins on every item.",
+                "answer": true,
+                "explanation": "That is correct. gap is a clean way to add spacing between items."
+              },
+              {
+                "id": "cssfg_q3_03",
+                "type": "code_test",
+                "question": "Make a flex card container wrap and give it space between the cards.",
+                "explanation": "Write CSS that wraps a row of cards and adds spacing between them.",
+                "code_example": {
+                  "code": ".cards {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 16px;\n}\n\n.card {\n  flex: 1 1 180px;\n}",
+                  "language": "css",
+                  "explanation": "Begin by writing the selector for the card container. Open the curly bracket and add display: flex; to turn it into a flex container. On the next line, write flex-wrap: wrap; so the cards can move onto a new line when the row becomes too full. After that, write gap: 16px; to add even spacing between the cards. Then close the curly bracket. If you also want each card to have a flexible width, write a separate rule for the card items and use flex: 1 1 180px; so each card can grow, shrink, and start from a base width.",
+                  "description": "Wrapping and spacing flex cards",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCode": "flex-wrap\\s*:\\s*wrap\\s*;[\\s\\S]*gap\\s*:\\s*16px\\s*;"
+                }
+              }
+            ],
+            "next_lesson_id": "cssfg_module_02"
+          }
+        ]
+      },
+      {
+        "id": "cssfg_module_02",
+        "title": "Learning CSS Grid",
+        "prerequisite": "cssfg_module_01",
+        "lessons": [
+          {
+            "id": "cssfg_lesson_04",
+            "title": "What Grid Is and When to Use It",
+            "body": "CSS Grid is a layout system for arranging items in rows and columns at the same time. This makes it a strong choice for page sections, dashboards, galleries, and layouts where both width and height relationships matter. Use Grid when the design needs more structure than a single row or single column.",
+            "avatar_script": "In this lesson, the student learns that Grid is useful when a layout needs both rows and columns. The main idea is to compare this with Flexbox and notice that Grid gives more control over larger layout structures.",
+            "media": {},
+            "code_example": {
+              "code": "/* HTML\n<div class=\"layout\">\n  <div>Header</div>\n  <div>Sidebar</div>\n  <div>Main</div>\n  <div>Footer</div>\n</div>\n*/\n\n.layout {\n  display: grid;\n  grid-template-columns: 1fr 3fr;\n  gap: 16px;\n}",
+              "language": "css",
+              "description": "A basic grid with two columns",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "cssfg_q4_01",
+                "type": "multiple_choice",
+                "question": "When is Grid usually the better choice?",
+                "options": [
+                  "When you need rows and columns working together",
+                  "When you only need one button centered",
+                  "When you are writing JavaScript functions",
+                  "When you want to rename a variable"
+                ],
+                "answer": "When you need rows and columns working together",
+                "explanation": "Grid is powerful when a layout needs two-dimensional control."
+              },
+              {
+                "id": "cssfg_q4_02",
+                "type": "true_false",
+                "question": "Grid is mainly used for two-dimensional layouts.",
+                "answer": true,
+                "explanation": "Yes. Grid controls rows and columns together."
+              },
+              {
+                "id": "cssfg_q4_03",
+                "type": "code_test",
+                "question": "Turn a container into a grid with two columns.",
+                "explanation": "Write CSS that turns .container into a two-column grid layout.",
+                "code_example": {
+                  "code": ".container {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 16px;\n}",
+                  "language": "css",
+                  "explanation": "Begin by writing the selector for the container. Open a curly bracket and add display: grid; to tell the browser this element should use Grid. On the next line, write grid-template-columns: 1fr 1fr; so the container has two equal columns. If you want space between the grid items, add gap: 16px; on the next line. Then close the curly bracket. This creates a simple grid with two columns of the same width.",
+                  "description": "Creating a two-column grid",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCode": "display\\s*:\\s*grid\\s*;[\\s\\S]*grid-template-columns\\s*:\\s*1fr\\s+1fr\\s*;"
+                }
+              }
+            ],
+            "next_lesson_id": "cssfg_lesson_05"
+          },
+          {
+            "id": "cssfg_lesson_05",
+            "title": "Grid Columns, Rows, Gaps, and Item Placement",
+            "body": "Grid lets you define columns and rows clearly. grid-template-columns sets the column sizes, and grid-template-rows sets row sizes. gap adds space between items. You can also place items exactly where you want using properties such as grid-column and grid-row. This helps when making dashboards, magazine-like layouts, and structured page sections.",
+            "avatar_script": "In this lesson, the student learns how to build a stronger grid by controlling both columns and rows. The goal is to understand how items can be placed into exact parts of the layout.",
+            "media": {},
+            "code_example": {
+              "code": "/* HTML\n<div class=\"dashboard\">\n  <div class=\"header\">Header</div>\n  <div class=\"sidebar\">Sidebar</div>\n  <div class=\"main\">Main</div>\n</div>\n*/\n\n.dashboard {\n  display: grid;\n  grid-template-columns: 200px 1fr;\n  grid-template-rows: 80px 1fr;\n  gap: 16px;\n}\n\n.header {\n  grid-column: 1 / 3;\n}\n",
+              "language": "css",
+              "description": "Creating rows and columns and making the header span across them",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "cssfg_q5_01",
+                "type": "multiple_choice",
+                "question": "Which property makes a grid item stretch across more than one column?",
+                "options": [
+                  "grid-row",
+                  "grid-column",
+                  "justify-items",
+                  "align-self"
+                ],
+                "answer": "grid-column",
+                "explanation": "grid-column can be used to tell an item where to start and end across the columns."
+              },
+              {
+                "id": "cssfg_q5_02",
+                "type": "true_false",
+                "question": "grid-template-rows controls the height pattern of grid rows.",
+                "answer": true,
+                "explanation": "Correct. It defines how the rows are sized."
+              },
+              {
+                "id": "cssfg_q5_03",
+                "type": "code_test",
+                "question": "Make a header span across two grid columns.",
+                "explanation": "Write CSS that makes a header stretch across two columns in a grid layout.",
+                "code_example": {
+                  "code": ".header {\n  grid-column: 1 / 3;\n}",
+                  "language": "css",
+                  "explanation": "Begin by writing the selector for the header item. Open a curly bracket and add the property grid-column followed by a colon. Next, type 1 / 3 and end the line with a semicolon. This tells the header to start at grid line 1 and end at grid line 3, which makes it stretch across two columns. Then close the curly bracket. Make sure the parent container already has display: grid; and at least two columns defined, otherwise the spanning effect will not be visible.",
+                  "description": "Making a grid item span two columns",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCode": "grid-column\\s*:\\s*1\\s*/\\s*3\\s*;"
+                }
+              }
+            ],
+            "next_lesson_id": "cssfg_lesson_06"
+          },
+          {
+            "id": "cssfg_lesson_06",
+            "title": "Responsive Grid with repeat, minmax, and auto-fit",
+            "body": "Grid becomes even more useful when layouts need to respond to different screen sizes. repeat() saves typing when many columns follow the same pattern. minmax() gives a minimum and maximum size. auto-fit can make columns automatically adjust to the available space. These tools help create responsive card layouts and galleries without writing many media queries.",
+            "avatar_script": "In this lesson, the student learns how Grid can adjust automatically as the screen changes. The main goal is to understand how repeat, minmax, and auto-fit create flexible layouts.",
+            "media": {},
+            "code_example": {
+              "code": "/* HTML\n<div class=\"gallery\">\n  <div>1</div>\n  <div>2</div>\n  <div>3</div>\n  <div>4</div>\n</div>\n*/\n\n.gallery {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));\n  gap: 16px;\n}",
+              "language": "css",
+              "description": "A responsive grid that adjusts the number of columns automatically",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "cssfg_q6_01",
+                "type": "multiple_choice",
+                "question": "What does minmax(180px, 1fr) do in a grid?",
+                "options": [
+                  "It deletes a column",
+                  "It gives the column a minimum and maximum sizing rule",
+                  "It centers text",
+                  "It changes the HTML"
+                ],
+                "answer": "It gives the column a minimum and maximum sizing rule",
+                "explanation": "minmax lets a track stay above a minimum size while still being flexible."
+              },
+              {
+                "id": "cssfg_q6_02",
+                "type": "true_false",
+                "question": "repeat() can help avoid writing the same column size again and again.",
+                "answer": true,
+                "explanation": "Yes. repeat() makes grid code shorter and easier to read."
+              },
+              {
+                "id": "cssfg_q6_03",
+                "type": "code_test",
+                "question": "Create a responsive grid that automatically fits as many 180px cards as possible.",
+                "explanation": "Write a responsive grid layout that automatically creates as many 180px-wide columns as can fit.",
+                "code_example": {
+                  "code": ".gallery {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));\n  gap: 16px;\n}",
+                  "language": "css",
+                  "explanation": "Begin by writing the selector for the grid container. Open a curly bracket and add display: grid; on the first line so the container uses Grid. On the next line, write grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));. The repeat() part tells the browser to make as many columns as will fit. The auto-fit part tells the browser to fit the columns into the available space. The minmax(180px, 1fr) part tells each column to stay at least 180 pixels wide but also grow if more space is available. After that, add gap: 16px; to create spacing between the cards. Then close the curly bracket.",
+                  "description": "Responsive grid with repeat, auto-fit, and minmax",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCode": "repeat\\(\\s*auto-fit\\s*,\\s*minmax\\(\\s*180px\\s*,\\s*1fr\\s*\\)\\s*\\)"
+                }
+              }
+            ],
+            "next_lesson_id": "cssfg_module_03"
+          }
+        ]
+      },
+      {
+        "id": "cssfg_module_03",
+        "title": "Choosing the Right Layout Tool",
+        "prerequisite": "cssfg_module_02",
+        "lessons": [
+          {
+            "id": "cssfg_lesson_07",
+            "title": "Flexbox vs Grid: How to Choose",
+            "body": "Flexbox and Grid are both powerful, but they solve different layout problems. Use Flexbox when the layout mainly moves in one direction, such as a row of buttons, a navigation bar, or a vertical list. Use Grid when the layout needs rows and columns together, such as dashboards, full page sections, galleries, or card boards. In many real projects, designers and developers use both at the same time.",
+            "avatar_script": "In this lesson, the student learns how to choose between Flexbox and Grid by looking at the layout problem first. The goal is to build confidence in deciding which tool fits the job.",
+            "media": {},
+            "code_example": {
+              "code": "/* Flexbox for a navigation bar */\n.nav {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n}\n\n/* Grid for a page layout */\n.page {\n  display: grid;\n  grid-template-columns: 220px 1fr;\n  gap: 20px;\n}",
+              "language": "css",
+              "description": "A small example showing a typical Flexbox use and a typical Grid use",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "cssfg_q7_01",
+                "type": "multiple_choice",
+                "question": "Which tool is usually better for a navigation bar with items in one row?",
+                "options": [
+                  "Grid",
+                  "Flexbox",
+                  "JavaScript",
+                  "HTML only"
+                ],
+                "answer": "Flexbox",
+                "explanation": "A navigation bar is usually a one-direction layout, which makes Flexbox a strong choice."
+              },
+              {
+                "id": "cssfg_q7_02",
+                "type": "true_false",
+                "question": "A webpage can use Grid for the main layout and Flexbox inside smaller sections.",
+                "answer": true,
+                "explanation": "Yes. Real projects often combine both layout systems."
+              },
+              {
+                "id": "cssfg_q7_03",
+                "type": "code_test",
+                "question": "Write one CSS rule that uses Flexbox for a nav bar and another CSS rule that uses Grid for a page layout.",
+                "explanation": "Write two CSS rules: one for a nav bar using Flexbox, and one for a page layout using Grid.",
+                "code_example": {
+                  "code": ".nav {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n}\n\n.page {\n  display: grid;\n  grid-template-columns: 220px 1fr;\n  gap: 20px;\n}",
+                  "language": "css",
+                  "explanation": "Begin by writing the selector for the navigation bar, such as .nav, and open a curly bracket. Add display: flex; so the navigation items line up in one direction. You can then add justify-content: space-between; to spread the items and align-items: center; to line them up neatly. Close that rule. On the next lines, write another selector for the page layout, such as .page, and open a new curly bracket. Add display: grid; to make it a grid container. Then write grid-template-columns: 220px 1fr; so the layout has a smaller sidebar column and a larger content column. Add gap: 20px; if you want spacing between the sections. Then close the curly bracket. This shows that Flexbox can handle the smaller one-direction layout while Grid can handle the larger two-direction layout.",
+                  "description": "Using Flexbox and Grid for different parts of the same webpage",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCode": "\\.nav\\s*\\{[\\s\\S]*display\\s*:\\s*flex\\s*;[\\s\\S]*\\}[\\s\\S]*\\.page\\s*\\{[\\s\\S]*display\\s*:\\s*grid\\s*;"
+                }
+              }
+            ],
+            "next_lesson_id": "cssfg_lesson_08"
+          },
+          {
+            "id": "cssfg_lesson_08",
+            "title": "Project: Build a Responsive School Dashboard",
+            "body": "In this final lesson, the student combines Flexbox and Grid in one practical project. Grid is used for the overall page structure, while Flexbox is used inside smaller components such as the top bar, profile section, or button group. This project helps the student practice not only how to write the code, but also how to choose the right layout tool for each part of the page.",
+            "avatar_script": "In this lesson, the student puts everything together. The goal is to use Grid for the large structure and Flexbox for the smaller alignments inside the layout.",
+            "media": {},
+            "code_example": {
+              "code": "/* Main page layout */\n.dashboard {\n  display: grid;\n  grid-template-columns: 220px 1fr;\n  gap: 20px;\n}\n\n/* Top bar inside the dashboard */\n.topbar {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n}\n\n/* Card area */\n.cards {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));\n  gap: 16px;\n}\n",
+              "language": "css",
+              "description": "A final project that combines Grid for structure and Flexbox for alignment",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "cssfg_q8_01",
+                "type": "multiple_choice",
+                "question": "Why might a dashboard use both Grid and Flexbox?",
+                "options": [
+                  "Because only one of them works in CSS",
+                  "Because Grid can handle the big page layout and Flexbox can handle smaller alignment tasks",
+                  "Because Flexbox creates JavaScript",
+                  "Because Grid only works for colors"
+                ],
+                "answer": "Because Grid can handle the big page layout and Flexbox can handle smaller alignment tasks",
+                "explanation": "Using both tools together helps each part of the layout do its job well."
+              },
+              {
+                "id": "cssfg_q8_02",
+                "type": "true_false",
+                "question": "Choosing the layout tool should depend on the type of layout problem you are solving.",
+                "answer": true,
+                "explanation": "Yes. Good CSS layout starts with understanding the problem first."
+              },
+              {
+                "id": "cssfg_q8_03",
+                "type": "code_test",
+                "question": "Create a dashboard layout that uses Grid for the page and Flexbox for the top bar.",
+                "explanation": "Write CSS that uses Grid for the main dashboard layout and Flexbox for the top bar alignment.",
+                "code_example": {
+                  "code": ".dashboard {\n  display: grid;\n  grid-template-columns: 220px 1fr;\n  gap: 20px;\n}\n\n.topbar {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n}",
+                  "language": "css",
+                  "explanation": "Begin by writing a CSS rule for the main dashboard container. Type .dashboard and open a curly bracket. Add display: grid; so the page uses Grid. On the next line, write grid-template-columns: 220px 1fr; to create a sidebar area and a larger main content area. Add gap: 20px; to place space between these sections, then close the curly bracket. After that, write a second CSS rule for the top bar, such as .topbar, and open a curly bracket. Add display: flex; so the items inside the top bar line up in one direction. On the next lines, write justify-content: space-between; to spread the items apart and align-items: center; to line them up vertically. Then close the curly bracket. This solution shows that Grid works well for the main page structure, while Flexbox works well for smaller alignment inside one section.",
+                  "description": "Combining Grid and Flexbox in one page layout",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCode": "\\.dashboard\\s*\\{[\\s\\S]*display\\s*:\\s*grid\\s*;[\\s\\S]*grid-template-columns\\s*:\\s*220px\\s+1fr\\s*;[\\s\\S]*\\}[\\s\\S]*\\.topbar\\s*\\{[\\s\\S]*display\\s*:\\s*flex\\s*;"
+                }
+              }
+            ],
+            "next_lesson_id": null
+          }
+        ]
+      }
+    ]
+  }
+}

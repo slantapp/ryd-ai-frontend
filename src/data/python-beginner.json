@@ -1,0 +1,433 @@
+{
+  "slug": "python-beginner",
+  "curriculum": {
+    "title": "Python for Absolute Beginners",
+    "description": "Start your coding journey with Python! Learn the basics step by step with simple explanations, fun examples, and hands-on practice. No experience needed!",
+    "language": "en",
+    "modules": [
+      {
+        "id": "py_module_01",
+        "title": "Meeting Python",
+        "prerequisite": null,
+        "lessons": [
+          {
+            "id": "py_lesson_01",
+            "title": "What is Python?",
+            "body": "Python is a programming language used to build apps, games, websites, and more. It is known for being simple and easy to read.",
+            "avatar_script": "Python lets you give instructions to a computer. Let’s start with your first command!",
+            "media": {},
+            "code_example": {
+              "code": "print('Hello, World!')",
+              "language": "python",
+              "description": "First program",
+              "autoRun": false,
+              "typingSpeed": 80
+            },
+            "questions": [
+              {
+                "id": "q1",
+                "type": "multiple_choice",
+                "question": "What is Python used for?",
+                "options": [
+                  "Cooking",
+                  "Programming",
+                  "Drawing only",
+                  "Sleeping"
+                ],
+                "answer": "Programming",
+                "explanation": "Python is used to create programs."
+              },
+              {
+                "id": "q2",
+                "type": "true_false",
+                "question": "print() shows output.",
+                "answer": true,
+                "explanation": "print() displays text."
+              },
+              {
+                "id": "q3",
+                "type": "code_test",
+                "question": "Display Hello",
+                "explanation": "Write Python code that displays the text 'Hello' on the screen using print().",
+                "code_example": {
+                  "code": "print('Hello')",
+                  "language": "python",
+                  "explanation": "Start by typing print which is used to display output. Add parentheses (). Inside the parentheses, type 'Hello' using quotation marks to show it is text. Make sure your quotes match and are properly closed. The final answer should be print('Hello')."
+                },
+                "testCriteria": {
+                  "expectedCode": "print"
+                }
+              }
+            ],
+            "next_lesson_id": "py_lesson_02"
+          },
+          {
+            "id": "py_lesson_02",
+            "title": "Variables",
+            "body": "Variables store information.",
+            "avatar_script": "Variables are like boxes that hold values.",
+            "media": {},
+            "code_example": {
+              "code": "name = 'Sam'",
+              "language": "python"
+            },
+            "questions": [
+              {
+                "id": "q4",
+                "type": "multiple_choice",
+                "question": "What is a variable?",
+                "options": ["A box", "A game", "A screen", "A loop"],
+                "answer": "A box",
+                "explanation": "Variables store values."
+              },
+              {
+                "id": "q5",
+                "type": "true_false",
+                "question": "Variables can change.",
+                "answer": true,
+                "explanation": "They can be updated."
+              },
+              {
+                "id": "q6",
+                "type": "code_test",
+                "question": "Create variable age = 10",
+                "explanation": "Create a variable named age and store the number 10 in it.",
+                "code_example": {
+                  "code": "age = 10",
+                  "language": "python",
+                  "explanation": "Start by typing the variable name age. Add an equals sign = to assign a value. Then type the number 10 without quotation marks because it is a number. Ensure spacing is clear. Final answer: age = 10."
+                },
+                "testCriteria": {
+                  "expectedCode": "age = 10"
+                }
+              }
+            ],
+            "next_lesson_id": "py_lesson_03"
+          },
+          {
+            "id": "py_lesson_03",
+            "title": "Data Types",
+            "body": "Python has numbers, strings, and booleans.",
+            "avatar_script": "Different data types store different kinds of data.",
+            "media": {},
+            "code_example": {
+              "code": "is_ready = True",
+              "language": "python"
+            },
+            "questions": [
+              {
+                "id": "q7",
+                "type": "multiple_choice",
+                "question": "What type is 'Hi'?",
+                "options": ["Number", "String", "Boolean", "List"],
+                "answer": "String",
+                "explanation": "Text is a string."
+              },
+              {
+                "id": "q8",
+                "type": "true_false",
+                "question": "True is a boolean.",
+                "answer": true,
+                "explanation": "Correct."
+              },
+              {
+                "id": "q9",
+                "type": "code_test",
+                "question": "Create is_ready = False",
+                "explanation": "Create a boolean variable named is_ready and set it to False.",
+                "code_example": {
+                  "code": "is_ready = False",
+                  "language": "python",
+                  "explanation": "Type the variable name is_ready. Add = to assign a value. Then type False with a capital F and no quotes because it is a boolean value. Final answer: is_ready = False."
+                },
+                "testCriteria": {
+                  "expectedCode": "False"
+                }
+              }
+            ],
+            "next_lesson_id": "py_module_02"
+          }
+        ]
+      },
+      {
+        "id": "py_module_02",
+        "title": "Decisions and Loops",
+        "prerequisite": "py_module_01",
+        "lessons": [
+          {
+            "id": "py_lesson_04",
+            "title": "If Statements",
+            "body": "If statements make decisions.",
+            "avatar_script": "Python can choose what to do!",
+            "media": {},
+            "code_example": {
+              "code": "if score > 5:\n    print('Good')",
+              "language": "python"
+            },
+            "questions": [
+              {
+                "id": "q10",
+                "type": "multiple_choice",
+                "question": "What does if do?",
+                "options": ["Loop", "Decide", "Print", "Store"],
+                "answer": "Decide",
+                "explanation": "If checks conditions."
+              },
+              {
+                "id": "q11",
+                "type": "true_false",
+                "question": "If runs when true.",
+                "answer": true,
+                "explanation": "Correct."
+              },
+              {
+                "id": "q12",
+                "type": "code_test",
+                "question": "Print Yes if score > 5",
+                "explanation": "Write an if statement that prints 'Yes' only when score is greater than 5.",
+                "code_example": {
+                  "code": "if score > 5:\n    print('Yes')",
+                  "language": "python",
+                  "explanation": "Write if score > 5 followed by a colon. Press Enter and indent the next line. On the new line, type print('Yes'). This ensures the message prints only when the condition is true."
+                },
+                "testCriteria": {
+                  "expectedCode": "if score"
+                }
+              }
+            ],
+            "next_lesson_id": "py_lesson_05"
+          },
+          {
+            "id": "py_lesson_05",
+            "title": "Loops",
+            "body": "Loops repeat actions.",
+            "avatar_script": "Repeat tasks easily!",
+            "media": {},
+            "code_example": {
+              "code": "for i in range(3):\n    print(i)",
+              "language": "python"
+            },
+            "questions": [
+              {
+                "id": "q13",
+                "type": "multiple_choice",
+                "question": "Loops do what?",
+                "options": ["Stop", "Repeat", "Delete", "Sleep"],
+                "answer": "Repeat",
+                "explanation": "Loops repeat actions."
+              },
+              {
+                "id": "q14",
+                "type": "true_false",
+                "question": "Loops run multiple times.",
+                "answer": true,
+                "explanation": "Yes."
+              },
+              {
+                "id": "q15",
+                "type": "code_test",
+                "question": "Print 1 to 3",
+                "explanation": "Write a for loop that prints the numbers 1, 2, and 3.",
+                "code_example": {
+                  "code": "for i in range(1,4):\n    print(i)",
+                  "language": "python",
+                  "explanation": "Write a for loop using range(1,4). Add a colon at the end. Press Enter and indent the next line. Then write print(i). This will print 1, 2, and 3."
+                },
+                "testCriteria": {
+                  "expectedCode": "range"
+                }
+              }
+            ],
+            "next_lesson_id": "py_lesson_06"
+          },
+          {
+            "id": "py_lesson_06",
+            "title": "Functions",
+            "body": "Functions reuse code.",
+            "avatar_script": "Write once, use many times!",
+            "media": {},
+            "code_example": {
+              "code": "def greet():\n    print('Hi')",
+              "language": "python"
+            },
+            "questions": [
+              {
+                "id": "q16",
+                "type": "multiple_choice",
+                "question": "Keyword for function?",
+                "options": ["def", "fun", "make", "run"],
+                "answer": "def",
+                "explanation": "def defines functions."
+              },
+              {
+                "id": "q17",
+                "type": "true_false",
+                "question": "Functions can return values.",
+                "answer": true,
+                "explanation": "Yes."
+              },
+              {
+                "id": "q18",
+                "type": "code_test",
+                "question": "Create add(a,b)",
+                "explanation": "Define a function named add that takes a and b and returns their sum.",
+                "code_example": {
+                  "code": "def add(a,b):\n    return a + b",
+                  "language": "python",
+                  "explanation": "Start with def add(a,b): then press Enter. Indent the next line and write return a + b. This function adds two values."
+                },
+                "testCriteria": {
+                  "expectedCode": "def add"
+                }
+              }
+            ],
+            "next_lesson_id": "py_module_03"
+          }
+        ]
+      },
+      {
+        "id": "py_module_03",
+        "title": "Lists and Dictionaries",
+        "prerequisite": "py_module_02",
+        "lessons": [
+          {
+            "id": "py_lesson_07",
+            "title": "Lists",
+            "body": "Lists store multiple values.",
+            "avatar_script": "Lists hold many items!",
+            "media": {},
+            "code_example": {
+              "code": "items = ['a','b']",
+              "language": "python"
+            },
+            "questions": [
+              {
+                "id": "q19",
+                "type": "multiple_choice",
+                "question": "Lists store?",
+                "options": ["One", "Many", "None", "Only numbers"],
+                "answer": "Many",
+                "explanation": "Lists hold many values."
+              },
+              {
+                "id": "q20",
+                "type": "true_false",
+                "question": "Lists use []",
+                "answer": true,
+                "explanation": "Correct."
+              },
+              {
+                "id": "q21",
+                "type": "code_test",
+                "question": "Create colors list",
+                "explanation": "Create a list named colors with at least two color strings inside it.",
+                "code_example": {
+                  "code": "colors = ['red','blue']",
+                  "language": "python",
+                  "explanation": "Type colors = []. Inside the brackets, add items like 'red','blue'. Separate items with commas. Use quotes for text values."
+                },
+                "testCriteria": {
+                  "expectedCode": "colors"
+                }
+              }
+            ],
+            "next_lesson_id": "py_lesson_08"
+          },
+          {
+            "id": "py_lesson_08",
+            "title": "Dictionaries",
+            "body": "Dictionaries store key-value pairs.",
+            "avatar_script": "Like a mini database!",
+            "media": {},
+            "code_example": {
+              "code": "person = {'name':'Alex'}",
+              "language": "python"
+            },
+            "questions": [
+              {
+                "id": "q22",
+                "type": "multiple_choice",
+                "question": "Dictionaries store?",
+                "options": ["Lists", "Pairs", "Loops", "Text only"],
+                "answer": "Pairs",
+                "explanation": "Key-value pairs."
+              },
+              {
+                "id": "q23",
+                "type": "true_false",
+                "question": "Dictionaries use {}",
+                "answer": true,
+                "explanation": "Correct."
+              },
+              {
+                "id": "q24",
+                "type": "code_test",
+                "question": "Create book dictionary",
+                "explanation": "Create a dictionary named book with keys 'title' and 'author'.",
+                "code_example": {
+                  "code": "book = {'title':'A','author':'B'}",
+                  "language": "python",
+                  "explanation": "Start with book = {}. Inside the curly brackets, write 'title':'A' then add a comma and 'author':'B'. Use colons to connect keys and values."
+                },
+                "testCriteria": {
+                  "expectedCode": "book"
+                }
+              }
+            ],
+            "next_lesson_id": "py_module_04"
+          }
+        ]
+      },
+      {
+        "id": "py_module_04",
+        "title": "Mini Projects",
+        "prerequisite": "py_module_03",
+        "lessons": [
+          {
+            "id": "py_lesson_09",
+            "title": "Counter",
+            "body": "Build a simple counter.",
+            "avatar_script": "Let’s build something real!",
+            "media": {},
+            "code_example": {
+              "code": "score = 0\nscore += 1",
+              "language": "python"
+            },
+            "questions": [
+              {
+                "id": "q25",
+                "type": "multiple_choice",
+                "question": "score += 1 means?",
+                "options": ["Reset", "Add 1", "Subtract", "Multiply"],
+                "answer": "Add 1",
+                "explanation": "It increases value."
+              },
+              {
+                "id": "q26",
+                "type": "true_false",
+                "question": "Variables can change.",
+                "answer": true,
+                "explanation": "Yes."
+              },
+              {
+                "id": "q27",
+                "type": "code_test",
+                "question": "Increase score",
+                "explanation": "Increase the value of score by 1 using a shortcut operator.",
+                "code_example": {
+                  "code": "score = 0\nscore += 1",
+                  "language": "python",
+                  "explanation": "Make sure score exists. Then type score += 1. This adds 1 to the current value. It is a shorter way of writing score = score + 1."
+                },
+                "testCriteria": {
+                  "expectedCode": "+="
+                }
+              }
+            ],
+            "next_lesson_id": null
+          }
+        ]
+      }
+    ]
+  }
+}

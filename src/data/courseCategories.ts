@@ -57,6 +57,10 @@ export const COURSE_SLUG_TO_CATEGORY: Partial<
   "database-management": "data",
   "machine-learning-basics": "data",
   "ui-ux-design-principles": "design",
+  "python-beginner": "coding",
+  "python-intermediate": "coding",
+  "python-advance": "coding",
+  "css_flex_grid_lessons": "coding",
 };
 
 export function getCategoryIdForCourseSlug(slug: string): CourseCategoryId {

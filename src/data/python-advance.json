@@ -1,0 +1,518 @@
+{
+    "slug": "python-advance",
+    "curriculum": {
+        "title": "Python for Advanced Learners",
+        "description": "Master advanced Python concepts including decorators, generators, metaprogramming, asynchronous programming, and design patterns. Build sophisticated applications with professional-grade code.",
+        "language": "en",
+        "modules": [
+            {
+                "id": "py_module_09",
+                "title": "Functional Programming and Decorators",
+                "prerequisite": "py_module_08",
+                "lessons": [
+                    {
+                        "id": "py_lesson_20",
+                        "title": "Advanced Decorators",
+                        "body": "Create powerful decorators with arguments, nested decorators, and decorator classes.",
+                        "avatar_script": "Decorators are functions that enhance other functions!",
+                        "media": {},
+                        "code_example": {
+                            "code": "def decorator_with_args(arg):\n    def decorator(func):\n        def wrapper(*args, **kwargs):\n            print(f'Argument: {arg}')\n            return func(*args, **kwargs)\n        return wrapper\n    return decorator\n\n@decorator_with_args('value')\ndef my_function():\n    return 'Hello'",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q58",
+                                "type": "multiple_choice",
+                                "question": "What is a decorator with arguments?",
+                                "options": [
+                                    "A function that modifies another function",
+                                    "A three-level nested function structure",
+                                    "A class that decorates methods",
+                                    "A decorator factory that returns decorators"
+                                ],
+                                "answer": "A decorator factory that returns decorators",
+                                "explanation": "Decorators with arguments use a factory pattern with three levels of nesting."
+                            },
+                            {
+                                "id": "q59",
+                                "type": "true_false",
+                                "question": "*args and **kwargs allow functions to accept any number of arguments.",
+                                "answer": true,
+                                "explanation": "*args captures positional arguments as a tuple, **kwargs captures keyword arguments as a dictionary."
+                            },
+                            {
+                                "id": "q60",
+                                "type": "code_test",
+                                "question": "Create a repeat decorator",
+                                "explanation": "Create a decorator factory named repeat(times) that makes a function run multiple times.",
+                                "code_example": {
+                                    "code": "def repeat(times):\n    def decorator(func):\n        def wrapper(*args, **kwargs):\n            for i in range(times):\n                func(*args, **kwargs)\n        return wrapper\n    return decorator",
+                                    "language": "python",
+                                    "explanation": "Start by typing def repeat(times): followed by a colon to create the outer function that takes the number of repetitions as a parameter. Press Enter and indent. Then define the actual decorator function by typing def decorator(func): and add a colon. Press Enter and indent again. Inside this decorator, create a wrapper function by typing def wrapper(*args, **kwargs): and add a colon. Press Enter and indent. Within the wrapper, use a for loop to repeat the function execution: for i in range(times): followed by a colon. Press Enter, indent, and type func(*args, **kwargs) to call the decorated function. After the loop, type return wrapper on a new line at the decorator's indentation level. Finally, return the decorator from the outer function on another new line at the repeat function's indentation level by typing return decorator."
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "def repeat"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_lesson_21"
+                    },
+                    {
+                        "id": "py_lesson_21",
+                        "title": "Generators and Iterators",
+                        "body": "Create efficient iterators using generators with yield statements.",
+                        "avatar_script": "Generate values lazily for memory efficiency!",
+                        "media": {},
+                        "code_example": {
+                            "code": "def count_up_to(n):\n    i = 1\n    while i <= n:\n        yield i\n        i += 1\n\nfor num in count_up_to(5):\n    print(num)",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q61",
+                                "type": "multiple_choice",
+                                "question": "What does yield do in a generator?",
+                                "options": [
+                                    "Returns a value and stops",
+                                    "Returns a value and pauses execution",
+                                    "Creates a list",
+                                    "Defines a variable"
+                                ],
+                                "answer": "Returns a value and pauses execution",
+                                "explanation": "yield returns a value and suspends the function, resuming from where it left off on the next call."
+                            },
+                            {
+                                "id": "q62",
+                                "type": "true_false",
+                                "question": "Generators are more memory efficient than lists.",
+                                "answer": true,
+                                "explanation": "Generators produce values on-the-fly instead of storing all values in memory at once."
+                            },
+                            {
+                                "id": "q63",
+                                "type": "code_test",
+                                "question": "Create a Fibonacci generator",
+                                "explanation": "Write a generator function fibonacci(n) that yields Fibonacci numbers until it reaches n.",
+                                "code_example": {
+                                    "code": "def fibonacci(n):\n    a, b = 0, 1\n    while a < n:\n        yield a\n        a, b = b, a + b",
+                                    "language": "python",
+                                    "explanation": "Start by typing def fibonacci(n): followed by a colon to define a generator function. Initialize a and b to 0 and 1. Use a while loop (while a < n:) and yield a to produce each value. Then update with a, b = b, a + b to move to the next Fibonacci number."
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "yield"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_lesson_22"
+                    },
+                    {
+                        "id": "py_lesson_22",
+                        "title": "Lambda and Functional Techniques",
+                        "body": "Use lambda functions with map, filter, reduce, and compose functions.",
+                        "avatar_script": "Write concise functional code!",
+                        "media": {},
+                        "code_example": {
+                            "code": "from functools import reduce\n\nnumbers = [1, 2, 3, 4, 5]\nproduct = reduce(lambda x, y: x * y, numbers)\nprint(product)",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q64",
+                                "type": "multiple_choice",
+                                "question": "What does reduce do?",
+                                "options": [
+                                    "Filters items from a list",
+                                    "Applies function to each item",
+                                    "Combines all items into a single value",
+                                    "Sorts items"
+                                ],
+                                "answer": "Combines all items into a single value",
+                                "explanation": "reduce applies a function cumulatively to items, reducing them to a single value."
+                            },
+                            {
+                                "id": "q65",
+                                "type": "true_false",
+                                "question": "reduce is available directly in the Python built-ins.",
+                                "answer": false,
+                                "explanation": "reduce was moved to functools module in Python 3."
+                            },
+                            {
+                                "id": "q66",
+                                "type": "code_test",
+                                "question": "Calculate factorial using reduce",
+                                "explanation": "Calculate the factorial of 5 using reduce to multiply numbers 1 to 5.",
+                                "code_example": {
+                                    "code": "from functools import reduce\nfactorial = reduce(lambda x, y: x * y, range(1, 6))",
+                                    "language": "python",
+                                    "explanation": "Start by importing reduce from the functools module. Then call reduce with a lambda that multiplies two values, across range(1, 6). This multiplies 1×2×3×4×5 to produce 120 (5!)."
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "reduce"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_module_10"
+                    }
+                ]
+            },
+            {
+                "id": "py_module_10",
+                "title": "Metaprogramming and Advanced OOP",
+                "prerequisite": "py_module_09",
+                "lessons": [
+                    {
+                        "id": "py_lesson_23",
+                        "title": "Metaclasses and Type System",
+                        "body": "Understand metaclasses and how to customize class creation and behavior.",
+                        "avatar_script": "Classes are objects too!",
+                        "media": {},
+                        "code_example": {
+                            "code": "class Meta(type):\n    def __new__(mcs, name, bases, dct):\n        dct['created_at'] = 'now'\n        return super().__new__(mcs, name, bases, dct)\n\nclass MyClass(metaclass=Meta):\n    pass",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q67",
+                                "type": "multiple_choice",
+                                "question": "What is a metaclass?",
+                                "options": [
+                                    "A class inside another class",
+                                    "A class whose instances are classes",
+                                    "A deprecated feature",
+                                    "A method of a class"
+                                ],
+                                "answer": "A class whose instances are classes",
+                                "explanation": "Metaclasses are classes that create other classes, allowing customization of class creation."
+                            },
+                            {
+                                "id": "q68",
+                                "type": "true_false",
+                                "question": "All classes have a metaclass.",
+                                "answer": true,
+                                "explanation": "Every class in Python is an instance of a metaclass, by default the type metaclass."
+                            },
+                            {
+                                "id": "q69",
+                                "type": "code_test",
+                                "question": "Create a logging metaclass",
+                                "explanation": "Create a metaclass that prints a message when a class is created.",
+                                "code_example": {
+                                    "code": "class LoggingMeta(type):\n    def __new__(mcs, name, bases, dct):\n        print(f'Creating class {name}')\n        return super().__new__(mcs, name, bases, dct)",
+                                    "language": "python",
+                                    "explanation": "Start by defining class LoggingMeta(type). Inside it, override __new__(mcs, name, bases, dct) to print the class name, then call super().__new__(mcs, name, bases, dct) to create and return the new class."
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "class LoggingMeta(type)"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_lesson_24"
+                    },
+                    {
+                        "id": "py_lesson_24",
+                        "title": "Properties and Descriptors",
+                        "body": "Control attribute access using properties and descriptor protocol.",
+                        "avatar_script": "Fine-tune data access in your classes!",
+                        "media": {},
+                        "code_example": {
+                            "code": "class Circle:\n    def __init__(self, radius):\n        self._radius = radius\n    \n    @property\n    def radius(self):\n        return self._radius\n    \n    @radius.setter\n    def radius(self, value):\n        if value < 0:\n            raise ValueError('Radius cannot be negative')\n        self._radius = value",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q70",
+                                "type": "multiple_choice",
+                                "question": "What does @property decorator do?",
+                                "options": [
+                                    "Creates a class variable",
+                                    "Makes a method accessible like an attribute",
+                                    "Defines a constant",
+                                    "Stores data"
+                                ],
+                                "answer": "Makes a method accessible like an attribute",
+                                "explanation": "@property allows getter methods to be called like attribute access without parentheses."
+                            },
+                            {
+                                "id": "q71",
+                                "type": "true_false",
+                                "question": "Properties can have both getters and setters.",
+                                "answer": true,
+                                "explanation": "You can define getter with @property and setter with @attribute_name.setter."
+                            },
+                            {
+                                "id": "q72",
+                                "type": "code_test",
+                                "question": "Create age property with validation",
+                                "explanation": "Create a Person class where age is a property that validates values before setting them.",
+                                "code_example": {
+                                    "code": "class Person:\n    def __init__(self, age):\n        self._age = age\n    \n    @property\n    def age(self):\n        return self._age\n    \n    @age.setter\n    def age(self, value):\n        if value < 0 or value > 150:\n            raise ValueError('Invalid age')\n        self._age = value",
+                                    "language": "python",
+                                    "explanation": "Start by defining class Person and storing the internal value on self._age. Then add an @property getter that returns self._age and an @age.setter that checks the incoming value and raises ValueError if it's out of range before assigning."
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "@property"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_lesson_25"
+                    },
+                    {
+                        "id": "py_lesson_25",
+                        "title": "Context Managers",
+                        "body": "Create custom context managers using context manager protocol.",
+                        "avatar_script": "Manage resources with elegance!",
+                        "media": {},
+                        "code_example": {
+                            "code": "class FileManager:\n    def __init__(self, filename, mode):\n        self.filename = filename\n        self.mode = mode\n    \n    def __enter__(self):\n        self.file = open(self.filename, self.mode)\n        return self.file\n    \n    def __exit__(self, exc_type, exc_val, exc_tb):\n        self.file.close()",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q73",
+                                "type": "multiple_choice",
+                                "question": "What does __enter__ do in a context manager?",
+                                "options": [
+                                    "Closes resources",
+                                    "Enters the with block and returns a resource",
+                                    "Handles exceptions",
+                                    "Initializes the class"
+                                ],
+                                "answer": "Enters the with block and returns a resource",
+                                "explanation": "__enter__ is called when entering a with block and typically returns a resource to use."
+                            },
+                            {
+                                "id": "q74",
+                                "type": "true_false",
+                                "question": "__exit__ is guaranteed to run even if exceptions occur.",
+                                "answer": true,
+                                "explanation": "__exit__ always runs when exiting the with block, ensuring cleanup happens."
+                            },
+                            {
+                                "id": "q75",
+                                "type": "code_test",
+                                "question": "Create a database connection context manager",
+                                "explanation": "Create a context manager class that sets up a connection in __enter__ and cleans up in __exit__.",
+                                "code_example": {
+                                    "code": "class DatabaseConnection:\n    def __init__(self, db_name):\n        self.db_name = db_name\n        self.connection = None\n    \n    def __enter__(self):\n        print(f'Connecting to {self.db_name}')\n        self.connection = 'connected'\n        return self.connection\n    \n    def __exit__(self, exc_type, exc_val, exc_tb):\n        print('Disconnecting')\n        self.connection = None",
+                                    "language": "python",
+                                    "explanation": "Start by typing class DatabaseConnection: then define __init__ to store db_name. Implement __enter__ to print a connect message, set a connection value, and return it. Implement __exit__ to print a disconnect message and reset the connection."
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "def __enter__"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_module_11"
+                    }
+                ]
+            },
+            {
+                "id": "py_module_11",
+                "title": "Asynchronous Programming",
+                "prerequisite": "py_module_10",
+                "lessons": [
+                    {
+                        "id": "py_lesson_26",
+                        "title": "Async and Await Basics",
+                        "body": "Write asynchronous code using async/await syntax for concurrent operations.",
+                        "avatar_script": "Run tasks concurrently without threads!",
+                        "media": {},
+                        "code_example": {
+                            "code": "import asyncio\n\nasync def fetch_data():\n    await asyncio.sleep(1)\n    return 'Data fetched'\n\nasync def main():\n    result = await fetch_data()\n    print(result)\n\nasyncio.run(main())",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q76",
+                                "type": "multiple_choice",
+                                "question": "What does await do?",
+                                "options": [
+                                    "Stops the program",
+                                    "Pauses execution until a coroutine completes",
+                                    "Creates a new thread",
+                                    "Sleeps the program"
+                                ],
+                                "answer": "Pauses execution until a coroutine completes",
+                                "explanation": "await suspends the coroutine until the awaited coroutine completes."
+                            },
+                            {
+                                "id": "q77",
+                                "type": "true_false",
+                                "question": "asyncio.run() executes an async function.",
+                                "answer": true,
+                                "explanation": "asyncio.run() is the entry point to run an async function from synchronous code."
+                            },
+                            {
+                                "id": "q78",
+                                "type": "code_test",
+                                "question": "Create async function that downloads files",
+                                "explanation": "Write async code that downloads multiple files concurrently and prints the results.",
+                                "code_example": {
+                                    "code": "async def download_file(filename):\n    await asyncio.sleep(2)\n    return f'{filename} downloaded'\n\nasync def main():\n    tasks = [download_file('file1.txt'), download_file('file2.txt'), download_file('file3.txt')]\n    results = await asyncio.gather(*tasks)\n    print(results)\n\nasyncio.run(main())",
+                                    "language": "python",
+                                    "explanation": "Start by defining async def download_file(filename) that awaits asyncio.sleep and returns a message. In main(), create a list of download coroutines and await asyncio.gather(*tasks) to run them concurrently. Finally, call asyncio.run(main())."
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "async def"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_lesson_27"
+                    },
+                    {
+                        "id": "py_lesson_27",
+                        "title": "Coroutines and Tasks",
+                        "body": "Master coroutines, tasks, and concurrent execution patterns.",
+                        "avatar_script": "Control multiple concurrent operations!",
+                        "media": {},
+                        "code_example": {
+                            "code": "import asyncio\n\nasync def task1():\n    for i in range(3):\n        print(f'Task 1: {i}')\n        await asyncio.sleep(1)\n\nasync def task2():\n    for i in range(3):\n        print(f'Task 2: {i}')\n        await asyncio.sleep(1)\n\nasync def main():\n    await asyncio.gather(task1(), task2())",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q79",
+                                "type": "multiple_choice",
+                                "question": "What is a coroutine?",
+                                "options": [
+                                    "A function that runs in parallel",
+                                    "A function that can pause and resume",
+                                    "A thread",
+                                    "A process"
+                                ],
+                                "answer": "A function that can pause and resume",
+                                "explanation": "Coroutines are functions defined with async that can pause at await points."
+                            },
+                            {
+                                "id": "q80",
+                                "type": "true_false",
+                                "question": "asyncio.gather() runs tasks concurrently.",
+                                "answer": true,
+                                "explanation": "gather() schedules multiple coroutines to run concurrently and waits for all to complete."
+                            },
+                            {
+                                "id": "q81",
+                                "type": "code_test",
+                                "question": "Create producer-consumer pattern",
+                                "explanation": "Create a producer and consumer that communicate using an asyncio.Queue.",
+                                "code_example": {
+                                    "code": "async def producer(queue):\n    for i in range(5):\n        await queue.put(i)\n        await asyncio.sleep(1)\n    await queue.put(None)\n\nasync def consumer(queue):\n    while True:\n        item = await queue.get()\n        if item is None:\n            break\n        print(f'Consumed: {item}')\n\nasync def main():\n    queue = asyncio.Queue()\n    await asyncio.gather(producer(queue), consumer(queue))",
+                                    "language": "python",
+                                    "explanation": "Start by defining a producer(queue) that puts items into the queue and uses None as a stop signal. Define a consumer(queue) that reads items in a loop and stops when it sees None. In main(), create asyncio.Queue() and run both with asyncio.gather."
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "async def producer"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_lesson_28"
+                    },
+                    {
+                        "id": "py_lesson_28",
+                        "title": "Error Handling in Async Code",
+                        "body": "Handle exceptions and errors in asynchronous programs effectively.",
+                        "avatar_script": "Make async code reliable!",
+                        "media": {},
+                        "code_example": {
+                            "code": "async def risky_operation():\n    raise ValueError('Something went wrong')\n\nasync def main():\n    try:\n        result = await risky_operation()\n    except ValueError as e:\n        print(f'Caught error: {e}')",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q82",
+                                "type": "multiple_choice",
+                                "question": "How do you handle exceptions in async functions?",
+                                "options": [
+                                    "Use finally blocks only",
+                                    "Use try-except around await statements",
+                                    "Exceptions cannot be caught in async",
+                                    "Use a special async try block"
+                                ],
+                                "answer": "Use try-except around await statements",
+                                "explanation": "Exception handling in async works the same as sync code using try-except."
+                            },
+                            {
+                                "id": "q83",
+                                "type": "true_false",
+                                "question": "asyncio.gather() propagates exceptions from tasks.",
+                                "answer": true,
+                                "explanation": "If any task in gather() raises an exception, it will be raised when gather() completes."
+                            },
+                            {
+                                "id": "q84",
+                                "type": "code_test",
+                                "question": "Handle multiple async errors with gather",
+                                "explanation": "Use asyncio.gather with try/except to handle errors from concurrent async tasks.",
+                                "code_example": {
+                                    "code": "async def fetch(url):\n    if 'error' in url:\n        raise ConnectionError(f'Failed to fetch {url}')\n    await asyncio.sleep(1)\n    return f'Fetched {url}'\n\nasync def main():\n    urls = ['url1', 'url2', 'error_url', 'url3']\n    try:\n        tasks = [fetch(url) for url in urls]\n        results = await asyncio.gather(*tasks)\n    except ConnectionError as e:\n        print(f'Error: {e}')",
+                                    "language": "python",
+                                    "explanation": "Start by creating async functions that might fail. Type async def fetch(url): followed by a colon and press Enter and indent. Add error handling with if 'error' in url: followed by a colon, then press Enter and indent to type raise ConnectionError(f'Failed to fetch {url}'). Otherwise, type await asyncio.sleep(1) and then return f'Fetched {url}'. Create a main function by typing async def main(): followed by a colon. Press Enter and indent. Create a list of URLs with urls = ['url1', 'url2', 'error_url', 'url3']. Then wrap gathering tasks in try-except: type try: followed by a colon and press Enter and indent. Type tasks = [fetch(url) for url in urls] to create a list comprehension of coroutines. Then type results = await asyncio.gather(*tasks) to run all concurrently. Unindent and type except ConnectionError as e: followed by a colon and indent. Type print(f'Error: {e}') to handle any connection errors."
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "async def fetch"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": "py_module_12"
+                    }
+                ]
+            },
+            {
+                "id": "py_module_12",
+                "title": "Advanced Projects and Design Patterns",
+                "prerequisite": "py_module_11",
+                "lessons": [
+                    {
+                        "id": "py_lesson_29",
+                        "title": "Building a High-Performance Application",
+                        "body": "Combine advanced concepts to create a sophisticated real-world application.",
+                        "avatar_script": "Build professional-grade applications!",
+                        "media": {},
+                        "code_example": {
+                            "code": "from abc import ABC, abstractmethod\nfrom typing import List\n\nclass DataProcessor(ABC):\n    @abstractmethod\n    def process(self, data):\n        pass\n\nclass JSONProcessor(DataProcessor):\n    def process(self, data):\n        return json.dumps(data)\n\nclass CSVProcessor(DataProcessor):\n    def process(self, data):\n        return str(data)",
+                            "language": "python"
+                        },
+                        "questions": [
+                            {
+                                "id": "q85",
+                                "type": "multiple_choice",
+                                "question": "What does @abstractmethod do?",
+                                "options": [
+                                    "Decorates a method",
+                                    "Forces subclasses to implement a method",
+                                    "Prevents method execution",
+                                    "Caches method results"
+                                ],
+                                "answer": "Forces subclasses to implement a method",
+                                "explanation": "@abstractmethod defines an interface that all subclasses must implement."
+                            },
+                            {
+                                "id": "q86",
+                                "type": "true_false",
+                                "question": "You can instantiate an abstract base class.",
+                                "answer": false,
+                                "explanation": "Abstract base classes cannot be instantiated directly; only their concrete subclasses can be."
+                            },
+                            {
+                                "id": "q87",
+                                "type": "code_test",
+                                "question": "Create abstract storage strategy",
+                                "explanation": "Create an abstract storage strategy interface and concrete classes that implement save().",
+                                "code_example": {
+                                    "code": "from abc import ABC, abstractmethod\n\nclass StorageStrategy(ABC):\n    @abstractmethod\n    def save(self, data):\n        pass\n\nclass FileStorage(StorageStrategy):\n    def save(self, data):\n        with open('storage.txt', 'w') as f:\n            f.write(str(data))\n\nclass DatabaseStorage(StorageStrategy):\n    def save(self, data):\n        print(f'Saving to database: {data}')",
+                                    "language": "python",
+                                    "explanation": "Start by importing the necessary modules: from abc import ABC, abstractmethod. Then type class StorageStrategy(ABC): followed by a colon and add an @abstractmethod save(self, data). After that, create concrete classes like FileStorage and DatabaseStorage that implement save in different ways."
+                                },
+                                "testCriteria": {
+                                    "expectedCode": "class StorageStrategy(ABC)"
+                                }
+                            }
+                        ],
+                        "next_lesson_id": null
+                    }
+                ]
+            }
+        ]
+    }
+}

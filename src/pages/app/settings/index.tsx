@@ -2,16 +2,35 @@
 import FAQContent from "@/components/settings/FAQContent";
 import PasswordContent from "@/components/settings/PasswordContent";
 import ProfileContent from "@/components/settings/ProfileContent";
-import InstructorContent from "@/components/settings/InstructorContent";
-import SubscriptionContent from "@/components/settings/SubscriptionContent";
+import SubscriptionContentServer from "@/components/settings/SubscriptionContentServer";
 import { cn } from "@/lib/utils";
-import { User, Lock, HelpCircle, GraduationCap, CreditCard } from "lucide-react";
-import { useState } from "react";
+import { User, Lock, HelpCircle, CreditCard } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 // type TabKey = "profile" | "password" | "difficulty" | "faq";
 
 const SettingsPage = () => {
+  const location = useLocation();
+
+  const tabFromUrl = useMemo(() => {
+    const sp = new URLSearchParams(location.search);
+    return sp.get("tab");
+  }, [location.search]);
+
   const [activeTab, setActiveTab] = useState("profile");
+
+  useEffect(() => {
+    if (!tabFromUrl) return;
+    if (
+      tabFromUrl === "profile" ||
+      tabFromUrl === "password" ||
+      tabFromUrl === "subscription" ||
+      tabFromUrl === "faq"
+    ) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   const items = [
     {
@@ -36,25 +55,11 @@ const SettingsPage = () => {
       label: "Subscription",
       desc: "Manage your plan and payment method",
       icon: CreditCard,
-      content: <SubscriptionContent />,
+      content: <SubscriptionContentServer />,
     },
   ];
 
   const otherItems = [
-    {
-      key: "instructor",
-      label: "Change Instructor",
-      desc: "Select your preferred instructor",
-      icon: GraduationCap,
-      content: <InstructorContent />,
-    },
-    // {
-    //   key: "difficulty",
-    //   label: "Change Difficulty",
-    //   desc: "Easy, Normal, Hard",
-    //   icon: Settings,
-    //   content: <DifficultyContent />,
-    // },
     {
       key: "faq",
       label: "FAQ",
@@ -106,7 +111,7 @@ const SettingsPage = () => {
                 </p>
               </div>
             </button>
-            ))}
+          ))}
           <div className="space-y-2 pt-2 sm:space-y-3 lg:my-4 lg:pt-0 xl:my-6">
             <h3 className="font-sans-serifbookfl text-xs font-semibold uppercase tracking-wide text-[#081A28] sm:text-sm">
               Billing
@@ -141,9 +146,6 @@ const SettingsPage = () => {
             <h3 className="font-sans-serifbookfl text-xs font-semibold uppercase tracking-wide text-[#081A28] sm:text-sm">
               Others
             </h3>
-            <p className="font-solway text-sm font-bold sm:text-base">
-              Notification
-            </p>
           </div>
           {otherItems.map(({ key, label, desc, icon: Icon }) => (
             <button

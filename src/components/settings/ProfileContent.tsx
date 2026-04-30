@@ -1,12 +1,17 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Mail, Star, Trophy, CreditCard } from "lucide-react";
-import { FaChevronDown } from "react-icons/fa6";
+import { Mail } from "lucide-react";
 import AvatarDialog from "@/components/shared/AvatarModal";
 import { useUserProfileStore } from "@/stores/userProfileStore";
+import { useAuthStore } from "@/stores/authStore";
+import { useSubscriptionHistory } from "@/hooks/useSubscription";
 
 const ProfileContent = () => {
   const avatar = useUserProfileStore((state) => state.avatar);
   const setAvatar = useUserProfileStore((state) => state.setAvatar);
+  const user = useAuthStore((s) => s.user);
+  const historyQuery = useSubscriptionHistory();
+
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim();
 
   return (
     <div className="space-y-8">
@@ -25,126 +30,73 @@ const ProfileContent = () => {
             {/* Profile Info */}
             <div className="mt-14 text-center">
               <h3 className="text-[32px] font-sans-serifbookflf text-gray-900">
-                Deborah Oluwatoyin
+                {fullName || user?.email || "Your profile"}
               </h3>
               <div className="mt-2 flex flex-col items-center text-sm text-gray-600">
-                <div className="flex items-center gap-1">
-                  <span role="img" aria-label="flag">
-                    🇺🇸
-                  </span>
-                  <span>Los Angeles, United States</span>
-                </div>
                 <div className="mt-1 flex items-center gap-1">
                   <Mail className="h-4 w-4 text-gray-400" />
-                  <span>deborah@gmail.com</span>
+                  <span>{user?.email || "—"}</span>
                 </div>
-              </div>
-            </div>
-
-            {/* Rewards */}
-            <div className="mt-6 flex w-full items-center justify-center gap-6 rounded-xl bg-[#F3ECFE] p-4 text-center">
-              <div>
-                <div className="flex items-center justify-center gap-2 text-lg font-semibold text-gray-900">
-                  <Star className="h-5 w-5 text-yellow-500" />
-                  <span>120 Points</span>
-                </div>
-                <p className="mt-1 text-sm text-gray-600">My Reward Points</p>
-              </div>
-              <div className="h-10 w-[1px] bg-gray-300"></div>
-              <div>
-                <div className="flex items-center justify-center gap-2 text-lg font-semibold text-gray-900">
-                  <Trophy className="h-5 w-5 text-indigo-600" />
-                  <span>2nd rank</span>
-                </div>
-                <p className="mt-1 text-sm text-gray-600">My Ranking</p>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Payment History */}
+      {/* Subscription history */}
       <Card className="rounded-2xl shadow-none border-none">
         <CardContent className="p-0">
           <h2 className="mb-6 text-lg font-semibold font-solway text-gray-900">
-            Payment History
+            Subscription History
           </h2>
 
-          <div className="bg-[#F8F8FA] rounded-[20px] p-3">
-            {/* Transaction Item */}
-            <div className="mb-6 space-y-4 ">
-              {/* Header */}
-              <div className="flex items-center justify-between bg-white p-3 rounded-[8px]">
-                <div className="flex items-center gap-2">
-                  <img
-                    src="/images/mastercard.png"
-                    alt="Mastercard"
-                    width={38}
-                    height={38}
-                  />
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      Jessica Anderson
-                    </p>
-                    <p className="text-sm text-gray-500">Ref: 1213234234232</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">$50.00</p>
-                  <p className="text-sm text-gray-500">Mar 10, 2025</p>
-                </div>
-                <div className="bg-purple-600 rounded-full p-1 text-white">
-                  <FaChevronDown size={12} strokeWidth={3} />
-                </div>
-              </div>
+          <div className="bg-[#F8F8FA] rounded-[20px] p-4">
+            {historyQuery.isLoading ? (
+              <p className="text-sm text-gray-600">Loading history…</p>
+            ) : historyQuery.isError ? (
+              <p className="text-sm text-gray-600">
+                Unable to load subscription history.
+              </p>
+            ) : (historyQuery.data?.data?.length ?? 0) === 0 ? (
+              <p className="text-sm text-gray-600">No subscription history.</p>
+            ) : (
+              <div className="space-y-3">
+                {historyQuery.data?.data?.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-xl bg-white p-4 ring-1 ring-gray-100"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="font-solway text-base font-bold text-gray-900">
+                          {item.plan?.name || item.planKey}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-600">
+                          Status: {item.status}
+                        </p>
+                      </div>
+                      <div className="text-right text-sm text-gray-600">
+                        <p>{item.plan?.priceLabel || item.billingCurrency}</p>
+                        <p>
+                          Updated{" "}
+                          {new Date(item.updatedAt).toLocaleDateString(undefined, {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </div>
+                    </div>
 
-              {/* Details */}
-              <div className="text-sm text-gray-600 bg-white p-3 rounded-[8px]">
-                <p className="font-medium">1st September, 2021 at 11:30 PM</p>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <span className="flex items-center gap-1">🎓 2 Courses</span>
-                  <span className="flex items-center gap-1 text-green-600">
-                    💲 $75.00 USD
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <CreditCard className="h-4 w-4 text-green-600" />
-                    Credit Card
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center justify-between text-gray-700">
-                  <span>Kevin Gilbert</span>
-                  <span>4142 **** ****</span>
-                  <span>04/24</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Another Transaction */}
-            <div className="bg-white p-3 rounded-[8px]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <img
-                    src="/images/mastercard.png"
-                    alt="Mastercard"
-                    width={38}
-                    height={38}
-                  />
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      Jessica Anderson
+                    <p className="mt-2 text-sm text-gray-600">
+                      Period:{" "}
+                      {new Date(item.currentPeriodStart).toLocaleDateString()} —{" "}
+                      {new Date(item.currentPeriodEnd).toLocaleDateString()}
                     </p>
-                    <p className="text-sm text-gray-500">Ref: 1213234234232</p>
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">$50.00</p>
-                  <p className="text-sm text-gray-500">Mar 10, 2025</p>
-                </div>
-                <div className="bg-purple-600 rounded-full p-1 text-white">
-                  <FaChevronDown size={12} strokeWidth={3} />
-                </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>

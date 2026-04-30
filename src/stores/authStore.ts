@@ -139,10 +139,23 @@ export const useAuthStore = create<AuthState>()(
         });
       },
       loginFromParentCode: async (decoded: LoginPayload) => {
-        const res = await axiosInstance.post("/auth/login/parent", {
-          parentToken: decoded.parentToken,
-          parentId: decoded.parentId,
-        });
+        const parentId = Number(decoded.parentId);
+        let res;
+        if (decoded.adminToken && typeof decoded.adminToken === "string") {
+          res = await axiosInstance.post("/parent/auth/login/admin", {
+            adminToken: decoded.adminToken,
+            parentId,
+            timestamp: decoded.timestamp,
+          });
+        } else if (decoded.parentToken && typeof decoded.parentToken === "string") {
+          res = await axiosInstance.post("/parent/auth/login/parent", {
+            parentToken: decoded.parentToken,
+            parentId,
+            timestamp: decoded.timestamp,
+          });
+        } else {
+          throw new Error("Invalid authorization code payload");
+        }
         const { accessToken, user, expiresAt } = extractSession(res);
         set({
           accessToken,

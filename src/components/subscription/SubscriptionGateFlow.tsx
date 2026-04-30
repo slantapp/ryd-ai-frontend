@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import SubscriptionContent from "@/components/settings/SubscriptionContent";
+import SubscriptionContentServer from "@/components/settings/SubscriptionContentServer";
 import InstructorContent from "@/components/settings/InstructorContent";
 import { cn } from "@/lib/utils";
 import { ChevronLeft } from "lucide-react";
@@ -41,7 +41,8 @@ const SubscriptionGateFlow = ({
   onSignOut,
 }: SubscriptionGateFlowProps) => {
   const [view, setView] = useState<GateView>("instructors");
-  const [hasPreviewedInstructor, setHasPreviewedInstructor] = useState(false);
+  const [hasPreviewedInstructor, setHasPreviewedInstructor] = useState(true);
+  const [speechEnabled, setSpeechEnabled] = useState(true);
 
   const handleInstructorEngaged = useCallback(() => {
     setHasPreviewedInstructor(true);
@@ -50,7 +51,8 @@ const SubscriptionGateFlow = ({
   useEffect(() => {
     if (!open) {
       setView("instructors");
-      setHasPreviewedInstructor(false);
+      setHasPreviewedInstructor(true);
+      setSpeechEnabled(true);
     }
   }, [open]);
 
@@ -84,6 +86,7 @@ const SubscriptionGateFlow = ({
               <InstructorContent
                 hideHeader
                 gateIntroMode
+                speechEnabled={speechEnabled}
                 onInstructorEngaged={handleInstructorEngaged}
               />
             </div>
@@ -108,7 +111,11 @@ const SubscriptionGateFlow = ({
                   type="button"
                   className="w-full rounded-xl bg-[#DDB5D2] font-solway text-primary hover:bg-[#DDA5D2] sm:w-auto"
                   disabled={!hasPreviewedInstructor}
-                  onClick={() => setView("subscribe")}
+                  onClick={() => {
+                    setSpeechEnabled(false);
+                    // Give InstructorContent a tick to synchronously stop speech before unmount.
+                    setTimeout(() => setView("subscribe"), 0);
+                  }}
                 >
                   Proceed to subscribe
                 </Button>
@@ -135,7 +142,10 @@ const SubscriptionGateFlow = ({
                 variant="ghost"
                 size="sm"
                 className="shrink-0 gap-1 px-2 font-inter text-gray-700"
-                onClick={() => setView("instructors")}
+                onClick={() => {
+                  setSpeechEnabled(true);
+                  setView("instructors");
+                }}
               >
                 <ChevronLeft className="size-4" aria-hidden />
                 Back to instructors
@@ -143,7 +153,7 @@ const SubscriptionGateFlow = ({
             </div>
 
             <div className={scrollPaddingClass}>
-              <SubscriptionContent
+              <SubscriptionContentServer
                 gateMode
                 onSubscriptionComplete={onSubscriptionComplete}
               />

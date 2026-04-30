@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from "react";
 import NarratorAvatar from "narrator-avatar";
 import {
   useInstructorStore,
@@ -60,12 +60,18 @@ interface InstructorContentProps {
   gateIntroMode?: boolean;
   /** Fires once the user first previews an instructor (hover or pointer). */
   onInstructorEngaged?: () => void;
+  /**
+   * When false, prevents any new speech and immediately stops current speech.
+   * Useful when the gate flow navigates away from the instructors step.
+   */
+  speechEnabled?: boolean;
 }
 
 const InstructorContent = ({
   hideHeader = false,
   gateIntroMode = false,
   onInstructorEngaged,
+  speechEnabled = true,
 }: InstructorContentProps) => {
   const { selectedInstructor, setSelectedInstructor } = useInstructorStore();
   const [activePreview, setActivePreview] = useState<InstructorType | null>(
@@ -131,13 +137,32 @@ const InstructorContent = ({
         console.warn("Error stopping man avatar:", error);
       }
     }
+    // Extra safety: if the underlying library uses Web Speech API, cancel queued utterances.
+    try {
+      window.speechSynthesis?.cancel?.();
+    } catch {
+      // ignore
+    }
   }, []);
+
+  useEffect(() => {
+    return () => {
+      // Ensure speech is stopped when this component unmounts (e.g. gate switches views).
+      stopAllAvatars();
+    };
+  }, [stopAllAvatars]);
+
+  useLayoutEffect(() => {
+    if (speechEnabled) return;
+    stopAllAvatars();
+    setActivePreview(null);
+  }, [speechEnabled, stopAllAvatars]);
 
   // Speak on hover; avatar speaks regardless of selection
   useEffect(() => {
     stopAllAvatars();
 
-    if (!activePreview) {
+    if (!speechEnabled || !activePreview) {
       return;
     }
 
@@ -160,13 +185,17 @@ const InstructorContent = ({
       clearTimeout(timeout);
       stopAllAvatars();
     };
-  }, [activePreview, gateIntroMode, stopAllAvatars]);
+  }, [activePreview, gateIntroMode, speechEnabled, stopAllAvatars]);
 
   const handleSelectInstructor = (instructor: InstructorType) => {
     setSelectedInstructor(instructor);
   };
 
   const handlePreviewClick = (instructor: InstructorType) => {
+    if (!speechEnabled) return;
+    if (activePreview && activePreview !== instructor) {
+      stopAllAvatars();
+    }
     // On touch devices there is no real hover; use click/tap to trigger speech.
     // Clicking a different instructor stops the previous one (effect cleanup) and starts the new one.
     // Clicking the same instructor again re-triggers the speech.
@@ -184,6 +213,10 @@ const InstructorContent = ({
   };
 
   const handlePreviewHover = (instructor: InstructorType) => {
+    if (!speechEnabled) return;
+    if (activePreview && activePreview !== instructor) {
+      stopAllAvatars();
+    }
     setActivePreview(instructor);
     if (onInstructorEngaged && !engagementReportedRef.current) {
       engagementReportedRef.current = true;

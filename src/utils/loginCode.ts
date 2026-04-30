@@ -1,8 +1,9 @@
 import { toast } from "react-toastify";
 
 export interface LoginPayload {
-  parentToken: string;
-  parentId: string;
+  parentToken?: string;
+  adminToken?: string;
+  parentId: string | number;
   timestamp: number;
 }
 
@@ -39,15 +40,18 @@ export function validateLoginCode(code: string): LoginCodeResult {
     return { decoded: null, status: false };
   }
 
-  const { parentToken, parentId, timestamp } = decoded;
+  const { parentId, timestamp } = decoded;
 
-  if (
-    typeof parentToken !== "string" ||
-    !parentToken ||
-    typeof parentId !== "string" ||
-    !parentId ||
-    typeof timestamp !== "number"
-  ) {
+  const hasValidAdminToken =
+    typeof decoded.adminToken === "string" && decoded.adminToken.trim().length > 0;
+  const hasValidParentToken =
+    typeof decoded.parentToken === "string" && decoded.parentToken.trim().length > 0;
+
+  if (!hasValidAdminToken && !hasValidParentToken) {
+    status = false;
+  }
+
+  if (!parentId || typeof timestamp !== "number") {
     status = false;
   }
 

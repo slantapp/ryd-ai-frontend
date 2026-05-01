@@ -92,8 +92,10 @@ export default function SubscriptionContentServer({
   const startCheckout = useCallback(
     async (planKey: string) => {
       const origin = window.location.origin;
-      const successUrl = `${origin}${PRIVATE_PATHS.DASHBOARD}?subscription=success&session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${origin}${PRIVATE_PATHS.DASHBOARD}?subscription=cancelled`;
+      const httpsOrigin = origin.replace(/^http:/, "https:");
+      const successUrl = `${httpsOrigin}${PRIVATE_PATHS.DASHBOARD}?subscription=success&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${httpsOrigin}${PRIVATE_PATHS.DASHBOARD}?subscription=cancelled`;
+
 
       try {
         const res = await checkoutMutation.mutateAsync({
@@ -130,13 +132,17 @@ export default function SubscriptionContentServer({
         {!gateMode && (
           <div className="flex items-center gap-2">
             {statusQuery.isLoading ? (
-              <Badge variant="secondary">Checking…</Badge>
+              <Badge className="bg-slate-100 text-slate-800 ring-1 ring-slate-200 hover:bg-slate-100">
+                Checking…
+              </Badge>
             ) : subscribed ? (
               <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
                 Subscribed
               </Badge>
             ) : (
-              <Badge variant="secondary">Not subscribed</Badge>
+              <Badge className="bg-amber-100 text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100">
+                Not subscribed
+              </Badge>
             )}
             <Button
               type="button"

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
+import { devSkipSubscriptionGate } from "@/utils/devSubscriptionBypass";
 
 interface SideNavProps {
   mobileNavOpen: boolean;
@@ -26,6 +27,8 @@ const SideNav = ({ mobileNavOpen, onMobileNavClose }: SideNavProps) => {
       ?.planKey ?? null;
 
   const promo = useMemo(() => {
+    if (devSkipSubscriptionGate) return { show: false };
+
     // Only show once we have a reliable status from the server.
     if (!subscriptionStatus.isSuccess) return { show: false };
 

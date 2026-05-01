@@ -5,6 +5,7 @@ import TopNav from "./TopNav";
 import { cn } from "@/lib/utils";
 import SubscriptionGateFlow from "@/components/subscription/SubscriptionGateFlow";
 import { useAuthStore } from "@/stores/authStore";
+import { useCoursesStore } from "@/stores/coursesStore";
 import { PUBLIC_PATHS } from "@/utils/routePaths";
 import { useQueryClient } from "@tanstack/react-query";
 import { subscriptionKeys, useSubscriptionStatus } from "@/hooks/useSubscription";
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { devSkipSubscriptionGate } from "@/utils/devSubscriptionBypass";
 
 interface DashboardProps {
   children?: ReactNode;
@@ -35,13 +37,25 @@ const DashboardLayout = ({ children }: DashboardProps) => {
 
   const subscribed = subscriptionStatus.data?.data?.subscribed === true;
 
+  useEffect(() => {
+    if (devSkipSubscriptionGate) {
+      void useCoursesStore.getState().fetchAllCourseProgress();
+      return;
+    }
+    if (!subscriptionStatus.isFetched || !subscriptionStatus.isSuccess) return;
+    if (subscribed !== true) return;
+    void useCoursesStore.getState().fetchAllCourseProgress();
+  }, [subscribed, subscriptionStatus.isFetched, subscriptionStatus.isSuccess]);
+
   const showSubscriptionGate =
+    !devSkipSubscriptionGate &&
     subscriptionStatus.isFetched &&
     subscriptionStatus.isSuccess &&
     subscribed === false;
 
   const blockForStatusLoadingOrError =
-    subscriptionStatus.isLoading || subscriptionStatus.isError;
+    !devSkipSubscriptionGate &&
+    (subscriptionStatus.isLoading || subscriptionStatus.isError);
 
   const blockDashboardAccess = showSubscriptionGate || blockForStatusLoadingOrError;
 

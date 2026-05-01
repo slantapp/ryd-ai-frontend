@@ -776,17 +776,21 @@ function CourseDetailInner() {
   const handleRestartCourse = useCallback(() => {
     if (!exercise || !curriculum) return;
     stopSpeaking();
-    updateCourseProgress(exercise, {
-      status: "not-started",
-      progress: 0,
-      currentLessonId: null,
-      completedLessons: [],
-      lessonIndex: undefined,
-      questionIndex: 0,
-      lessonStarted: false,
-      canStartQuestions: false,
-      lastUpdated: Date.now(),
-    });
+    updateCourseProgress(
+      exercise,
+      {
+        status: "not-started",
+        progress: 0,
+        currentLessonId: null,
+        completedLessons: [],
+        lessonIndex: undefined,
+        questionIndex: 0,
+        lessonStarted: false,
+        canStartQuestions: false,
+        lastUpdated: Date.now(),
+      },
+      { immediate: true },
+    );
     setCurrentLesson(null);
     setCurrentQuestion(null);
     setCurrentQuestionIndex(0);
@@ -1333,18 +1337,19 @@ function CourseDetailInner() {
   // EFFECTS
   // ============================================================================
 
-  // Track last exercise we restored for (so we re-run when switching courses)
-  const lastRestoredExerciseRef = useRef<string | null>(null);
-
-  // Load saved progress on mount and when switching to a different course
+  // Load saved progress from API when opening or switching courses (deep links included).
   useEffect(() => {
     if (!curriculum || !exercise) return;
-    // Re-run when exercise (course slug) changes so we load the right course's progress
-    if (lastRestoredExerciseRef.current === exercise) return;
-    lastRestoredExerciseRef.current = exercise;
 
-    const stored = useCoursesStore.getState().getCourseProgress(exercise);
-    if (!stored) return;
+    const slug = exercise;
+    let cancelled = false;
+
+    void (async () => {
+      await useCoursesStore.getState().hydrateCourseProgressFromApi(slug);
+      if (cancelled) return;
+
+      const stored = useCoursesStore.getState().getCourseProgress(slug);
+      if (!stored) return;
     const saved: CourseProgress = {
       lessonId: stored.currentLessonId ?? null,
       lessonIndex: typeof stored.lessonIndex === "number" ? stored.lessonIndex : undefined,
@@ -1395,6 +1400,11 @@ function CourseDetailInner() {
         setCanPrevious(hasPrevLesson);
       }
     }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [curriculum, exercise]);
 
   // Keep Previous/Next lesson buttons in sync whenever we're on a lesson.

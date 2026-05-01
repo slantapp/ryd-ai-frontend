@@ -6,6 +6,13 @@ import {
   getCategoryIdForCourseSlug,
   type CourseCategoryId,
 } from "../data/courseCategories";
+import type { CourseProgressRecord } from "@/api/courseProgress";
+import {
+  fetchAllCourseProgress as fetchAllCourseProgressRequest,
+  fetchCourseProgress as fetchCourseProgressRequest,
+  upsertCourseProgress as upsertCourseProgressRequest,
+  type CourseProgressPutBody,
+} from "@/api/courseProgress";
 
 export type CourseStatus = "not-started" | "ongoing" | "completed";
 
@@ -23,12 +30,11 @@ export interface Course {
   status: CourseStatus;
   progress?: number; // 0-100
   ageRange?: AgeRange;
-  duration?: string; // e.g., "4 weeks"
+  duration?: string;
   level?: "Beginner" | "Intermediate" | "Advanced";
-  rating?: number; // 1-5
+  rating?: number;
 }
 
-// Default images for courses (can be customized per course later)
 const defaultCourseImages: Record<string, string> = {
   "intro-computer-science":
     "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=200&fit=crop",
@@ -72,12 +78,10 @@ const defaultCourseImages: Record<string, string> = {
     "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=200&fit=crop",
 };
 
-// Default course metadata (can be customized per course later)
+/** Static listing metadata only — progress comes from API via `courseProgress`. */
 const defaultCourseMetadata: Record<
   string,
   {
-    status: CourseStatus;
-    progress?: number;
     ageRange?: AgeRange;
     duration?: string;
     level?: "Beginner" | "Intermediate" | "Advanced";
@@ -85,72 +89,60 @@ const defaultCourseMetadata: Record<
   }
 > = {
   "intro-computer-science": {
-    status: "not-started",
-    progress: 45,
     ageRange: { min: 9, max: 14 },
     duration: "6 weeks",
     level: "Beginner",
     rating: 4.8,
   },
   "web-development-basics": {
-    status: "not-started",
-    progress: 100,
     ageRange: { min: 10, max: 16 },
     duration: "4 weeks",
     level: "Beginner",
     rating: 4.9,
   },
   "javascript-beginner": {
-    status: "not-started",
     ageRange: { min: 11, max: 16 },
     duration: "5 weeks",
     level: "Beginner",
     rating: 4.6,
   },
   "web-basics": {
-    status: "not-started",
     ageRange: { min: 9, max: 14 },
     duration: "3 weeks",
     level: "Beginner",
     rating: 4.5,
   },
   "javascript-intermediate": {
-    status: "not-started",
     ageRange: { min: 12, max: 16 },
     duration: "6 weeks",
     level: "Intermediate",
     rating: 4.7,
   },
   "javascript-professional": {
-    status: "not-started",
     ageRange: { min: 13, max: 18 },
     duration: "8 weeks",
     level: "Advanced",
     rating: 4.8,
   },
   "python-beginner": {
-    status: "not-started",
     ageRange: { min: 9, max: 14 },
     duration: "6 weeks",
     level: "Beginner",
     rating: 4.7,
   },
   "python-intermediate": {
-    status: "not-started",
     ageRange: { min: 12, max: 16 },
     duration: "8 weeks",
     level: "Intermediate",
     rating: 4.8,
   },
   "python-advance": {
-    status: "not-started",
     ageRange: { min: 14, max: 18 },
     duration: "10 weeks",
     level: "Advanced",
     rating: 4.9,
   },
   "css_flex_grid_lessons": {
-    status: "not-started",
     ageRange: { min: 10, max: 16 },
     duration: "4 weeks",
     level: "Intermediate",
@@ -158,10 +150,8 @@ const defaultCourseMetadata: Record<
   },
 };
 
-// Convert Curriculum to Course format
 function curriculumToCourse(curriculum: Curriculum): Course {
   const metadata = defaultCourseMetadata[curriculum.slug] || {
-    status: "not-started" as CourseStatus,
     ageRange: { min: 8, max: 16 },
     duration: "4 weeks",
     level: "Beginner" as const,
@@ -176,68 +166,161 @@ function curriculumToCourse(curriculum: Curriculum): Course {
       defaultCourseImages["intro-computer-science"],
     slug: curriculum.slug,
     categoryId: getCategoryIdForCourseSlug(curriculum.slug),
+    status: "not-started",
     ...metadata,
   };
 }
 
-// Generate courses data from curriculaData
 export const coursesData: Course[] = curriculaData.map(curriculumToCourse);
 
-const AUTH_PERSIST_KEY = "ryd-ai-platform-auth";
-const USER_SCOPED_KEY_SEPARATOR = ":";
-
-function getActiveUserStorageSuffix(): string {
-  try {
-    const raw = localStorage.getItem(AUTH_PERSIST_KEY);
-    if (!raw) return "guest";
-    const parsed = JSON.parse(raw) as { state?: { user?: { id?: unknown } } };
-    const id = parsed?.state?.user?.id;
-    if (typeof id === "string" && id.trim()) return id.trim();
-    if (typeof id === "number" && Number.isFinite(id)) return String(id);
-    return "guest";
-  } catch {
-    return "guest";
-  }
-}
-
-function userScopedKey(baseKey: string): string {
-  return `${baseKey}${USER_SCOPED_KEY_SEPARATOR}${getActiveUserStorageSuffix()}`;
+export interface CourseProgressDataEntry {
+  status: CourseStatus;
+  progress: number;
+  currentLessonId: string | null;
+  completedLessons: string[];
+  lessonIndex?: number;
+  questionIndex?: number;
+  lessonStarted?: boolean;
+  canStartQuestions?: boolean;
+  lastUpdated?: number;
 }
 
 interface CourseProgressData {
-  [slug: string]: {
-    status: CourseStatus;
-    progress: number;
-    currentLessonId: string | null;
-    completedLessons: string[]; // Array of completed lesson IDs
-    /** Flat index in curriculum (all modules in order). */
-    lessonIndex?: number;
-    /** Index in current lesson's `questions` array. */
-    questionIndex?: number;
-    lessonStarted?: boolean;
-    canStartQuestions?: boolean;
-    lastUpdated?: number;
+  [slug: string]: CourseProgressDataEntry;
+}
+
+function apiRecordToEntry(rec: CourseProgressRecord): CourseProgressDataEntry {
+  return {
+    status: rec.status,
+    progress: rec.progressPercent,
+    currentLessonId: rec.currentLessonId,
+    completedLessons: rec.completedLessonIds ?? [],
+    lessonIndex: rec.lessonIndex ?? undefined,
+    questionIndex: rec.questionIndex ?? undefined,
+    lessonStarted: rec.lessonStarted,
+    canStartQuestions: rec.canStartQuestions,
+    lastUpdated: rec.clientUpdatedAt ?? undefined,
   };
 }
 
+function entryToPutBody(
+  entry: CourseProgressDataEntry,
+  clientUpdatedAt: number
+): CourseProgressPutBody {
+  const body: CourseProgressPutBody = {
+    clientUpdatedAt,
+    status: entry.status,
+    progressPercent: entry.progress,
+    currentLessonId: entry.currentLessonId,
+    completedLessonIds: entry.completedLessons,
+    lessonStarted: entry.lessonStarted,
+    canStartQuestions: entry.canStartQuestions,
+  };
+  if (typeof entry.lessonIndex === "number") {
+    body.lessonIndex = entry.lessonIndex;
+  }
+  if (typeof entry.questionIndex === "number") {
+    body.questionIndex = entry.questionIndex;
+  }
+  return body;
+}
+
+const persistTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function clearPersistTimer(slug: string) {
+  const t = persistTimers.get(slug);
+  if (t) {
+    clearTimeout(t);
+    persistTimers.delete(slug);
+  }
+}
+
 interface CoursesState {
-  wishlist: Set<string>; // Set of course slugs
-  courseProgress: CourseProgressData; // Track progress for each course
+  wishlist: Set<string>;
+  courseProgress: CourseProgressData;
   addToWishlist: (slug: string) => void;
   removeFromWishlist: (slug: string) => void;
   isInWishlist: (slug: string) => boolean;
   toggleWishlist: (slug: string) => void;
   updateCourseProgress: (
     slug: string,
-    progress: Partial<CourseProgressData[string]>
+    progress: Partial<CourseProgressDataEntry>,
+    options?: { immediate?: boolean }
   ) => void;
-  getCourseProgress: (slug: string) => CourseProgressData[string] | null;
+  getCourseProgress: (slug: string) => CourseProgressDataEntry | null;
+  fetchAllCourseProgress: () => Promise<void>;
+  hydrateCourseProgressFromApi: (slug: string) => Promise<void>;
   getAllCourses: () => Course[];
   getCompletedCourses: () => Course[];
   getOngoingCourses: () => Course[];
-  getEnrolledCourses: () => Course[]; // ongoing + completed
-  /** Reset in-memory state (does not delete persisted data). */
+  getEnrolledCourses: () => Course[];
   reset: () => void;
+}
+
+async function flushProgressToApi(
+  slug: string,
+  get: () => CoursesState,
+  set: (
+    partial:
+      | Partial<CoursesState>
+      | ((state: CoursesState) => Partial<CoursesState>)
+  ) => void
+) {
+  const entry = get().courseProgress[slug];
+  if (!entry) return;
+
+  const clientUpdatedAt = Date.now();
+
+  try {
+    const res = await upsertCourseProgressRequest(
+      slug,
+      entryToPutBody(entry, clientUpdatedAt)
+    );
+    if (!res.status || !res.data) {
+      throw new Error(res.message || "Course progress save failed");
+    }
+    const merged = apiRecordToEntry(res.data);
+    set((state) => ({
+      courseProgress: {
+        ...state.courseProgress,
+        [slug]: merged,
+      },
+    }));
+  } catch {
+    try {
+      const res = await fetchCourseProgressRequest(slug);
+      if (res.status && res.data) {
+        const merged = apiRecordToEntry(res.data);
+        set((state) => ({
+          courseProgress: {
+            ...state.courseProgress,
+            [slug]: merged,
+          },
+        }));
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function scheduleFlush(
+  slug: string,
+  get: () => CoursesState,
+  set: (
+    partial:
+      | Partial<CoursesState>
+      | ((state: CoursesState) => Partial<CoursesState>)
+  ) => void
+) {
+  clearPersistTimer(slug);
+  persistTimers.set(
+    slug,
+    setTimeout(() => {
+      persistTimers.delete(slug);
+      void flushProgressToApi(slug, get, set);
+    }, 450)
+  );
 }
 
 export const useCoursesStore = create<CoursesState>()(
@@ -245,7 +328,39 @@ export const useCoursesStore = create<CoursesState>()(
     (set, get) => ({
       wishlist: new Set<string>(),
       courseProgress: {},
-      reset: () => set({ wishlist: new Set<string>(), courseProgress: {} }),
+      reset: () => {
+        persistTimers.forEach((t) => clearTimeout(t));
+        persistTimers.clear();
+        set({ wishlist: new Set<string>(), courseProgress: {} });
+      },
+      fetchAllCourseProgress: async () => {
+        try {
+          const res = await fetchAllCourseProgressRequest();
+          if (!res.status || !res.data) return;
+          const next: CourseProgressData = {};
+          for (const [slug, rec] of Object.entries(res.data)) {
+            next[slug] = apiRecordToEntry(rec);
+          }
+          set({ courseProgress: next });
+        } catch {
+          /* ignore — dashboard still usable */
+        }
+      },
+      hydrateCourseProgressFromApi: async (slug: string) => {
+        try {
+          const res = await fetchCourseProgressRequest(slug);
+          if (!res.status || !res.data) return;
+          const merged = apiRecordToEntry(res.data);
+          set((state) => ({
+            courseProgress: {
+              ...state.courseProgress,
+              [slug]: merged,
+            },
+          }));
+        } catch {
+          /* ignore */
+        }
+      },
       addToWishlist: (slug: string) => {
         set((state) => {
           const newWishlist = new Set(state.wishlist);
@@ -273,7 +388,8 @@ export const useCoursesStore = create<CoursesState>()(
       },
       updateCourseProgress: (
         slug: string,
-        progress: Partial<CourseProgressData[string]>
+        progress: Partial<CourseProgressDataEntry>,
+        options?: { immediate?: boolean }
       ) => {
         set((state) => {
           const currentProgress = state.courseProgress[slug] || {
@@ -282,16 +398,32 @@ export const useCoursesStore = create<CoursesState>()(
             currentLessonId: null,
             completedLessons: [],
           };
+
+          const merged: CourseProgressDataEntry = {
+            ...currentProgress,
+            ...progress,
+            completedLessons:
+              progress.completedLessons ?? currentProgress.completedLessons,
+            currentLessonId:
+              progress.currentLessonId !== undefined
+                ? progress.currentLessonId
+                : currentProgress.currentLessonId,
+            lastUpdated: Date.now(),
+          };
+
           return {
             courseProgress: {
               ...state.courseProgress,
-              [slug]: {
-                ...currentProgress,
-                ...progress,
-              },
+              [slug]: merged,
             },
           };
         });
+        if (options?.immediate) {
+          clearPersistTimer(slug);
+          void flushProgressToApi(slug, get, set);
+        } else {
+          scheduleFlush(slug, get, set);
+        }
       },
       getCourseProgress: (slug: string) => {
         return get().courseProgress[slug] || null;
@@ -304,7 +436,6 @@ export const useCoursesStore = create<CoursesState>()(
             return {
               ...course,
               status: progress.status,
-              // Completed courses always show 100% in the listing
               progress:
                 progress.status === "completed" ? 100 : progress.progress,
             };
@@ -317,10 +448,7 @@ export const useCoursesStore = create<CoursesState>()(
         return coursesData
           .filter((course) => {
             const progress = state.courseProgress[course.slug];
-            return (
-              progress?.status === "completed" ||
-              course.status === "completed"
-            );
+            return progress?.status === "completed";
           })
           .map((course) => {
             const progress = state.courseProgress[course.slug];
@@ -340,9 +468,7 @@ export const useCoursesStore = create<CoursesState>()(
         return coursesData
           .filter((course) => {
             const progress = state.courseProgress[course.slug];
-            return (
-              progress?.status === "ongoing" || course.status === "ongoing"
-            );
+            return progress?.status === "ongoing";
           })
           .map((course) => {
             const progress = state.courseProgress[course.slug];
@@ -366,35 +492,17 @@ export const useCoursesStore = create<CoursesState>()(
       },
     }),
     {
-      name: "ryd-learning-courses", // localStorage key
-      // Custom storage to handle Set serialization
-      storage: {
-        getItem: (name) => {
-          const scoped = userScopedKey(name);
-          const str = localStorage.getItem(scoped) ?? localStorage.getItem(name);
-          if (!str) return null;
-          const parsed = JSON.parse(str);
-          return {
-            ...parsed,
-            state: {
-              ...parsed.state,
-              wishlist: new Set(parsed.state.wishlist || []),
-            },
-          };
-        },
-        setItem: (name, value) => {
-          const scoped = userScopedKey(name);
-          const toStore = {
-            ...value,
-            state: {
-              ...value.state,
-              wishlist: Array.from(value.state.wishlist),
-              courseProgress: value.state.courseProgress || {},
-            },
-          };
-          localStorage.setItem(scoped, JSON.stringify(toStore));
-        },
-        removeItem: (name) => localStorage.removeItem(userScopedKey(name)),
+      name: "ryd-learning-courses",
+      partialize: (state) => ({
+        wishlist: Array.from(state.wishlist),
+      }),
+      merge: (persistedState, currentState) => {
+        const p = persistedState as { wishlist?: string[] } | undefined;
+        return {
+          ...currentState,
+          wishlist: new Set(Array.isArray(p?.wishlist) ? p.wishlist : []),
+          courseProgress: currentState.courseProgress,
+        };
       },
     }
   )

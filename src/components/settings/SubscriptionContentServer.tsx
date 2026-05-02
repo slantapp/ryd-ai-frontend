@@ -40,6 +40,82 @@ type PlanUiMeta = {
   popular?: boolean;
 };
 
+function SubscriptionPlansSkeleton({ gateMode }: { gateMode: boolean }) {
+  const bar = "animate-pulse rounded-md bg-gray-900/8";
+  return (
+    <div
+      className={cn(
+        "grid gap-3 sm:gap-4",
+        gateMode ? "grid-cols-1 md:grid-cols-2" : "md:grid-cols-2",
+      )}
+      aria-busy="true"
+      aria-label="Loading subscription plans"
+    >
+      {[0, 1].map((i) => (
+        <Card
+          key={i}
+          className="relative min-w-0 overflow-hidden rounded-2xl border-0 shadow-none"
+        >
+          <CardContent
+            className={cn(
+              "flex h-full min-w-0 flex-col bg-linear-to-br from-[#EDE9FE]/90 via-[#F5F3FF]/80 to-[#FAF5FF]/90",
+              gateMode ? "p-4 sm:p-5" : "p-5 sm:p-6",
+            )}
+          >
+            {i === 1 && (
+              <div
+                className={cn(
+                  "absolute z-10",
+                  gateMode ? "right-3 top-3" : "right-4 top-4",
+                )}
+              >
+                <span className="inline-block h-5 w-18 animate-pulse rounded bg-white/50" />
+              </div>
+            )}
+
+            <div className="mb-3 flex size-10 shrink-0 animate-pulse rounded-xl bg-white/70 shadow-sm ring-1 ring-white/50 sm:mb-4 sm:size-11" />
+
+            <div className={cn("h-5 w-[55%] max-w-[180px]", bar)} />
+            <div className="mt-2 h-3.5 w-[85%] max-w-[220px] animate-pulse rounded-md bg-gray-900/6" />
+
+            <div className="mt-4 flex flex-wrap items-baseline gap-2 sm:mt-5">
+              <div
+                className={cn(
+                  "h-9 w-28 sm:h-10",
+                  bar,
+                )}
+              />
+              <div className="h-4 w-14 animate-pulse rounded-md bg-gray-900/6" />
+            </div>
+
+            <ul className="mt-4 flex-1 space-y-2.5 sm:mt-5">
+              {[0, 1, 2, 3].map((row) => (
+                <li key={row} className="flex gap-2">
+                  <span className="mt-0.5 size-4 shrink-0 animate-pulse rounded-full bg-primary/15" />
+                  <span
+                    className={cn(
+                      "h-4 flex-1",
+                      bar,
+                      row === 3 && "max-w-[70%]",
+                    )}
+                  />
+                </li>
+              ))}
+            </ul>
+
+            <div
+              className={cn(
+                "mt-5 h-11 w-full animate-pulse rounded-xl bg-gray-900/10 sm:mt-6",
+                gateMode && "sm:mt-5",
+              )}
+            />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 const PLAN_UI_META: Record<string, PlanUiMeta> = {
   monthly: {
     nameFallback: "Monthly",
@@ -180,21 +256,16 @@ export default function SubscriptionContentServer({
         </Card>
       )}
 
+      {plansQuery.isLoading ? (
+        <SubscriptionPlansSkeleton gateMode={gateMode} />
+      ) : (
       <div
         className={cn(
           "grid gap-3 sm:gap-4",
           gateMode ? "grid-cols-1 md:grid-cols-2" : "md:grid-cols-2"
         )}
       >
-        {plansQuery.isLoading && (
-          <Card className="rounded-2xl">
-            <CardContent className="p-5">
-              <p className="font-inter text-sm text-gray-600">Loading plans…</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {!plansQuery.isLoading && plans.length === 0 && (
+        {plans.length === 0 && (
           <Card className="rounded-2xl">
             <CardContent className="p-5">
               <p className="font-inter text-sm text-gray-600">
@@ -204,7 +275,8 @@ export default function SubscriptionContentServer({
           </Card>
         )}
 
-        {plans.map((p) => {
+        {plans.length > 0 &&
+        plans.map((p) => {
           const isCurrent = activePlanKey === p.key;
           const meta = PLAN_UI_META[p.key] ?? {
             nameFallback: p.name,
@@ -349,6 +421,7 @@ export default function SubscriptionContentServer({
           );
         })}
       </div>
+      )}
     </div>
   );
 }

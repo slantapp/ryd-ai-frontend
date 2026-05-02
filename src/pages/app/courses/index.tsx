@@ -38,8 +38,9 @@ const CATEGORY_ICONS: Record<CourseCategoryId, LucideIcon> = {
 const CoursesPage = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  /** Learner age (years): show courses where learner meets the course minimum age. */
   const [ageFilter, setAgeFilter] = useState<
-    "all" | "6-8" | "9-11" | "12-14" | "15-18"
+    "all" | "6" | "8" | "10" | "12" | "14" | "16"
   >("all");
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CourseCategoryId | null>(null);
@@ -70,11 +71,10 @@ const CoursesPage = () => {
     );
 
     if (ageFilter === "all") return withCompletedProgress;
-    const [min, max] = ageFilter.split("-").map((n) => Number(n));
+    const learnerAge = Number(ageFilter);
     return withCompletedProgress.filter((c) => {
-      const r = c.ageRange;
-      if (!r) return false;
-      return r.min <= max && r.max >= min;
+      if (c.minAge == null) return true;
+      return learnerAge >= c.minAge;
     });
   }, [activeTab, ageFilter, getAllCourses, getOngoingCourses, getCompletedCourses]);
 
@@ -180,13 +180,15 @@ const CoursesPage = () => {
 
             <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
               <label className="font-inter text-xs font-medium text-gray-600">
-                Age
+                Learner age
               </label>
               <div className="min-w-[160px]">
                 <Select
                   value={ageFilter}
                   onValueChange={(v) =>
-                    setAgeFilter(v as "all" | "6-8" | "9-11" | "12-14" | "15-18")
+                    setAgeFilter(
+                      v as "all" | "6" | "8" | "10" | "12" | "14" | "16",
+                    )
                   }
                 >
                   <SelectTrigger className="h-10 shadow-none">
@@ -194,10 +196,12 @@ const CoursesPage = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All ages</SelectItem>
-                    <SelectItem value="6-8">6–8</SelectItem>
-                    <SelectItem value="9-11">9–11</SelectItem>
-                    <SelectItem value="12-14">12–14</SelectItem>
-                    <SelectItem value="15-18">15–18</SelectItem>
+                    <SelectItem value="6">6 years</SelectItem>
+                    <SelectItem value="8">8 years</SelectItem>
+                    <SelectItem value="10">10 years</SelectItem>
+                    <SelectItem value="12">12 years</SelectItem>
+                    <SelectItem value="14">14 years</SelectItem>
+                    <SelectItem value="16">16+ years</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

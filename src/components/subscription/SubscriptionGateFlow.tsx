@@ -33,12 +33,15 @@ type SubscriptionGateFlowProps = {
   open: boolean;
   onSubscriptionComplete: () => void;
   onSignOut: () => void;
+  /** Increment (e.g. after checkout cancel) to jump straight to the plan picker. */
+  subscribeViewBump?: number;
 };
 
 const SubscriptionGateFlow = ({
   open,
   onSubscriptionComplete,
   onSignOut,
+  subscribeViewBump = 0,
 }: SubscriptionGateFlowProps) => {
   const [view, setView] = useState<GateView>("instructors");
   const [hasPreviewedInstructor, setHasPreviewedInstructor] = useState(true);
@@ -55,6 +58,12 @@ const SubscriptionGateFlow = ({
       setSpeechEnabled(true);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open || subscribeViewBump === 0) return;
+    setSpeechEnabled(false);
+    setView("subscribe");
+  }, [open, subscribeViewBump]);
 
   return (
     <Dialog

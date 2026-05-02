@@ -92,9 +92,9 @@ export default function SubscriptionContentServer({
   const startCheckout = useCallback(
     async (planKey: string) => {
       const origin = window.location.origin;
-      const httpsOrigin = origin.replace(/^http:/, "https:");
-      const successUrl = `${httpsOrigin}${PRIVATE_PATHS.DASHBOARD}?subscription=success&session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${httpsOrigin}${PRIVATE_PATHS.DASHBOARD}?subscription=cancelled`;
+      // const httpsOrigin = origin.replace(/^http:/, "https:");
+      const successUrl = `${origin}${PRIVATE_PATHS.DASHBOARD}?subscription=success&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${origin}${PRIVATE_PATHS.DASHBOARD}?subscription=cancelled`;
 
 
       try {

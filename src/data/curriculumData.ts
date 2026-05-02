@@ -259,6 +259,9 @@ export function isNextModule(
   return curriculum.modules.some((m) => m.id === nextLessonId);
 }
 
+// Per-course listing fields (min age shown as "8+", images, duration, etc.) live in
+// `defaultCourseMetadata` in `src/stores/coursesStore.ts`, keyed by `slug`.
+
 export const curriculaData: Curriculum[] = [
   {
     slug: "web-development-basics",

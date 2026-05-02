@@ -16,11 +16,6 @@ import {
 
 export type CourseStatus = "not-started" | "ongoing" | "completed";
 
-export type AgeRange = {
-  min: number;
-  max: number;
-};
-
 export interface Course {
   title: string;
   desc: string;
@@ -29,7 +24,8 @@ export interface Course {
   categoryId: CourseCategoryId;
   status: CourseStatus;
   progress?: number; // 0-100
-  ageRange?: AgeRange;
+  /** Minimum recommended age; shown on cards as e.g. "8+". */
+  minAge?: number;
   duration?: string;
   level?: "Beginner" | "Intermediate" | "Advanced";
   rating?: number;
@@ -82,68 +78,68 @@ const defaultCourseImages: Record<string, string> = {
 const defaultCourseMetadata: Record<
   string,
   {
-    ageRange?: AgeRange;
+    minAge?: number;
     duration?: string;
     level?: "Beginner" | "Intermediate" | "Advanced";
     rating?: number;
   }
 > = {
   "intro-computer-science": {
-    ageRange: { min: 9, max: 14 },
+    minAge: 9,
     duration: "6 weeks",
     level: "Beginner",
     rating: 4.8,
   },
   "web-development-basics": {
-    ageRange: { min: 10, max: 16 },
+    minAge: 10,
     duration: "4 weeks",
     level: "Beginner",
     rating: 4.9,
   },
   "javascript-beginner": {
-    ageRange: { min: 11, max: 16 },
+    minAge: 11,
     duration: "5 weeks",
     level: "Beginner",
     rating: 4.6,
   },
   "web-basics": {
-    ageRange: { min: 9, max: 14 },
+    minAge: 9,
     duration: "3 weeks",
     level: "Beginner",
     rating: 4.5,
   },
   "javascript-intermediate": {
-    ageRange: { min: 12, max: 16 },
+    minAge: 12,
     duration: "6 weeks",
     level: "Intermediate",
     rating: 4.7,
   },
   "javascript-professional": {
-    ageRange: { min: 13, max: 18 },
+    minAge: 13,
     duration: "8 weeks",
     level: "Advanced",
     rating: 4.8,
   },
   "python-beginner": {
-    ageRange: { min: 9, max: 14 },
+    minAge: 9,
     duration: "6 weeks",
     level: "Beginner",
     rating: 4.7,
   },
   "python-intermediate": {
-    ageRange: { min: 12, max: 16 },
+    minAge: 12,
     duration: "8 weeks",
     level: "Intermediate",
     rating: 4.8,
   },
   "python-advance": {
-    ageRange: { min: 14, max: 18 },
+    minAge: 14,
     duration: "10 weeks",
     level: "Advanced",
     rating: 4.9,
   },
   "css_flex_grid_lessons": {
-    ageRange: { min: 10, max: 16 },
+    minAge: 10,
     duration: "4 weeks",
     level: "Intermediate",
     rating: 4.7,
@@ -152,7 +148,7 @@ const defaultCourseMetadata: Record<
 
 function curriculumToCourse(curriculum: Curriculum): Course {
   const metadata = defaultCourseMetadata[curriculum.slug] || {
-    ageRange: { min: 8, max: 16 },
+    minAge: 8,
     duration: "4 weeks",
     level: "Beginner" as const,
     rating: 4.5,

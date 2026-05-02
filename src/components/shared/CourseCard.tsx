@@ -69,8 +69,8 @@ const CourseCard = ({
   };
 
   const ageLabel =
-    course.ageRange && Number.isFinite(course.ageRange.min) && Number.isFinite(course.ageRange.max)
-      ? `Ages ${course.ageRange.min}–${course.ageRange.max}`
+    typeof course.minAge === "number" && Number.isFinite(course.minAge)
+      ? `${course.minAge}+`
       : null;
 
   const handleWishlistClick = (e: React.MouseEvent) => {

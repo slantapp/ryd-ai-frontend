@@ -4,12 +4,14 @@ import SideNav from "./SideNav";
 import TopNav from "./TopNav";
 import { cn } from "@/lib/utils";
 import SubscriptionGateFlow from "@/components/subscription/SubscriptionGateFlow";
+import SubscriptionCheckoutReturnDialog, {
+  type CheckoutReturnVariant,
+} from "@/components/subscription/SubscriptionCheckoutReturnDialog";
 import { useAuthStore } from "@/stores/authStore";
 import { useCoursesStore } from "@/stores/coursesStore";
 import { PUBLIC_PATHS } from "@/utils/routePaths";
 import { useQueryClient } from "@tanstack/react-query";
 import { subscriptionKeys, useSubscriptionStatus } from "@/hooks/useSubscription";
-import { toast } from "react-toastify";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +28,10 @@ interface DashboardProps {
 }
 
 const DashboardLayout = ({ children }: DashboardProps) => {
+  const [checkoutReturn, setCheckoutReturn] = useState<CheckoutReturnVariant | null>(
+    null,
+  );
+  const [subscribeViewBump, setSubscribeViewBump] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
   const navigate = useNavigate();
@@ -59,6 +65,13 @@ const DashboardLayout = ({ children }: DashboardProps) => {
 
   const blockDashboardAccess = showSubscriptionGate || blockForStatusLoadingOrError;
 
+  /** Only one Radix Dialog should be open; gate + loading dialog steal clicks from stacked modals. */
+  const checkoutReturnBlocking = checkoutReturn !== null;
+  const subscriptionGateModalOpen =
+    showSubscriptionGate && !checkoutReturnBlocking;
+  const subscriptionStatusBlockModalOpen =
+    blockForStatusLoadingOrError && !checkoutReturnBlocking;
+
   const handleSubscriptionComplete = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: subscriptionKeys.status() });
   }, [queryClient]);
@@ -71,21 +84,38 @@ const DashboardLayout = ({ children }: DashboardProps) => {
   const subscriptionReturn = useMemo(() => {
     const sp = new URLSearchParams(location.search);
     const flag = sp.get("subscription");
-    const sessionId = sp.get("session_id");
-    return { flag, sessionId };
+    return { flag };
   }, [location.search]);
 
-  useEffect(() => {
-    if (!subscriptionReturn.flag) return;
+  const clearCheckoutQueryParams = useCallback(() => {
+    const sp = new URLSearchParams(location.search);
+    sp.delete("subscription");
+    sp.delete("session_id");
+    const next = sp.toString();
+    navigate(
+      { pathname: location.pathname, search: next ? `?${next}` : "" },
+      { replace: true },
+    );
+  }, [navigate, location.pathname, location.search]);
 
-    if (subscriptionReturn.flag === "success") {
-      toast.success("Payment received. Activating subscription…");
+  useEffect(() => {
+    const flag = subscriptionReturn.flag;
+    if (flag === "success") {
+      setCheckoutReturn("success");
       void queryClient.invalidateQueries({ queryKey: subscriptionKeys.status() });
-    } else if (subscriptionReturn.flag === "cancelled") {
-      toast.info("Checkout cancelled.");
+    } else if (flag === "cancelled") {
+      setCheckoutReturn("cancelled");
     }
-    // We intentionally don't strip query params here; routing owns URL shape.
   }, [queryClient, subscriptionReturn.flag]);
+
+  const handleCheckoutReturnDismiss = useCallback(() => {
+    setCheckoutReturn(null);
+    clearCheckoutQueryParams();
+  }, [clearCheckoutQueryParams]);
+
+  const handleSubscribeAgainFromCheckout = useCallback(() => {
+    setSubscribeViewBump((n) => n + 1);
+  }, []);
 
   return (
     <div className="flex h-screen flex-col items-stretch gap-4 overflow-hidden bg-white bg-[url('/images/auth-bg.png')] bg-cover bg-center bg-no-repeat">
@@ -106,7 +136,7 @@ const DashboardLayout = ({ children }: DashboardProps) => {
         </div>
       </div>
 
-      <Dialog open={blockForStatusLoadingOrError}>
+      <Dialog open={subscriptionStatusBlockModalOpen}>
         <DialogContent
           showCloseButton={false}
           onPointerDownOutside={(e) => e.preventDefault()}
@@ -154,9 +184,16 @@ const DashboardLayout = ({ children }: DashboardProps) => {
       </Dialog>
 
       <SubscriptionGateFlow
-        open={showSubscriptionGate}
+        open={subscriptionGateModalOpen}
         onSubscriptionComplete={handleSubscriptionComplete}
         onSignOut={handleSignOutFromGate}
+        subscribeViewBump={subscribeViewBump}
+      />
+
+      <SubscriptionCheckoutReturnDialog
+        variant={checkoutReturn}
+        onDismiss={handleCheckoutReturnDismiss}
+        onSubscribeAgain={handleSubscribeAgainFromCheckout}
       />
     </div>
   );

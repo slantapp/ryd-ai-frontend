@@ -1,11 +1,12 @@
 import {
+  cancelSubscription,
   createCheckoutSession,
   fetchSubscriptionHistory,
   fetchSubscriptionPlans,
   fetchSubscriptionStatus,
   type CheckoutRequest,
 } from "@/api/subscription";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const subscriptionKeys = {
   root: ["subscription"] as const,
@@ -41,6 +42,18 @@ export function useSubscriptionHistory() {
 export function useCreateCheckoutSession() {
   return useMutation({
     mutationFn: (payload: CheckoutRequest) => createCheckoutSession(payload),
+  });
+}
+
+export function useCancelSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { subscriptionId: number; immediate: boolean }) =>
+      cancelSubscription(args.subscriptionId, { immediate: args.immediate }),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: subscriptionKeys.status() });
+      void queryClient.invalidateQueries({ queryKey: subscriptionKeys.history() });
+    },
   });
 }
 

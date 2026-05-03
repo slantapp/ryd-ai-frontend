@@ -1,13 +1,22 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "react-toastify";
 import { Check, Loader2, ShieldCheck, Zap } from "lucide-react";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 import type { SubscriptionPlan } from "@/api/subscription";
 import {
+  useCancelSubscription,
   useCreateCheckoutSession,
   useSubscriptionHistory,
   useSubscriptionPlans,
@@ -140,15 +149,26 @@ export default function SubscriptionContentServer({
   gateMode = false,
   onSubscriptionComplete,
 }: SubscriptionContentServerProps) {
+  const [cancelDialog, setCancelDialog] = useState<null | "period" | "immediate">(
+    null,
+  );
   const plansQuery = useSubscriptionPlans();
   const statusQuery = useSubscriptionStatus();
   const historyQuery = useSubscriptionHistory();
   const checkoutMutation = useCreateCheckoutSession();
+  const cancelMutation = useCancelSubscription();
 
   const subscribed = statusQuery.data?.data?.subscribed === true;
   const activePlanKey =
     statusQuery.data?.data?.subscriptions?.find((s) => s.status === "active")
       ?.planKey ?? null;
+
+  const activeSubscription = useMemo(() => {
+    const list = statusQuery.data?.data?.subscriptions ?? [];
+    return (
+      list.find((s) => s.status?.toLowerCase() === "active") ?? null
+    );
+  }, [statusQuery.data?.data?.subscriptions]);
 
   useEffect(() => {
     if (gateMode && subscribed) {
@@ -164,6 +184,32 @@ export default function SubscriptionContentServer({
     for (const p of data?.other ?? []) out.push(p);
     return out;
   }, [plansQuery.data?.data]);
+
+  const confirmCancelSubscription = useCallback(() => {
+    if (!activeSubscription || !cancelDialog) return;
+    cancelMutation.mutate(
+      {
+        subscriptionId: activeSubscription.id,
+        immediate: cancelDialog === "immediate",
+      },
+      {
+        onSuccess: (envelope) => {
+          toast.success(
+            envelope.message?.trim() ||
+              (cancelDialog === "immediate"
+                ? "Your subscription has been cancelled."
+                : "Your subscription will end after the current billing period."),
+          );
+          setCancelDialog(null);
+        },
+        onError: (err: unknown) => {
+          toast.error(
+            getAxiosishErrorMessage(err) || "Could not update subscription.",
+          );
+        },
+      },
+    );
+  }, [activeSubscription, cancelDialog, cancelMutation]);
 
   const startCheckout = useCallback(
     async (planKey: string) => {
@@ -255,6 +301,109 @@ export default function SubscriptionContentServer({
           </CardContent>
         </Card>
       )}
+
+      {!gateMode && activeSubscription && (
+        <Card className="rounded-2xl border border-gray-200/80 shadow-none">
+          <CardContent className="space-y-3 p-5 sm:p-6">
+            <div>
+              <p className="font-inter text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Manage subscription
+              </p>
+              <h3 className="mt-1 font-solway text-lg font-bold text-gray-900">
+                Cancel subscription
+              </h3>
+              <p className="mt-1 font-inter text-sm text-gray-600">
+                End your plan at the end of the current period (recommended) or
+                stop access immediately.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-xl border-gray-300 font-inter sm:w-auto"
+                disabled={cancelMutation.isPending}
+                onClick={() => setCancelDialog("period")}
+              >
+                Cancel at period end
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-xl border-red-200 bg-red-50/80 font-inter text-red-800 hover:bg-red-100/90 sm:w-auto"
+                disabled={cancelMutation.isPending}
+                onClick={() => setCancelDialog("immediate")}
+              >
+                Cancel immediately
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog
+        open={cancelDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) setCancelDialog(null);
+        }}
+      >
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-solway text-lg">
+              {cancelDialog === "immediate"
+                ? "Cancel immediately?"
+                : "Cancel at end of billing period?"}
+            </DialogTitle>
+            <DialogDescription className="font-inter text-base text-gray-600">
+              {cancelDialog === "immediate" ? (
+                <>
+                  Your access will end right away and you won&apos;t be charged
+                  again. This can&apos;t be undone from here—contact support if
+                  you need help.
+                </>
+              ) : cancelDialog === "period" ? (
+                <>
+                  You&apos;ll keep full access until the end of your current
+                  billing period. After that, your subscription ends and you
+                  won&apos;t be charged again.
+                </>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl font-inter"
+              disabled={cancelMutation.isPending}
+              onClick={() => setCancelDialog(null)}
+            >
+              Keep subscription
+            </Button>
+            <Button
+              type="button"
+              className={cn(
+                "rounded-xl font-solway",
+                cancelDialog === "immediate" &&
+                  "bg-red-600 text-white hover:bg-red-700",
+              )}
+              disabled={cancelMutation.isPending}
+              onClick={confirmCancelSubscription}
+            >
+              {cancelMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Working…
+                </>
+              ) : cancelDialog === "immediate" ? (
+                "Cancel now"
+              ) : (
+                "Confirm"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {plansQuery.isLoading ? (
         <SubscriptionPlansSkeleton gateMode={gateMode} />

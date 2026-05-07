@@ -94,7 +94,8 @@ function SelectContent({
         data-slot="select-content"
         position={position}
         className={cn(
-          "relative z-50 min-w-[8rem] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg",
+          "relative z-50 min-w-32 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg",
+          "max-h-(--radix-select-content-available-height)",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           className
         )}
@@ -104,9 +105,9 @@ function SelectContent({
         <SelectPrimitive.Viewport
           data-slot="select-viewport"
           className={cn(
-            "p-1",
+            "p-1 overflow-y-auto",
             position === "popper" &&
-              "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+              "w-full min-w-(--radix-select-trigger-width)"
           )}
         >
           {children}
@@ -140,7 +141,7 @@ function SelectItem({
       data-slot="select-item"
       className={cn(
         "relative flex w-full cursor-default select-none items-center rounded-lg py-2 pl-8 pr-2 text-sm outline-none",
-        "focus:bg-gray-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "focus:bg-gray-100 data-disabled:pointer-events-none data-disabled:opacity-50",
         className
       )}
       {...props}

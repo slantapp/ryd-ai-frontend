@@ -1,10 +1,20 @@
+import * as React from "react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Link } from "react-router-dom";
 import { PUBLIC_PATHS } from "@/utils/routePaths";
 import type { AiRegisterPayload } from "@/stores/authStore";
+import { Country, State } from "country-state-city";
+import * as CountriesAndTimezones from "countries-and-timezones";
 
 export type SignUpFormData = Omit<AiRegisterPayload, "password"> & {
   password: string;
@@ -18,9 +28,43 @@ type Props = {
 };
 
 const inputClass =
-  "h-11 rounded-xl border-[#E8E8EC] bg-[#F8F8FA] px-4 font-inter text-[#0A090B] placeholder:text-[#4F4D55]/70";
+  "h-11 rounded-xl border-border bg-[#F8F8FA] px-4 font-inter text-[#0A090B] placeholder:text-[#4F4D55]/70 shadow-none";
 
 export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props) {
+  const countries = React.useMemo(() => Country.getAllCountries(), []);
+
+  const selectedCountryIso = React.useMemo(() => {
+    const byName = countries.find(
+      (c) => c.name.toLowerCase() === (formData.country ?? "").toLowerCase()
+    );
+    return byName?.isoCode ?? "";
+  }, [countries, formData.country]);
+
+  const states = React.useMemo(() => {
+    if (!selectedCountryIso) return [];
+    return State.getStatesOfCountry(selectedCountryIso);
+  }, [selectedCountryIso]);
+
+  const timezones = React.useMemo(() => {
+    if (!selectedCountryIso) return [];
+    const tz = CountriesAndTimezones.getTimezonesForCountry(selectedCountryIso);
+    // Library typings are loose; normalize to a list of IANA zone names.
+    if (!tz) return [];
+    if (Array.isArray(tz)) {
+      return tz
+        .map((t: unknown) => {
+          if (typeof t === "string") return t;
+          if (t && typeof t === "object" && "name" in t) {
+            const name = (t as { name?: unknown }).name;
+            return typeof name === "string" ? name : null;
+          }
+          return null;
+        })
+        .filter((x): x is string => Boolean(x));
+    }
+    return [];
+  }, [selectedCountryIso]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.timezone.trim()) {
@@ -38,9 +82,8 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
         {[1, 2].map((n) => (
           <div
             key={n}
-            className={`h-2 w-10 rounded-full transition-colors ${
-              n <= step ? "bg-primary" : "bg-[#E8E8EC]"
-            }`}
+            className={`h-2 w-10 rounded-full transition-colors ${n <= step ? "bg-primary" : "bg-[#E8E8EC]"
+              }`}
           />
         ))}
       </div>
@@ -98,31 +141,60 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
             <Label htmlFor="su-country" className="font-inter text-[#0A090B]">
               Country
             </Label>
-            <Input
-              id="su-country"
-              required
-              placeholder="Nigeria"
-              value={formData.country}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, country: e.target.value }))
-              }
-              className={inputClass}
-            />
+            <Select
+              value={selectedCountryIso || undefined}
+              onValueChange={(iso) => {
+                const c = countries.find((x) => x.isoCode === iso);
+                setFormData((p) => ({
+                  ...p,
+                  country: c?.name ?? "",
+                  state: "",
+                  timezone: "",
+                }));
+              }}
+            >
+              <SelectTrigger className={inputClass}>
+                <SelectValue placeholder="Select country" />
+              </SelectTrigger>
+              <SelectContent>
+                {countries.map((c) => (
+                  <SelectItem key={c.isoCode} value={c.isoCode}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="su-state" className="font-inter text-[#0A090B]">
               State / province
             </Label>
-            <Input
-              id="su-state"
-              required
-              placeholder="Lagos"
-              value={formData.state}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, state: e.target.value }))
-              }
-              className={inputClass}
-            />
+            <Select
+              value={formData.state || undefined}
+              onValueChange={(stateName) => {
+                setFormData((p) => ({ ...p, state: stateName }));
+              }}
+              disabled={!selectedCountryIso || states.length === 0}
+            >
+              <SelectTrigger className={inputClass}>
+                <SelectValue
+                  placeholder={
+                    !selectedCountryIso
+                      ? "Select country"
+                      : states.length
+                        ? "Select State"
+                        : "No states available"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {states.map((s) => (
+                  <SelectItem key={s.isoCode} value={s.name}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -146,16 +218,32 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
             <Label htmlFor="su-tz" className="font-inter text-[#0A090B]">
               Timezone
             </Label>
-            <Input
-              id="su-tz"
-              required
-              placeholder="Africa/Lagos"
-              value={formData.timezone}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, timezone: e.target.value }))
-              }
-              className={inputClass}
-            />
+            <Select
+              value={formData.timezone || undefined}
+              onValueChange={(tzName) => {
+                setFormData((p) => ({ ...p, timezone: tzName }));
+              }}
+              disabled={!selectedCountryIso || timezones.length === 0}
+            >
+              <SelectTrigger className={inputClass}>
+                <SelectValue
+                  placeholder={
+                    !selectedCountryIso
+                      ? "Select country"
+                      : timezones.length
+                        ? "Select timezone"
+                        : "No timezones"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {timezones.map((tz) => (
+                  <SelectItem key={tz} value={tz}>
+                    {tz}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div className="flex items-start gap-3 pt-1">

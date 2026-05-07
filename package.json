@@ -31,6 +31,8 @@
     "axios": "^1.12.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "countries-and-timezones": "^3.9.0",
+    "country-state-city": "^3.2.1",
     "date-fns": "^4.1.0",
     "formik": "^2.4.6",
     "lucide-react": "^0.544.0",

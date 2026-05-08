@@ -40,6 +40,32 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
     return byName?.isoCode ?? "";
   }, [countries, formData.country]);
 
+  const selectedCountry = React.useMemo(() => {
+    if (!selectedCountryIso) return null;
+    return countries.find((c) => c.isoCode === selectedCountryIso) ?? null;
+  }, [countries, selectedCountryIso]);
+
+  const callingCode = React.useMemo(() => {
+    const pc = selectedCountry?.phonecode?.trim();
+    if (!pc) return "";
+    return pc.startsWith("+") ? pc : `+${pc}`;
+  }, [selectedCountry]);
+
+  const [nationalPhone, setNationalPhone] = React.useState("");
+
+  React.useEffect(() => {
+    // Keep the editable part in sync with the stored value.
+    const raw = (formData.phone ?? "").trim();
+    if (callingCode && raw.startsWith(callingCode)) {
+      setNationalPhone(raw.slice(callingCode.length));
+    } else if (raw.startsWith("+")) {
+      // If we can't confidently split, show the whole value as editable.
+      setNationalPhone(raw);
+    } else {
+      setNationalPhone(raw);
+    }
+  }, [callingCode, formData.phone]);
+
   const states = React.useMemo(() => {
     if (!selectedCountryIso) return [];
     return State.getStatesOfCountry(selectedCountryIso);
@@ -150,6 +176,7 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
                   country: c?.name ?? "",
                   state: "",
                   timezone: "",
+                  phone: c?.phonecode ? `+${c.phonecode}` : "",
                 }));
               }}
             >
@@ -206,11 +233,30 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
               id="su-phone"
               type="tel"
               required
-              placeholder="08031234567"
-              value={formData.phone}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, phone: e.target.value }))
-              }
+              inputMode="tel"
+              placeholder={callingCode ? `${callingCode}8012345678` : "+2348012345678"}
+              value={`${callingCode || ""}${nationalPhone}`}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (!callingCode) {
+                  const cleaned = raw.replace(/[^\d+]/g, "");
+                  setNationalPhone(cleaned.replace(/^\+/, ""));
+                  setFormData((p) => ({ ...p, phone: cleaned }));
+                  return;
+                }
+
+                // Prevent edits that would remove or change the calling code prefix.
+                if (!raw.startsWith(callingCode)) {
+                  return;
+                }
+
+                const rest = raw.slice(callingCode.length).replace(/[^\d]/g, "");
+                setNationalPhone(rest);
+                setFormData((p) => ({
+                  ...p,
+                  phone: callingCode + rest,
+                }));
+              }}
               className={inputClass}
             />
           </div>

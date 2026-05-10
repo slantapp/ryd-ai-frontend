@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import type { AxiosError } from "axios";
 import { Eye, EyeOff } from "lucide-react";
@@ -10,15 +10,26 @@ import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/stores/authStore";
 import { PRIVATE_PATHS, PUBLIC_PATHS } from "@/utils/routePaths";
 
+type LoginLocationState = {
+  email?: string;
+};
+
 export default function SignInPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const login = useAuthStore((s) => s.login);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const state = location.state as LoginLocationState | null;
+    if (state?.email?.trim()) {
+      setEmail(state.email.trim());
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -50,7 +61,7 @@ export default function SignInPage() {
   return (
     <AuthShell
       title="Sign in"
-      subtitle="Use your AI LMS parent account to continue."
+      subtitle="Use your AI LMS parent account. After a password reset, use the temporary password or code from your email here."
     >
       <form className="space-y-5" onSubmit={handleSubmit}>
         <div className="space-y-2">

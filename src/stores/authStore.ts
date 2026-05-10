@@ -99,11 +99,11 @@ interface AuthState {
   register: (payload: AiRegisterPayload) => Promise<void>;
   loginFromParentCode: (decoded: LoginPayload) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
-  /** Temporary code from email + new password (same `/parent/auth/password-reset` endpoint) */
-  completePasswordReset: (payload: {
-    email: string;
-    code: string;
-    password: string;
+  /** After login: replace email temporary password with a new one (Bearer token). */
+  updatePassword: (payload: {
+    passwordOld: string;
+    password1: string;
+    password2: string;
   }) => Promise<void>;
   logout: () => void;
 }
@@ -167,12 +167,17 @@ export const useAuthStore = create<AuthState>()(
       requestPasswordReset: async (email) => {
         await axiosInstance.post("/parent/auth/password-reset", { email });
       },
-      completePasswordReset: async ({ email, code, password }) => {
-        await axiosInstance.post("/parent/auth/password-reset", {
-          email,
-          code,
-          password,
+      updatePassword: async ({ passwordOld, password1, password2 }) => {
+        const res = await axiosInstance.post("/parent/auth/password-update", {
+          passwordOld,
+          password1,
+          password2,
         });
+        const root = res.data as Record<string, unknown> | undefined;
+        if (root && typeof root === "object" && root.status === false) {
+          const msg = root.message;
+          throw new Error(typeof msg === "string" ? msg : "Password update failed");
+        }
       },
       logout: () => {
         set({

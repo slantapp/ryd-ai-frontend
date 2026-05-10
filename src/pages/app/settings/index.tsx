@@ -45,7 +45,7 @@ const SettingsPage = () => {
     {
       key: "password",
       label: "Change Password",
-      desc: "Last change 2 weeks ago",
+      desc: "Update your password after sign-in",
       icon: Lock,
       content: <PasswordContent />,
     },

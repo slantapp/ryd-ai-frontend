@@ -149,9 +149,11 @@ export default function SubscriptionContentServer({
   gateMode = false,
   onSubscriptionComplete,
 }: SubscriptionContentServerProps) {
-  const [cancelDialog, setCancelDialog] = useState<null | "period" | "immediate">(
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelledAccessEndsAt, setCancelledAccessEndsAt] = useState<string | null>(
     null,
   );
+  const [cancelJustRequested, setCancelJustRequested] = useState(false);
   const plansQuery = useSubscriptionPlans();
   const statusQuery = useSubscriptionStatus();
   const historyQuery = useSubscriptionHistory();
@@ -186,21 +188,19 @@ export default function SubscriptionContentServer({
   }, [plansQuery.data?.data]);
 
   const confirmCancelSubscription = useCallback(() => {
-    if (!activeSubscription || !cancelDialog) return;
+    if (!activeSubscription) return;
     cancelMutation.mutate(
       {
         subscriptionId: activeSubscription.id,
-        immediate: cancelDialog === "immediate",
+        immediate: true,
       },
       {
         onSuccess: (envelope) => {
-          toast.success(
-            envelope.message?.trim() ||
-              (cancelDialog === "immediate"
-                ? "Your subscription has been cancelled."
-                : "Your subscription will end after the current billing period."),
-          );
-          setCancelDialog(null);
+          // We intentionally compute access end time from subscription status/history
+          // (cancelAtPeriodEnd + currentPeriodEnd), not from the cancel endpoint payload.
+          setCancelJustRequested(true);
+          toast.success(envelope.message?.trim() || "Subscription cancelled.");
+          setCancelDialogOpen(false);
         },
         onError: (err: unknown) => {
           toast.error(
@@ -209,7 +209,41 @@ export default function SubscriptionContentServer({
         },
       },
     );
-  }, [activeSubscription, cancelDialog, cancelMutation]);
+  }, [activeSubscription, cancelMutation]);
+
+  useEffect(() => {
+    if (!cancelJustRequested) return;
+
+    // Prefer latest history item because it includes cancelAtPeriodEnd + currentPeriodEnd.
+    const items = historyQuery.data?.data ?? [];
+    const latest = [...items].sort((a, b) => {
+      const aTime = new Date(a.updatedAt).getTime();
+      const bTime = new Date(b.updatedAt).getTime();
+      return bTime - aTime;
+    })[0];
+
+    if (latest) {
+      const endsAt = latest.cancelAtPeriodEnd
+        ? latest.currentPeriodEnd
+        : new Date().toISOString();
+      setCancelledAccessEndsAt(endsAt);
+      setCancelJustRequested(false);
+      return;
+    }
+
+    // Fallback: if status is already updated and there is no history yet, end now.
+    if (statusQuery.data?.data) {
+      setCancelledAccessEndsAt(new Date().toISOString());
+      setCancelJustRequested(false);
+    }
+  }, [cancelJustRequested, historyQuery.data?.data, statusQuery.data?.data]);
+
+  const formattedAccessEndsAt = useMemo(() => {
+    if (!cancelledAccessEndsAt) return null;
+    const dt = new Date(cancelledAccessEndsAt);
+    if (Number.isNaN(dt.getTime())) return cancelledAccessEndsAt;
+    return dt.toLocaleString();
+  }, [cancelledAccessEndsAt]);
 
   const startCheckout = useCallback(
     async (planKey: string) => {
@@ -313,61 +347,46 @@ export default function SubscriptionContentServer({
                 Cancel subscription
               </h3>
               <p className="mt-1 font-inter text-sm text-gray-600">
-                End your plan at the end of the current period (recommended) or
-                stop access immediately.
+                Cancelling will stop your access immediately.
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
                 type="button"
                 variant="outline"
-                className="w-full rounded-xl border-gray-300 font-inter sm:w-auto"
-                disabled={cancelMutation.isPending}
-                onClick={() => setCancelDialog("period")}
-              >
-                Cancel at period end
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
                 className="w-full rounded-xl border-red-200 bg-red-50/80 font-inter text-red-800 hover:bg-red-100/90 sm:w-auto"
                 disabled={cancelMutation.isPending}
-                onClick={() => setCancelDialog("immediate")}
+                onClick={() => setCancelDialogOpen(true)}
               >
-                Cancel immediately
+                Cancel Subscription
               </Button>
             </div>
+            {formattedAccessEndsAt && (
+              <div className="rounded-xl bg-amber-50 p-4 font-inter text-sm text-amber-950 ring-1 ring-amber-200">
+                <p className="font-semibold">Subscription cancelled</p>
+                <p className="mt-1">
+                  Access ends: <span className="font-semibold">{formattedAccessEndsAt}</span>
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
       <Dialog
-        open={cancelDialog !== null}
+        open={cancelDialogOpen}
         onOpenChange={(open) => {
-          if (!open) setCancelDialog(null);
+          setCancelDialogOpen(open);
         }}
       >
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-solway text-lg">
-              {cancelDialog === "immediate"
-                ? "Cancel immediately?"
-                : "Cancel at end of billing period?"}
+              Cancel subscription?
             </DialogTitle>
             <DialogDescription className="font-inter text-base text-gray-600">
-              {cancelDialog === "immediate" ? (
-                <>
-                  Your access will end right away and you won&apos;t be charged
-                  again. This can&apos;t be undone from here—contact support if
-                  you need help.
-                </>
-              ) : cancelDialog === "period" ? (
-                <>
-                  You&apos;ll keep full access until the end of your current
-                  billing period. After that, your subscription ends and you
-                  won&apos;t be charged again.
-                </>
-              ) : null}
+              Your access will end right away and you won&apos;t be charged again.
+              If you need help, contact support.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -376,7 +395,7 @@ export default function SubscriptionContentServer({
               variant="outline"
               className="rounded-xl font-inter"
               disabled={cancelMutation.isPending}
-              onClick={() => setCancelDialog(null)}
+              onClick={() => setCancelDialogOpen(false)}
             >
               Keep subscription
             </Button>
@@ -384,8 +403,7 @@ export default function SubscriptionContentServer({
               type="button"
               className={cn(
                 "rounded-xl font-solway",
-                cancelDialog === "immediate" &&
-                  "bg-red-600 text-white hover:bg-red-700",
+                "bg-red-600 text-white hover:bg-red-700",
               )}
               disabled={cancelMutation.isPending}
               onClick={confirmCancelSubscription}
@@ -395,10 +413,8 @@ export default function SubscriptionContentServer({
                   <Loader2 className="mr-2 size-4 animate-spin" />
                   Working…
                 </>
-              ) : cancelDialog === "immediate" ? (
-                "Cancel now"
               ) : (
-                "Confirm"
+                "Cancel now"
               )}
             </Button>
           </DialogFooter>
@@ -408,168 +424,168 @@ export default function SubscriptionContentServer({
       {plansQuery.isLoading ? (
         <SubscriptionPlansSkeleton gateMode={gateMode} />
       ) : (
-      <div
-        className={cn(
-          "grid gap-3 sm:gap-4",
-          gateMode ? "grid-cols-1 md:grid-cols-2" : "md:grid-cols-2"
-        )}
-      >
-        {plans.length === 0 && (
-          <Card className="rounded-2xl">
-            <CardContent className="p-5">
-              <p className="font-inter text-sm text-gray-600">
-                No plans available.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {plans.length > 0 &&
-        plans.map((p) => {
-          const isCurrent = activePlanKey === p.key;
-          const meta = PLAN_UI_META[p.key] ?? {
-            nameFallback: p.name,
-            taglineFallback: "",
-            periodSuffixFallback: "",
-            accent: "from-[#E8E0FF] to-[#F3ECFE]",
-            borderAccent: "border-transparent",
-            icon: Zap,
-          };
-          const Icon = meta.icon;
-          const features = (p.features ?? []).slice(0, gateMode ? 6 : 8);
-          return (
-            <Card
-              key={p.key}
-              className={cn(
-                "relative min-w-0 overflow-hidden rounded-2xl border-0 shadow-none transition hover:shadow-md",
-                meta.borderAccent,
-                meta.popular && !gateMode && "lg:scale-[1.02] lg:shadow-lg"
-              )}
-            >
-              {meta.popular && (
-                <div
-                  className={cn(
-                    "absolute z-10",
-                    gateMode ? "right-3 top-3" : "right-4 top-4"
-                  )}
-                >
-                  <Badge className="bg-[#0063F7] font-inter text-[10px] font-semibold uppercase tracking-wider text-white hover:bg-[#0063F7]">
-                    Most popular
-                  </Badge>
-                </div>
-              )}
-
-              <CardContent
-                className={cn(
-                  "flex h-full min-w-0 flex-col",
-                  gateMode ? "p-4 sm:p-5" : "p-5 sm:p-6",
-                  `bg-linear-to-br ${meta.accent}`
-                )}
-              >
-                <div
-                  className={cn(
-                    "mb-3 flex size-10 items-center justify-center rounded-xl bg-white/90 shadow-sm ring-1 ring-white/60 sm:mb-4 sm:size-11"
-                  )}
-                >
-                  <Icon className="size-4 text-primary sm:size-5" aria-hidden />
-                </div>
-
-                <h3 className="font-solway text-base font-bold text-gray-900 sm:text-lg">
-                  {p.name || meta.nameFallback}
-                </h3>
-                {(meta.taglineFallback || p.durationMonths) && (
-                  <p
-                    className={cn(
-                      "mt-1 font-inter text-gray-600",
-                      gateMode ? "text-xs leading-snug sm:text-sm" : "text-sm"
-                    )}
-                  >
-                    {meta.taglineFallback ||
-                      (p.durationMonths
-                        ? `${p.durationMonths} month${p.durationMonths === 1 ? "" : "s"} access`
-                        : "")}
-                  </p>
-                )}
-
-                <div className="mt-3 flex flex-wrap items-baseline gap-x-1 gap-y-0.5 sm:mt-4">
-                  <span
-                    className={cn(
-                      "font-solway font-bold tracking-tight text-gray-900",
-                      gateMode ? "text-2xl sm:text-3xl" : "text-3xl"
-                    )}
-                  >
-                    {p.priceLabel}
-                  </span>
-                  {meta.periodSuffixFallback && (
-                    <span
-                      className={cn(
-                        "font-inter text-gray-600",
-                        gateMode ? "text-xs sm:text-sm" : "text-sm"
-                      )}
-                    >
-                      {meta.periodSuffixFallback}
-                    </span>
-                  )}
-                </div>
-
-                {features.length > 0 && (
-                  <ul
-                    className={cn(
-                      "flex-1",
-                      gateMode ? "mt-4 space-y-2" : "mt-5 space-y-2.5"
-                    )}
-                  >
-                    {features.map((f) => (
-                      <li
-                        key={f}
-                        className={cn(
-                          "flex gap-2 font-inter text-gray-700",
-                          gateMode
-                            ? "text-xs leading-relaxed sm:text-sm"
-                            : "text-sm"
-                        )}
-                      >
-                        <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-                        <span className="min-w-0">{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <Button
-                  type="button"
-                  onClick={() => void startCheckout(p.key)}
-                  className={cn(
-                    "h-11 w-full rounded-xl font-solway font-semibold shadow-sm",
-                    gateMode ? "mt-4 sm:mt-5" : "mt-6",
-                    meta.popular
-                      ? "bg-[#0063F7] hover:bg-[#0056d9]"
-                      : "bg-primary hover:bg-primary/90"
-                  )}
-                  disabled={checkoutMutation.isPending}
-                >
-                  {checkoutMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                      Redirecting…
-                    </>
-                  ) : isCurrent ? (
-                    "Renew"
-                  ) : (
-                    "Subscribe"
-                  )}
-                </Button>
-
-                {isCurrent && (
-                  <p className="mt-2 text-center font-inter text-xs text-gray-600">
-                    Your current plan
-                  </p>
-                )}
+        <div
+          className={cn(
+            "grid gap-3 sm:gap-4",
+            gateMode ? "grid-cols-1 md:grid-cols-2" : "md:grid-cols-2"
+          )}
+        >
+          {plans.length === 0 && (
+            <Card className="rounded-2xl">
+              <CardContent className="p-5">
+                <p className="font-inter text-sm text-gray-600">
+                  No plans available.
+                </p>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+          )}
+
+          {plans.length > 0 &&
+            plans.map((p) => {
+              const isCurrent = activePlanKey === p.key;
+              const meta = PLAN_UI_META[p.key] ?? {
+                nameFallback: p.name,
+                taglineFallback: "",
+                periodSuffixFallback: "",
+                accent: "from-[#E8E0FF] to-[#F3ECFE]",
+                borderAccent: "border-transparent",
+                icon: Zap,
+              };
+              const Icon = meta.icon;
+              const features = (p.features ?? []).slice(0, gateMode ? 6 : 8);
+              return (
+                <Card
+                  key={p.key}
+                  className={cn(
+                    "relative min-w-0 overflow-hidden rounded-2xl border-0 shadow-none transition hover:shadow-md",
+                    meta.borderAccent,
+                    meta.popular && !gateMode && "lg:scale-[1.02] lg:shadow-lg"
+                  )}
+                >
+                  {meta.popular && (
+                    <div
+                      className={cn(
+                        "absolute z-10",
+                        gateMode ? "right-3 top-3" : "right-4 top-4"
+                      )}
+                    >
+                      <Badge className="bg-[#0063F7] font-inter text-[10px] font-semibold uppercase tracking-wider text-white hover:bg-[#0063F7]">
+                        Most popular
+                      </Badge>
+                    </div>
+                  )}
+
+                  <CardContent
+                    className={cn(
+                      "flex h-full min-w-0 flex-col",
+                      gateMode ? "p-4 sm:p-5" : "p-5 sm:p-6",
+                      `bg-linear-to-br ${meta.accent}`
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "mb-3 flex size-10 items-center justify-center rounded-xl bg-white/90 shadow-sm ring-1 ring-white/60 sm:mb-4 sm:size-11"
+                      )}
+                    >
+                      <Icon className="size-4 text-primary sm:size-5" aria-hidden />
+                    </div>
+
+                    <h3 className="font-solway text-base font-bold text-gray-900 sm:text-lg">
+                      {p.name || meta.nameFallback}
+                    </h3>
+                    {(meta.taglineFallback || p.durationMonths) && (
+                      <p
+                        className={cn(
+                          "mt-1 font-inter text-gray-600",
+                          gateMode ? "text-xs leading-snug sm:text-sm" : "text-sm"
+                        )}
+                      >
+                        {meta.taglineFallback ||
+                          (p.durationMonths
+                            ? `${p.durationMonths} month${p.durationMonths === 1 ? "" : "s"} access`
+                            : "")}
+                      </p>
+                    )}
+
+                    <div className="mt-3 flex flex-wrap items-baseline gap-x-1 gap-y-0.5 sm:mt-4">
+                      <span
+                        className={cn(
+                          "font-solway font-bold tracking-tight text-gray-900",
+                          gateMode ? "text-2xl sm:text-3xl" : "text-3xl"
+                        )}
+                      >
+                        {p.priceLabel}
+                      </span>
+                      {meta.periodSuffixFallback && (
+                        <span
+                          className={cn(
+                            "font-inter text-gray-600",
+                            gateMode ? "text-xs sm:text-sm" : "text-sm"
+                          )}
+                        >
+                          {meta.periodSuffixFallback}
+                        </span>
+                      )}
+                    </div>
+
+                    {features.length > 0 && (
+                      <ul
+                        className={cn(
+                          "flex-1",
+                          gateMode ? "mt-4 space-y-2" : "mt-5 space-y-2.5"
+                        )}
+                      >
+                        {features.map((f) => (
+                          <li
+                            key={f}
+                            className={cn(
+                              "flex gap-2 font-inter text-gray-700",
+                              gateMode
+                                ? "text-xs leading-relaxed sm:text-sm"
+                                : "text-sm"
+                            )}
+                          >
+                            <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                            <span className="min-w-0">{f}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <Button
+                      type="button"
+                      onClick={() => void startCheckout(p.key)}
+                      className={cn(
+                        "h-11 w-full rounded-xl font-solway font-semibold shadow-sm",
+                        gateMode ? "mt-4 sm:mt-5" : "mt-6",
+                        meta.popular
+                          ? "bg-[#0063F7] hover:bg-[#0056d9]"
+                          : "bg-primary hover:bg-primary/90"
+                      )}
+                      disabled={checkoutMutation.isPending}
+                    >
+                      {checkoutMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 size-4 animate-spin" />
+                          Redirecting…
+                        </>
+                      ) : isCurrent ? (
+                        "Renew"
+                      ) : (
+                        "Subscribe"
+                      )}
+                    </Button>
+
+                    {isCurrent && (
+                      <p className="mt-2 text-center font-inter text-xs text-gray-600">
+                        Your current plan
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+        </div>
       )}
     </div>
   );

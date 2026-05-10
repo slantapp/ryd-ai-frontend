@@ -339,9 +339,8 @@ export function MarketingToolPage() {
 
           <div className="space-y-4">
             <div
-              className={`relative aspect-[4/3] overflow-hidden rounded-2xl border-2 ${
-                isRecording ? "border-red-500" : "border-gray-200"
-              } bg-linear-to-b from-gray-100 to-gray-200 shadow-lg transition-colors`}
+              className={`relative aspect-[4/3] overflow-hidden rounded-2xl border-2 ${isRecording ? "border-red-500" : "border-gray-200"
+                } bg-linear-to-b from-gray-100 to-gray-200 shadow-lg transition-colors`}
             >
               <AvatarComponent className="h-full w-full" />
               {isRecording && (

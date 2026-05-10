@@ -1,4 +1,6 @@
 import { navItems } from "@/utils/constants";
+import { userHasAllowedType } from "@/auth";
+import { useAuthStore } from "@/stores/authStore";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,8 +20,19 @@ interface SideNavProps {
 const SideNav = ({ mobileNavOpen, onMobileNavClose }: SideNavProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const user = useAuthStore((s) => s.user);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const subscriptionStatus = useSubscriptionStatus();
+
+  const visibleNavItems = useMemo(
+    () =>
+      navItems.filter((item) =>
+        !item.allowedUserTypes?.length
+          ? true
+          : userHasAllowedType(user, item.allowedUserTypes),
+      ),
+    [user],
+  );
 
   const subscribed = subscriptionStatus.data?.data?.subscribed === true;
   const activePlanKey =
@@ -117,8 +130,8 @@ const SideNav = ({ mobileNavOpen, onMobileNavClose }: SideNavProps) => {
 
         <nav className="flex h-full min-h-0 flex-col justify-between gap-4 overflow-y-auto scrollbar-hide">
           <ul className="space-y-2 text-sm">
-            {navItems.map((item, i) => (
-              <li key={i}>
+            {visibleNavItems.map((item) => (
+              <li key={item.path}>
                 <button
                   type="button"
                   onClick={() => go(item.path)}

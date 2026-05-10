@@ -1,4 +1,5 @@
 import * as React from "react";
+import { toast } from "react-toastify";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +16,75 @@ import { PUBLIC_PATHS } from "@/utils/routePaths";
 import type { AiRegisterPayload } from "@/stores/authStore";
 import { Country, State } from "country-state-city";
 import * as CountriesAndTimezones from "countries-and-timezones";
+import { cn } from "@/lib/utils";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type SignUpFormData = Omit<AiRegisterPayload, "password"> & {
   password: string;
 };
+
+export type PersonalInfoFieldErrors = Partial<
+  Record<
+    | "firstName"
+    | "lastName"
+    | "email"
+    | "country"
+    | "state"
+    | "phone"
+    | "timezone"
+    | "terms",
+    string
+  >
+>;
+
+function validatePersonalInfo(
+  formData: SignUpFormData,
+  selectedCountryIso: string,
+  statesCount: number,
+  timezonesCount: number,
+  termsAccepted: boolean
+): PersonalInfoFieldErrors {
+  const errors: PersonalInfoFieldErrors = {};
+
+  if (!formData.firstName.trim()) {
+    errors.firstName = "First name is required.";
+  }
+
+  if (!formData.lastName.trim()) {
+    errors.lastName = "Last name is required.";
+  }
+
+  const email = formData.email.trim();
+  if (!email) {
+    errors.email = "Email is required.";
+  } else if (!EMAIL_RE.test(email)) {
+    errors.email = "Enter a valid email address.";
+  }
+
+  if (!selectedCountryIso) {
+    errors.country = "Please select your country.";
+  }
+
+  if (selectedCountryIso && statesCount > 0 && !formData.state?.trim()) {
+    errors.state = "Please select your state or province.";
+  }
+
+  const phoneDigitCount = (formData.phone ?? "").replace(/\D/g, "").length;
+  if (phoneDigitCount < 7) {
+    errors.phone = "Enter a valid phone number (at least 7 digits).";
+  }
+
+  if (selectedCountryIso && timezonesCount > 0 && !formData.timezone?.trim()) {
+    errors.timezone = "Please select your timezone.";
+  }
+
+  if (!termsAccepted) {
+    errors.terms = "You must agree to the terms to continue.";
+  }
+
+  return errors;
+}
 
 type Props = {
   formData: SignUpFormData;
@@ -31,6 +97,9 @@ const inputClass =
   "h-11 rounded-xl border-border bg-[#F8F8FA] px-4 font-inter text-[#0A090B] placeholder:text-[#4F4D55]/70 shadow-none";
 
 export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props) {
+  const [fieldErrors, setFieldErrors] = React.useState<PersonalInfoFieldErrors>({});
+  const [termsAccepted, setTermsAccepted] = React.useState(false);
+
   const countries = React.useMemo(() => Country.getAllCountries(), []);
 
   const selectedCountryIso = React.useMemo(() => {
@@ -91,11 +160,69 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
     return [];
   }, [selectedCountryIso]);
 
+  const clearFieldError = React.useCallback((key: keyof PersonalInfoFieldErrors) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.timezone.trim()) {
+    const errors = validatePersonalInfo(
+      formData,
+      selectedCountryIso,
+      states.length,
+      timezones.length,
+      termsAccepted
+    );
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const first = Object.values(errors)[0];
+      toast.error(
+        typeof first === "string"
+          ? first
+          : "Please fill in all required fields correctly."
+      );
+      const order: (keyof PersonalInfoFieldErrors)[] = [
+        "firstName",
+        "lastName",
+        "email",
+        "country",
+        "state",
+        "phone",
+        "timezone",
+        "terms",
+      ];
+      const firstKey = order.find((k) => errors[k]);
+      if (firstKey) {
+        const idMap: Record<string, string> = {
+          firstName: "su-fn",
+          lastName: "su-ln",
+          email: "su-email",
+          country: "su-country",
+          state: "su-state",
+          phone: "su-phone",
+          timezone: "su-tz",
+          terms: "su-terms",
+        };
+        const elId = idMap[firstKey];
+        if (elId) {
+          requestAnimationFrame(() => {
+            document.getElementById(elId)?.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+          });
+        }
+      }
       return;
     }
+
+    setFieldErrors({});
     onNext();
   };
 
@@ -113,7 +240,7 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
           />
         ))}
       </div>
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="space-y-4" onSubmit={handleSubmit} noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="su-fn" className="font-inter text-[#0A090B]">
@@ -121,14 +248,23 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
             </Label>
             <Input
               id="su-fn"
-              required
               placeholder="Amina"
               value={formData.firstName}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, firstName: e.target.value }))
-              }
-              className={inputClass}
+              onChange={(e) => {
+                clearFieldError("firstName");
+                setFormData((p) => ({ ...p, firstName: e.target.value }));
+              }}
+              aria-invalid={Boolean(fieldErrors.firstName)}
+              className={cn(
+                inputClass,
+                fieldErrors.firstName && "border-destructive ring-1 ring-destructive/25"
+              )}
             />
+            {fieldErrors.firstName ? (
+              <p className="font-inter text-xs text-destructive" role="alert">
+                {fieldErrors.firstName}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="su-ln" className="font-inter text-[#0A090B]">
@@ -136,14 +272,23 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
             </Label>
             <Input
               id="su-ln"
-              required
               placeholder="Okoro"
               value={formData.lastName}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, lastName: e.target.value }))
-              }
-              className={inputClass}
+              onChange={(e) => {
+                clearFieldError("lastName");
+                setFormData((p) => ({ ...p, lastName: e.target.value }));
+              }}
+              aria-invalid={Boolean(fieldErrors.lastName)}
+              className={cn(
+                inputClass,
+                fieldErrors.lastName && "border-destructive ring-1 ring-destructive/25"
+              )}
             />
+            {fieldErrors.lastName ? (
+              <p className="font-inter text-xs text-destructive" role="alert">
+                {fieldErrors.lastName}
+              </p>
+            ) : null}
           </div>
         </div>
         <div className="space-y-2">
@@ -153,14 +298,24 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
           <Input
             id="su-email"
             type="email"
-            required
+            autoComplete="email"
             placeholder="ai.parent.demo1@rydlearning.com"
             value={formData.email}
-            onChange={(e) =>
-              setFormData((p) => ({ ...p, email: e.target.value }))
-            }
-            className={inputClass}
+            onChange={(e) => {
+              clearFieldError("email");
+              setFormData((p) => ({ ...p, email: e.target.value }));
+            }}
+            aria-invalid={Boolean(fieldErrors.email)}
+            className={cn(
+              inputClass,
+              fieldErrors.email && "border-destructive ring-1 ring-destructive/25"
+            )}
           />
+          {fieldErrors.email ? (
+            <p className="font-inter text-xs text-destructive" role="alert">
+              {fieldErrors.email}
+            </p>
+          ) : null}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -170,6 +325,10 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
             <Select
               value={selectedCountryIso || undefined}
               onValueChange={(iso) => {
+                clearFieldError("country");
+                clearFieldError("state");
+                clearFieldError("timezone");
+                clearFieldError("phone");
                 const c = countries.find((x) => x.isoCode === iso);
                 setFormData((p) => ({
                   ...p,
@@ -180,7 +339,14 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
                 }));
               }}
             >
-              <SelectTrigger className={inputClass}>
+              <SelectTrigger
+                id="su-country"
+                aria-invalid={Boolean(fieldErrors.country)}
+                className={cn(
+                  inputClass,
+                  fieldErrors.country && "border-destructive ring-1 ring-destructive/25"
+                )}
+              >
                 <SelectValue placeholder="Select country" />
               </SelectTrigger>
               <SelectContent>
@@ -191,6 +357,11 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.country ? (
+              <p className="font-inter text-xs text-destructive" role="alert">
+                {fieldErrors.country}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="su-state" className="font-inter text-[#0A090B]">
@@ -199,11 +370,19 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
             <Select
               value={formData.state || undefined}
               onValueChange={(stateName) => {
+                clearFieldError("state");
                 setFormData((p) => ({ ...p, state: stateName }));
               }}
               disabled={!selectedCountryIso || states.length === 0}
             >
-              <SelectTrigger className={inputClass}>
+              <SelectTrigger
+                id="su-state"
+                aria-invalid={Boolean(fieldErrors.state)}
+                className={cn(
+                  inputClass,
+                  fieldErrors.state && "border-destructive ring-1 ring-destructive/25"
+                )}
+              >
                 <SelectValue
                   placeholder={
                     !selectedCountryIso
@@ -222,6 +401,11 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.state ? (
+              <p className="font-inter text-xs text-destructive" role="alert">
+                {fieldErrors.state}
+              </p>
+            ) : null}
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -232,11 +416,11 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
             <Input
               id="su-phone"
               type="tel"
-              required
               inputMode="tel"
               placeholder={callingCode ? `${callingCode}8012345678` : "+2348012345678"}
               value={`${callingCode || ""}${nationalPhone}`}
               onChange={(e) => {
+                clearFieldError("phone");
                 const raw = e.target.value;
                 if (!callingCode) {
                   const cleaned = raw.replace(/[^\d+]/g, "");
@@ -257,8 +441,17 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
                   phone: callingCode + rest,
                 }));
               }}
-              className={inputClass}
+              aria-invalid={Boolean(fieldErrors.phone)}
+              className={cn(
+                inputClass,
+                fieldErrors.phone && "border-destructive ring-1 ring-destructive/25"
+              )}
             />
+            {fieldErrors.phone ? (
+              <p className="font-inter text-xs text-destructive" role="alert">
+                {fieldErrors.phone}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="su-tz" className="font-inter text-[#0A090B]">
@@ -267,11 +460,19 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
             <Select
               value={formData.timezone || undefined}
               onValueChange={(tzName) => {
+                clearFieldError("timezone");
                 setFormData((p) => ({ ...p, timezone: tzName }));
               }}
               disabled={!selectedCountryIso || timezones.length === 0}
             >
-              <SelectTrigger className={inputClass}>
+              <SelectTrigger
+                id="su-tz"
+                aria-invalid={Boolean(fieldErrors.timezone)}
+                className={cn(
+                  inputClass,
+                  fieldErrors.timezone && "border-destructive ring-1 ring-destructive/25"
+                )}
+              >
                 <SelectValue
                   placeholder={
                     !selectedCountryIso
@@ -290,21 +491,41 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.timezone ? (
+              <p className="font-inter text-xs text-destructive" role="alert">
+                {fieldErrors.timezone}
+              </p>
+            ) : null}
           </div>
         </div>
-        <div className="flex items-start gap-3 pt-1">
-          <input
-            id="su-terms"
-            type="checkbox"
-            required
-            className="mt-1 size-4 shrink-0 rounded border-[#E8E8EC] accent-primary"
-          />
-          <label
-            htmlFor="su-terms"
-            className="font-inter text-xs leading-relaxed text-[#4F4D55]"
-          >
-            I agree to the terms and privacy policy for the AI LMS.
-          </label>
+        <div className="space-y-2 pt-1">
+          <div className="flex items-start gap-3">
+            <input
+              id="su-terms"
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => {
+                clearFieldError("terms");
+                setTermsAccepted(e.target.checked);
+              }}
+              aria-invalid={Boolean(fieldErrors.terms)}
+              className={cn(
+                "mt-1 size-4 shrink-0 rounded border-[#E8E8EC] accent-primary",
+                fieldErrors.terms && "border-destructive ring-1 ring-destructive/25"
+              )}
+            />
+            <label
+              htmlFor="su-terms"
+              className="font-inter text-xs leading-relaxed text-[#4F4D55]"
+            >
+              I agree to the terms and privacy policy for the AI LMS.
+            </label>
+          </div>
+          {fieldErrors.terms ? (
+            <p className="font-inter text-xs text-destructive pl-7" role="alert">
+              {fieldErrors.terms}
+            </p>
+          ) : null}
         </div>
         <Button
           type="submit"

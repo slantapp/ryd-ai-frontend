@@ -3,6 +3,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -21,21 +22,68 @@ type Props = {
 const inputClass =
   "h-11 rounded-xl border-[#E8E8EC] bg-[#F8F8FA] px-4 font-inter text-[#0A090B] placeholder:text-[#4F4D55]/70";
 
+const MIN_PASSWORD_LENGTH = 8;
+
+type PasswordFieldErrors = Partial<Record<"password" | "confirmPassword", string>>;
+
+function validatePasswordStep(
+  password: string,
+  confirm: string
+): PasswordFieldErrors {
+  const errors: PasswordFieldErrors = {};
+
+  if (!password.trim()) {
+    errors.password = "Password is required.";
+  } else if (password.length < MIN_PASSWORD_LENGTH) {
+    errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+  }
+
+  if (!confirm.trim()) {
+    errors.confirmPassword = "Please confirm your password.";
+  } else if (password !== confirm) {
+    errors.confirmPassword = "Passwords must match.";
+  }
+
+  return errors;
+}
+
 export function PasswordStep({ formData, setFormData, onBack, step }: Props) {
   const navigate = useNavigate();
   const register = useAuthStore((s) => s.register);
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [mismatch, setMismatch] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<PasswordFieldErrors>({});
+
+  const clearFieldError = (key: keyof PasswordFieldErrors) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.password !== confirm) {
-      setMismatch(true);
+    const errors = validatePasswordStep(formData.password, confirm);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const first = Object.values(errors)[0];
+      toast.error(
+        typeof first === "string" ? first : "Please fix the errors below."
+      );
+      const firstKey = errors.password ? "su-pw" : "su-pw2";
+      requestAnimationFrame(() => {
+        document.getElementById(firstKey)?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
       return;
     }
-    setMismatch(false);
+
+    setFieldErrors({});
     setLoading(true);
     try {
       const { password, ...rest } = formData;
@@ -71,7 +119,7 @@ export function PasswordStep({ formData, setFormData, onBack, step }: Props) {
           />
         ))}
       </div>
-      <form className="space-y-5" onSubmit={handleSubmit}>
+      <form className="space-y-5" onSubmit={handleSubmit} noValidate>
         <div className="space-y-2">
           <Label htmlFor="su-pw" className="font-inter text-[#0A090B]">
             Password
@@ -81,13 +129,18 @@ export function PasswordStep({ formData, setFormData, onBack, step }: Props) {
               id="su-pw"
               type={showPw ? "text" : "password"}
               autoComplete="new-password"
-              required
               placeholder="Test@12345"
               value={formData.password}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, password: e.target.value }))
-              }
-              className={`${inputClass} pr-11`}
+              onChange={(e) => {
+                clearFieldError("password");
+                setFormData((p) => ({ ...p, password: e.target.value }));
+              }}
+              aria-invalid={Boolean(fieldErrors.password)}
+              className={cn(
+                inputClass,
+                "pr-11",
+                fieldErrors.password && "border-destructive ring-1 ring-destructive/25"
+              )}
             />
             <button
               type="button"
@@ -98,6 +151,11 @@ export function PasswordStep({ formData, setFormData, onBack, step }: Props) {
               {showPw ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
             </button>
           </div>
+          {fieldErrors.password ? (
+            <p className="font-inter text-xs text-destructive" role="alert">
+              {fieldErrors.password}
+            </p>
+          ) : null}
         </div>
         <div className="space-y-2">
           <Label htmlFor="su-pw2" className="font-inter text-[#0A090B]">
@@ -107,17 +165,21 @@ export function PasswordStep({ formData, setFormData, onBack, step }: Props) {
             id="su-pw2"
             type={showPw ? "text" : "password"}
             autoComplete="new-password"
-            required
             value={confirm}
             onChange={(e) => {
+              clearFieldError("confirmPassword");
               setConfirm(e.target.value);
-              setMismatch(false);
             }}
-            className={inputClass}
+            aria-invalid={Boolean(fieldErrors.confirmPassword)}
+            className={cn(
+              inputClass,
+              fieldErrors.confirmPassword &&
+                "border-destructive ring-1 ring-destructive/25"
+            )}
           />
-          {mismatch ? (
-            <p className="font-inter text-xs text-destructive">
-              Passwords must match.
+          {fieldErrors.confirmPassword ? (
+            <p className="font-inter text-xs text-destructive" role="alert">
+              {fieldErrors.confirmPassword}
             </p>
           ) : null}
         </div>

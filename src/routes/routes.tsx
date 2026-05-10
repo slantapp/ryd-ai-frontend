@@ -19,6 +19,10 @@ import {
   SupportPage,
 } from "@/pages/app";
 import CourseDetails from "@/components/courses/CourseDetails";
+import { CurriculumPreviewPage } from "@/features/curriculum-preview";
+import { MarketingToolPage } from "@/features/marketing-tool";
+import { RequireUserTypes } from "@/components/auth/RequireUserTypes";
+import { CURRICULUM_PREVIEW_USER_TYPES } from "@/auth";
 
 interface AppRoute {
   path: string;
@@ -31,18 +35,7 @@ interface AppRoute {
   ];
 }
 
-interface AppRoute {
-  path: string;
-  element: React.ReactNode;
-  children?: [
-    {
-      path: string;
-      element: React.ReactNode;
-    }
-  ];
-}
-
-const { DASHBOARD, COURSES, COURSE_QUIZ, SETTINGS, WISHLISTS, SUPPORT } =
+const { DASHBOARD, COURSES, COURSE_QUIZ, SETTINGS, WISHLISTS, SUPPORT, CURRICULUM_PREVIEW, MARKETING_TOOL } =
   PRIVATE_PATHS;
 
 const {
@@ -127,6 +120,21 @@ export const PRIVATE_ROUTES: AppRoute[] = [
   {
     path: SUPPORT,
     element: <SupportPage />,
+  },
+  {
+    path: CURRICULUM_PREVIEW,
+    element: (
+      <RequireUserTypes
+        allowed={CURRICULUM_PREVIEW_USER_TYPES}
+        deniedToast="Curriculum preview is only available for teachers and admins."
+      >
+        <CurriculumPreviewPage />
+      </RequireUserTypes>
+    ),
+  },
+  {
+    path: MARKETING_TOOL,
+    element: <MarketingToolPage />,
   },
   {
     path: "*",

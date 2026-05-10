@@ -93,8 +93,7 @@ const InstructorContent = ({
       ttsService: "deepgram" as const,
       ttsVoice: womanConfig.ttsVoice,
       ttsApiKey:
-        import.meta.env?.VITE_DEEPGRAM_API_KEY ||
-        "aa197cc0f30583ce6bf225517d5d8e0cdce506a7",
+        import.meta.env?.VITE_DEEPGRAM_API_KEY,
       lipsyncModules: ["en"] as const,
       lipsyncLang: "en",
       speechRate: 0.9,

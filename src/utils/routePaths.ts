@@ -23,6 +23,8 @@ export const PRIVATE_PATHS = {
   PROFILE: "/profile",
   SUPPORT: "/support",
   SETTINGS: "/settings",
+  CURRICULUM_PREVIEW: "/curriculum-preview",
+  MARKETING_TOOL: "/marketing-tool",
 };
 
 export const ACTION = {

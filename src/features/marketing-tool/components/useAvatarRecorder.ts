@@ -41,15 +41,17 @@ export function useAvatarRecorder(options: UseAvatarRecorderOptions = {}) {
       const audioTracks = stream.getAudioTracks();
       if (audioTracks.length === 0) {
         console.warn(
-          "No audio track captured. Make sure to select 'Share tab audio' when prompted."
+          "No audio track captured. Make sure to select 'Share tab audio' when prompted.",
         );
       }
 
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+      const mimeType = MediaRecorder.isTypeSupported(
+        "video/webm;codecs=vp9,opus",
+      )
         ? "video/webm;codecs=vp9,opus"
         : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-        ? "video/webm;codecs=vp8,opus"
-        : "video/webm";
+          ? "video/webm;codecs=vp8,opus"
+          : "video/webm";
 
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType,
@@ -81,7 +83,9 @@ export function useAvatarRecorder(options: UseAvatarRecorderOptions = {}) {
 
       mediaRecorder.onerror = (event) => {
         const errorMessage =
-          event instanceof ErrorEvent ? event.message : "Recording error occurred";
+          event instanceof ErrorEvent
+            ? event.message
+            : "Recording error occurred";
         setError(errorMessage);
         onError?.(new Error(errorMessage));
         setStatus("idle");
@@ -106,7 +110,10 @@ export function useAvatarRecorder(options: UseAvatarRecorderOptions = {}) {
   }, [onRecordingStart, onRecordingStop, onError]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
       setStatus("stopping");
       mediaRecorderRef.current.stop();
     }
@@ -125,7 +132,7 @@ export function useAvatarRecorder(options: UseAvatarRecorderOptions = {}) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     },
-    [recordedBlob]
+    [recordedBlob],
   );
 
   const clearRecording = useCallback(() => {

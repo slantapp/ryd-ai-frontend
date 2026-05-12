@@ -1,4 +1,9 @@
 import { useState } from "react";
+import { toast } from "react-toastify";
+import {
+  getContactApiErrorMessage,
+  sendContactMessage,
+} from "@/api/contact";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,16 +24,30 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+type ContactFormData = {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+};
+
+type ContactFormErrors = Partial<Record<keyof ContactFormData, string>>;
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const SupportPage = () => {
-  const [activeSection, setActiveSection] = useState<"contact" | "faq">("contact");
+  const [activeSection, setActiveSection] =
+    useState<"contact" | "faq">("contact");
   const [openFaq, setOpenFaq] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ContactFormData>({
     name: "",
     email: "",
     subject: "",
     message: "",
   });
+  const [formErrors, setFormErrors] = useState<ContactFormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const faqs = [
@@ -96,19 +115,67 @@ const SupportPage = () => {
     },
   ];
 
-  const filteredFaqs = faqs.map((group) => ({
-    ...group,
-    items: group.items.filter(
-      (item) =>
-        item.q.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.a.toLowerCase().includes(searchQuery.toLowerCase())
-    ),
-  })).filter((group) => group.items.length > 0);
+  const filteredFaqs = faqs
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) =>
+          item.q.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.a.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateForm = () => {
+    const nextErrors: ContactFormErrors = {};
+
+    if (!formData.name.trim()) {
+      nextErrors.name = "Please enter your name.";
+    }
+
+    if (!formData.email.trim()) {
+      nextErrors.email = "Please enter your email address.";
+    } else if (!emailPattern.test(formData.email.trim())) {
+      nextErrors.email = "Please enter a valid email address.";
+    }
+
+    if (!formData.subject.trim()) {
+      nextErrors.subject = "Please enter a subject.";
+    }
+
+    if (!formData.message.trim()) {
+      nextErrors.message = "Please enter your message.";
+    }
+
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate form submission - integrate with your backend
-    setIsSubmitted(true);
+    if (!validateForm()) return;
+
+    try {
+      setIsSubmitting(true);
+      const envelope = await sendContactMessage({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        subject: formData.subject.trim(),
+        message: formData.message.trim(),
+      });
+      toast.success(envelope.message?.trim() || "Message sent successfully.");
+      setFormErrors({});
+      setIsSubmitted(true);
+    } catch (err) {
+      toast.error(
+        getContactApiErrorMessage(
+          err,
+          "Could not send your message. Please try again.",
+        ),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (
@@ -118,6 +185,13 @@ const SupportPage = () => {
       ...prev,
       [e.target.name]: e.target.value,
     }));
+    setFormErrors((prev) => {
+      const field = e.target.name as keyof ContactFormData;
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   };
 
   const quickCardClass = (active: boolean) =>
@@ -220,6 +294,7 @@ const SupportPage = () => {
                     className="mt-4 w-full max-w-xs sm:w-auto"
                     onClick={() => {
                       setIsSubmitted(false);
+                      setFormErrors({});
                       setFormData({
                         name: "",
                         email: "",
@@ -242,9 +317,22 @@ const SupportPage = () => {
                       value={formData.name}
                       onChange={handleInputChange}
                       placeholder="John Doe"
+                      aria-invalid={Boolean(formErrors.name)}
+                      aria-describedby={
+                        formErrors.name ? "contact-name-error" : undefined
+                      }
+                      disabled={isSubmitting}
                       required
                       className="h-11 rounded-lg border-gray-200 bg-[#F8F8FA] text-base sm:h-12 sm:text-sm"
                     />
+                    {formErrors.name && (
+                      <p
+                        id="contact-name-error"
+                        className="mt-1 text-xs text-red-600"
+                      >
+                        {formErrors.name}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="mb-1.5 block font-sans-serifbookflf text-sm font-medium text-gray-700 sm:mb-2">
@@ -256,9 +344,22 @@ const SupportPage = () => {
                       value={formData.email}
                       onChange={handleInputChange}
                       placeholder="john@example.com"
+                      aria-invalid={Boolean(formErrors.email)}
+                      aria-describedby={
+                        formErrors.email ? "contact-email-error" : undefined
+                      }
+                      disabled={isSubmitting}
                       required
                       className="h-11 rounded-lg border-gray-200 bg-[#F8F8FA] text-base sm:h-12 sm:text-sm"
                     />
+                    {formErrors.email && (
+                      <p
+                        id="contact-email-error"
+                        className="mt-1 text-xs text-red-600"
+                      >
+                        {formErrors.email}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="mb-1.5 block font-sans-serifbookflf text-sm font-medium text-gray-700 sm:mb-2">
@@ -269,9 +370,22 @@ const SupportPage = () => {
                       value={formData.subject}
                       onChange={handleInputChange}
                       placeholder="How can we help?"
+                      aria-invalid={Boolean(formErrors.subject)}
+                      aria-describedby={
+                        formErrors.subject ? "contact-subject-error" : undefined
+                      }
+                      disabled={isSubmitting}
                       required
                       className="h-11 rounded-lg border-gray-200 bg-[#F8F8FA] text-base sm:h-12 sm:text-sm"
                     />
+                    {formErrors.subject && (
+                      <p
+                        id="contact-subject-error"
+                        className="mt-1 text-xs text-red-600"
+                      >
+                        {formErrors.subject}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="mb-1.5 block font-sans-serifbookflf text-sm font-medium text-gray-700 sm:mb-2">
@@ -284,15 +398,29 @@ const SupportPage = () => {
                       placeholder="Describe your issue or question in detail..."
                       required
                       rows={5}
+                      aria-invalid={Boolean(formErrors.message)}
+                      aria-describedby={
+                        formErrors.message ? "contact-message-error" : undefined
+                      }
+                      disabled={isSubmitting}
                       className="w-full rounded-lg border border-gray-200 bg-[#F8F8FA] px-3 py-2.5 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 sm:text-sm"
                     />
+                    {formErrors.message && (
+                      <p
+                        id="contact-message-error"
+                        className="mt-1 text-xs text-red-600"
+                      >
+                        {formErrors.message}
+                      </p>
+                    )}
                   </div>
                   <Button
                     type="submit"
                     className="h-11 w-full rounded-lg font-solway sm:h-12"
+                    disabled={isSubmitting}
                   >
                     <Send className="mr-2 size-4 shrink-0" />
-                    Send message
+                    {isSubmitting ? "Sending..." : "Send message"}
                   </Button>
                 </form>
               )}
@@ -416,6 +544,12 @@ const SupportPage = () => {
               onClick={() => {
                 setActiveSection("contact");
                 setFormData((prev) => ({ ...prev, subject: "Urgent - " }));
+                setFormErrors((prev) => {
+                  if (!prev.subject) return prev;
+                  const next = { ...prev };
+                  delete next.subject;
+                  return next;
+                });
               }}
             >
               <Mail className="mr-2 size-4 shrink-0" />

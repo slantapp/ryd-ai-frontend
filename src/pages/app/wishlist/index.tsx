@@ -2,6 +2,8 @@ import { useMemo, useState, useEffect, useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Heart, MessageSquarePlus, Send, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { getContactApiErrorMessage, requestCourse } from "@/api/contact";
 import { useCoursesStore, coursesData } from "@/stores/coursesStore";
 import { useAuthStore } from "@/stores/authStore";
 import CourseCard from "@/components/shared/CourseCard";
@@ -23,16 +25,22 @@ type CourseRequestState = {
   description: string;
 };
 
+type CourseRequestErrors = Partial<Record<keyof CourseRequestState, string>>;
+
 function CourseRequestFormCard({
   courseRequest,
-  setCourseRequest,
+  errors,
+  isSubmitting,
+  onFieldChange,
   onSubmit,
   className,
   showClose,
   onClose,
 }: {
   courseRequest: CourseRequestState;
-  setCourseRequest: React.Dispatch<React.SetStateAction<CourseRequestState>>;
+  errors: CourseRequestErrors;
+  isSubmitting: boolean;
+  onFieldChange: (field: keyof CourseRequestState, value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   className?: string;
   showClose?: boolean;
@@ -82,16 +90,19 @@ function CourseRequestFormCard({
             <Input
               id={nameId}
               value={courseRequest.name}
-              onChange={(e) =>
-                setCourseRequest((prev) => ({
-                  ...prev,
-                  name: e.target.value,
-                }))
-              }
+              onChange={(e) => onFieldChange("name", e.target.value)}
               placeholder="Your name"
               className="h-10 rounded-lg text-base sm:h-11 sm:text-sm"
+              aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? `${nameId}-error` : undefined}
+              disabled={isSubmitting}
               required
             />
+            {errors.name && (
+              <p id={`${nameId}-error`} className="text-xs text-red-600">
+                {errors.name}
+              </p>
+            )}
           </div>
           <div className="space-y-1.5 sm:space-y-2">
             <Label
@@ -104,15 +115,22 @@ function CourseRequestFormCard({
               id={courseId}
               value={courseRequest.courseRequest}
               onChange={(e) =>
-                setCourseRequest((prev) => ({
-                  ...prev,
-                  courseRequest: e.target.value,
-                }))
+                onFieldChange("courseRequest", e.target.value)
               }
               placeholder="e.g. Advanced React Patterns"
               className="h-10 rounded-lg text-base sm:h-11 sm:text-sm"
+              aria-invalid={Boolean(errors.courseRequest)}
+              aria-describedby={
+                errors.courseRequest ? `${courseId}-error` : undefined
+              }
+              disabled={isSubmitting}
               required
             />
+            {errors.courseRequest && (
+              <p id={`${courseId}-error`} className="text-xs text-red-600">
+                {errors.courseRequest}
+              </p>
+            )}
           </div>
           <div className="space-y-1.5 sm:space-y-2">
             <Label
@@ -124,23 +142,20 @@ function CourseRequestFormCard({
             <Textarea
               id={descId}
               value={courseRequest.description}
-              onChange={(e) =>
-                setCourseRequest((prev) => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
+              onChange={(e) => onFieldChange("description", e.target.value)}
               placeholder="Any details about the course you’d like..."
               className="min-h-[88px] resize-y rounded-lg text-base sm:min-h-[80px] sm:text-sm"
+              disabled={isSubmitting}
               rows={3}
             />
           </div>
           <Button
             type="submit"
             className="h-11 w-full rounded-lg bg-primary font-medium hover:bg-primary/90 sm:h-12"
+            disabled={isSubmitting}
           >
             <Send className="mr-2 size-4 shrink-0" />
-            Submit request
+            {isSubmitting ? "Submitting..." : "Submit request"}
           </Button>
         </form>
       </CardContent>
@@ -159,6 +174,9 @@ const WishlistPage = () => {
     courseRequest: "",
     description: "",
   });
+  const [courseRequestErrors, setCourseRequestErrors] =
+    useState<CourseRequestErrors>({});
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
   // Auto-populate name and email from profile when user is available (only if empty)
   useEffect(() => {
@@ -177,16 +195,72 @@ const WishlistPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wishlist.size]);
 
-  const handleSubmitRequest = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: wire to API or store course requests
-    console.log("Course request submitted:", courseRequest);
+  const handleCourseRequestChange = (
+    field: keyof CourseRequestState,
+    value: string,
+  ) => {
     setCourseRequest((prev) => ({
       ...prev,
-      courseRequest: "",
-      description: "",
+      [field]: value,
     }));
-    setShowRequestFormNarrow(false);
+    setCourseRequestErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const validateCourseRequest = () => {
+    const nextErrors: CourseRequestErrors = {};
+
+    if (!courseRequest.name.trim()) {
+      nextErrors.name = "Please enter your name.";
+    }
+
+    if (!courseRequest.courseRequest.trim()) {
+      nextErrors.courseRequest = "Please enter the course you want to request.";
+    }
+
+    setCourseRequestErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSubmitRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateCourseRequest()) return;
+
+    const payload = {
+      name: courseRequest.name.trim(),
+      courseRequest: courseRequest.courseRequest.trim(),
+      ...(courseRequest.description.trim()
+        ? { description: courseRequest.description.trim() }
+        : {}),
+    };
+
+    try {
+      setIsSubmittingRequest(true);
+      const envelope = await requestCourse(payload);
+      toast.success(
+        envelope.message?.trim() || "Course request sent successfully.",
+      );
+      setCourseRequest((prev) => ({
+        ...prev,
+        courseRequest: "",
+        description: "",
+      }));
+      setCourseRequestErrors({});
+      setShowRequestFormNarrow(false);
+    } catch (err) {
+      toast.error(
+        getContactApiErrorMessage(
+          err,
+          "Could not send your course request. Please try again.",
+        ),
+      );
+    } finally {
+      setIsSubmittingRequest(false);
+    }
   };
 
   return (
@@ -264,7 +338,9 @@ const WishlistPage = () => {
           >
             <CourseRequestFormCard
               courseRequest={courseRequest}
-              setCourseRequest={setCourseRequest}
+              errors={courseRequestErrors}
+              isSubmitting={isSubmittingRequest}
+              onFieldChange={handleCourseRequestChange}
               onSubmit={handleSubmitRequest}
               showClose
               onClose={() => setShowRequestFormNarrow(false)}
@@ -276,7 +352,9 @@ const WishlistPage = () => {
       <aside className="hidden w-full shrink-0 self-stretch lg:block lg:w-[360px] lg:shrink-0 lg:self-start lg:sticky lg:top-24">
         <CourseRequestFormCard
           courseRequest={courseRequest}
-          setCourseRequest={setCourseRequest}
+          errors={courseRequestErrors}
+          isSubmitting={isSubmittingRequest}
+          onFieldChange={handleCourseRequestChange}
           onSubmit={handleSubmitRequest}
         />
       </aside>

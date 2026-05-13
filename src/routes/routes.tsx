@@ -21,8 +21,6 @@ import {
 import CourseDetails from "@/components/courses/CourseDetails";
 import { CurriculumPreviewPage } from "@/features/curriculum-preview";
 import { MarketingToolPage } from "@/features/marketing-tool";
-import { RequireUserTypes } from "@/components/auth/RequireUserTypes";
-import { CURRICULUM_PREVIEW_USER_TYPES } from "@/auth";
 
 interface AppRoute {
   path: string;
@@ -123,14 +121,7 @@ export const PRIVATE_ROUTES: AppRoute[] = [
   },
   {
     path: CURRICULUM_PREVIEW,
-    element: (
-      <RequireUserTypes
-        allowed={CURRICULUM_PREVIEW_USER_TYPES}
-        deniedToast="Curriculum preview is only available for teachers and admins."
-      >
-        <CurriculumPreviewPage />
-      </RequireUserTypes>
-    ),
+    element: <CurriculumPreviewPage />,
   },
   {
     path: MARKETING_TOOL,

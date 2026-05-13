@@ -191,7 +191,6 @@ export default function SubscriptionContentServer({
     if (!activeSubscription) return;
     cancelMutation.mutate(
       {
-        subscriptionId: activeSubscription.id,
         immediate: true,
       },
       {

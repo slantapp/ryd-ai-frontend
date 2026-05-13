@@ -5,7 +5,7 @@ interface PreviewTestResultsProps {
   code?: string;
 }
 
-export function PreviewTestResults({ results, code }: PreviewTestResultsProps) {
+export function PreviewTestResults({ results }: PreviewTestResultsProps) {
   if (results.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center bg-gray-50 p-6 text-center">

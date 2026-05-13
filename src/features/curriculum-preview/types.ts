@@ -38,6 +38,7 @@ export interface Lesson {
     code: string;
     language: string;
     description?: string;
+    explanation?: string;
     autoRun?: boolean;
     typingSpeed?: number;
   };

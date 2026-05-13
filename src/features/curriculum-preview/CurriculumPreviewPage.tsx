@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Play,
   SkipForward,
@@ -15,12 +16,15 @@ import {
   PreviewTestResults,
   usePreviewAvatar,
 } from "./components";
+import { decodeHandoffSegment } from "./handoff";
 import type { CurriculumData, Lesson } from "./types";
 
 type PreviewState = "upload" | "preview";
 type LessonPhase = "intro" | "teaching" | "questions" | "complete";
 
 export default function CurriculumPreviewPage() {
+  const [searchParams] = useSearchParams();
+  const handoffCode = searchParams.get("code");
   const [state, setState] = useState<PreviewState>("upload");
   const [curriculum, setCurriculum] = useState<CurriculumData | null>(null);
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
@@ -35,6 +39,24 @@ export default function CurriculumPreviewPage() {
   const [currentSubtitleText, setCurrentSubtitleText] = useState("");
   const [canStartQuestions, setCanStartQuestions] = useState(false);
   const lessonStartedRef = useRef(false);
+
+  const handoff = (() => {
+    if (!handoffCode) {
+      return {
+        data: null,
+        error: "No curriculum preview code found in the URL.",
+      };
+    }
+
+    try {
+      return { data: decodeHandoffSegment(handoffCode), error: null };
+    } catch {
+      return {
+        data: null,
+        error: "Invalid curriculum preview code.",
+      };
+    }
+  })();
 
   const {
     AvatarComponent,
@@ -318,8 +340,30 @@ export default function CurriculumPreviewPage() {
     lessonStartedRef.current = false;
   }, [stop]);
 
+  if (handoff.error || !handoff.data) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-primary/10 via-white to-primary/5 p-6">
+        <div className="w-full max-w-md rounded-2xl border border-red-100 bg-white p-6 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+            <X className="h-7 w-7 text-red-600" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">
+            Curriculum Preview Unavailable
+          </h1>
+          <p className="mt-2 text-sm text-gray-600">{handoff.error}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (state === "upload") {
-    return <FileUploader onCurriculumLoaded={handleCurriculumLoaded} />;
+    return (
+      <FileUploader
+        handoffToken={handoff.data.token}
+        handoffName={handoff.data.name}
+        onCurriculumLoaded={handleCurriculumLoaded}
+      />
+    );
   }
 
   if (!curriculum || !currentLesson) {

@@ -4,6 +4,8 @@ import { useRoutes, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import AuthLayout from "@/layout/AuthLayout";
 import DashboardLayout from "@/layout/dashboardLayout";
+import { CurriculumPreviewPage } from "@/features/curriculum-preview";
+import { PRIVATE_PATHS } from "@/utils/routePaths";
 
 const PublicRouteWrapper = () => {
   const routes = useRoutes(PUBLIC_ROUTES);
@@ -17,6 +19,10 @@ const PrivateRouteWrapper = () => {
 const Pages = () => {
   const location = useLocation();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+
+  if (location.pathname === PRIVATE_PATHS.CURRICULUM_PREVIEW) {
+    return <CurriculumPreviewPage />;
+  }
 
   return isLoggedIn ? (
     <AuthGuard>

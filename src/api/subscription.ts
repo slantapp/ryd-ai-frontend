@@ -95,15 +95,11 @@ export async function fetchSubscriptionHistory() {
   return res.data;
 }
 
-/** Empty body or `{ immediate: false }` = cancel at period end; `{ immediate: true }` = cancel now. */
-export async function cancelSubscription(
-  subscriptionId: number,
-  options: { immediate?: boolean } = {},
-) {
-  const body = options.immediate === true ? { immediate: true } : {};
+/** `{ immediate: false }` = cancel at period end; `{ immediate: true }` = cancel now. */
+export async function cancelSubscription(options: { immediate: boolean }) {
   const res = await axiosInstance.post<ApiEnvelope<unknown>>(
-    `/parent/subscription/cancel/${subscriptionId}`,
-    body,
+    "/parent/subscription/cancel",
+    { immediate: options.immediate },
   );
   return res.data;
 }

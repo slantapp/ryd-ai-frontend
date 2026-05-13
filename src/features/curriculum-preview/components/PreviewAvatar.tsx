@@ -1,4 +1,4 @@
-import { useRef, useMemo, useCallback, useState, useEffect } from "react";
+import { useRef, useMemo, useCallback, useState } from "react";
 import NarratorAvatar from "narrator-avatar";
 import { Volume2 } from "lucide-react";
 
@@ -8,14 +8,6 @@ type NarratorAvatarRef = {
   pauseSpeaking: () => void;
   resumeSpeaking: () => void;
 };
-
-interface PreviewAvatarProps {
-  onReady?: () => void;
-  onSpeechStart?: () => void;
-  onSpeechEnd?: () => void;
-  onSubtitle?: (text: string) => void;
-  className?: string;
-}
 
 export interface PreviewAvatarHandle {
   speak: (text: string) => void;

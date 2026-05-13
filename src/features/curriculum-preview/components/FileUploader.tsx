@@ -2,9 +2,12 @@ import { useCallback, useState } from "react";
 import { Upload, FileJson, AlertCircle, CheckCircle, Download, FileText } from "lucide-react";
 import type { CurriculumData } from "../types";
 import { sampleCurriculumJSON } from "../templates";
+import { uploadCurriculumFile } from "../handoff";
 
 interface FileUploaderProps {
   onCurriculumLoaded: (curriculum: CurriculumData) => void;
+  handoffToken: string;
+  handoffName?: string;
 }
 
 function validateCurriculum(data: unknown): { valid: boolean; errors: string[] } {
@@ -99,12 +102,18 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
   return { valid: errors.length === 0, errors };
 }
 
-export function FileUploader({ onCurriculumLoaded }: FileUploaderProps) {
+export function FileUploader({
+  onCurriculumLoaded,
+  handoffToken,
+  handoffName,
+}: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isValid, setIsValid] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [parsedCurriculum, setParsedCurriculum] = useState<CurriculumData | null>(null);
 
   const handleDownloadTemplate = useCallback(() => {
@@ -123,6 +132,7 @@ export function FileUploader({ onCurriculumLoaded }: FileUploaderProps) {
     setError(null);
     setValidationErrors([]);
     setIsValid(false);
+    setSelectedFile(null);
     setParsedCurriculum(null);
 
     if (!file.name.endsWith(".json")) {
@@ -131,6 +141,7 @@ export function FileUploader({ onCurriculumLoaded }: FileUploaderProps) {
     }
 
     setFileName(file.name);
+    setSelectedFile(file);
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -187,9 +198,22 @@ export function FileUploader({ onCurriculumLoaded }: FileUploaderProps) {
     [processFile]
   );
 
-  const handleSubmit = () => {
-    if (parsedCurriculum) {
+  const handleSubmit = async () => {
+    if (!parsedCurriculum || !selectedFile) return;
+
+    try {
+      setIsUploading(true);
+      setError(null);
+      await uploadCurriculumFile(selectedFile, handoffToken);
       onCurriculumLoaded(parsedCurriculum);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not validate your curriculum upload.",
+      );
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -197,18 +221,24 @@ export function FileUploader({ onCurriculumLoaded }: FileUploaderProps) {
     setError(null);
     setValidationErrors([]);
     setFileName(null);
+    setSelectedFile(null);
     setIsValid(false);
     setParsedCurriculum(null);
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-white to-primary/5 p-6 -m-4">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-primary/10 via-white to-primary/5 p-6 -m-4">
       <div className="w-full max-w-2xl">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900">Curriculum Preview</h1>
           <p className="mt-2 text-gray-600">
             Upload your curriculum JSON file to preview how it will look and function
           </p>
+          {handoffName && (
+            <p className="mt-2 text-sm font-medium text-primary">
+              Welcome, {handoffName}
+            </p>
+          )}
         </div>
 
         <div
@@ -231,6 +261,7 @@ export function FileUploader({ onCurriculumLoaded }: FileUploaderProps) {
             type="file"
             accept=".json"
             onChange={handleFileSelect}
+            disabled={isUploading}
             className="absolute inset-0 cursor-pointer opacity-0"
           />
 
@@ -328,6 +359,7 @@ export function FileUploader({ onCurriculumLoaded }: FileUploaderProps) {
             <button
               type="button"
               onClick={handleReset}
+              disabled={isUploading}
               className="flex-1 rounded-xl border border-gray-300 bg-white py-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50"
             >
               Upload Different File
@@ -337,14 +369,15 @@ export function FileUploader({ onCurriculumLoaded }: FileUploaderProps) {
             <button
               type="button"
               onClick={handleSubmit}
-              className="flex-1 rounded-xl bg-primary py-3 font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 hover:shadow-xl"
+              disabled={isUploading}
+              className="flex-1 rounded-xl bg-primary py-3 font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-70"
             >
-              Start Preview
+              {isUploading ? "Validating upload..." : "Start Preview"}
             </button>
           )}
         </div>
 
-        <div className="mt-8 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 p-6 border border-primary/20">
+        <div className="mt-8 rounded-xl bg-linear-to-br from-primary/10 to-primary/5 p-6 border border-primary/20">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">

@@ -48,8 +48,8 @@ export function useCreateCheckoutSession() {
 export function useCancelSubscription() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (args: { subscriptionId: number; immediate: boolean }) =>
-      cancelSubscription(args.subscriptionId, { immediate: args.immediate }),
+    mutationFn: (args: { immediate: boolean }) =>
+      cancelSubscription({ immediate: args.immediate }),
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: subscriptionKeys.status() });
       void queryClient.invalidateQueries({ queryKey: subscriptionKeys.history() });

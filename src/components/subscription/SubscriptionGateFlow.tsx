@@ -9,6 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import SubscriptionContentServer from "@/components/settings/SubscriptionContentServer";
 import InstructorContent from "@/components/settings/InstructorContent";
+import { trackAiTutorSubscribeIntent } from "@/api/tracking";
+import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
 import { ChevronLeft } from "lucide-react";
 
@@ -46,10 +48,16 @@ const SubscriptionGateFlow = ({
   const [view, setView] = useState<GateView>("instructors");
   const [hasPreviewedInstructor, setHasPreviewedInstructor] = useState(true);
   const [speechEnabled, setSpeechEnabled] = useState(true);
+  const parentToken = useAuthStore((state) => state.accessToken);
 
   const handleInstructorEngaged = useCallback(() => {
     setHasPreviewedInstructor(true);
   }, []);
+
+  const trackSubscribeIntent = useCallback(() => {
+    if (!parentToken) return;
+    void trackAiTutorSubscribeIntent(parentToken).catch(() => undefined);
+  }, [parentToken]);
 
   useEffect(() => {
     if (!open) {
@@ -121,6 +129,7 @@ const SubscriptionGateFlow = ({
                   className="w-full rounded-xl bg-[#DDB5D2] font-solway text-primary hover:bg-[#DDA5D2] sm:w-auto"
                   disabled={!hasPreviewedInstructor}
                   onClick={() => {
+                    trackSubscribeIntent();
                     setSpeechEnabled(false);
                     // Give InstructorContent a tick to synchronously stop speech before unmount.
                     setTimeout(() => setView("subscribe"), 0);

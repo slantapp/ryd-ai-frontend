@@ -26,6 +26,10 @@ export interface Course {
   progress?: number; // 0-100
   /** Minimum recommended age; shown on cards as e.g. "8+". */
   minAge?: number;
+  /** Local school class from curriculum JSON, e.g. "Primary 5". */
+  class?: string;
+  /** International grade number from curriculum JSON (1–12). */
+  grade?: number;
   duration?: string;
   level?: "Beginner" | "Intermediate" | "Advanced";
   rating?: number;
@@ -148,11 +152,12 @@ const defaultCourseMetadata: Record<
 
 function curriculumToCourse(curriculum: Curriculum): Course {
   const metadata = defaultCourseMetadata[curriculum.slug] || {
-    minAge: 8,
     duration: "4 weeks",
     level: "Beginner" as const,
     rating: 4.5,
   };
+
+  const { age, class: schoolClass, grade } = curriculum.curriculum;
 
   return {
     title: curriculum.curriculum.title,
@@ -164,6 +169,15 @@ function curriculumToCourse(curriculum: Curriculum): Course {
     categoryId: getCategoryIdForCourseSlug(curriculum.slug),
     status: "not-started",
     ...metadata,
+    minAge:
+      typeof age === "number" && Number.isFinite(age)
+        ? age
+        : (metadata.minAge ?? 8),
+    class: typeof schoolClass === "string" ? schoolClass : undefined,
+    grade:
+      typeof grade === "number" && Number.isFinite(grade) && grade > 0
+        ? grade
+        : undefined,
   };
 }
 

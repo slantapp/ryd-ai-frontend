@@ -27,6 +27,10 @@ import {
   getCategoryMeta,
   type CourseCategoryId,
 } from "@/data/courseCategories";
+import {
+  buildSchoolClassFilterOptions,
+  getSchoolClassFilterKey,
+} from "@/utils/schoolClass";
 
 const CATEGORY_ICONS: Record<CourseCategoryId, LucideIcon> = {
   coding: Braces,
@@ -42,6 +46,7 @@ const CoursesPage = () => {
   const [ageFilter, setAgeFilter] = useState<
     "all" | "6" | "8" | "10" | "12" | "14" | "16"
   >("all");
+  const [classFilter, setClassFilter] = useState<string>("all");
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CourseCategoryId | null>(null);
   const coursesPerPage = 6;
@@ -52,6 +57,11 @@ const CoursesPage = () => {
     getOngoingCourses,
     getCompletedCourses,
   } = useCoursesStore();
+
+  const classFilterOptions = useMemo(
+    () => buildSchoolClassFilterOptions(getAllCourses()),
+    [getAllCourses],
+  );
 
   const filteredCourses = useMemo(() => {
     let courses;
@@ -70,13 +80,31 @@ const CoursesPage = () => {
         : course
     );
 
-    if (ageFilter === "all") return withCompletedProgress;
-    const learnerAge = Number(ageFilter);
-    return withCompletedProgress.filter((c) => {
-      if (c.minAge == null) return true;
-      return learnerAge >= c.minAge;
-    });
-  }, [activeTab, ageFilter, getAllCourses, getOngoingCourses, getCompletedCourses]);
+    let result = withCompletedProgress;
+
+    if (ageFilter !== "all") {
+      const learnerAge = Number(ageFilter);
+      result = result.filter((c) => {
+        if (c.minAge == null) return true;
+        return learnerAge >= c.minAge;
+      });
+    }
+
+    if (classFilter !== "all") {
+      result = result.filter(
+        (c) => getSchoolClassFilterKey(c.class, c.grade) === classFilter,
+      );
+    }
+
+    return result;
+  }, [
+    activeTab,
+    ageFilter,
+    classFilter,
+    getAllCourses,
+    getOngoingCourses,
+    getCompletedCourses,
+  ]);
 
   const coursesInCategory = useMemo(() => {
     if (!selectedCategoryId) return [];
@@ -106,6 +134,20 @@ const CoursesPage = () => {
     setCurrentPage(1);
     setSelectedCategoryId(null);
   }, [ageFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedCategoryId(null);
+  }, [classFilter]);
+
+  useEffect(() => {
+    if (
+      classFilter !== "all" &&
+      !classFilterOptions.some((o) => o.key === classFilter)
+    ) {
+      setClassFilter("all");
+    }
+  }, [classFilter, classFilterOptions]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -178,32 +220,54 @@ const CoursesPage = () => {
               </TabsList>
             </div>
 
-            <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
-              <label className="font-inter text-xs font-medium text-gray-600">
-                Learner age
-              </label>
-              <div className="min-w-[160px]">
-                <Select
-                  value={ageFilter}
-                  onValueChange={(v) =>
-                    setAgeFilter(
-                      v as "all" | "6" | "8" | "10" | "12" | "14" | "16",
-                    )
-                  }
-                >
-                  <SelectTrigger className="h-10 shadow-none">
-                    <SelectValue placeholder="All ages" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All ages</SelectItem>
-                    <SelectItem value="6">6 years</SelectItem>
-                    <SelectItem value="8">8 years</SelectItem>
-                    <SelectItem value="10">10 years</SelectItem>
-                    <SelectItem value="12">12 years</SelectItem>
-                    <SelectItem value="14">14 years</SelectItem>
-                    <SelectItem value="16">16+ years</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <div className="flex items-center justify-between gap-2 sm:justify-end">
+                <label className="font-inter text-xs font-medium text-gray-600">
+                  Class
+                </label>
+                <div className="min-w-[min(100%,11rem)] sm:min-w-[12rem]">
+                  <Select value={classFilter} onValueChange={setClassFilter}>
+                    <SelectTrigger className="h-10 shadow-none">
+                      <SelectValue placeholder="All classes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All classes</SelectItem>
+                      {classFilterOptions.map(({ key, label }) => (
+                        <SelectItem key={key} value={key}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 sm:justify-end">
+                <label className="font-inter text-xs font-medium text-gray-600">
+                  Learner age
+                </label>
+                <div className="min-w-[min(100%,11rem)] sm:min-w-[10rem]">
+                  <Select
+                    value={ageFilter}
+                    onValueChange={(v) =>
+                      setAgeFilter(
+                        v as "all" | "6" | "8" | "10" | "12" | "14" | "16",
+                      )
+                    }
+                  >
+                    <SelectTrigger className="h-10 shadow-none">
+                      <SelectValue placeholder="All ages" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All ages</SelectItem>
+                      <SelectItem value="6">6 years</SelectItem>
+                      <SelectItem value="8">8 years</SelectItem>
+                      <SelectItem value="10">10 years</SelectItem>
+                      <SelectItem value="12">12 years</SelectItem>
+                      <SelectItem value="14">14 years</SelectItem>
+                      <SelectItem value="16">16+ years</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </div>

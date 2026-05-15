@@ -1,0 +1,605 @@
+{
+  "slug": "html-css-combined",
+  "curriculum": {
+    "title": "HTML and CSS Fundamentals",
+    "description": "Learn how to build and style webpages using HTML and CSS together. This course teaches structure, design, and layout step by step for young learners.",
+    "language": "en",
+    "age": 9,
+    "class": "Primary 4",
+    "grade": 4,
+    "modules": [
+      {
+        "id": "htmlcss_module_01",
+        "title": "Introduction to HTML and CSS",
+        "prerequisite": null,
+        "lessons": [
+          {
+            "id": "htmlcss_lesson_01",
+            "title": "What Are HTML and CSS?",
+            "body": "HTML builds the structure of a webpage while CSS controls how it looks.",
+            "avatar_script": "HTML is like the bones of a webpage. CSS is like the clothes and colors. HTML tells the browser what things are, and CSS makes them beautiful.",
+            "media": {},
+            "questions": [
+              {
+                "id": "htmlcss_q01",
+                "type": "multiple_choice",
+                "question": "What does HTML do?",
+                "options": [
+                  "Styles the page",
+                  "Builds the structure",
+                  "Adds sound",
+                  "Runs games"
+                ],
+                "answer": "Builds the structure",
+                "explanation": "HTML creates the page structure."
+              },
+              {
+                "id": "htmlcss_q02",
+                "type": "true_false",
+                "question": "CSS controls how a webpage looks.",
+                "answer": true,
+                "explanation": "CSS styles the page."
+              },
+              {
+                "id": "htmlcss_q03",
+                "type": "code_test",
+                "question": "Create a paragraph with the text 'Hello world'.",
+                "explanation": "Great job! Paragraphs are the building blocks of text content on webpages. They help organize your writing into readable chunks.",
+                "code_example": {
+                  "code": "<p>Hello world</p>\n<p>This is another paragraph.</p>",
+                  "language": "html",
+                  "description": "HTML paragraph tags",
+                  "explanation": "Let me show you how to create a paragraph. I use the 'p' tag - that stands for paragraph. I write the opening tag <p>, then my text 'Hello world', and close it with </p>. The text goes between the opening and closing tags. Every paragraph needs both tags to work properly!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedHTML": "<p>Hello world</p>"
+                }
+              }
+            ],
+            "next_lesson_id": "htmlcss_lesson_02"
+          },
+          {
+            "id": "htmlcss_lesson_02",
+            "title": "HTML Review: Headings and Text",
+            "body": "Headings show titles and paragraphs show text.",
+            "avatar_script": "Headings help people know what a page is about. Paragraphs explain ideas using text.",
+            "media": {},
+            "questions": [
+              {
+                "id": "htmlcss_q04",
+                "type": "multiple_choice",
+                "question": "Which tag makes a heading?",
+                "options": [
+                  "<p>",
+                  "<h1>",
+                  "<img>",
+                  "<a>"
+                ],
+                "answer": "<h1>",
+                "explanation": "h1 creates headings."
+              },
+              {
+                "id": "htmlcss_q05",
+                "type": "true_false",
+                "question": "Paragraphs are used to show text.",
+                "answer": true,
+                "explanation": "Paragraphs display text."
+              },
+              {
+                "id": "htmlcss_q06",
+                "type": "code_test",
+                "question": "Create an h2 heading with the text 'About Me'.",
+                "explanation": "Well done! Headings help organize your page into sections. The h2 tag is perfect for section titles, while h1 is usually for the main page title.",
+                "code_example": {
+                  "code": "<h1>My Website</h1>\n<h2>About Me</h2>\n<p>I love coding!</p>",
+                  "language": "html",
+                  "description": "HTML heading tags",
+                  "explanation": "Let me show you headings. HTML has six heading levels, from h1 (biggest) to h6 (smallest). I'm using h2 for a section title. I write <h2>, then my text 'About Me', and close with </h2>. Headings make your page easier to read and help people find what they're looking for!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedHTML": "<h2>About Me</h2>"
+                }
+              }
+            ],
+            "next_lesson_id": "htmlcss_lesson_03"
+          },
+          {
+            "id": "htmlcss_lesson_03",
+            "title": "What Is CSS?",
+            "body": "CSS is used to add color, size, and layout to webpages.",
+            "avatar_script": "CSS tells the browser how things should look. You can change colors, sizes, and spacing.",
+            "media": {},
+            "questions": [
+              {
+                "id": "htmlcss_q07",
+                "type": "multiple_choice",
+                "question": "What does CSS change?",
+                "options": [
+                  "Structure",
+                  "Style",
+                  "Internet",
+                  "Files"
+                ],
+                "answer": "Style",
+                "explanation": "CSS styles content."
+              },
+              {
+                "id": "htmlcss_q08",
+                "type": "true_false",
+                "question": "CSS can change text color.",
+                "answer": true,
+                "explanation": "CSS controls colors."
+              },
+              {
+                "id": "htmlcss_q09",
+                "type": "code_test",
+                "question": "Change paragraph text color to red.",
+                "explanation": "Excellent! You're learning how CSS styles HTML elements. The color property is one of the most useful CSS properties you'll use!",
+                "code_example": {
+                  "code": "p {\n  color: red;\n}",
+                  "language": "css",
+                  "description": "CSS text color",
+                  "explanation": "Now let's style with CSS! To change text color, I first write the selector 'p' to target paragraphs. Then I add curly brackets. Inside, I write 'color: red;' - 'color' is the property, and 'red' is the value. Don't forget the colon after the property and semicolon at the end!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCSS": "color: red;"
+                }
+              }
+            ],
+            "next_lesson_id": "htmlcss_module_02"
+          }
+        ]
+      },
+      {
+        "id": "htmlcss_module_02",
+        "title": "Styling Text and Colors",
+        "prerequisite": "htmlcss_module_01",
+        "lessons": [
+          {
+            "id": "htmlcss_lesson_01",
+            "title": "Text Color and Size",
+            "body": "CSS can change how text looks.",
+            "avatar_script": "You can make text bigger, smaller, or colorful using CSS.",
+            "media": {},
+            "questions": [
+              {
+                "id": "htmlcss_q01",
+                "type": "multiple_choice",
+                "question": "Which property changes text size?",
+                "options": [
+                  "color",
+                  "font-size",
+                  "margin",
+                  "padding"
+                ],
+                "answer": "font-size",
+                "explanation": "font-size controls text size."
+              },
+              {
+                "id": "htmlcss_q02",
+                "type": "true_false",
+                "question": "CSS can change text color.",
+                "answer": true,
+                "explanation": "CSS controls colors."
+              },
+              {
+                "id": "htmlcss_q03",
+                "type": "code_test",
+                "question": "Set text size to 20px.",
+                "explanation": "Nice work! Controlling text size helps make your content readable. Bigger text is easier to read, while smaller text fits more content.",
+                "code_example": {
+                  "code": "p {\n  font-size: 20px;\n}",
+                  "language": "css",
+                  "description": "CSS font size",
+                  "explanation": "Let me show you how to change text size. I use the 'font-size' property - notice the hyphen between 'font' and 'size'. I set it to '20px', which means 20 pixels. Pixels are tiny dots on your screen. The bigger the number, the bigger the text will be!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCSS": "font-size: 20px;"
+                }
+              }
+            ],
+            "next_lesson_id": "htmlcss_lesson_02"
+          },
+          {
+            "id": "htmlcss_lesson_02",
+            "title": "Background Colors",
+            "body": "Background colors help sections stand out.",
+            "avatar_script": "Background colors make parts of your page easy to see.",
+            "media": {},
+            "questions": [
+              {
+                "id": "htmlcss_q04",
+                "type": "multiple_choice",
+                "question": "Which property changes background color?",
+                "options": [
+                  "color",
+                  "background-color",
+                  "border",
+                  "width"
+                ],
+                "answer": "background-color",
+                "explanation": "background-color styles backgrounds."
+              },
+              {
+                "id": "htmlcss_q05",
+                "type": "true_false",
+                "question": "Background colors can be applied to divs.",
+                "answer": true,
+                "explanation": "Divs can have backgrounds."
+              },
+              {
+                "id": "htmlcss_q06",
+                "type": "code_test",
+                "question": "Set background color to yellow.",
+                "explanation": "Great! Background colors make your page sections pop and help organize content visually. Yellow is a bright, cheerful choice!",
+                "code_example": {
+                  "code": "div {\n  background-color: yellow;\n}",
+                  "language": "css",
+                  "description": "CSS background color",
+                  "explanation": "Let me show you background colors. I use 'background-color' as the property - notice the hyphen! I set it to 'yellow' to create a bright background. You can use any color name like yellow, pink, lightgreen, or even special codes for custom colors!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCSS": "background-color: yellow;"
+                }
+              }
+            ],
+            "next_lesson_id": "htmlcss_lesson_03"
+          },
+          {
+            "id": "htmlcss_lesson_03",
+            "title": "Styling Headings",
+            "body": "Headings can be styled to look bold and clear.",
+            "avatar_script": "Big colorful headings help people read your page easily.",
+            "media": {},
+            "questions": [
+              {
+                "id": "htmlcss_q07",
+                "type": "multiple_choice",
+                "question": "Which selector targets headings?",
+                "options": [
+                  "p",
+                  "div",
+                  "h1",
+                  "img"
+                ],
+                "answer": "h1",
+                "explanation": "h1 targets headings."
+              },
+              {
+                "id": "htmlcss_q08",
+                "type": "true_false",
+                "question": "Headings can be styled using CSS.",
+                "answer": true,
+                "explanation": "CSS styles headings."
+              },
+              {
+                "id": "htmlcss_q09",
+                "type": "code_test",
+                "question": "Change heading color to blue.",
+                "explanation": "Well done! Colorful headings catch the reader's eye and make your page more interesting. Blue is a popular choice for professional-looking pages!",
+                "code_example": {
+                  "code": "h1 {\n  color: blue;\n}",
+                  "language": "css",
+                  "description": "CSS heading color",
+                  "explanation": "Let me style a heading. I use 'h1' as my selector to target the main heading. Then I set 'color: blue;' to make the text blue. This same technique works for h2, h3, and other heading levels too. You can make each heading level a different color if you want!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCSS": "color: blue;"
+                }
+              }
+            ],
+            "next_lesson_id": "htmlcss_module_03"
+          }
+        ]
+      },
+      {
+        "id": "htmlcss_module_03",
+        "title": "Layout, Boxes, and Spacing",
+        "prerequisite": "htmlcss_module_02",
+        "lessons": [
+          {
+            "id": "htmlcss_lesson_01",
+            "title": "The Box Model",
+            "body": "Every HTML element is a box.",
+            "avatar_script": "Each box has content, padding, border, and margin.",
+            "media": {},
+            "questions": [
+              {
+                "id": "htmlcss_q01",
+                "type": "multiple_choice",
+                "question": "What is inside the border?",
+                "options": [
+                  "Margin",
+                  "Padding",
+                  "Screen",
+                  "Outline"
+                ],
+                "answer": "Padding",
+                "explanation": "Padding is inside the border."
+              },
+              {
+                "id": "htmlcss_q02",
+                "type": "true_false",
+                "question": "All elements are boxes.",
+                "answer": true,
+                "explanation": "Browsers treat elements as boxes."
+              },
+              {
+                "id": "htmlcss_q03",
+                "type": "code_test",
+                "question": "Add 20px padding.",
+                "explanation": "Perfect! Padding creates breathing room inside elements. It keeps your content from touching the edges, making everything look cleaner.",
+                "code_example": {
+                  "code": "div {\n  padding: 20px;\n}",
+                  "language": "css",
+                  "description": "CSS padding",
+                  "explanation": "Let me explain padding. Padding adds space INSIDE an element, between the content and its border. Think of it like the cushioning inside a picture frame. I write 'padding: 20px;' to add 20 pixels of space on all four sides. This makes the content feel less cramped!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCSS": "padding: 20px;"
+                }
+              }
+            ],
+            "next_lesson_id": "htmlcss_lesson_02"
+          },
+          {
+            "id": "htmlcss_lesson_02",
+            "title": "Margin and Padding",
+            "body": "Margin adds space outside elements.",
+            "avatar_script": "Margins push elements apart. Padding gives space inside.",
+            "media": {},
+            "questions": [
+              {
+                "id": "htmlcss_q04",
+                "type": "multiple_choice",
+                "question": "What does margin do?",
+                "options": [
+                  "Inside space",
+                  "Outside space",
+                  "Text color",
+                  "Size"
+                ],
+                "answer": "Outside space",
+                "explanation": "Margin creates outer space."
+              },
+              {
+                "id": "htmlcss_q05",
+                "type": "true_false",
+                "question": "Padding adds space inside.",
+                "answer": true,
+                "explanation": "Padding is inner spacing."
+              },
+              {
+                "id": "htmlcss_q06",
+                "type": "code_test",
+                "question": "Set margin to 30px.",
+                "explanation": "Excellent! Margin creates space OUTSIDE elements, keeping them from crowding each other. This helps your page look organized and professional.",
+                "code_example": {
+                  "code": "p {\n  margin: 30px;\n}",
+                  "language": "css",
+                  "description": "CSS margin",
+                  "explanation": "Now let's learn margin. Unlike padding which is inside, margin adds space OUTSIDE an element. It's like personal space between people standing in line! I write 'margin: 30px;' to add 30 pixels of space around the element. This keeps it separated from everything else on the page.",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCSS": "margin: 30px;"
+                }
+              }
+            ],
+            "next_lesson_id": "htmlcss_lesson_03"
+          },
+          {
+            "id": "htmlcss_lesson_03",
+            "title": "Width and Height",
+            "body": "Width and height control size.",
+            "avatar_script": "You can control how big things appear.",
+            "media": {},
+            "questions": [
+              {
+                "id": "htmlcss_q07",
+                "type": "multiple_choice",
+                "question": "Which property controls width?",
+                "options": [
+                  "height",
+                  "width",
+                  "padding",
+                  "margin"
+                ],
+                "answer": "width",
+                "explanation": "Width controls horizontal size."
+              },
+              {
+                "id": "htmlcss_q08",
+                "type": "true_false",
+                "question": "Height controls how tall an element is.",
+                "answer": true,
+                "explanation": "Height sets vertical size."
+              },
+              {
+                "id": "htmlcss_q09",
+                "type": "code_test",
+                "question": "Set height to 150px.",
+                "explanation": "Great job! The height property lets you control exactly how tall an element should be. This is useful for creating consistent layouts.",
+                "code_example": {
+                  "code": "div {\n  height: 150px;\n  width: 200px;\n}",
+                  "language": "css",
+                  "description": "CSS height and width",
+                  "explanation": "Let me show you how to set height. The 'height' property controls how tall an element is. I write 'height: 150px;' to make it exactly 150 pixels tall. You can also use 'width' to control how wide it is. Together, these properties let you create boxes of any size you want!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCSS": "height: 150px;"
+                }
+              }
+            ],
+            "next_lesson_id": "htmlcss_module_04"
+          }
+        ]
+      },
+      {
+        "id": "htmlcss_module_04",
+        "title": "Building a Styled Webpage",
+        "prerequisite": "htmlcss_module_03",
+        "lessons": [
+          {
+            "id": "htmlcss_lesson_01",
+            "title": "Combining HTML and CSS",
+            "body": "HTML builds pages and CSS styles them.",
+            "avatar_script": "When HTML and CSS work together, your page looks amazing.",
+            "media": {},
+            "questions": [
+              {
+                "id": "htmlcss_q01",
+                "type": "multiple_choice",
+                "question": "What styles the page?",
+                "options": [
+                  "HTML",
+                  "CSS",
+                  "Browser",
+                  "Server"
+                ],
+                "answer": "CSS",
+                "explanation": "CSS styles pages."
+              },
+              {
+                "id": "htmlcss_q02",
+                "type": "true_false",
+                "question": "HTML and CSS work together.",
+                "answer": true,
+                "explanation": "They are used together."
+              },
+              {
+                "id": "htmlcss_q03",
+                "type": "code_test",
+                "question": "Change text color to green.",
+                "explanation": "Wonderful! You're combining HTML and CSS like a real web developer. Green is a great color that's easy on the eyes!",
+                "code_example": {
+                  "code": "p {\n  color: green;\n}",
+                  "language": "css",
+                  "description": "CSS green text",
+                  "explanation": "Let me change the text to green. I select the element I want to style, then use 'color: green;' inside the curly brackets. CSS knows many color names - you can try green, darkgreen, lightgreen, or even lime for different shades of green!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCSS": "color: green;"
+                }
+              }
+            ],
+            "next_lesson_id": "htmlcss_lesson_02"
+          },
+          {
+            "id": "htmlcss_lesson_02",
+            "title": "Styling a Card",
+            "body": "Cards hold content neatly.",
+            "avatar_script": "Cards are used everywhere to group content.",
+            "media": {},
+            "questions": [
+              {
+                "id": "htmlcss_q04",
+                "type": "multiple_choice",
+                "question": "Which property adds inner space?",
+                "options": [
+                  "margin",
+                  "padding",
+                  "border",
+                  "width"
+                ],
+                "answer": "padding",
+                "explanation": "Padding adds inner space."
+              },
+              {
+                "id": "htmlcss_q05",
+                "type": "true_false",
+                "question": "Cards help organize content.",
+                "answer": true,
+                "explanation": "Cards group content."
+              },
+              {
+                "id": "htmlcss_q06",
+                "type": "code_test",
+                "question": "Add a 2px solid border.",
+                "explanation": "Excellent! Borders frame your content and make cards look polished. You've learned how to combine thickness, style, and color in one property!",
+                "code_example": {
+                  "code": ".card {\n  border: 2px solid black;\n  padding: 15px;\n}",
+                  "language": "css",
+                  "description": "CSS border styling",
+                  "explanation": "Let me show you borders. The border property needs three values: thickness, style, and color. I write 'border: 2px solid black;' - that's 2 pixels thick, a solid line (not dotted or dashed), and black color. All three go together with spaces between them. This creates a nice frame around the element!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCSS": "border: 2px solid black;"
+                }
+              }
+            ],
+            "next_lesson_id": "htmlcss_lesson_03"
+          },
+          {
+            "id": "htmlcss_lesson_03",
+            "title": "My First Styled Page",
+            "body": "Build and style your own page.",
+            "avatar_script": "You are now a webpage designer!",
+            "media": {},
+            "questions": [
+              {
+                "id": "htmlcss_q07",
+                "type": "multiple_choice",
+                "question": "Which language styles text size?",
+                "options": [
+                  "HTML",
+                  "CSS",
+                  "Python",
+                  "Scratch"
+                ],
+                "answer": "CSS",
+                "explanation": "CSS styles text."
+              },
+              {
+                "id": "htmlcss_q08",
+                "type": "true_false",
+                "question": "CSS can change font size.",
+                "answer": true,
+                "explanation": "CSS controls font size."
+              },
+              {
+                "id": "htmlcss_q09",
+                "type": "code_test",
+                "question": "Set paragraph font size to 20px.",
+                "explanation": "Congratulations! You've completed the course and learned how to build and style webpages. You're now a webpage designer!",
+                "code_example": {
+                  "code": "p {\n  font-size: 20px;\n  color: purple;\n}",
+                  "language": "css",
+                  "description": "Final CSS styling",
+                  "explanation": "For our final lesson, let's style paragraphs. I use 'font-size: 20px;' to make the text a nice readable size. Remember, you can combine multiple properties together - like adding color too! You've learned so much about HTML and CSS. Now you can create your own beautiful webpages!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedCSS": "font-size: 20px;"
+                }
+              }
+            ],
+            "next_lesson_id": null
+          }
+        ]
+      }
+    ]
+  }
+}

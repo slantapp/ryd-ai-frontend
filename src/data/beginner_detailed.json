@@ -4,6 +4,9 @@
     "title": "JavaScript for Absolute Beginners",
     "description": "Start your coding journey! Learn the very basics of JavaScript with simple explanations, fun analogies, and hands-on practice. No experience needed!",
     "language": "en",
+    "age": 11,
+    "class": "Primary 6",
+    "grade": 6,
     "modules": [
       {
         "id": "jsb_module_01",
@@ -16,13 +19,6 @@
             "body": "JavaScript is a programming language that makes websites interactive. Think of HTML as the skeleton of a webpage, CSS as the clothes, and JavaScript as the muscles that make it move!",
             "avatar_script": "Hi there! I'm so happy you're here! JavaScript is like magic for websites. It lets buttons click, forms check your answers, and games come alive. Ready to learn some magic?",
             "media": {},
-            "code_example": {
-              "code": "// This is a comment - the computer ignores it!\nconsole.log('Hello, World!');\nalert('Welcome to JavaScript!');",
-              "language": "javascript",
-              "description": "Your first JavaScript code - printing and showing messages",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsb_q1_01",
@@ -70,13 +66,6 @@
             "body": "Variables are like labeled boxes where you store information. You give each box a name, put something inside, and can use it later. In JavaScript, we use 'let', 'const', or 'var' to create variables.",
             "avatar_script": "Imagine you have a toy box labeled 'favoriteToy'. You put your favorite toy inside. Later, you can open the box and play with it! Variables work the same way in code.",
             "media": {},
-            "code_example": {
-              "code": "let name = 'Alex';\nconst age = 10;\nvar city = 'New York';\n\nconsole.log(name); // Shows: Alex",
-              "language": "javascript",
-              "description": "Creating and using variables with let, const, and var",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsb_q2_01",
@@ -124,13 +113,6 @@
             "body": "JavaScript stores different kinds of data: numbers (like 5 or 3.14), strings (text in quotes like 'hello'), booleans (true or false), and more. Each type is used for different jobs.",
             "avatar_script": "Think of data types like different containers: numbers go in number cups, text goes in string jars, and true/false goes in boolean boxes. Using the right container helps your code work correctly!",
             "media": {},
-            "code_example": {
-              "code": "let score = 100;                    // number\nlet playerName = 'Sam';              // string\nlet isPlaying = true;                // boolean\nlet highScore = null;                // null (empty on purpose)\n\nconsole.log(typeof score); // Shows: 'number'",
-              "language": "javascript",
-              "description": "Common JavaScript data types with examples",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsb_q3_01",
@@ -185,13 +167,6 @@
             "body": "Just like you decide what to wear based on the weather, code can make choices using if/else statements. If a condition is true, do one thing. Otherwise, do something else.",
             "avatar_script": "Imagine a robot that checks the weather: IF it's raining, take an umbrella. ELSE, wear sunglasses. That's exactly how if/else works in JavaScript!",
             "media": {},
-            "code_example": {
-              "code": "let temperature = 25;\n\nif (temperature > 30) {\n  console.log('It\\'s hot! Wear shorts.');\n} else if (temperature > 15) {\n  console.log('Nice weather! T-shirt is perfect.');\n} else {\n  console.log('Brrr! Grab a jacket.');\n}",
-              "language": "javascript",
-              "description": "Using if/else to make decisions based on conditions",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsb_q4_01",
@@ -239,13 +214,6 @@
             "body": "Loops let your code repeat actions without writing the same thing over and over. A for loop is like saying 'do this 5 times'. A while loop says 'keep doing this while something is true'.",
             "avatar_script": "Think of a loop like a playlist on repeat! Instead of pressing play 10 times, you just set it to repeat. Loops save you time and make your code cleaner.",
             "media": {},
-            "code_example": {
-              "code": "// For loop: count from 1 to 5\nfor (let i = 1; i <= 5; i++) {\n  console.log('Count: ' + i);\n}\n\n// While loop: keep going while condition is true\nlet count = 3;\nwhile (count > 0) {\n  console.log('Blast off in ' + count + '...');\n  count--;\n}",
-              "language": "javascript",
-              "description": "For and while loops with practical examples",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsb_q5_01",
@@ -293,13 +261,6 @@
             "body": "Functions are like recipes: you write the steps once, then use them whenever you need. You give a function a name, write what it does, and call it anytime. You can even give it ingredients (parameters) to work with!",
             "avatar_script": "Imagine a cookie recipe: you don't rewrite it every time you bake. You just say 'make cookies!' Functions work the same way. Write once, use many times!",
             "media": {},
-            "code_example": {
-              "code": "// Define a function\nfunction greet(name) {\n  return 'Hello, ' + name + '!';\n}\n\n// Use the function\nconsole.log(greet('Maria')); // Shows: Hello, Maria!\nconsole.log(greet('Tom'));   // Shows: Hello, Tom!",
-              "language": "javascript",
-              "description": "Creating and calling a simple function with a parameter",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsb_q6_01",
@@ -354,13 +315,6 @@
             "body": "Arrays are like shopping lists or backpacks - they hold multiple items in order. You can add, remove, or find items. Each item has a number (index) starting at 0.",
             "avatar_script": "Think of an array like a train! Each car holds one item, and they're numbered starting from 0. The engine is index 0, the next car is index 1, and so on!",
             "media": {},
-            "code_example": {
-              "code": "let fruits = ['apple', 'banana', 'cherry'];\n\nconsole.log(fruits[0]); // Shows: apple\nconsole.log(fruits.length); // Shows: 3\n\nfruits.push('orange'); // Add to end\nconsole.log(fruits); // Shows: ['apple', 'banana', 'cherry', 'orange']",
-              "language": "javascript",
-              "description": "Creating and using arrays with common methods",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsb_q7_01",
@@ -408,13 +362,6 @@
             "body": "Objects let you group related information about one thing. Like a profile card: name, age, favorite color. Each piece of info is a property with a name and value.",
             "avatar_script": "Imagine a name tag at a party: it has your name, maybe your job, and a fun fact. Objects work the same way - they bundle details about one person, place, or thing!",
             "media": {},
-            "code_example": {
-              "code": "let person = {\n  name: 'Jamie',\n  age: 12,\n  hobby: 'drawing',\n  greet: function() {\n    return 'Hi, I\\'m ' + this.name;\n  }\n};\n\nconsole.log(person.name); // Shows: Jamie\nconsole.log(person.greet()); // Shows: Hi, I'm Jamie",
-              "language": "javascript",
-              "description": "Creating an object with properties and a method",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsb_q8_01",
@@ -462,13 +409,6 @@
             "body": "The DOM is how JavaScript talks to your HTML page. You can find elements, change their text, update styles, or respond to clicks. It's like giving your webpage a remote control!",
             "avatar_script": "Imagine your webpage is a robot. The DOM is the remote that lets you press buttons to change what it shows or how it acts. JavaScript holds the remote!",
             "media": {},
-            "code_example": {
-              "code": "// Find an element by its ID\nlet heading = document.getElementById('mainTitle');\n\n// Change its text\nheading.textContent = 'Welcome to My Page!';\n\n// Change its color\nheading.style.color = 'blue';\n\n// Add a click event\nheading.addEventListener('click', function() {\n  alert('You clicked the heading!');\n});",
-              "language": "javascript",
-              "description": "Basic DOM manipulation: selecting, changing, and adding events",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsb_q9_01",
@@ -523,13 +463,6 @@
             "body": "Let's build a click counter! We'll use variables to store the count, functions to update it, and DOM methods to show changes on the page. Small project, big learning!",
             "avatar_script": "Time to build something real! A counter seems simple, but it uses variables, functions, events, and DOM - all the basics you've learned. You've got this!",
             "media": {},
-            "code_example": {
-              "code": "// HTML needed: <button id=\"countBtn\">Click me</button><p id=\"display\">0</p>\n\nlet count = 0;\nconst display = document.getElementById('display');\nconst button = document.getElementById('countBtn');\n\nbutton.addEventListener('click', function() {\n  count++;\n  display.textContent = count;\n});",
-              "language": "javascript",
-              "description": "Interactive counter with button and display",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsb_q10_01",
@@ -577,13 +510,6 @@
             "body": "Let's make a button that changes the page background color! We'll use arrays to store colors, Math.random() to pick one, and style.backgroundColor to apply it. Fun and colorful!",
             "avatar_script": "Who doesn't love colors? This project teaches random selection, arrays, and styling - all while making something fun to play with. Let's paint the web!",
             "media": {},
-            "code_example": {
-              "code": "const colors = ['red', 'blue', 'green', 'yellow', 'purple'];\nconst button = document.getElementById('colorBtn');\n\nbutton.addEventListener('click', function() {\n  const randomIndex = Math.floor(Math.random() * colors.length);\n  document.body.style.backgroundColor = colors[randomIndex];\n});",
-              "language": "javascript",
-              "description": "Random color picker using array and Math.random()",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsb_q11_01",
@@ -631,13 +557,6 @@
             "body": "Let's build a tiny to-do app! We'll use arrays to store tasks, functions to add/remove them, and DOM methods to show the list. Real-world practice with beginner tools!",
             "avatar_script": "You're ready for a bigger challenge! A to-do list uses almost everything you've learned. Don't worry - we'll build it step by step. You're doing amazing!",
             "media": {},
-            "code_example": {
-              "code": "let tasks = [];\nconst input = document.getElementById('taskInput');\nconst list = document.getElementById('taskList');\n\nfunction addTask() {\n  const task = input.value;\n  if (task) {\n    tasks.push(task);\n    renderTasks();\n    input.value = '';\n  }\n}\n\nfunction renderTasks() {\n  list.innerHTML = '';\n  tasks.forEach(function(task) {\n    const li = document.createElement('li');\n    li.textContent = task;\n    list.appendChild(li);\n  });\n}",
-              "language": "javascript",
-              "description": "Basic to-do list with add and display functionality",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsb_q12_01",

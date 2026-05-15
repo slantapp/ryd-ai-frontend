@@ -4,6 +4,9 @@
     "title": "JavaScript: From Beginner to Intermediate",
     "description": "Ready to level up? Learn arrays, objects, scope, async code, and more. Build confidence with practical examples and clear explanations. You've got the basics - now let's go deeper!",
     "language": "en",
+    "age": 12,
+    "class": "JSS 1",
+    "grade": 7,
     "modules": [
       {
         "id": "jsi_module_01",
@@ -16,13 +19,6 @@
             "body": "Array methods are powerful tools to transform lists. map() changes each item, filter() picks items that match a rule, and reduce() combines items into one result. They make code cleaner and more expressive.",
             "avatar_script": "Think of array methods like kitchen tools: map() is a blender (transforms everything), filter() is a strainer (keeps what you want), and reduce() is a mixer (combines into one). Let's cook up some code!",
             "media": {},
-            "code_example": {
-              "code": "const numbers = [1, 2, 3, 4, 5];\n\n// map: double each number\nconst doubled = numbers.map(n => n * 2);\n\n// filter: keep only even numbers\nconst evens = numbers.filter(n => n % 2 === 0);\n\n// reduce: sum all numbers\nconst sum = numbers.reduce((total, n) => total + n, 0);\n\nconsole.log(doubled); // [2, 4, 6, 8, 10]\nconsole.log(evens);   // [2, 4]\nconsole.log(sum);     // 15",
-              "language": "javascript",
-              "description": "Using map, filter, and reduce with arrow functions",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsi_q1_01",
@@ -70,13 +66,6 @@
             "body": "Destructuring lets you unpack object properties into variables easily. The spread operator (...) copies or combines objects and arrays. Both make code shorter and clearer.",
             "avatar_script": "Imagine unpacking a gift box: destructuring is like taking out each item and naming it. Spread is like copying all items into a new box. Both save time and keep things organized!",
             "media": {},
-            "code_example": {
-              "code": "// Destructuring\nconst user = { name: 'Sam', age: 25, city: 'Paris' };\nconst { name, city } = user;\nconsole.log(name); // 'Sam'\n\n// Spread operator\nconst defaults = { theme: 'light', lang: 'en' };\nconst settings = { ...defaults, theme: 'dark' };\nconsole.log(settings); // { theme: 'dark', lang: 'en' }\n\n// Combining arrays\nconst arr1 = [1, 2];\nconst arr2 = [3, 4];\nconst combined = [...arr1, ...arr2]; // [1, 2, 3, 4]",
-              "language": "javascript",
-              "description": "Destructuring objects and using spread operator",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsi_q2_01",
@@ -124,13 +113,6 @@
             "body": "JSON (JavaScript Object Notation) is a text format for storing and sharing data. It looks like JavaScript objects but is just text. Use JSON.parse() to turn text into objects, and JSON.stringify() to turn objects into text.",
             "avatar_script": "Think of JSON like a universal translator for data. Websites, apps, and servers all speak JSON. Learning it helps your code talk to the world!",
             "media": {},
-            "code_example": {
-              "code": "// JavaScript object\nconst user = { name: 'Lee', active: true };\n\n// Convert to JSON string (for sending/saving)\nconst jsonString = JSON.stringify(user);\nconsole.log(jsonString); // '{\"name\":\"Lee\",\"active\":true}'\n\n// Convert JSON string back to object\nconst parsed = JSON.parse(jsonString);\nconsole.log(parsed.name); // 'Lee'",
-              "language": "javascript",
-              "description": "Converting between objects and JSON strings",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsi_q3_01",
@@ -185,13 +167,6 @@
             "body": "Scope is where variables can be accessed. 'var' has function scope (visible inside the whole function). 'let' and 'const' have block scope (visible only inside { } brackets). Knowing scope prevents bugs!",
             "avatar_script": "Think of scope like rooms in a house: block scope is like a closet - only things inside can see what's in there. Function scope is like a whole room - everything in the room can see the variables. Let's organize your code house!",
             "media": {},
-            "code_example": {
-              "code": "function example() {\n  if (true) {\n    var a = 1;    // function-scoped\n    let b = 2;    // block-scoped\n    const c = 3;  // block-scoped\n  }\n  console.log(a); // Works: 1\n  // console.log(b); // Error: b is not defined\n  // console.log(c); // Error: c is not defined\n}\n\n// Prefer let/const for predictable scope!",
-              "language": "javascript",
-              "description": "Comparing var, let, and const scope behavior",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsi_q4_01",
@@ -239,13 +214,6 @@
             "body": "A closure is a function that 'remembers' variables from where it was created, even after that code has finished running. It's like a function with a backpack full of variables it can use later.",
             "avatar_script": "Imagine a chef who writes a recipe and puts secret ingredients in a backpack. Later, anyone who uses the recipe still has access to those secret ingredients. That's a closure!",
             "media": {},
-            "code_example": {
-              "code": "function createCounter() {\n  let count = 0; // 'count' is in the closure\n  \n  return function() {\n    count++;\n    return count;\n  };\n}\n\nconst counter = createCounter();\nconsole.log(counter()); // 1\nconsole.log(counter()); // 2\n// 'count' is private and preserved between calls!",
-              "language": "javascript",
-              "description": "Simple closure example with a counter",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsi_q5_01",
@@ -293,13 +261,6 @@
             "body": "'this' refers to the object that is currently running a function. Its value changes based on how the function is called. In methods, 'this' is the object. In regular functions, it can be global or undefined.",
             "avatar_script": "Think of 'this' like a mirror: it shows you who's calling the function. If a dog.bark() runs, 'this' is the dog. If bark() runs alone, 'this' might be the window. Context is everything!",
             "media": {},
-            "code_example": {
-              "code": "const person = {\n  name: 'Taylor',\n  greet: function() {\n    console.log('Hi, I\\'m ' + this.name);\n  }\n};\n\nperson.greet(); // 'Hi, I\\'m Taylor' - 'this' is person\n\n// Arrow functions handle 'this' differently!\nconst arrowGreet = () => {\n  console.log(this.name); // 'this' is NOT person here\n};",
-              "language": "javascript",
-              "description": "Understanding 'this' in methods vs regular functions",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsi_q6_01",
@@ -354,13 +315,6 @@
             "body": "A callback is a function passed to another function to run later. They're used for async tasks like fetching data or waiting for clicks. The callback runs when the task is done.",
             "avatar_script": "Imagine ordering pizza: you give the shop your number (the callback). When the pizza is ready, they call you back. Callbacks let your code wait for things without freezing!",
             "media": {},
-            "code_example": {
-              "code": "// Simulate async task with setTimeout\nfunction fetchData(callback) {\n  console.log('Fetching...');\n  setTimeout(() => {\n    const data = { user: 'Alex', score: 90 };\n    callback(data); // Run the callback with data\n  }, 1000);\n}\n\n// Use the function\nfetchData(function(result) {\n  console.log('Got data:', result);\n});\nconsole.log('This runs first!');",
-              "language": "javascript",
-              "description": "Using a callback to handle async data",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsi_q7_01",
@@ -408,13 +362,6 @@
             "body": "Promises represent a value that might be available now, later, or never. They have three states: pending, fulfilled, or rejected. Use .then() for success and .catch() for errors. Cleaner than nested callbacks!",
             "avatar_script": "Think of a promise like a restaurant buzzer: you get it while waiting (pending). When your table is ready, it lights up (fulfilled). If there's a problem, it vibrates (rejected). Promises help you handle all three!",
             "media": {},
-            "code_example": {
-              "code": "// Create a promise\nconst myPromise = new Promise((resolve, reject) => {\n  const success = true;\n  if (success) {\n    resolve('Data loaded!');\n  } else {\n    reject('Error loading data');\n  }\n});\n\n// Use the promise\nmyPromise\n  .then(message => console.log(message))      // On success\n  .catch(error => console.error(error));      // On error",
-              "language": "javascript",
-              "description": "Creating and consuming a Promise",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsi_q8_01",
@@ -462,13 +409,6 @@
             "body": "async/await is syntactic sugar over promises. Mark a function with 'async', then use 'await' to pause until a promise resolves. The code reads top-to-bottom, making async logic much clearer!",
             "avatar_script": "Imagine reading a recipe: async/await lets you write 'wait for water to boil' as a simple line, instead of a complicated callback chain. It's async code that reads like a story!",
             "media": {},
-            "code_example": {
-              "code": "// Async function\nasync function getUser() {\n  try {\n    console.log('Fetching...');\n    const response = await fetch('https://api.example.com/user');\n    const data = await response.json();\n    console.log('User:', data);\n    return data;\n  } catch (error) {\n    console.error('Failed:', error);\n  }\n}\n\n// Call it\ngetUser();",
-              "language": "javascript",
-              "description": "Using async/await with fetch and error handling",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsi_q9_01",
@@ -523,13 +463,6 @@
             "body": "Use try/catch to handle errors without crashing your app. Put risky code in 'try'. If an error happens, 'catch' runs with the error object. Add 'finally' for code that always runs.",
             "avatar_script": "Think of try/catch like a safety net: you try a risky move (try), and if you fall, the net catches you (catch). Finally, you always bow to the audience (finally). Safe coding!",
             "media": {},
-            "code_example": {
-              "code": "function divide(a, b) {\n  try {\n    if (b === 0) throw new Error('Cannot divide by zero');\n    return a / b;\n  } catch (error) {\n    console.error('Error:', error.message);\n    return null;\n  } finally {\n    console.log('Division attempt finished');\n  }\n}\n\ndivide(10, 2); // 5\ndivide(10, 0); // Error + null",
-              "language": "javascript",
-              "description": "Try/catch/finally with custom error throwing",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsi_q10_01",
@@ -577,13 +510,6 @@
             "body": "console.log() is just the start! Use console.table() for arrays, console.group() to organize logs, and debugger; to pause code. Browser DevTools let you inspect variables, step through code, and watch the call stack.",
             "avatar_script": "Debugging is like being a detective: console logs are your clues, breakpoints are your magnifying glass, and the call stack is your timeline. Let's solve some code mysteries!",
             "media": {},
-            "code_example": {
-              "code": "const users = [\n  { name: 'Ana', age: 25 },\n  { name: 'Bob', age: 30 }\n];\n\nconsole.log('Simple log');\nconsole.table(users); // Pretty table view\nconsole.group('User Details');\nusers.forEach(u => console.log(`${u.name}: ${u.age}`));\nconsole.groupEnd();\n\n// Add 'debugger;' and open DevTools to pause here\ndebugger;\nconsole.log('After breakpoint');",
-              "language": "javascript",
-              "description": "Advanced console methods and debugger statement",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsi_q11_01",
@@ -631,13 +557,6 @@
             "body": "Let's build a real feature: fetch user data from an API, handle errors, and display it on the page. We'll use async/await, try/catch, DOM manipulation, and JSON - all together!",
             "avatar_script": "Time to combine everything! Fetching live data is a core skill for modern web apps. Don't worry - we'll build it step by step. You're ready for this!",
             "media": {},
-            "code_example": {
-              "code": "async function loadUserProfile(userId) {\n  const display = document.getElementById('profile');\n  \n  try {\n    display.textContent = 'Loading...';\n    \n    const response = await fetch(`https://api.example.com/users/${userId}`);\n    if (!response.ok) throw new Error('User not found');\n    \n    const user = await response.json();\n    display.innerHTML = `\n      <h2>${user.name}</h2>\n      <p>Email: ${user.email}</p>\n      <p>Joined: ${new Date(user.joined).toLocaleDateString()}</p>\n    `;\n  } catch (error) {\n    display.textContent = `Error: ${error.message}`;\n    console.error('Load failed:', error);\n  }\n}\n\n// Usage: loadUserProfile(123);",
-              "language": "javascript",
-              "description": "Complete async function fetching and displaying API data",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "jsi_q12_01",

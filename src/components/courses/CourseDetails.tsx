@@ -171,6 +171,8 @@ function CourseDetailInner() {
   // Track correct answers across the current module (for module completion message)
   const [moduleCorrectCount, setModuleCorrectCount] = useState(0);
   const [moduleTotalAnswered, setModuleTotalAnswered] = useState(0);
+  // Track completed lesson IDs for accurate progress persistence
+  const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
 
   // Code editor state
   const [code, setCode] = useState("");
@@ -426,19 +428,35 @@ function CourseDetailInner() {
     (
       lessonIndex: number,
       totalLessons: number,
-      hasStarted: boolean
+      questionIndex: number,
+      totalQuestions: number,
+      hasStarted: boolean,
+      isLessonComplete: boolean
     ): number => {
       if (totalLessons === 0) return 0;
       if (lessonIndex < 0 || lessonIndex >= totalLessons) return 0;
 
-      // When on the last lesson and started, treat as 100% so status can become "completed"
-      if (hasStarted && lessonIndex === totalLessons - 1) return 100;
+      // Each lesson contributes equally to total progress
+      const lessonWeight = 100 / totalLessons;
 
-      const progress = hasStarted
-        ? Math.round(((lessonIndex + 0.5) / totalLessons) * 100)
-        : Math.round((lessonIndex / totalLessons) * 100);
+      // Progress from fully completed lessons
+      const completedLessonsPct = lessonIndex * lessonWeight;
 
-      return Math.min(100, Math.max(0, progress));
+      // Progress within the current lesson
+      let currentLessonPct = 0;
+      if (isLessonComplete) {
+        // Lesson fully done (all questions answered)
+        currentLessonPct = lessonWeight;
+      } else if (totalQuestions > 0 && hasStarted) {
+        // Partial progress based on questions answered
+        currentLessonPct = (questionIndex / totalQuestions) * lessonWeight;
+      } else if (hasStarted) {
+        // Lesson started but no questions (or before questions) — count as half
+        currentLessonPct = lessonWeight * 0.5;
+      }
+
+      const total = completedLessonsPct + currentLessonPct;
+      return Math.min(100, Math.max(0, Math.round(total)));
     },
     []
   );
@@ -593,6 +611,13 @@ function CourseDetailInner() {
       // All questions completed - enable next lesson
       setCurrentQuestion(null);
 
+      // Mark this lesson as completed
+      setCompletedLessonIds((prev) => {
+        const next = new Set(prev);
+        next.add(currentLesson.id);
+        return next;
+      });
+
       // Add this lesson's score to module totals
       const totalQuestions = currentLesson.questions.length;
       const correctCount = correctAnswersCount;
@@ -700,8 +725,6 @@ function CourseDetailInner() {
 
       if (lesson.body) parts.push(lesson.body);
       if (lesson.avatar_script) parts.push(lesson.avatar_script);
-      if (lesson.code_example?.description)
-        parts.push(lesson.code_example.description);
 
       const fullText = parts.join(" ");
 
@@ -805,6 +828,7 @@ function CourseDetailInner() {
     setTotalQuestionsAnswered(0);
     setModuleCorrectCount(0);
     setModuleTotalAnswered(0);
+    setCompletedLessonIds(new Set());
   }, [exercise, curriculum, updateCourseProgress, stopSpeaking]);
 
   const handlePreviousLesson = useCallback(() => {
@@ -1350,7 +1374,13 @@ function CourseDetailInner() {
 
       const stored = useCoursesStore.getState().getCourseProgress(slug);
       if (!stored) return;
-    const saved: CourseProgress = {
+
+      // Initialize completedLessonIds from server data
+      if (stored.completedLessons?.length) {
+        setCompletedLessonIds(new Set(stored.completedLessons));
+      }
+
+      const saved: CourseProgress = {
       lessonId: stored.currentLessonId ?? null,
       lessonIndex: typeof stored.lessonIndex === "number" ? stored.lessonIndex : undefined,
       questionIndex: typeof stored.questionIndex === "number" ? stored.questionIndex : 0,
@@ -1431,7 +1461,7 @@ function CourseDetailInner() {
     setShowMobileAudioUnlock(false);
   }, [exercise, isLgUp, isCodeTestQuestion]);
 
-  // Sync progress to store when lesson changes
+  // Sync progress to store when lesson/question changes
   useEffect(() => {
     if (!currentLesson || !exercise || !curriculum) return;
 
@@ -1443,52 +1473,71 @@ function CourseDetailInner() {
     const currentIndex = getLessonIndexInCurriculum(currentLesson, curriculum);
     if (currentIndex < 0) return;
 
+    const totalQuestions = currentLesson.questions?.length ?? 0;
+    // Lesson is complete when all questions have been answered (questionIndex >= totalQuestions)
+    const isCurrentLessonComplete = totalQuestions > 0 && currentQuestionIndex >= totalQuestions;
+
     const progress = calculateProgress(
       currentIndex,
       allLessons.length,
-      lessonStarted
+      currentQuestionIndex,
+      totalQuestions,
+      lessonStarted,
+      isCurrentLessonComplete
     );
 
     const isLastLesson = currentIndex === allLessons.length - 1;
 
+    // Only mark "completed" when the final lesson is actually finished (all questions answered)
+    const isCourseFinished = isLastLesson && isCurrentLessonComplete;
+
     const status: "not-started" | "ongoing" | "completed" = !lessonStarted
       ? "not-started"
-      : isLastLesson && !currentLesson.next_lesson_id && progress >= 100
+      : isCourseFinished
         ? "completed"
         : "ongoing";
 
-    updateCourseProgress(exercise, {
-      status,
-      progress,
-      currentLessonId: currentLesson.id,
-      completedLessons: [],
-    });
+    updateCourseProgress(
+      exercise,
+      {
+        status,
+        progress,
+        currentLessonId: currentLesson.id,
+        completedLessons: Array.from(completedLessonIds),
+      },
+      // Flush immediately when course is completed to avoid data loss
+      { immediate: status === "completed" }
+    );
   }, [
     currentLesson,
+    currentQuestionIndex,
     lessonStarted,
     exercise,
     curriculum,
+    completedLessonIds,
     calculateProgress,
     updateCourseProgress,
   ]);
 
   // Cleanup on unmount - stop any ongoing speech and code typing
   useEffect(() => {
-    const avatarInstance = avatarRef.current;
-
     return () => {
+      // Clear code typing animation
       isTypingCodeRef.current = false;
       if (codeTypingTimeoutRef.current) {
         clearTimeout(codeTypingTimeoutRef.current);
         codeTypingTimeoutRef.current = null;
       }
 
+      // Clear any pending speech queue
+      pendingSpeechQueueRef.current = [];
+      pendingActionRef.current = { type: "none" };
+
+      // Stop avatar speech - read ref at cleanup time, not mount time
       try {
-        if (
-          avatarInstance &&
-          typeof avatarInstance.stopSpeaking === "function"
-        ) {
-          avatarInstance.stopSpeaking();
+        const avatar = avatarRef.current;
+        if (avatar && typeof avatar.stopSpeaking === "function") {
+          avatar.stopSpeaking();
         }
       } catch {
         // Ignore cleanup errors - avatar may already be destroyed

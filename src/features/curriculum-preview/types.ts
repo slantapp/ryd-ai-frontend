@@ -34,14 +34,6 @@ export interface Lesson {
   title: string;
   body: string;
   avatar_script: string;
-  code_example?: {
-    code: string;
-    language: string;
-    description?: string;
-    explanation?: string;
-    autoRun?: boolean;
-    typingSpeed?: number;
-  };
   media: {
     image?: string;
     video?: string;
@@ -61,6 +53,16 @@ export interface CurriculumData {
   title: string;
   description: string;
   language: string;
+  /** Minimum recommended learner age (years). */
+  age: number;
+  /**
+   * Local school class label (e.g. "Primary 5", "JSS 1", or "Grade 5").
+   */
+  class: string;
+  /**
+   * Optional international grade number (1–12). Shown compactly alongside `class`.
+   */
+  grade?: number;
   modules: Module[];
 }
 

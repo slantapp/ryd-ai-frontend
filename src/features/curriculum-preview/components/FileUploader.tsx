@@ -2,11 +2,9 @@ import { useCallback, useState } from "react";
 import { Upload, FileJson, AlertCircle, CheckCircle, Download, FileText } from "lucide-react";
 import type { CurriculumData } from "../types";
 import { sampleCurriculumJSON } from "../templates";
-import { uploadCurriculumFile } from "../handoff";
 
 interface FileUploaderProps {
-  onCurriculumLoaded: (curriculum: CurriculumData) => void;
-  handoffToken: string;
+  onCurriculumLoaded: (curriculum: CurriculumData, file: File) => void;
   handoffName?: string;
 }
 
@@ -37,6 +35,34 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
 
   if (!curriculumData.description || typeof curriculumData.description !== "string") {
     errors.push("Missing or invalid 'description' field");
+  }
+
+  if (
+    typeof curriculumData.age !== "number" ||
+    !Number.isFinite(curriculumData.age) ||
+    curriculumData.age < 1
+  ) {
+    errors.push(
+      "Missing or invalid 'age' field (number — minimum recommended learner age in years)",
+    );
+  }
+
+  if (!curriculumData.class || typeof curriculumData.class !== "string") {
+    errors.push(
+      "Missing or invalid 'class' field (string — e.g. \"Primary 5\" or \"JSS 1\")",
+    );
+  }
+
+  if (
+    curriculumData.grade !== undefined &&
+    (typeof curriculumData.grade !== "number" ||
+      !Number.isFinite(curriculumData.grade) ||
+      curriculumData.grade < 1 ||
+      curriculumData.grade > 12)
+  ) {
+    errors.push(
+      "Invalid 'grade' field (optional number 1–12, shown as Gr. N alongside class)",
+    );
   }
 
   if (!Array.isArray(curriculumData.modules)) {
@@ -91,11 +117,32 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
         );
       }
 
+      if (les.code_example) {
+        errors.push(
+          `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: remove 'code_example' from the lesson — use it only on code_test questions`,
+        );
+      }
+
       if (!Array.isArray(les.questions)) {
         errors.push(
           `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1} is missing 'questions' array`
         );
+        return;
       }
+
+      (les.questions as unknown[]).forEach((question, questionIndex) => {
+        if (!question || typeof question !== "object") return;
+
+        const q = question as Record<string, unknown>;
+        const qType = q.type;
+        const label = `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Question ${questionIndex + 1}`;
+
+        if (qType !== "code_test" && q.code_example) {
+          errors.push(
+            `${label}: 'code_example' is only allowed on code_test questions`,
+          );
+        }
+      });
     });
   });
 
@@ -104,7 +151,6 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
 
 export function FileUploader({
   onCurriculumLoaded,
-  handoffToken,
   handoffName,
 }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -113,7 +159,6 @@ export function FileUploader({
   const [fileName, setFileName] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isValid, setIsValid] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [parsedCurriculum, setParsedCurriculum] = useState<CurriculumData | null>(null);
 
   const handleDownloadTemplate = useCallback(() => {
@@ -198,23 +243,9 @@ export function FileUploader({
     [processFile]
   );
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!parsedCurriculum || !selectedFile) return;
-
-    try {
-      setIsUploading(true);
-      setError(null);
-      await uploadCurriculumFile(selectedFile, handoffToken);
-      onCurriculumLoaded(parsedCurriculum);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Could not validate your curriculum upload.",
-      );
-    } finally {
-      setIsUploading(false);
-    }
+    onCurriculumLoaded(parsedCurriculum, selectedFile);
   };
 
   const handleReset = () => {
@@ -261,7 +292,6 @@ export function FileUploader({
             type="file"
             accept=".json"
             onChange={handleFileSelect}
-            disabled={isUploading}
             className="absolute inset-0 cursor-pointer opacity-0"
           />
 
@@ -359,7 +389,6 @@ export function FileUploader({
             <button
               type="button"
               onClick={handleReset}
-              disabled={isUploading}
               className="flex-1 rounded-xl border border-gray-300 bg-white py-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50"
             >
               Upload Different File
@@ -369,10 +398,9 @@ export function FileUploader({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isUploading}
-              className="flex-1 rounded-xl bg-primary py-3 font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-70"
+              className="flex-1 rounded-xl bg-primary py-3 font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 hover:shadow-xl"
             >
-              {isUploading ? "Validating upload..." : "Start Preview"}
+              Start Preview
             </button>
           )}
         </div>
@@ -424,6 +452,10 @@ export function FileUploader({
               <li className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
                 Avatar scripts
+              </li>
+              <li className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
+                class, grade &amp; age fields
               </li>
             </ul>
           </div>

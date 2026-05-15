@@ -4,6 +4,9 @@
     "title": "Python for Absolute Beginners",
     "description": "Start your coding journey with Python! Learn the basics step by step with simple explanations, fun examples, and hands-on practice. No experience needed!",
     "language": "en",
+    "age": 9,
+    "class": "Primary 4",
+    "grade": 4,
     "modules": [
       {
         "id": "py_module_01",
@@ -16,13 +19,6 @@
             "body": "Python is a programming language used to build apps, games, websites, and more. It is known for being simple and easy to read.",
             "avatar_script": "Python lets you give instructions to a computer. Let’s start with your first command!",
             "media": {},
-            "code_example": {
-              "code": "print('Hello, World!')",
-              "language": "python",
-              "description": "First program",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "q1",
@@ -67,16 +63,17 @@
             "body": "Variables store information.",
             "avatar_script": "Variables are like boxes that hold values.",
             "media": {},
-            "code_example": {
-              "code": "name = 'Sam'",
-              "language": "python"
-            },
             "questions": [
               {
                 "id": "q4",
                 "type": "multiple_choice",
                 "question": "What is a variable?",
-                "options": ["A box", "A game", "A screen", "A loop"],
+                "options": [
+                  "A box",
+                  "A game",
+                  "A screen",
+                  "A loop"
+                ],
                 "answer": "A box",
                 "explanation": "Variables store values."
               },
@@ -110,16 +107,17 @@
             "body": "Python has numbers, strings, and booleans.",
             "avatar_script": "Different data types store different kinds of data.",
             "media": {},
-            "code_example": {
-              "code": "is_ready = True",
-              "language": "python"
-            },
             "questions": [
               {
                 "id": "q7",
                 "type": "multiple_choice",
                 "question": "What type is 'Hi'?",
-                "options": ["Number", "String", "Boolean", "List"],
+                "options": [
+                  "Number",
+                  "String",
+                  "Boolean",
+                  "List"
+                ],
                 "answer": "String",
                 "explanation": "Text is a string."
               },
@@ -160,16 +158,17 @@
             "body": "If statements make decisions.",
             "avatar_script": "Python can choose what to do!",
             "media": {},
-            "code_example": {
-              "code": "if score > 5:\n    print('Good')",
-              "language": "python"
-            },
             "questions": [
               {
                 "id": "q10",
                 "type": "multiple_choice",
                 "question": "What does if do?",
-                "options": ["Loop", "Decide", "Print", "Store"],
+                "options": [
+                  "Loop",
+                  "Decide",
+                  "Print",
+                  "Store"
+                ],
                 "answer": "Decide",
                 "explanation": "If checks conditions."
               },
@@ -203,16 +202,17 @@
             "body": "Loops repeat actions.",
             "avatar_script": "Repeat tasks easily!",
             "media": {},
-            "code_example": {
-              "code": "for i in range(3):\n    print(i)",
-              "language": "python"
-            },
             "questions": [
               {
                 "id": "q13",
                 "type": "multiple_choice",
                 "question": "Loops do what?",
-                "options": ["Stop", "Repeat", "Delete", "Sleep"],
+                "options": [
+                  "Stop",
+                  "Repeat",
+                  "Delete",
+                  "Sleep"
+                ],
                 "answer": "Repeat",
                 "explanation": "Loops repeat actions."
               },
@@ -246,16 +246,17 @@
             "body": "Functions reuse code.",
             "avatar_script": "Write once, use many times!",
             "media": {},
-            "code_example": {
-              "code": "def greet():\n    print('Hi')",
-              "language": "python"
-            },
             "questions": [
               {
                 "id": "q16",
                 "type": "multiple_choice",
                 "question": "Keyword for function?",
-                "options": ["def", "fun", "make", "run"],
+                "options": [
+                  "def",
+                  "fun",
+                  "make",
+                  "run"
+                ],
                 "answer": "def",
                 "explanation": "def defines functions."
               },
@@ -296,16 +297,17 @@
             "body": "Lists store multiple values.",
             "avatar_script": "Lists hold many items!",
             "media": {},
-            "code_example": {
-              "code": "items = ['a','b']",
-              "language": "python"
-            },
             "questions": [
               {
                 "id": "q19",
                 "type": "multiple_choice",
                 "question": "Lists store?",
-                "options": ["One", "Many", "None", "Only numbers"],
+                "options": [
+                  "One",
+                  "Many",
+                  "None",
+                  "Only numbers"
+                ],
                 "answer": "Many",
                 "explanation": "Lists hold many values."
               },
@@ -339,16 +341,17 @@
             "body": "Dictionaries store key-value pairs.",
             "avatar_script": "Like a mini database!",
             "media": {},
-            "code_example": {
-              "code": "person = {'name':'Alex'}",
-              "language": "python"
-            },
             "questions": [
               {
                 "id": "q22",
                 "type": "multiple_choice",
                 "question": "Dictionaries store?",
-                "options": ["Lists", "Pairs", "Loops", "Text only"],
+                "options": [
+                  "Lists",
+                  "Pairs",
+                  "Loops",
+                  "Text only"
+                ],
                 "answer": "Pairs",
                 "explanation": "Key-value pairs."
               },
@@ -389,16 +392,17 @@
             "body": "Build a simple counter.",
             "avatar_script": "Let’s build something real!",
             "media": {},
-            "code_example": {
-              "code": "score = 0\nscore += 1",
-              "language": "python"
-            },
             "questions": [
               {
                 "id": "q25",
                 "type": "multiple_choice",
                 "question": "score += 1 means?",
-                "options": ["Reset", "Add 1", "Subtract", "Multiply"],
+                "options": [
+                  "Reset",
+                  "Add 1",
+                  "Subtract",
+                  "Multiply"
+                ],
                 "answer": "Add 1",
                 "explanation": "It increases value."
               },

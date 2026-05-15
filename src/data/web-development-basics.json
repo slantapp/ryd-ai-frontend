@@ -1,0 +1,489 @@
+{
+  "slug": "web-development-basics",
+  "curriculum": {
+    "title": "HTML Fundamentals",
+    "description": "Learn the building blocks of web development with HTML. Master tags, elements, and structure to create beautiful web pages.",
+    "language": "en",
+    "age": 10,
+    "class": "Primary 5",
+    "grade": 5,
+    "modules": [
+      {
+        "id": "html_module_01",
+        "title": "Introduction to HTML",
+        "prerequisite": null,
+        "lessons": [
+          {
+            "id": "html_lesson_01",
+            "title": "What is HTML?",
+            "body": "HTML stands for HyperText Markup Language. It's the standard language used to create web pages. HTML uses tags to structure content, making it readable by web browsers. Think of HTML as the skeleton of a webpage - it defines the structure and content, but not necessarily how it looks.",
+            "avatar_script": "Welcome to HTML Fundamentals! HTML is the foundation of every website you visit. It stands for HyperText Markup Language, and it's what tells your browser how to display content. Think of HTML as the skeleton of a webpage - it provides the structure. We use tags, which are like labels, to tell the browser what each piece of content is. For example, we use heading tags for titles, paragraph tags for text, and image tags for pictures. Let's start building your first webpage!",
+            "media": {},
+            "questions": [
+              {
+                "id": "html_q1",
+                "type": "multiple_choice",
+                "question": "What is HTML used for?",
+                "options": [
+                  "Making webpages",
+                  "Playing games",
+                  "Drawing pictures",
+                  "Sending emails"
+                ],
+                "answer": "Making webpages",
+                "explanation": "HTML is used to create webpages."
+              },
+              {
+                "id": "html_q2",
+                "type": "true_false",
+                "question": "HTML tells the browser what to show.",
+                "answer": true,
+                "explanation": "HTML gives instructions to the browser."
+              },
+              {
+                "id": "html_q3",
+                "type": "code_test",
+                "question": "Create an h2 heading tag with the text 'Learning HTML'",
+                "explanation": "Great! Headings help organize your content. The h2 tag creates a second-level heading, which is perfect for section titles. Remember to include both the opening and closing tags!",
+                "code_example": {
+                  "code": "<h1>Main Title</h1>\n<h2>Learning HTML</h2>\n<p>This is a paragraph.</p>",
+                  "language": "html",
+                  "description": "Example of HTML heading tags",
+                  "explanation": "Let me show you how HTML headings work. I'm creating an h1 tag for the main title, and an h2 tag for a section heading. Notice how each tag has an opening tag like <h2> and a closing tag like </h2>. The text goes between them. Headings help organize your page and make it easier to read.",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedHTML": "<h2>Learning HTML</h2>"
+                }
+              }
+            ],
+            "next_lesson_id": "html_lesson_02"
+          },
+          {
+            "id": "html_lesson_02",
+            "title": "HTML Document Structure",
+            "body": "Every HTML document follows a basic structure. It starts with a DOCTYPE declaration, followed by an html element that contains a head and body section. The head contains metadata like the page title, while the body contains the visible content.",
+            "avatar_script": "Now let's learn about the structure of an HTML document. Every HTML page has a specific structure that browsers expect. First, we declare the document type with DOCTYPE html. Then we have the html tag, which wraps everything. Inside, we have two main sections: the head and the body. The head contains information about the page that users don't see directly, like the title that appears in the browser tab. The body contains all the content that users will see on the page - your text, images, links, and more. This structure is like a blueprint for your webpage!",
+            "media": {},
+            "questions": [
+              {
+                "id": "html_q4",
+                "type": "multiple_choice",
+                "question": "Which part shows content on the page?",
+                "options": [
+                  "head",
+                  "body",
+                  "footer",
+                  "header"
+                ],
+                "answer": "body",
+                "explanation": "The body section contains all the visible content that users see on the webpage, such as text, images, and links."
+              },
+              {
+                "id": "html_q5",
+                "type": "true_false",
+                "question": "The head tag shows text on the webpage.",
+                "answer": false,
+                "explanation": "The head stores information, not content."
+              },
+              {
+                "id": "html_q6",
+                "type": "code_test",
+                "question": "Create a paragraph tag with the text 'Welcome to my webpage'",
+                "explanation": "Excellent! Paragraphs are the most common way to display text content on a webpage. The <p> tag wraps your text and creates proper spacing.",
+                "code_example": {
+                  "code": "<p>Welcome to my webpage</p>\n<p>This is another paragraph.</p>",
+                  "language": "html",
+                  "description": "Example of HTML paragraph tags",
+                  "explanation": "Here's how to create paragraphs. The p tag stands for paragraph. I put the opening tag <p>, then my text, and close it with </p>. Each paragraph tag creates a separate block of text with spacing. This is the most common way to add text to your webpage.",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedHTML": "<p>Welcome to my webpage</p>"
+                }
+              }
+            ],
+            "next_lesson_id": "html_lesson_03"
+          },
+          {
+            "id": "html_lesson_03",
+            "title": "How Browsers Read HTML",
+            "body": "When you open a webpage, your browser reads the HTML file from top to bottom. It looks at the tags and follows their instructions to show text, headings, and images on the screen. The browser does not guess — it only shows what the HTML tells it to show.",
+            "avatar_script": "Your browser is like a reader. It reads HTML and shows the page exactly as instructed.",
+            "media": {},
+            "questions": [
+              {
+                "id": "html_q7",
+                "type": "multiple_choice",
+                "question": "What does a browser do with HTML?",
+                "options": [
+                  "Reads it and shows the webpage",
+                  "Edits the code",
+                  "Deletes tags",
+                  "Adds colors automatically"
+                ],
+                "answer": "Reads it and shows the webpage",
+                "explanation": "Browsers read HTML and display the webpage on the screen."
+              },
+              {
+                "id": "html_q8",
+                "type": "multiple_choice",
+                "question": "In what order does a browser read HTML?",
+                "options": [
+                  "From bottom to top",
+                  "From the middle",
+                  "From top to bottom",
+                  "Randomly"
+                ],
+                "answer": "From top to bottom",
+                "explanation": "Browsers read HTML code in order, starting at the top."
+              },
+              {
+                "id": "html_q9",
+                "type": "true_false",
+                "question": "A browser shows only what HTML tells it to show.",
+                "answer": true,
+                "explanation": "Browsers follow HTML instructions exactly."
+              }
+            ],
+            "next_lesson_id": "html_module_02"
+          }
+        ]
+      },
+      {
+        "id": "html_module_02",
+        "title": "HTML Elements and Tags",
+        "prerequisite": "html_module_01",
+        "lessons": [
+          {
+            "id": "html_lesson_01",
+            "title": "What is an HTML Tag?",
+            "body": "HTML tags tell the browser what each part of a webpage is. Tags are written using angle brackets.",
+            "avatar_script": "Let's explore some of the most common HTML tags you'll use every day! Headings are created with h1 through h6 tags, where h1 is the largest and most important heading. Paragraphs use the p tag to wrap text content. Links are made with the a tag, and they need an href attribute to specify where they go. Images use the img tag with a src attribute pointing to the image file. The div tag is a container that helps organize and group related content together. These tags work together to create well-structured, readable web pages. Practice using them, and you'll be building websites in no time!",
+            "media": {},
+            "questions": [
+              {
+                "id": "html_q01",
+                "type": "multiple_choice",
+                "question": "What do tags do?",
+                "options": [
+                  "Tell the browser what content is",
+                  "Add color",
+                  "Play music",
+                  "Open the internet"
+                ],
+                "answer": "Tell the browser what content is",
+                "explanation": "Tags describe content."
+              },
+              {
+                "id": "html_q02",
+                "type": "multiple_choice",
+                "question": "Which symbols are used in tags?",
+                "options": [
+                  "< >",
+                  "( )",
+                  "{ }",
+                  "[ ]"
+                ],
+                "answer": "< >",
+                "explanation": "Tags use angle brackets."
+              },
+              {
+                "id": "html_q03",
+                "type": "code_test",
+                "question": "Create an anchor (link) tag with href='https://example.com' and the text 'Visit Example'",
+                "explanation": "Perfect! Links are essential for navigation on the web. The <a> tag creates clickable links, and the href attribute tells the browser where to go when clicked.",
+                "code_example": {
+                  "code": "<a href=\"https://example.com\">Visit Example</a>\n<a href=\"https://google.com\">Go to Google</a>",
+                  "language": "html",
+                  "description": "Example of HTML anchor (link) tags",
+                  "explanation": "Let me show you how to create links. The 'a' tag stands for anchor, which creates a clickable link. I use the href attribute to specify where the link goes - that's the URL. The text between the opening and closing tags is what users will see and click on. Links are how we connect different pages on the web!",
+                  "autoRun": false,
+                  "typingSpeed": 80
+                },
+                "testCriteria": {
+                  "expectedHTML": "<a href='https://example.com'>Visit Example</a>"
+                }
+              }
+            ],
+            "next_lesson_id": "html_lesson_02"
+          },
+          {
+            "id": "html_lesson_02",
+            "title": "Opening and Closing Tags",
+            "body": "Most tags have an opening tag and a closing tag. The closing tag has a slash.",
+            "avatar_script": "Most HTML tags work in pairs. This means they have an opening tag and a closing tag. For example, a paragraph starts with <p> and ends with </p>. The opening tag tells the browser to start showing something, and the closing tag tells it to stop. Some tags do not need a pair because they do not wrap text. For example, the image tag <img> and the line break tag <br> do not have closing tags. These are called self-closing tags.",
+            "media": {},
+            "questions": [
+              {
+                "id": "html_q04",
+                "type": "multiple_choice",
+                "question": "Which is a closing tag?",
+                "options": [
+                  "<p>",
+                  "</p>",
+                  "<p/>",
+                  "<paragraph>"
+                ],
+                "answer": "</p>",
+                "explanation": "Closing tags have a slash."
+              },
+              {
+                "id": "html_q05",
+                "type": "true_false",
+                "question": "Most tags come in pairs.",
+                "answer": true,
+                "explanation": "Opening and closing tags work together."
+              },
+              {
+                "id": "html_q06",
+                "type": "multiple_choice",
+                "question": "What does a closing tag do?",
+                "options": [
+                  "Starts content",
+                  "Ends content",
+                  "Adds color",
+                  "Shows images"
+                ],
+                "answer": "Ends content",
+                "explanation": "It tells the browser where content ends."
+              }
+            ],
+            "next_lesson_id": "html_lesson_03"
+          },
+          {
+            "id": "html_lesson_03",
+            "title": "Nesting Tags",
+            "body": "Nesting means putting one tag inside another tag.",
+            "avatar_script": "HTML tags can work together by being placed inside one another. This is called nesting. Think of it like putting a smaller box inside a bigger box. For example, a strong tag can go inside a paragraph tag. The important rule is to close the inside tag first before closing the outside tag, so everything stays neat and easy for the browser to understand.",
+            "media": {},
+            "questions": [
+              {
+                "id": "html_q07",
+                "type": "multiple_choice",
+                "question": "What is nesting?",
+                "options": [
+                  "Deleting tags",
+                  "Putting one tag inside another",
+                  "Closing the page",
+                  "Changing colors"
+                ],
+                "answer": "Putting one tag inside another",
+                "explanation": "Nesting places tags inside others."
+              },
+              {
+                "id": "html_q08",
+                "type": "true_false",
+                "question": "Tags can be inside other tags.",
+                "answer": true,
+                "explanation": "This is nesting."
+              },
+              {
+                "id": "html_q09",
+                "type": "multiple_choice",
+                "question": "Which example shows nesting?",
+                "options": [
+                  "<p>Hello</p>",
+                  "<strong>Text</strong>",
+                  "<p><strong>Text</strong></p>",
+                  "<img>"
+                ],
+                "answer": "<p><strong>Text</strong></p>",
+                "explanation": "The strong tag is inside the paragraph."
+              }
+            ],
+            "next_lesson_id": "html_module_03"
+          }
+        ]
+      },
+      {
+        "id": "html_module_03",
+        "title": "Text, Links, and Images",
+        "prerequisite": "html_module_02",
+        "lessons": [
+          {
+            "id": "html_lesson_01",
+            "title": "Paragraphs and Headings",
+            "body": "Paragraphs show text and headings show titles. They help make webpages easy to read.",
+            "avatar_script": "Text is how you talk to people on your webpage. Headings tell readers what the page or section is about, and paragraphs explain ideas in full sentences. Good text helps people understand your page easily, just like signs help people know where to go. Using clear headings and neat paragraphs makes your webpage friendly and easy to read.",
+            "media": {},
+            "questions": [
+              {
+                "id": "html_q01",
+                "type": "multiple_choice",
+                "question": "Which tag makes a heading?",
+                "options": [
+                  "<h1>",
+                  "<p>",
+                  "<img>",
+                  "<a>"
+                ],
+                "answer": "<h1>",
+                "explanation": "h1 creates headings."
+              },
+              {
+                "id": "html_q02",
+                "type": "true_false",
+                "question": "Paragraphs help show text.",
+                "answer": true,
+                "explanation": "Paragraphs display text."
+              },
+              {
+                "id": "html_q03",
+                "type": "multiple_choice",
+                "question": "Which tag is for text?",
+                "options": [
+                  "<p>",
+                  "<img>",
+                  "<a>",
+                  "<br>"
+                ],
+                "answer": "<p>",
+                "explanation": "p is used for text."
+              }
+            ],
+            "next_lesson_id": "html_lesson_02"
+          },
+          {
+            "id": "html_lesson_02",
+            "title": "Links",
+            "body": "Links help us move to other webpages when clicked.",
+            "avatar_script": "Links help us move from one webpage to another. When you click a link, it takes you to a new page, just like a door takes you into another room. Links are made using the a tag, and the href part tells the browser where to go. Without links, the internet would feel like lots of pages with no paths between them.",
+            "media": {},
+            "questions": [
+              {
+                "id": "html_q04",
+                "type": "multiple_choice",
+                "question": "Which tag creates a link?",
+                "options": [
+                  "<a>",
+                  "<p>",
+                  "<img>",
+                  "<h1>"
+                ],
+                "answer": "<a>",
+                "explanation": "a creates links."
+              },
+              {
+                "id": "html_q05",
+                "type": "multiple_choice",
+                "question": "What does href mean?",
+                "options": [
+                  "Link address",
+                  "Text style",
+                  "Image size",
+                  "Color"
+                ],
+                "answer": "Link address",
+                "explanation": "href tells where the link goes."
+              },
+              {
+                "id": "html_q06",
+                "type": "true_false",
+                "question": "Links can open other pages.",
+                "answer": true,
+                "explanation": "Links move between pages."
+              }
+            ],
+            "next_lesson_id": "html_lesson_03"
+          },
+          {
+            "id": "html_lesson_03",
+            "title": "Images",
+            "body": "Images show pictures on a webpage. They make pages fun and colorful.",
+            "avatar_script": "Images are pictures that help show ideas on a webpage. They make pages more colorful and fun to look at. Images can show people, animals, places, or things that are hard to explain with words. In HTML, we use the img tag to add pictures, and the alt text tells us what the picture is about in case it does not load or for people who cannot see it.",
+            "media": {},
+            "questions": [
+              {
+                "id": "html_q07",
+                "type": "multiple_choice",
+                "question": "Which tag shows images?",
+                "options": [
+                  "<img>",
+                  "<p>",
+                  "<a>",
+                  "<h1>"
+                ],
+                "answer": "<img>",
+                "explanation": "img displays pictures."
+              },
+              {
+                "id": "html_q08",
+                "type": "true_false",
+                "question": "Images can appear on webpages.",
+                "answer": true,
+                "explanation": "HTML can show pictures."
+              },
+              {
+                "id": "html_q09",
+                "type": "multiple_choice",
+                "question": "What does alt describe?",
+                "options": [
+                  "Picture text",
+                  "Link address",
+                  "Color",
+                  "Size"
+                ],
+                "answer": "Picture text",
+                "explanation": "alt describes the image."
+              }
+            ],
+            "next_lesson_id": "html_module_04"
+          }
+        ]
+      },
+      {
+        "id": "html_module_04",
+        "title": "Building a Webpage",
+        "prerequisite": "html_module_03",
+        "lessons": [
+          {
+            "id": "html_lesson_01",
+            "title": "My First Webpage",
+            "body": "Now you will put everything together to build a simple webpage.",
+            "avatar_script": "You are now a webpage builder! This means you can use headings, text, links, and images together to create your own webpage. Just like building with blocks, each part has a place, and when you put them together carefully, your page works perfectly. Take your time, have fun, and remember — every great website starts with simple HTML.",
+            "media": {},
+            "questions": [
+              {
+                "id": "html_q01",
+                "type": "multiple_choice",
+                "question": "Which tag makes the biggest heading?",
+                "options": [
+                  "<h1>",
+                  "<p>",
+                  "<img>",
+                  "<a>"
+                ],
+                "answer": "<h1>",
+                "explanation": "h1 is the biggest heading."
+              },
+              {
+                "id": "html_q02",
+                "type": "multiple_choice",
+                "question": "Which tag creates text?",
+                "options": [
+                  "<p>",
+                  "<img>",
+                  "<a>",
+                  "<br>"
+                ],
+                "answer": "<p>",
+                "explanation": "p is used for text."
+              },
+              {
+                "id": "html_q03",
+                "type": "true_false",
+                "question": "A webpage can have text and links.",
+                "answer": true,
+                "explanation": "Webpages can show many things."
+              }
+            ],
+            "next_lesson_id": null
+          }
+        ]
+      }
+    ]
+  }
+}

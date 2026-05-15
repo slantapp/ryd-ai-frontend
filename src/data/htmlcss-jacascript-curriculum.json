@@ -4,6 +4,9 @@
     "title": "HTML, CSS and JavaScript Fundamentals",
     "description": "Learn how to build webpages, style them with colors and layouts, and make them interactive using HTML, CSS, and JavaScript.",
     "language": "en",
+    "age": 9,
+    "class": "Primary 4",
+    "grade": 4,
     "modules": [
       {
         "id": "web_module_01",
@@ -16,13 +19,6 @@
             "body": "HTML stands for HyperText Markup Language. It is used to create the structure of a webpage.",
             "avatar_script": "Think of HTML like the skeleton of a webpage. It tells the browser where headings, paragraphs, and images should go.",
             "media": {},
-            "code_example": {
-              "code": "<h1>Hello World</h1>\n<p>This is my first webpage.</p>",
-              "language": "html",
-              "description": "Simple HTML structure",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "web_q01",
@@ -70,13 +66,6 @@
             "body": "CSS stands for Cascading Style Sheets. It is used to make webpages colorful and visually appealing.",
             "avatar_script": "If HTML builds the house, CSS decorates it. CSS adds colors, spacing, and styles.",
             "media": {},
-            "code_example": {
-              "code": "p {\n  color: blue;\n}",
-              "language": "css",
-              "description": "Changing text color",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "web_q04",
@@ -124,13 +113,6 @@
             "body": "JavaScript adds interactivity to webpages.",
             "avatar_script": "JavaScript makes webpages interactive. It can respond to clicks, show messages, and update content.",
             "media": {},
-            "code_example": {
-              "code": "alert('Welcome to my webpage!');",
-              "language": "javascript",
-              "description": "Simple alert",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "web_q07",
@@ -185,13 +167,6 @@
             "body": "HTML uses tags to organize text content.",
             "avatar_script": "Headings show titles and paragraphs show text.",
             "media": {},
-            "code_example": {
-              "code": "<h1>My Page</h1>\n<p>This is my paragraph.</p>",
-              "language": "html",
-              "description": "Text structure",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "web_q01",
@@ -239,13 +214,6 @@
             "body": "CSS can change text color and size.",
             "avatar_script": "You can style headings and paragraphs using CSS rules.",
             "media": {},
-            "code_example": {
-              "code": "h1 {\n  color: purple;\n  font-size: 30px;\n}",
-              "language": "css",
-              "description": "Styled heading",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "web_q04",
@@ -300,13 +268,6 @@
             "body": "JavaScript can respond when users click buttons.",
             "avatar_script": "Buttons let users interact with webpages.",
             "media": {},
-            "code_example": {
-              "code": "document.querySelector('button').onclick = function() {\n  alert('Button clicked!');\n};",
-              "language": "javascript",
-              "description": "Button click alert",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "web_q01",
@@ -361,13 +322,6 @@
             "body": "HTML builds the page, CSS styles it, and JavaScript makes it interactive.",
             "avatar_script": "Now you can combine all three technologies to build a complete webpage.",
             "media": {},
-            "code_example": {
-              "code": "<h1 id=\"title\">My Page</h1>\n<button onclick=\"changeText()\">Click Me</button>\n\n<script>\nfunction changeText(){\n document.getElementById('title').innerText='You Clicked!';\n}\n</script>",
-              "language": "html",
-              "description": "Interactive webpage example",
-              "autoRun": false,
-              "typingSpeed": 80
-            },
             "questions": [
               {
                 "id": "web_q01",

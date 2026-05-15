@@ -132,14 +132,16 @@ const CourseCard = ({
         {/* Level Badge */}
         {(course.level || ageLabel) && (
           <div className="mb-2 flex flex-wrap gap-2">
-            <span
-              className={cn(
-                "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium",
-                getLevelColor(course.level)
-              )}
-            >
-              {course.level}
-            </span>
+            {course.level && (
+              <span
+                className={cn(
+                  "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium",
+                  getLevelColor(course.level),
+                )}
+              >
+                {course.level}
+              </span>
+            )}
             {ageLabel && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-700">
                 {ageLabel}

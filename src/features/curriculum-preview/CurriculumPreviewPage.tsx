@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   Play,
   SkipForward,
@@ -7,6 +8,8 @@ import {
   Menu,
   X,
   Upload,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import {
   FileUploader,
@@ -16,17 +19,20 @@ import {
   PreviewTestResults,
   usePreviewAvatar,
 } from "./components";
-import { decodeHandoffSegment } from "./handoff";
+import { decodeHandoffSegment, uploadCurriculumFile } from "./handoff";
 import type { CurriculumData, Lesson } from "./types";
 
 type PreviewState = "upload" | "preview";
 type LessonPhase = "intro" | "teaching" | "questions" | "complete";
+type PublishStatus = "idle" | "uploading" | "published";
 
 export default function CurriculumPreviewPage() {
   const [searchParams] = useSearchParams();
   const handoffCode = searchParams.get("code");
   const [state, setState] = useState<PreviewState>("upload");
   const [curriculum, setCurriculum] = useState<CurriculumData | null>(null);
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [publishStatus, setPublishStatus] = useState<PublishStatus>("idle");
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [lessonPhase, setLessonPhase] = useState<LessonPhase>("intro");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -74,13 +80,33 @@ export default function CurriculumPreviewPage() {
     }
   }, [currentSubtitle]);
 
-  const handleCurriculumLoaded = useCallback((data: CurriculumData) => {
+  const handleCurriculumLoaded = useCallback((data: CurriculumData, file: File) => {
     setCurriculum(data);
+    setSourceFile(file);
+    setPublishStatus("idle");
     setState("preview");
     if (data.modules.length > 0 && data.modules[0].lessons.length > 0) {
       setCurrentLesson(data.modules[0].lessons[0]);
     }
   }, []);
+
+  const handlePublishCurriculum = useCallback(async () => {
+    if (!handoff.data || !sourceFile || publishStatus === "uploading") return;
+
+    try {
+      setPublishStatus("uploading");
+      await uploadCurriculumFile(sourceFile, handoff.data.token);
+      setPublishStatus("published");
+      toast.success("Curriculum published successfully.");
+    } catch (err) {
+      setPublishStatus("idle");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Could not publish your curriculum. Please try again.",
+      );
+    }
+  }, [handoff.data, publishStatus, sourceFile]);
 
   const handleSelectLesson = useCallback(
     (lesson: Lesson) => {
@@ -115,9 +141,6 @@ export default function CurriculumPreviewPage() {
 
       if (lesson.body) parts.push(lesson.body);
       if (lesson.avatar_script) parts.push(lesson.avatar_script);
-      if (lesson.code_example?.description) {
-        parts.push(lesson.code_example.description);
-      }
 
       let fullText = parts.join(" ");
 
@@ -334,6 +357,8 @@ export default function CurriculumPreviewPage() {
     stop();
     setState("upload");
     setCurriculum(null);
+    setSourceFile(null);
+    setPublishStatus("idle");
     setCurrentLesson(null);
     setLessonPhase("intro");
     setCompletedLessons(new Set());
@@ -359,7 +384,6 @@ export default function CurriculumPreviewPage() {
   if (state === "upload") {
     return (
       <FileUploader
-        handoffToken={handoff.data.token}
         handoffName={handoff.data.name}
         onCurriculumLoaded={handleCurriculumLoaded}
       />
@@ -394,23 +418,57 @@ export default function CurriculumPreviewPage() {
           }`}
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between border-b border-gray-200 p-4">
+          <div className="space-y-3 border-b border-gray-200 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={handleBackToUpload}
+                className="flex items-center gap-2 text-sm text-primary hover:text-primary/80"
+              >
+                <Upload className="h-4 w-4" />
+                Upload New
+              </button>
+              <select
+                value={selectedInstructor}
+                onChange={(e) =>
+                  setSelectedInstructor(e.target.value as "woman" | "man")
+                }
+                className="rounded-lg border border-gray-200 px-2 py-1 text-sm"
+              >
+                <option value="woman">Female Instructor</option>
+                <option value="man">Male Instructor</option>
+              </select>
+            </div>
             <button
               type="button"
-              onClick={handleBackToUpload}
-              className="flex items-center gap-2 text-sm text-primary hover:text-primary/80"
+              onClick={() => void handlePublishCurriculum()}
+              disabled={
+                !sourceFile ||
+                publishStatus === "uploading" ||
+                publishStatus === "published"
+              }
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
             >
-              <Upload className="h-4 w-4" />
-              Upload New
+              {publishStatus === "uploading" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Publishing...
+                </>
+              ) : publishStatus === "published" ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Published
+                </>
+              ) : (
+                "Publish curriculum"
+              )}
             </button>
-            <select
-              value={selectedInstructor}
-              onChange={(e) => setSelectedInstructor(e.target.value as "woman" | "man")}
-              className="rounded-lg border border-gray-200 px-2 py-1 text-sm"
-            >
-              <option value="woman">Female Instructor</option>
-              <option value="man">Male Instructor</option>
-            </select>
+            {publishStatus === "idle" && (
+              <p className="text-xs leading-relaxed text-gray-500">
+                Preview your lessons first. When you are satisfied, publish to
+                save this curriculum.
+              </p>
+            )}
           </div>
           <PreviewSidebar
             curriculum={curriculum}
@@ -536,14 +594,6 @@ export default function CurriculumPreviewPage() {
                       <div className="mt-6 rounded-lg bg-primary/10 p-4 border-l-4 border-primary">
                         <h3 className="font-semibold text-primary mb-2">What the instructor will say:</h3>
                         <p className="text-gray-700 text-sm leading-relaxed">{currentLesson.avatar_script}</p>
-                      </div>
-                    )}
-                    {currentLesson.code_example && (
-                      <div className="mt-6">
-                        <h3 className="font-semibold text-gray-800 mb-2">Code Example:</h3>
-                        <pre className="rounded-lg bg-gray-900 p-4 text-sm text-gray-100 overflow-x-auto">
-                          <code>{currentLesson.code_example.code}</code>
-                        </pre>
                       </div>
                     )}
                   </div>

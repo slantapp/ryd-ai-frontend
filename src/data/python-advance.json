@@ -4,6 +4,7 @@
     "title": "Python for Advanced Learners",
     "description": "Master advanced Python concepts including decorators, generators, metaprogramming, asynchronous programming, and design patterns. Build sophisticated applications with professional-grade code.",
     "language": "en",
+    "category": "coding",
     "age": 14,
     "class": "JSS 3",
     "grade": 9,

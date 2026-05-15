@@ -4,6 +4,7 @@
     "title": "JavaScript: From Beginner to Intermediate",
     "description": "Ready to level up? Learn arrays, objects, scope, async code, and more. Build confidence with practical examples and clear explanations. You've got the basics - now let's go deeper!",
     "language": "en",
+    "category": "coding",
     "age": 12,
     "class": "JSS 1",
     "grade": 7,

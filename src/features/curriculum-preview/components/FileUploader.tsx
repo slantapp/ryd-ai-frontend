@@ -1,7 +1,16 @@
 import { useCallback, useState } from "react";
-import { Upload, FileJson, AlertCircle, CheckCircle, Download, FileText } from "lucide-react";
+import {
+  Upload,
+  FileJson,
+  AlertCircle,
+  CheckCircle,
+  Download,
+  FileText,
+  BookOpen,
+} from "lucide-react";
 import type { CurriculumData } from "../types";
 import { sampleCurriculumJSON } from "../templates";
+import curriculumJsonGuide from "../../../../docs/CURRICULUM_JSON_GUIDE.md?raw";
 
 interface FileUploaderProps {
   onCurriculumLoaded: (curriculum: CurriculumData, file: File) => void;
@@ -62,6 +71,17 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
   ) {
     errors.push(
       "Invalid 'grade' field (optional number 1–12, shown as Gr. N alongside class)",
+    );
+  }
+
+  const validCategories = ["coding", "design", "data", "careers"];
+  if (
+    !curriculumData.category ||
+    typeof curriculumData.category !== "string" ||
+    !validCategories.includes(curriculumData.category)
+  ) {
+    errors.push(
+      `Missing or invalid 'category' field (must be one of: ${validCategories.join(", ")})`,
     );
   }
 
@@ -161,17 +181,36 @@ export function FileUploader({
   const [isValid, setIsValid] = useState(false);
   const [parsedCurriculum, setParsedCurriculum] = useState<CurriculumData | null>(null);
 
+  const downloadFile = useCallback(
+    (content: string, filename: string, mimeType: string) => {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    },
+    []
+  );
+
   const handleDownloadTemplate = useCallback(() => {
-    const blob = new Blob([sampleCurriculumJSON], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "curriculum-template.json";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, []);
+    downloadFile(
+      sampleCurriculumJSON,
+      "curriculum-template.json",
+      "application/json"
+    );
+  }, [downloadFile]);
+
+  const handleDownloadGuide = useCallback(() => {
+    downloadFile(
+      curriculumJsonGuide,
+      "CURRICULUM_JSON_GUIDE.md",
+      "text/markdown;charset=utf-8"
+    );
+  }, [downloadFile]);
 
   const processFile = useCallback((file: File) => {
     setError(null);
@@ -405,12 +444,11 @@ export function FileUploader({
           )}
         </div>
 
-        <div className="mt-8 rounded-xl bg-linear-to-br from-primary/10 to-primary/5 p-6 border border-primary/20">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-primary/20 bg-linear-to-br from-primary/10 to-primary/5 p-6">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-gray-800">Need a template?</h3>
+                <h3 className="font-semibold text-gray-800">Starter template</h3>
               </div>
               <p className="text-sm text-gray-600 mb-4">
                 Download our starter template with example modules, lessons, and all three question types (multiple choice, true/false, and code tests). Edit it in any text editor to create your curriculum.
@@ -423,39 +461,33 @@ export function FileUploader({
                 <Download className="h-4 w-4" />
                 Download Template
               </button>
-            </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-primary/20">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Template includes:</h4>
-            <ul className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+          <div className="rounded-xl border border-primary/20 bg-linear-to-br from-primary/10 to-primary/5 p-6">
+            <div className="mb-2 flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-gray-800">Writing guide</h3>
+            </div>
+            <p className="mb-4 text-sm text-gray-600">
+              Full guide on JSON structure, validation rules, question types, code
+              tests, categories, and a pre-publish checklist.
+            </p>
+            <button
+              type="button"
+              onClick={handleDownloadGuide}
+              className="inline-flex items-center gap-2 rounded-lg border-2 border-primary bg-white px-4 py-2.5 text-sm font-semibold text-primary transition-all hover:bg-primary/5 active:scale-[0.98]"
+            >
+              <Download className="h-4 w-4" />
+              Download Guide
+            </button>
+            <ul className="mt-4 grid grid-cols-1 gap-1.5 text-xs text-gray-600">
               <li className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
-                2 sample modules
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+                Field-by-field reference
               </li>
               <li className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
-                3 complete lessons
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
-                Multiple choice questions
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
-                True/false questions
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
-                Code test questions
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
-                Avatar scripts
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary/60" />
-                class, grade &amp; age fields
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+                Common mistakes &amp; checklist
               </li>
             </ul>
           </div>

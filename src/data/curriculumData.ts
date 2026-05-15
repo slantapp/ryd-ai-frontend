@@ -56,12 +56,17 @@ export interface Lesson {
   next_lesson_id: string | null;
 }
 
+/** Category for grouping courses in the library folder view. */
+export type CurriculumCategory = "coding" | "design" | "data" | "careers";
+
 export interface Curriculum {
   slug: string;
   curriculum: {
     title: string;
     description: string;
     language: string;
+    /** Category for folder grouping on the course listing page. */
+    category: CurriculumCategory;
     /** Minimum recommended learner age (years), used for course listing filters. */
     age: number;
     /** Local school class, e.g. "Primary 5" or "JSS 1". */

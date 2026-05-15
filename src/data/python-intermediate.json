@@ -4,6 +4,7 @@
     "title": "Python for Intermediate Learners",
     "description": "Build on your Python basics! Master data manipulation, object-oriented programming, file handling, and real-world applications. Perfect for those ready to take their coding skills to the next level.",
     "language": "en",
+    "category": "coding",
     "age": 12,
     "class": "JSS 1",
     "grade": 7,

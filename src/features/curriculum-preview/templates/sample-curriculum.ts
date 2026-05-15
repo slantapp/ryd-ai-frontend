@@ -7,6 +7,7 @@ export const sampleCurriculum: Curriculum = {
     description:
       "A brief description of what students will learn in this course. Make it engaging and informative!",
     language: "en",
+    category: "coding",
     age: 10,
     class: "Primary 5",
     grade: 5,

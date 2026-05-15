@@ -2,10 +2,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { curriculaData, type Curriculum } from "../data/curriculumData";
-import {
-  getCategoryIdForCourseSlug,
-  type CourseCategoryId,
-} from "../data/courseCategories";
+import { type CourseCategoryId } from "../data/courseCategories";
 import type { CourseProgressRecord } from "@/api/courseProgress";
 import {
   fetchAllCourseProgress as fetchAllCourseProgressRequest,
@@ -157,7 +154,7 @@ function curriculumToCourse(curriculum: Curriculum): Course {
     rating: 4.5,
   };
 
-  const { age, class: schoolClass, grade } = curriculum.curriculum;
+  const { category, age, class: schoolClass, grade } = curriculum.curriculum;
 
   return {
     title: curriculum.curriculum.title,
@@ -166,7 +163,7 @@ function curriculumToCourse(curriculum: Curriculum): Course {
       defaultCourseImages[curriculum.slug] ||
       defaultCourseImages["intro-computer-science"],
     slug: curriculum.slug,
-    categoryId: getCategoryIdForCourseSlug(curriculum.slug),
+    categoryId: (category as CourseCategoryId) || "coding",
     status: "not-started",
     ...metadata,
     minAge:

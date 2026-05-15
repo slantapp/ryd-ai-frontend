@@ -49,10 +49,15 @@ export interface Module {
   lessons: Lesson[];
 }
 
+/** Category for grouping courses in the library folder view. */
+export type CurriculumCategory = "coding" | "design" | "data" | "careers";
+
 export interface CurriculumData {
   title: string;
   description: string;
   language: string;
+  /** Category for folder grouping on the course listing page. */
+  category: CurriculumCategory;
   /** Minimum recommended learner age (years). */
   age: number;
   /**

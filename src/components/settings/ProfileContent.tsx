@@ -1,9 +1,16 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Mail } from "lucide-react";
+import { format } from "date-fns";
 import AvatarDialog from "@/components/shared/AvatarModal";
 import { useUserProfileStore } from "@/stores/userProfileStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useSubscriptionHistory } from "@/hooks/useSubscription";
+
+function formatReadableDate(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return format(date, "EEEE, do MMMM, yyyy");
+}
 
 const ProfileContent = () => {
   const avatar = useUserProfileStore((state) => state.avatar);
@@ -77,21 +84,13 @@ const ProfileContent = () => {
                       </div>
                       <div className="text-right text-sm text-gray-600">
                         <p>{item.plan?.priceLabel || item.billingCurrency}</p>
-                        <p>
-                          Updated{" "}
-                          {new Date(item.updatedAt).toLocaleDateString(undefined, {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </p>
+                        <p>Updated {formatReadableDate(item.updatedAt)}</p>
                       </div>
                     </div>
 
                     <p className="mt-2 text-sm text-gray-600">
-                      Period:{" "}
-                      {new Date(item.currentPeriodStart).toLocaleDateString()} —{" "}
-                      {new Date(item.currentPeriodEnd).toLocaleDateString()}
+                      Period: {formatReadableDate(item.currentPeriodStart)} —{" "}
+                      {formatReadableDate(item.currentPeriodEnd)}
                     </p>
                   </div>
                 ))}

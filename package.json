@@ -38,7 +38,7 @@
     "date-fns": "^4.1.0",
     "formik": "^2.4.6",
     "lucide-react": "^0.544.0",
-    "narrator-avatar": "^1.0.5",
+    "narrator-avatar": "^1.0.9",
     "react": "^19.0.0",
     "react-avatar-editor": "^13.0.2",
     "react-day-picker": "^9.10.0",

@@ -23,6 +23,7 @@ import {
   FileQuestion,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AI_TUTOR_FAQ_GROUPS } from "@/data/aiTutorFaq";
 
 type ContactFormData = {
   name: string;
@@ -50,55 +51,7 @@ const SupportPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const faqs = [
-    {
-      section: "GETTING STARTED",
-      items: [
-        {
-          q: "How do I enroll in a course?",
-          a: "Browse the Courses section, select a course you're interested in, and click 'Enroll' to get started. Your progress will be tracked automatically.",
-        },
-        {
-          q: "How do I access my wishlist?",
-          a: "Click on 'Wishlists' in the sidebar to view all courses you've saved for later. You can enroll directly from your wishlist.",
-        },
-        {
-          q: "How do I track my learning progress?",
-          a: "Visit the Analytics section to see your learning stats, completed courses, and overall progress. The Dashboard also shows key metrics at a glance.",
-        },
-      ],
-    },
-    {
-      section: "ACCOUNT & SETTINGS",
-      items: [
-        {
-          q: "How do I change my password?",
-          a: "Go to Settings → Change Password. You'll need to enter your current password and then your new password twice to confirm.",
-        },
-        {
-          q: "How do I update my profile?",
-          a: "Navigate to Settings → Update Profile to change your username, country, and other profile information.",
-        },
-        {
-          q: "How do I change the difficulty level?",
-          a: "In Settings, go to Change Difficulty and select Easy, Normal, or Hard based on your preference.",
-        },
-      ],
-    },
-    {
-      section: "SUBSCRIPTION & BILLING",
-      items: [
-        {
-          q: "What does Premium include?",
-          a: "Premium gives you access to all courses, exclusive content, and priority support. Upgrade from the sidebar or Settings.",
-        },
-        {
-          q: "How do I cancel my subscription?",
-          a: "Contact our support team and we'll guide you through the cancellation process. You'll retain access until the end of your billing period.",
-        },
-      ],
-    },
-  ];
+  const faqs = AI_TUTOR_FAQ_GROUPS;
 
   const supportChannels = [
     {
@@ -472,7 +425,7 @@ const SupportPage = () => {
                                   )}
                                 />
                               </CollapsibleTrigger>
-                              <CollapsibleContent className="ml-2 border-l-2 border-primary/30 px-3 pb-3 pt-2 text-sm leading-relaxed text-gray-600 sm:ml-4 sm:px-4">
+                              <CollapsibleContent className="ml-2 whitespace-pre-line border-l-2 border-primary/30 px-3 pb-3 pt-2 text-sm leading-relaxed text-gray-600 sm:ml-4 sm:px-4">
                                 {item.a}
                               </CollapsibleContent>
                             </Collapsible>

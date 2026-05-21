@@ -21,6 +21,7 @@ import {
   formatSubscriptionPeriodEnd,
   getPrimarySubscription,
   isFullyActiveSubscription,
+  needsSubscribeAgain,
 } from "@/utils/subscriptionStatus";
 import {
   useCancelSubscription,
@@ -171,6 +172,8 @@ function getPlanButtonConfig(
     isCurrent: boolean;
     canUpgrade: boolean;
     resumeEligible: boolean;
+    subscribeAgainEligible: boolean;
+    subscribeAgainMode: boolean;
     isFullyActive: boolean;
     accessEndsLabel: string | null;
     checkoutPending: boolean;
@@ -186,6 +189,8 @@ function getPlanButtonConfig(
     isCurrent,
     canUpgrade,
     resumeEligible,
+    subscribeAgainEligible,
+    subscribeAgainMode,
     isFullyActive,
     accessEndsLabel,
     checkoutPending,
@@ -207,6 +212,18 @@ function getPlanButtonConfig(
     };
   }
 
+  if (isCurrent && subscribeAgainEligible) {
+    return {
+      label: checkoutPending ? "Redirecting…" : "Subscribe again",
+      helperText: accessEndsLabel
+        ? `Subscribe again via checkout. You still have access until ${accessEndsLabel}.`
+        : "Start a new subscription through checkout",
+      disabled: checkoutPending,
+      action: "subscribe",
+      isLoading: checkoutPending,
+    };
+  }
+
   if (isCurrent && isFullyActive) {
     return {
       label: "Your plan",
@@ -214,6 +231,16 @@ function getPlanButtonConfig(
       disabled: true,
       action: "none",
       isLoading: false,
+    };
+  }
+
+  if (!isCurrent && subscribed && subscribeAgainMode && canUpgrade) {
+    return {
+      label: checkoutPending ? "Redirecting…" : `Subscribe to ${planName}`,
+      helperText: "Start a new subscription through checkout",
+      disabled: checkoutPending,
+      action: "subscribe",
+      isLoading: checkoutPending,
     };
   }
 
@@ -299,6 +326,11 @@ export default function SubscriptionContentServer({
     [primarySubscription],
   );
 
+  const subscribeAgainEligible = useMemo(
+    () => needsSubscribeAgain(primarySubscription),
+    [primarySubscription],
+  );
+
   const isFullyActive = useMemo(
     () => isFullyActiveSubscription(primarySubscription),
     [primarySubscription],
@@ -346,24 +378,23 @@ export default function SubscriptionContentServer({
 
   const confirmCancelSubscription = useCallback(() => {
     if (!canCancel) return;
-    cancelMutation.mutate(
-      {
-        immediate: true,
+    cancelMutation.mutate(undefined, {
+      onSuccess: (envelope) => {
+        // We intentionally compute access end time from subscription status/history
+        // (cancelAtPeriodEnd + currentPeriodEnd), not from the cancel endpoint payload.
+        setCancelJustRequested(true);
+        toast.success(
+          envelope.message?.trim() ||
+          "Auto-renewal cancelled. Access continues until period end.",
+        );
+        setCancelDialogOpen(false);
       },
-      {
-        onSuccess: (envelope) => {
-          // We intentionally compute access end time from subscription status/history
-          // (cancelAtPeriodEnd + currentPeriodEnd), not from the cancel endpoint payload.
-          setCancelJustRequested(true);
-          toast.success(envelope.message?.trim() || "Subscription cancelled.");
-          setCancelDialogOpen(false);
-        },
-        onError: (err: unknown) => {
-          toast.error(
-            getAxiosishErrorMessage(err) || "Could not update subscription.",
-          );
-        },
+      onError: (err: unknown) => {
+        toast.error(
+          getAxiosishErrorMessage(err) || "Could not update subscription.",
+        );
       },
+    },
     );
   }, [canCancel, cancelMutation]);
 
@@ -453,7 +484,7 @@ export default function SubscriptionContentServer({
           if (!resumeEnvelope.status) {
             throw new Error(
               resumeEnvelope.message?.trim() ||
-                "Could not resume subscription.",
+              "Could not resume subscription.",
             );
           }
           setCancelledAccessEndsAt(null);
@@ -466,13 +497,13 @@ export default function SubscriptionContentServer({
         if (!upgradeEnvelope.status) {
           throw new Error(
             upgradeEnvelope.message?.trim() ||
-              "Could not upgrade subscription.",
+            "Could not upgrade subscription.",
           );
         }
 
         toast.success(
           upgradeEnvelope.message?.trim() ||
-            `Upgraded to ${plan.name || plan.key}.`,
+          `Upgraded to ${plan.name || plan.key}.`,
         );
       } catch (err: unknown) {
         toast.error(
@@ -577,7 +608,10 @@ export default function SubscriptionContentServer({
             )}
             {accessEndsLabel && subscribed && (
               <p className="mt-1 font-inter text-sm text-gray-600">
-                {resumeEligible ? "Access until" : "Renews / ends"}:{" "}
+                {resumeEligible || subscribeAgainEligible
+                  ? "Access until"
+                  : "Renews / ends"}
+                :{" "}
                 <span className="font-medium text-gray-800">{accessEndsLabel}</span>
               </p>
             )}
@@ -637,7 +671,8 @@ export default function SubscriptionContentServer({
                 Cancel subscription
               </h3>
               <p className="mt-1 font-inter text-sm text-gray-600">
-                Cancelling will stop your access immediately.
+                Cancelling turns off auto-renewal. You keep access until the end
+                of your current billing period.
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -675,8 +710,9 @@ export default function SubscriptionContentServer({
               Cancel subscription?
             </DialogTitle>
             <DialogDescription className="font-inter text-base text-gray-600">
-              Your access will end right away and you won&apos;t be charged again.
-              If you need help, contact support.
+              Auto-renewal will stop at the end of your current billing period.
+              You&apos;ll keep access until then and won&apos;t be charged again
+              after that. If you need help, contact support.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -704,7 +740,7 @@ export default function SubscriptionContentServer({
                   Working…
                 </>
               ) : (
-                "Cancel now"
+                "Cancel at period end"
               )}
             </Button>
           </DialogFooter>
@@ -747,6 +783,8 @@ export default function SubscriptionContentServer({
                 isCurrent,
                 canUpgrade,
                 resumeEligible: isCurrent && resumeEligible,
+                subscribeAgainEligible: isCurrent && subscribeAgainEligible,
+                subscribeAgainMode: subscribeAgainEligible,
                 isFullyActive: isCurrent && isFullyActive,
                 accessEndsLabel,
                 checkoutPending: checkoutMutation.isPending,

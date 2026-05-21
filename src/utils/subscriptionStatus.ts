@@ -54,30 +54,28 @@ export function isFullyActiveSubscription(
 }
 
 /**
- * User can call POST /subscription/resume: not fully active, still inside the paid
- * period, and renewal is off (scheduled cancel or already canceled in Stripe).
+ * User can call POST /subscription/resume: scheduled cancel at period end while
+ * paid access remains (`cancelAtPeriodEnd: true`).
  */
 export function canResumeSubscription(
   sub: SubscriptionStatusItem | null | undefined,
 ): boolean {
   if (!sub || !isSubscriptionPeriodActive(sub)) return false;
   if (isFullyActiveSubscription(sub)) return false;
-
-  const status = sub.status?.toLowerCase();
-
-  if (sub.cancelAtPeriodEnd) return true;
-  if (status === "canceled") return true;
-
-  return false;
+  return sub.cancelAtPeriodEnd === true;
 }
 
-/** Paid access remains but user must start a new checkout (not resume). */
-export function hasCanceledAccessRemaining(
+/**
+ * Canceled in Stripe without cancel-at-period-end — start a new subscription via
+ * checkout (not resume).
+ */
+export function needsSubscribeAgain(
   sub: SubscriptionStatusItem | null | undefined,
 ): boolean {
-  if (!sub || !isSubscriptionPeriodActive(sub)) return false;
-  if (canResumeSubscription(sub)) return false;
-  return false;
+  if (!sub) return false;
+  return (
+    sub.status?.toLowerCase() === "canceled" && sub.cancelAtPeriodEnd === false
+  );
 }
 
 /** Only fully active subscriptions can be canceled or upgraded via API. */

@@ -3,6 +3,19 @@ import type {
   SubscriptionStatusResponse,
 } from "@/api/subscription";
 
+/**
+ * Backend billing states → frontend actions (keep in sync):
+ *
+ * | Situation              | status    | cancelAtPeriodEnd | Action              |
+ * |------------------------|-----------|-------------------|---------------------|
+ * | Paying normally        | active    | false             | Already subscribed  |
+ * | Scheduled to end       | active    | true              | Resume API          |
+ * | Canceled / ended       | canceled  | false             | Checkout (new sub)  |
+ * | Never subscribed       | (n/a)     | (n/a)             | Checkout            |
+ *
+ * Gate access uses top-level `subscribed === false` only.
+ */
+
 export function isSubscriptionPeriodActive(
   sub: Pick<SubscriptionStatusItem, "currentPeriodEnd">,
 ): boolean {
@@ -54,15 +67,17 @@ export function isFullyActiveSubscription(
 }
 
 /**
- * User can call POST /subscription/resume: scheduled cancel at period end while
- * paid access remains (`cancelAtPeriodEnd: true`).
+ * Scheduled cancel at period end (`active` + `cancelAtPeriodEnd: true`) while
+ * paid access remains — use POST /subscription/resume.
  */
 export function canResumeSubscription(
   sub: SubscriptionStatusItem | null | undefined,
 ): boolean {
   if (!sub || !isSubscriptionPeriodActive(sub)) return false;
   if (isFullyActiveSubscription(sub)) return false;
-  return sub.cancelAtPeriodEnd === true;
+  return (
+    sub.status?.toLowerCase() === "active" && sub.cancelAtPeriodEnd === true
+  );
 }
 
 /**

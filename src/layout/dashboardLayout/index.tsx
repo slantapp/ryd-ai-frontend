@@ -108,10 +108,30 @@ const DashboardLayout = ({ children }: DashboardProps) => {
     }
   }, [queryClient, subscriptionReturn.flag]);
 
+  useEffect(() => {
+    if (checkoutReturn !== "success" || subscribed) return;
+    const id = window.setInterval(() => {
+      void subscriptionStatus.refetch();
+    }, 3000);
+    return () => window.clearInterval(id);
+  }, [checkoutReturn, subscribed, subscriptionStatus.refetch]);
+
   const handleCheckoutReturnDismiss = useCallback(() => {
     setCheckoutReturn(null);
     clearCheckoutQueryParams();
   }, [clearCheckoutQueryParams]);
+
+  useEffect(() => {
+    if (checkoutReturn !== "success" || !subscribed) return;
+    if (!subscriptionStatus.isFetched || !subscriptionStatus.isSuccess) return;
+    handleCheckoutReturnDismiss();
+  }, [
+    checkoutReturn,
+    handleCheckoutReturnDismiss,
+    subscribed,
+    subscriptionStatus.isFetched,
+    subscriptionStatus.isSuccess,
+  ]);
 
   const handleSubscribeAgainFromCheckout = useCallback(() => {
     setSubscribeViewBump((n) => n + 1);

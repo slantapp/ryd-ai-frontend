@@ -51,18 +51,9 @@ export default function SubscriptionCheckoutReturnDialog({
               <DialogDescription className="font-inter text-base text-gray-600">
                 We&apos;re activating your subscription. This can take a few
                 seconds—stay on this page. You&apos;ll get full access as soon
-                as it&apos;s ready.
+                as it&apos;s ready, and this message will close on its own.
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="gap-2 sm:justify-end">
-              <Button
-                type="button"
-                className="w-full rounded-xl font-solway sm:w-auto"
-                onClick={onDismiss}
-              >
-                Got it
-              </Button>
-            </DialogFooter>
           </>
         )}
 

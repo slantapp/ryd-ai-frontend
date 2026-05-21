@@ -16,11 +16,20 @@ import { Check, Loader2, ShieldCheck, Zap } from "lucide-react";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 import type { SubscriptionPlan } from "@/api/subscription";
 import {
+  canManageActiveSubscription,
+  canResumeSubscription,
+  formatSubscriptionPeriodEnd,
+  getPrimarySubscription,
+  isFullyActiveSubscription,
+} from "@/utils/subscriptionStatus";
+import {
   useCancelSubscription,
   useCreateCheckoutSession,
+  useResumeSubscription,
   useSubscriptionHistory,
   useSubscriptionPlans,
   useSubscriptionStatus,
+  useUpgradeSubscription,
 } from "@/hooks/useSubscription";
 
 type SubscriptionContentServerProps = {
@@ -145,6 +154,116 @@ const PLAN_UI_META: Record<string, PlanUiMeta> = {
   },
 };
 
+type PlanButtonAction = "subscribe" | "upgrade" | "resume" | "none";
+
+type PlanButtonConfig = {
+  label: string;
+  helperText?: string;
+  disabled: boolean;
+  action: PlanButtonAction;
+  isLoading: boolean;
+};
+
+function getPlanButtonConfig(
+  plan: SubscriptionPlan,
+  opts: {
+    subscribed: boolean;
+    isCurrent: boolean;
+    canUpgrade: boolean;
+    resumeEligible: boolean;
+    isFullyActive: boolean;
+    accessEndsLabel: string | null;
+    checkoutPending: boolean;
+    upgradePending: boolean;
+    upgradeResuming: boolean;
+    needsResumeBeforeUpgrade: boolean;
+    resumePending: boolean;
+  },
+): PlanButtonConfig {
+  const planName = plan.name || plan.key;
+  const {
+    subscribed,
+    isCurrent,
+    canUpgrade,
+    resumeEligible,
+    isFullyActive,
+    accessEndsLabel,
+    checkoutPending,
+    upgradePending,
+    upgradeResuming,
+    needsResumeBeforeUpgrade,
+    resumePending,
+  } = opts;
+
+  if (isCurrent && resumeEligible) {
+    return {
+      label: resumePending ? "Continuing…" : "Continue subscription",
+      helperText: accessEndsLabel
+        ? `Turn auto-renewal back on — you have access until ${accessEndsLabel}`
+        : "Turn auto-renewal back on before your current period ends",
+      disabled: resumePending,
+      action: "resume",
+      isLoading: resumePending,
+    };
+  }
+
+  if (isCurrent && isFullyActive) {
+    return {
+      label: "Your plan",
+      helperText: "You're subscribed and auto-renewal is on",
+      disabled: true,
+      action: "none",
+      isLoading: false,
+    };
+  }
+
+  if (!isCurrent && subscribed && canUpgrade) {
+    const upgradeLabel = upgradePending
+      ? upgradeResuming
+        ? "Continuing…"
+        : "Upgrading…"
+      : `Upgrade to ${planName}`;
+    return {
+      label: upgradeLabel,
+      helperText: needsResumeBeforeUpgrade
+        ? "We'll turn auto-renewal back on, then move you to annual billing"
+        : "Move to a longer billing cycle on your account",
+      disabled: upgradePending,
+      action: "upgrade",
+      isLoading: upgradePending,
+    };
+  }
+
+  if (!subscribed) {
+    return {
+      label: checkoutPending ? "Redirecting…" : "Subscribe",
+      disabled: checkoutPending,
+      action: "subscribe",
+      isLoading: checkoutPending,
+    };
+  }
+
+  if (!isCurrent && subscribed) {
+    return {
+      label: "Not available",
+      helperText: "Shorter plans are not available while you have a subscription",
+      disabled: true,
+      action: "none",
+      isLoading: false,
+    };
+  }
+
+  return {
+    label: "Your plan",
+    helperText: accessEndsLabel
+      ? `Access until ${accessEndsLabel}`
+      : "Manage your subscription above",
+    disabled: true,
+    action: "none",
+    isLoading: false,
+  };
+}
+
 export default function SubscriptionContentServer({
   gateMode = false,
   onSubscriptionComplete,
@@ -154,29 +273,46 @@ export default function SubscriptionContentServer({
     null,
   );
   const [cancelJustRequested, setCancelJustRequested] = useState(false);
+  const [upgradeFlowPlanKey, setUpgradeFlowPlanKey] = useState<string | null>(
+    null,
+  );
   const plansQuery = useSubscriptionPlans();
   const statusQuery = useSubscriptionStatus();
   const historyQuery = useSubscriptionHistory();
   const checkoutMutation = useCreateCheckoutSession();
   const cancelMutation = useCancelSubscription();
+  const resumeMutation = useResumeSubscription();
+  const upgradeMutation = useUpgradeSubscription();
 
-  const subscribed = statusQuery.data?.data?.subscribed === true;
-  const activePlanKey =
-    statusQuery.data?.data?.subscriptions?.find((s) => s.status === "active")
-      ?.planKey ?? null;
+  const statusData = statusQuery.data?.data;
+  const subscribed = statusData?.subscribed === true;
 
-  const activeSubscription = useMemo(() => {
-    const list = statusQuery.data?.data?.subscriptions ?? [];
-    return (
-      list.find((s) => s.status?.toLowerCase() === "active") ?? null
-    );
-  }, [statusQuery.data?.data?.subscriptions]);
+  const primarySubscription = useMemo(
+    () => getPrimarySubscription(statusData),
+    [statusData],
+  );
 
-  useEffect(() => {
-    if (gateMode && subscribed) {
-      onSubscriptionComplete?.();
-    }
-  }, [gateMode, onSubscriptionComplete, subscribed]);
+  const primaryPlanKey = primarySubscription?.planKey ?? null;
+
+  const resumeEligible = useMemo(
+    () => canResumeSubscription(primarySubscription),
+    [primarySubscription],
+  );
+
+  const isFullyActive = useMemo(
+    () => isFullyActiveSubscription(primarySubscription),
+    [primarySubscription],
+  );
+
+  const accessEndsLabel = useMemo(
+    () => formatSubscriptionPeriodEnd(primarySubscription),
+    [primarySubscription],
+  );
+
+  const canCancel = useMemo(
+    () => canManageActiveSubscription(primarySubscription),
+    [primarySubscription],
+  );
 
   const plans = useMemo(() => {
     const data = plansQuery.data?.data;
@@ -187,8 +323,29 @@ export default function SubscriptionContentServer({
     return out;
   }, [plansQuery.data?.data]);
 
+  const currentPlan = useMemo(
+    () => plans.find((p) => p.key === primaryPlanKey) ?? null,
+    [plans, primaryPlanKey],
+  );
+
+  const isLongerPlan = useCallback(
+    (target: SubscriptionPlan) => {
+      if (!subscribed || !currentPlan || target.key === primaryPlanKey) {
+        return false;
+      }
+      return target.durationMonths > currentPlan.durationMonths;
+    },
+    [subscribed, currentPlan, primaryPlanKey],
+  );
+
+  useEffect(() => {
+    if (gateMode && subscribed) {
+      onSubscriptionComplete?.();
+    }
+  }, [gateMode, onSubscriptionComplete, subscribed]);
+
   const confirmCancelSubscription = useCallback(() => {
-    if (!activeSubscription) return;
+    if (!canCancel) return;
     cancelMutation.mutate(
       {
         immediate: true,
@@ -208,7 +365,7 @@ export default function SubscriptionContentServer({
         },
       },
     );
-  }, [activeSubscription, cancelMutation]);
+  }, [canCancel, cancelMutation]);
 
   useEffect(() => {
     if (!cancelJustRequested) return;
@@ -244,6 +401,23 @@ export default function SubscriptionContentServer({
     return dt.toLocaleString();
   }, [cancelledAccessEndsAt]);
 
+  const confirmResumeSubscription = useCallback(() => {
+    resumeMutation.mutate(undefined, {
+      onSuccess: (envelope) => {
+        setCancelledAccessEndsAt(null);
+        setCancelJustRequested(false);
+        toast.success(
+          envelope.message?.trim() || "Subscription resumed. Auto-renewal is on.",
+        );
+      },
+      onError: (err: unknown) => {
+        toast.error(
+          getAxiosishErrorMessage(err) || "Could not resume subscription.",
+        );
+      },
+    });
+  }, [resumeMutation]);
+
   const startCheckout = useCallback(
     async (planKey: string) => {
       const origin = window.location.origin;
@@ -267,7 +441,67 @@ export default function SubscriptionContentServer({
         toast.error(getAxiosishErrorMessage(err) || "Checkout failed");
       }
     },
-    [checkoutMutation]
+    [checkoutMutation],
+  );
+
+  const performUpgrade = useCallback(
+    async (plan: SubscriptionPlan) => {
+      setUpgradeFlowPlanKey(plan.key);
+      try {
+        if (resumeEligible) {
+          const resumeEnvelope = await resumeMutation.mutateAsync();
+          if (!resumeEnvelope.status) {
+            throw new Error(
+              resumeEnvelope.message?.trim() ||
+                "Could not resume subscription.",
+            );
+          }
+          setCancelledAccessEndsAt(null);
+          setCancelJustRequested(false);
+        }
+
+        const upgradeEnvelope = await upgradeMutation.mutateAsync({
+          planKey: plan.key,
+        });
+        if (!upgradeEnvelope.status) {
+          throw new Error(
+            upgradeEnvelope.message?.trim() ||
+              "Could not upgrade subscription.",
+          );
+        }
+
+        toast.success(
+          upgradeEnvelope.message?.trim() ||
+            `Upgraded to ${plan.name || plan.key}.`,
+        );
+      } catch (err: unknown) {
+        toast.error(
+          getAxiosishErrorMessage(err) || "Could not upgrade subscription.",
+        );
+      } finally {
+        setUpgradeFlowPlanKey(null);
+      }
+    },
+    [resumeEligible, resumeMutation, upgradeMutation],
+  );
+
+  const handlePlanAction = useCallback(
+    (plan: SubscriptionPlan, action: PlanButtonAction) => {
+      if (action === "none") return;
+
+      if (action === "resume") {
+        confirmResumeSubscription();
+        return;
+      }
+
+      if (action === "upgrade") {
+        void performUpgrade(plan);
+        return;
+      }
+
+      void startCheckout(plan.key);
+    },
+    [confirmResumeSubscription, performUpgrade, startCheckout],
   );
 
   return (
@@ -326,16 +560,73 @@ export default function SubscriptionContentServer({
               Current plan
             </p>
             <p className="mt-1 font-solway text-xl font-bold text-gray-900">
-              {subscribed ? activePlanKey ?? "Active" : "No active plan"}
+              {subscribed
+                ? primaryPlanKey ?? "Subscribed"
+                : "No active plan"}
             </p>
-            <p className="mt-2 font-inter text-sm text-gray-600">
-              History records: {historyQuery.data?.data?.length ?? 0}
-            </p>
+            {primarySubscription && (
+              <p className="mt-1 font-inter text-sm text-gray-600">
+                Status:{" "}
+                <span className="font-medium capitalize text-gray-800">
+                  {primarySubscription.status.replace(/_/g, " ")}
+                </span>
+                {primarySubscription.cancelAtPeriodEnd
+                  ? " · Cancels at period end"
+                  : null}
+              </p>
+            )}
+            {accessEndsLabel && subscribed && (
+              <p className="mt-1 font-inter text-sm text-gray-600">
+                {resumeEligible ? "Access until" : "Renews / ends"}:{" "}
+                <span className="font-medium text-gray-800">{accessEndsLabel}</span>
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {!gateMode && activeSubscription && (
+      {!gateMode && resumeEligible && (
+        <Card className="rounded-2xl border border-primary/25 bg-[#F3ECFE]/40 shadow-none">
+          <CardContent className="space-y-3 p-5 sm:p-6">
+            <div>
+              <p className="font-inter text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Manage subscription
+              </p>
+              <h3 className="mt-1 font-solway text-lg font-bold text-gray-900">
+                Resume subscription
+              </h3>
+              <p className="mt-1 font-inter text-sm text-gray-600">
+                You cancelled auto-renewal but still have access until{" "}
+                {accessEndsLabel ? (
+                  <span className="font-semibold text-gray-800">
+                    {accessEndsLabel}
+                  </span>
+                ) : (
+                  "the end of your billing period"
+                )}
+                . Resume to keep your plan renewing automatically.
+              </p>
+            </div>
+            <Button
+              type="button"
+              className="w-full rounded-xl bg-primary font-solway font-semibold hover:bg-primary/90 sm:w-auto"
+              disabled={resumeMutation.isPending}
+              onClick={confirmResumeSubscription}
+            >
+              {resumeMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Resuming…
+                </>
+              ) : (
+                "Resume auto-renewal"
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {!gateMode && canCancel && !resumeEligible && (
         <Card className="rounded-2xl border border-gray-200/80 shadow-none">
           <CardContent className="space-y-3 p-5 sm:p-6">
             <div>
@@ -441,7 +732,40 @@ export default function SubscriptionContentServer({
 
           {plans.length > 0 &&
             plans.map((p) => {
-              const isCurrent = activePlanKey === p.key;
+              const isCurrent = primaryPlanKey === p.key;
+              const canUpgrade = isLongerPlan(p);
+              const upgradeFlowActive = upgradeFlowPlanKey === p.key;
+              const upgradePending =
+                upgradeFlowActive &&
+                (resumeMutation.isPending || upgradeMutation.isPending);
+              const upgradeResuming =
+                upgradeFlowActive &&
+                resumeMutation.isPending &&
+                !upgradeMutation.isPending;
+              const planButton = getPlanButtonConfig(p, {
+                subscribed,
+                isCurrent,
+                canUpgrade,
+                resumeEligible: isCurrent && resumeEligible,
+                isFullyActive: isCurrent && isFullyActive,
+                accessEndsLabel,
+                checkoutPending: checkoutMutation.isPending,
+                upgradePending,
+                upgradeResuming,
+                needsResumeBeforeUpgrade: canUpgrade && resumeEligible,
+                resumePending:
+                  (resumeMutation.isPending &&
+                    isCurrent &&
+                    resumeEligible &&
+                    !upgradeFlowActive) ||
+                  upgradeResuming,
+              });
+              const blockOtherActionsWhileBusy =
+                (checkoutMutation.isPending ||
+                  upgradeFlowPlanKey !== null ||
+                  resumeMutation.isPending ||
+                  upgradeMutation.isPending) &&
+                !planButton.isLoading;
               const meta = PLAN_UI_META[p.key] ?? {
                 nameFallback: p.name,
                 taglineFallback: "",
@@ -553,31 +877,35 @@ export default function SubscriptionContentServer({
 
                     <Button
                       type="button"
-                      onClick={() => void startCheckout(p.key)}
+                      onClick={() =>
+                        handlePlanAction(p, planButton.action)
+                      }
                       className={cn(
                         "h-11 w-full rounded-xl font-solway font-semibold shadow-sm",
                         gateMode ? "mt-4 sm:mt-5" : "mt-6",
-                        meta.popular
-                          ? "bg-[#0063F7] hover:bg-[#0056d9]"
-                          : "bg-primary hover:bg-primary/90"
+                        planButton.disabled && planButton.action === "none"
+                          ? "bg-gray-200 text-gray-600 hover:bg-gray-200"
+                          : meta.popular
+                            ? "bg-[#0063F7] hover:bg-[#0056d9]"
+                            : "bg-primary hover:bg-primary/90",
                       )}
-                      disabled={checkoutMutation.isPending}
+                      disabled={
+                        planButton.disabled || blockOtherActionsWhileBusy
+                      }
                     >
-                      {checkoutMutation.isPending ? (
+                      {planButton.isLoading ? (
                         <>
                           <Loader2 className="mr-2 size-4 animate-spin" />
-                          Redirecting…
+                          {planButton.label}
                         </>
-                      ) : isCurrent ? (
-                        "Renew"
                       ) : (
-                        "Subscribe"
+                        planButton.label
                       )}
                     </Button>
 
-                    {isCurrent && (
+                    {planButton.helperText && (
                       <p className="mt-2 text-center font-inter text-xs text-gray-600">
-                        Your current plan
+                        {planButton.helperText}
                       </p>
                     )}
                   </CardContent>

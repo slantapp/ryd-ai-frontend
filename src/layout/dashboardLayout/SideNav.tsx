@@ -11,6 +11,7 @@ import { X } from "lucide-react";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 import { devSkipSubscriptionGate } from "@/utils/devSubscriptionBypass";
+import { getPrimaryPlanKey } from "@/utils/subscriptionStatus";
 
 interface SideNavProps {
   mobileNavOpen: boolean;
@@ -35,9 +36,7 @@ const SideNav = ({ mobileNavOpen, onMobileNavClose }: SideNavProps) => {
   );
 
   const subscribed = subscriptionStatus.data?.data?.subscribed === true;
-  const activePlanKey =
-    subscriptionStatus.data?.data?.subscriptions?.find((s) => s.status === "active")
-      ?.planKey ?? null;
+  const primaryPlanKey = getPrimaryPlanKey(subscriptionStatus.data?.data);
 
   const promo = useMemo(() => {
     if (devSkipSubscriptionGate) return { show: false };
@@ -54,7 +53,7 @@ const SideNav = ({ mobileNavOpen, onMobileNavClose }: SideNavProps) => {
       };
     }
 
-    if (activePlanKey === "monthly") {
+    if (primaryPlanKey === "monthly") {
       return {
         show: true,
         title: "Upgrade your plan",
@@ -64,7 +63,7 @@ const SideNav = ({ mobileNavOpen, onMobileNavClose }: SideNavProps) => {
     }
 
     return { show: false };
-  }, [activePlanKey, subscribed, subscriptionStatus.isSuccess]);
+  }, [primaryPlanKey, subscribed, subscriptionStatus.isSuccess]);
 
   useEffect(() => {
     onMobileNavClose();

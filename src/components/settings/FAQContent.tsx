@@ -40,7 +40,7 @@ const FAQContent = () => {
       </div>
 
       {filteredFaqs.length > 0 ? (
-        filteredFaqs.map((group, i) => (
+        filteredFaqs.map((group) => (
           <div key={group.section} className="space-y-3">
             <h3 className="text-sm font-semibold text-gray-500">
               {group.section}

@@ -4,7 +4,10 @@ import {
   fetchSubscriptionHistory,
   fetchSubscriptionPlans,
   fetchSubscriptionStatus,
+  resumeSubscription,
+  upgradeSubscription,
   type CheckoutRequest,
+  type UpgradeSubscriptionRequest,
 } from "@/api/subscription";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -50,6 +53,29 @@ export function useCancelSubscription() {
   return useMutation({
     mutationFn: (args: { immediate: boolean }) =>
       cancelSubscription({ immediate: args.immediate }),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: subscriptionKeys.status() });
+      void queryClient.invalidateQueries({ queryKey: subscriptionKeys.history() });
+    },
+  });
+}
+
+export function useResumeSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => resumeSubscription(),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: subscriptionKeys.status() });
+      void queryClient.invalidateQueries({ queryKey: subscriptionKeys.history() });
+    },
+  });
+}
+
+export function useUpgradeSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpgradeSubscriptionRequest) =>
+      upgradeSubscription(payload),
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: subscriptionKeys.status() });
       void queryClient.invalidateQueries({ queryKey: subscriptionKeys.history() });

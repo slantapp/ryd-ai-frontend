@@ -39,8 +39,17 @@ export type SubscriptionStatusItem = {
   id: number;
   parentId: number;
   status: string; // "active" | "canceled" | ...
+  stripeSubscriptionId: string | null;
+  stripeCustomerId: string | null;
   planKey: string;
+  subscriptionPlanId: number | null;
+  billingCurrency: string;
+  currentPeriodStart: string;
   currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
 };
 
 export type SubscriptionStatusResponse = {
@@ -100,6 +109,27 @@ export async function cancelSubscription(options: { immediate: boolean }) {
   const res = await axiosInstance.post<ApiEnvelope<unknown>>(
     "/parent/subscription/cancel",
     { immediate: options.immediate },
+  );
+  return res.data;
+}
+
+/** Undo cancel-at-period-end while paid access remains. */
+export async function resumeSubscription() {
+  const res = await axiosInstance.post<ApiEnvelope<SubscriptionStatusResponse>>(
+    "/parent/subscription/resume",
+  );
+  return res.data;
+}
+
+export type UpgradeSubscriptionRequest = {
+  planKey: string;
+};
+
+/** Active subscription — move to a longer plan (e.g. monthly → annual). */
+export async function upgradeSubscription(payload: UpgradeSubscriptionRequest) {
+  const res = await axiosInstance.post<ApiEnvelope<SubscriptionStatusResponse>>(
+    "/parent/subscription/upgrade",
+    payload,
   );
   return res.data;
 }

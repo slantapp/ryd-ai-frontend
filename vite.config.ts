@@ -13,7 +13,14 @@ export default defineConfig({
   optimizeDeps: { exclude: ['@met4citizen/talkinghead'] },
   build: {
     rollupOptions: {
-      external: ['@met4citizen/talkinghead', 'three'],
+      external: ["@met4citizen/talkinghead", "three"],
+      output: {
+        manualChunks(id) {
+          if (id.includes("monaco-editor") || id.includes("@monaco-editor")) {
+            return "monaco";
+          }
+        },
+      },
     },
   },
   resolve: {

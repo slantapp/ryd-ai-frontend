@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import Editor from "@monaco-editor/react";
+import { MonacoEditorLazy } from "./MonacoEditorLazy";
 import TestResults from "./TestResults";
 
 interface FullscreenModalProps {
@@ -29,12 +29,10 @@ export default function FullscreenModal({
       </div>
       <div className="flex-1 min-h-0">
         {type === "editor" ? (
-          <Editor
-            defaultLanguage="javascript"
+          <MonacoEditorLazy
+            language="javascript"
             value={code}
             onChange={(val) => onCodeChange(val || "")}
-            theme="vs-dark"
-            options={{ automaticLayout: true }}
             height="100%"
           />
         ) : (

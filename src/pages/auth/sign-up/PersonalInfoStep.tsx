@@ -17,6 +17,7 @@ import type { AiRegisterPayload } from "@/stores/authStore";
 import { Country, State } from "country-state-city";
 import * as CountriesAndTimezones from "countries-and-timezones";
 import { cn } from "@/lib/utils";
+import { HEAR_ABOUT_US_OPTIONS } from "@/data/signupReferralSources";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -497,6 +498,29 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
               </p>
             ) : null}
           </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="su-hear" className="font-inter text-[#0A090B]">
+            How did you hear about us?{" "}
+            <span className="font-normal text-[#4F4D55]">(optional)</span>
+          </Label>
+          <Select
+            value={formData.hearAboutUs || undefined}
+            onValueChange={(value) =>
+              setFormData((p) => ({ ...p, hearAboutUs: value }))
+            }
+          >
+            <SelectTrigger id="su-hear" className={inputClass}>
+              <SelectValue placeholder="Select an option" />
+            </SelectTrigger>
+            <SelectContent>
+              {HEAR_ABOUT_US_OPTIONS.map(({ value, label }) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-2 pt-1">
           <div className="flex items-start gap-3">

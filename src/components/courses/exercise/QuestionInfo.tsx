@@ -5,20 +5,25 @@ interface QuestionInfoProps {
 }
 
 export default function QuestionInfo({ question }: QuestionInfoProps) {
+  const criteriaHint =
+    question.type === "formula_test" &&
+    question.testCriteria?.expectedFormula
+      ? `Enter your final answer (e.g. ${question.testCriteria.expectedFormula}).`
+      : null;
+
   return (
     <div>
-      <h2 className="text-xl font-bold mb-2">{question.question}</h2>
-      {question.explanation && (
-        <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-          <strong>Hint:</strong> {question.explanation}
-        </div>
+      {question.type === "code_test" && (
+        <h2 className="mb-2 text-xl font-bold">{question.question}</h2>
       )}
-      {question.testCriteria && (
-        <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800">
-          <strong>Requirements:</strong>
-          <pre className="mt-2 text-xs">
-            {JSON.stringify(question.testCriteria, null, 2)}
-          </pre>
+      {criteriaHint && (
+        <p className="mt-2 rounded border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
+          {criteriaHint}
+        </p>
+      )}
+      {question.explanation && question.type === "code_test" && (
+        <div className="mt-2 rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+          <strong>Hint:</strong> {question.explanation}
         </div>
       )}
     </div>

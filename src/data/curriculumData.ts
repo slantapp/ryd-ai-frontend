@@ -9,10 +9,20 @@ import cssFlexGridLessons from "./css_flex_grid_lessons.json";
 import webDevelopmentBasics from "./web-development-basics.json";
 import cssBasics from "./css-basics.json";
 import htmlCssCombined from "./html-css-combined.json";
+import grade9Maths from "./grade9-maths.json";
+
+export interface FormulaExample {
+  formula: string;
+  subject?: string;
+  description?: string;
+  explanation?: string;
+  autoRun?: boolean;
+  typingSpeed?: number;
+}
 
 export interface Question {
   id?: string;
-  type: "multiple_choice" | "true_false" | "code_test";
+  type: "multiple_choice" | "true_false" | "code_test" | "formula_test";
   question: string;
   options?: string[];
   answer?: string | boolean;
@@ -21,21 +31,22 @@ export interface Question {
     code: string;
     language: string;
     description?: string;
-    explanation?: string; // Step-by-step explanation of the code example
+    explanation?: string;
     autoRun?: boolean;
     typingSpeed?: number;
   };
+  formula_example?: FormulaExample;
   testCriteria?: {
     expectedVariable?: string;
     expectedValue?: unknown;
     expectedValues?: unknown[];
     expectedFunction?: string;
-    expectedHTML?: string; // For HTML code tests - the expected HTML pattern to find
-    expectedCSS?: string; // For CSS code tests - the expected CSS pattern to find
-    /** Substring that must appear in the user's code (e.g. a keyword or function name). */
+    expectedHTML?: string;
+    expectedCSS?: string;
     expectedJS?: string;
-    /** JavaScript/TS: full code must match this regular expression (string form). */
     expectedCode?: string;
+    /** Math: expected final answer or expression (flexible match). */
+    expectedFormula?: string;
     testCases?: Array<{
       input: unknown[];
       expected: unknown;
@@ -52,12 +63,19 @@ export interface Lesson {
     image?: string;
     video?: string;
   };
+  /** Lesson-level worked example for mathematics curricula. */
+  formula_example?: FormulaExample;
   questions: Question[];
   next_lesson_id: string | null;
 }
 
 /** Category for grouping courses in the library folder view. */
-export type CurriculumCategory = "coding" | "design" | "data" | "careers";
+export type CurriculumCategory =
+  | "coding"
+  | "design"
+  | "data"
+  | "careers"
+  | "mathematics";
 
 export interface Curriculum {
   slug: string;
@@ -281,6 +299,7 @@ export const curriculaData: Curriculum[] = [
   pythonIntermediate as Curriculum,
   pythonAdvance as Curriculum,
   cssFlexGridLessons as Curriculum,
+  grade9Maths as Curriculum,
 ];
 
 // Legacy export for backward compatibility (uses first curriculum)

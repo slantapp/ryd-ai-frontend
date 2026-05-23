@@ -1,6 +1,7 @@
-import { useRef, useMemo, useCallback, useState } from "react";
+import { useRef, useMemo, useCallback, useState, useEffect } from "react";
 import NarratorAvatar from "narrator-avatar";
 import { Volume2 } from "lucide-react";
+import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
 
 type NarratorAvatarRef = {
   speakText: (text: string, options?: Record<string, unknown>) => void;
@@ -80,18 +81,11 @@ export function usePreviewAvatar() {
     try {
       pendingSpeechQueueRef.current = [];
       setShowMobileAudioUnlock(false);
-      if (avatarRef.current && typeof avatarRef.current.stopSpeaking === "function") {
-        avatarRef.current.stopSpeaking();
-      }
+      stopAvatarSpeech(avatarRef.current);
       setIsSpeaking(false);
       setCurrentSubtitle("");
     } catch (error) {
       console.warn("Error stopping speech:", error);
-    }
-    try {
-      window.speechSynthesis?.cancel?.();
-    } catch {
-      // ignore
     }
   }, []);
 
@@ -137,6 +131,12 @@ export function usePreviewAvatar() {
   }, []);
 
   const isReady = useCallback(() => avatarReadyRef.current, []);
+
+  useEffect(() => {
+    return () => {
+      stop();
+    };
+  }, [stop]);
 
   const AvatarComponent = useCallback(
     ({ className }: { className?: string }) => (

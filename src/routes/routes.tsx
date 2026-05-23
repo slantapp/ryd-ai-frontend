@@ -18,7 +18,7 @@ import {
   WishlistPage,
   SupportPage,
 } from "@/pages/app";
-import CourseDetails from "@/components/courses/CourseDetails";
+import CourseRunner from "@/components/courses/CourseRunner";
 import { CurriculumPreviewPage } from "@/features/curriculum-preview";
 import { MarketingToolPage } from "@/features/marketing-tool";
 
@@ -105,7 +105,7 @@ export const PRIVATE_ROUTES: AppRoute[] = [
   },
   {
     path: COURSE_QUIZ,
-    element: <CourseDetails />,
+    element: <CourseRunner />,
   },
   {
     path: SETTINGS,

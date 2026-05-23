@@ -9,7 +9,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import type { CurriculumData } from "../types";
-import { sampleCurriculumJSON } from "../templates";
+import { sampleCurriculumJSON, sampleMathCurriculumJSON } from "../templates";
 import curriculumJsonGuide from "../../../../docs/CURRICULUM_JSON_GUIDE.md?raw";
 
 interface FileUploaderProps {
@@ -74,7 +74,7 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
     );
   }
 
-  const validCategories = ["coding", "design", "data", "careers"];
+  const validCategories = ["coding", "design", "data", "careers", "mathematics"];
   if (
     !curriculumData.category ||
     typeof curriculumData.category !== "string" ||
@@ -143,6 +143,15 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
         );
       }
 
+      if (les.formula_example) {
+        const fe = les.formula_example as Record<string, unknown>;
+        if (!fe.formula || typeof fe.formula !== "string") {
+          errors.push(
+            `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: formula_example requires a 'formula' string`,
+          );
+        }
+      }
+
       if (!Array.isArray(les.questions)) {
         errors.push(
           `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1} is missing 'questions' array`
@@ -160,6 +169,40 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
         if (qType !== "code_test" && q.code_example) {
           errors.push(
             `${label}: 'code_example' is only allowed on code_test questions`,
+          );
+        }
+
+        if (qType === "formula_test") {
+          const criteria = q.testCriteria as Record<string, unknown> | undefined;
+          if (
+            !criteria?.expectedFormula ||
+            typeof criteria.expectedFormula !== "string"
+          ) {
+            errors.push(
+              `${label}: formula_test requires testCriteria.expectedFormula`,
+            );
+          }
+        } else if (q.formula_example) {
+          errors.push(
+            `${label}: 'formula_example' is only allowed on formula_test questions or at the lesson level`,
+          );
+        }
+
+        if (
+          curriculumData.category === "mathematics" &&
+          qType === "code_test"
+        ) {
+          errors.push(
+            `${label}: code_test is not supported in mathematics curricula — use formula_test instead`,
+          );
+        }
+
+        if (
+          curriculumData.category !== "mathematics" &&
+          qType === "formula_test"
+        ) {
+          errors.push(
+            `${label}: formula_test is only supported when category is "mathematics"`,
           );
         }
       });
@@ -196,11 +239,19 @@ export function FileUploader({
     []
   );
 
-  const handleDownloadTemplate = useCallback(() => {
+  const handleDownloadCodingTemplate = useCallback(() => {
     downloadFile(
       sampleCurriculumJSON,
-      "curriculum-template.json",
-      "application/json"
+      "coding-curriculum-template.json",
+      "application/json",
+    );
+  }, [downloadFile]);
+
+  const handleDownloadMathTemplate = useCallback(() => {
+    downloadFile(
+      sampleMathCurriculumJSON,
+      "math-curriculum-template.json",
+      "application/json",
     );
   }, [downloadFile]);
 
@@ -297,7 +348,7 @@ export function FileUploader({
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-primary/10 via-white to-primary/5 p-6 -m-4">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-primary/10 via-white to-primary/5 p-6">
       <div className="w-full max-w-2xl">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900">Curriculum Preview</h1>
@@ -444,23 +495,43 @@ export function FileUploader({
           )}
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div className="mt-8 grid gap-4 lg:grid-cols-3">
           <div className="rounded-xl border border-primary/20 bg-linear-to-br from-primary/10 to-primary/5 p-6">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-gray-800">Starter template</h3>
+                <h3 className="font-semibold text-gray-800">Coding template</h3>
               </div>
-              <p className="text-sm text-gray-600 mb-4">
-                Download our starter template with example modules, lessons, and all three question types (multiple choice, true/false, and code tests). Edit it in any text editor to create your curriculum.
+              <p className="mb-4 text-sm text-gray-600">
+                Starter for coding courses: multiple choice, true/false, and code
+                tests. Set category to coding.
               </p>
               <button
                 type="button"
-                onClick={handleDownloadTemplate}
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/30 active:scale-[0.98]"
+                onClick={handleDownloadCodingTemplate}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/25 transition-all hover:bg-primary/90"
               >
                 <Download className="h-4 w-4" />
-                Download Template
+                Download coding template
               </button>
+          </div>
+
+          <div className="rounded-xl border border-primary/20 bg-linear-to-br from-primary/10 to-primary/5 p-6">
+            <div className="mb-2 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-gray-800">Math template</h3>
+            </div>
+            <p className="mb-4 text-sm text-gray-600">
+              Starter for mathematics: formula examples, multiple choice,
+              true/false, and formula tests. Set category to mathematics.
+            </p>
+            <button
+              type="button"
+              onClick={handleDownloadMathTemplate}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/25 transition-all hover:bg-primary/90"
+            >
+              <Download className="h-4 w-4" />
+              Download math template
+            </button>
           </div>
 
           <div className="rounded-xl border border-primary/20 bg-linear-to-br from-primary/10 to-primary/5 p-6">

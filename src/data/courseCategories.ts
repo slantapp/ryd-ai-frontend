@@ -6,7 +6,8 @@ export type CourseCategoryId =
   | "coding"
   | "design"
   | "data"
-  | "careers";
+  | "careers"
+  | "mathematics";
 
 export type CourseCategory = {
   id: CourseCategoryId;
@@ -19,6 +20,11 @@ export const COURSE_CATEGORIES: CourseCategory[] = [
     id: "coding",
     title: "Coding",
     subtitle: "Programming, web, and software foundations",
+  },
+  {
+    id: "mathematics",
+    title: "Mathematics",
+    subtitle: "Numbers, algebra, geometry, and problem solving",
   },
   {
     id: "design",
@@ -61,6 +67,7 @@ export const COURSE_SLUG_TO_CATEGORY: Partial<
   "python-intermediate": "coding",
   "python-advance": "coding",
   "css_flex_grid_lessons": "coding",
+  "grade-9-basic-skills-review": "mathematics",
 };
 
 export function getCategoryIdForCourseSlug(slug: string): CourseCategoryId {

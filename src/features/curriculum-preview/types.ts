@@ -1,6 +1,15 @@
+export interface FormulaExample {
+  formula: string;
+  subject?: string;
+  description?: string;
+  explanation?: string;
+  autoRun?: boolean;
+  typingSpeed?: number;
+}
+
 export interface Question {
   id?: string;
-  type: "multiple_choice" | "true_false" | "code_test";
+  type: "multiple_choice" | "true_false" | "code_test" | "formula_test";
   question: string;
   options?: string[];
   answer?: string | boolean;
@@ -13,6 +22,7 @@ export interface Question {
     autoRun?: boolean;
     typingSpeed?: number;
   };
+  formula_example?: FormulaExample;
   testCriteria?: {
     expectedVariable?: string;
     expectedValue?: unknown;
@@ -22,6 +32,7 @@ export interface Question {
     expectedCSS?: string;
     expectedJS?: string;
     expectedCode?: string;
+    expectedFormula?: string;
     testCases?: Array<{
       input: unknown[];
       expected: unknown;
@@ -38,6 +49,7 @@ export interface Lesson {
     image?: string;
     video?: string;
   };
+  formula_example?: FormulaExample;
   questions: Question[];
   next_lesson_id: string | null;
 }
@@ -50,23 +62,20 @@ export interface Module {
 }
 
 /** Category for grouping courses in the library folder view. */
-export type CurriculumCategory = "coding" | "design" | "data" | "careers";
+export type CurriculumCategory =
+  | "coding"
+  | "design"
+  | "data"
+  | "careers"
+  | "mathematics";
 
 export interface CurriculumData {
   title: string;
   description: string;
   language: string;
-  /** Category for folder grouping on the course listing page. */
   category: CurriculumCategory;
-  /** Minimum recommended learner age (years). */
   age: number;
-  /**
-   * Local school class label (e.g. "Primary 5", "JSS 1", or "Grade 5").
-   */
   class: string;
-  /**
-   * Optional international grade number (1–12). Shown compactly alongside `class`.
-   */
   grade?: number;
   modules: Module[];
 }
@@ -75,3 +84,9 @@ export interface Curriculum {
   slug: string;
   curriculum: CurriculumData;
 }
+
+export function isMathematicsPreview(curriculum: CurriculumData): boolean {
+  return curriculum.category === "mathematics";
+}
+
+export type PublishStatus = "idle" | "uploading" | "published";

@@ -16,6 +16,7 @@ import {
   Palette,
   Database,
   Briefcase,
+  Calculator,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ import {
 
 const CATEGORY_ICONS: Record<CourseCategoryId, LucideIcon> = {
   coding: Braces,
+  mathematics: Calculator,
   design: Palette,
   data: Database,
   careers: Briefcase,
@@ -132,13 +134,7 @@ const CoursesPage = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-    setSelectedCategoryId(null);
-  }, [ageFilter]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-    setSelectedCategoryId(null);
-  }, [classFilter]);
+  }, [ageFilter, classFilter]);
 
   useEffect(() => {
     if (
@@ -180,6 +176,14 @@ const CoursesPage = () => {
   const activeCategoryMeta = selectedCategoryId
     ? getCategoryMeta(selectedCategoryId)
     : null;
+
+  const hasActiveFilters = ageFilter !== "all" || classFilter !== "all";
+
+  const resetFilters = () => {
+    setAgeFilter("all");
+    setClassFilter("all");
+    setCurrentPage(1);
+  };
 
   return (
     <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col">
@@ -223,26 +227,6 @@ const CoursesPage = () => {
             <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <div className="flex items-center justify-between gap-2 sm:justify-end">
                 <label className="font-inter text-xs font-medium text-gray-600">
-                  Class
-                </label>
-                <div className="min-w-[min(100%,11rem)] sm:min-w-[12rem]">
-                  <Select value={classFilter} onValueChange={setClassFilter}>
-                    <SelectTrigger className="h-10 shadow-none">
-                      <SelectValue placeholder="All classes" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All classes</SelectItem>
-                      {classFilterOptions.map(({ key, label }) => (
-                        <SelectItem key={key} value={key}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-2 sm:justify-end">
-                <label className="font-inter text-xs font-medium text-gray-600">
                   Learner age
                 </label>
                 <div className="min-w-[min(100%,11rem)] sm:min-w-[10rem]">
@@ -269,6 +253,37 @@ const CoursesPage = () => {
                   </Select>
                 </div>
               </div>
+              <div className="flex items-center justify-between gap-2 sm:justify-end">
+                <label className="font-inter text-xs font-medium text-gray-600">
+                  Class
+                </label>
+                <div className="min-w-[min(100%,11rem)] sm:min-w-[12rem]">
+                  <Select value={classFilter} onValueChange={setClassFilter}>
+                    <SelectTrigger className="h-10 shadow-none">
+                      <SelectValue placeholder="All classes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All classes</SelectItem>
+                      {classFilterOptions.map(({ key, label }) => (
+                        <SelectItem key={key} value={key}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {hasActiveFilters && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-10 shrink-0 font-inter shadow-none"
+                  onClick={resetFilters}
+                >
+                  Reset filters
+                </Button>
+              )}
             </div>
           </div>
 

@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { devSkipSubscriptionGate } from "@/utils/devSubscriptionBypass";
+import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
 
 interface DashboardProps {
   children?: ReactNode;
@@ -97,6 +98,12 @@ const DashboardLayout = ({ children }: DashboardProps) => {
       { replace: true },
     );
   }, [navigate, location.pathname, location.search]);
+
+  useEffect(() => {
+    return () => {
+      stopAvatarSpeech();
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     const flag = subscriptionReturn.flag;

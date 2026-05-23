@@ -1,0 +1,231 @@
+{
+  "slug": "grade-9-basic-skills-review",
+  "curriculum": {
+    "title": "Grade 9 Math: Basic Skills Review",
+    "description": "A four-module review of Chapter 1 topics from Grade 9 mathematics: real numbers, ratios, rates, proportions, percents, and proportional reasoning in everyday problem solving.",
+    "language": "en",
+    "category": "mathematics",
+    "age": 14,
+    "class": "Grade 9",
+    "grade": 9,
+    "modules": [
+      {
+        "id": "module_01",
+        "title": "Integers and Real Numbers",
+        "prerequisite": null,
+        "lessons": [
+          {
+            "id": "lesson_01",
+            "title": "Powers, Square Roots, and Order of Operations",
+            "body": "In this lesson, students review integer powers, square roots, and real number calculations. A positive number has two square roots, one positive and one negative, but the radical sign asks for the positive square root. Students also practise evaluating expressions by following the order of operations: brackets first, then powers, then multiplication or division, and finally addition or subtraction.",
+            "avatar_script": "Welcome to Chapter 1. We will begin with the number skills that support the rest of Grade 9 math: powers, square roots, and careful order of operations. Watch the signs closely, especially when negative numbers are raised to powers.",
+            "media": {},
+            "formula_example": {
+              "formula": "(6 - 2)^2 + (-3)^2 x 2 = 4^2 + 9 x 2 = 16 + 18 = 34",
+              "subject": "mathematics",
+              "description": "Evaluating an expression with brackets, powers, and multiplication",
+              "explanation": "Start inside the brackets, simplify each power, multiply, and then add. The negative base in (-3)^2 is squared because the negative sign is inside the brackets.",
+              "autoRun": false,
+              "typingSpeed": 60
+            },
+            "questions": [
+              {
+                "id": "q1_multiple_choice",
+                "type": "multiple_choice",
+                "question": "Which two perfect square numbers does 80 lie between?",
+                "options": [
+                  "64 and 81",
+                  "49 and 64",
+                  "81 and 100",
+                  "100 and 121"
+                ],
+                "answer": "64 and 81",
+                "explanation": "Since 8^2 = 64 and 9^2 = 81, the number 80 lies between the square numbers 64 and 81."
+              },
+              {
+                "id": "q2_true_false",
+                "type": "true_false",
+                "question": "When the radical sign is used, sqrt(49) means the positive square root, 7.",
+                "answer": true,
+                "explanation": "Correct. Although 49 has two square roots, 7 and -7, the radical sign represents the positive square root."
+              },
+              {
+                "id": "q3_formula_test",
+                "type": "formula_test",
+                "question": "Evaluate (6 - 2)^2 + (-3)^2 x 2.",
+                "explanation": "First calculate the bracket: 6 - 2 = 4. Then square: 4^2 = 16 and (-3)^2 = 9. Multiply 9 x 2 = 18. Add 16 + 18 to get 34.",
+                "formula_example": {
+                  "formula": "(6 - 2)^2 + (-3)^2 x 2 = 34",
+                  "subject": "mathematics"
+                },
+                "testCriteria": {
+                  "expectedFormula": "34"
+                }
+              }
+            ],
+            "next_lesson_id": "lesson_02"
+          }
+        ]
+      },
+      {
+        "id": "module_02",
+        "title": "Ratios, Rates, Proportions, and Percents",
+        "prerequisite": "module_01",
+        "lessons": [
+          {
+            "id": "lesson_02",
+            "title": "Comparing Quantities",
+            "body": "This lesson reviews how to write ratios in simplest form, how to calculate unit rates, and how to solve proportions with cross multiplication. Students connect proportions to percent questions by writing the percent as a fraction over 100 and matching it with the part-to-whole relationship.",
+            "avatar_script": "Now we will compare quantities. A ratio compares similar quantities, a rate compares different units, and a proportion tells us that two comparisons are equal. Percents fit right into this pattern because percent means out of 100.",
+            "media": {},
+            "formula_example": {
+              "formula": "part / whole = percent / 100, so x / 750 = 36 / 100",
+              "subject": "mathematics",
+              "description": "Using a proportion to find a percent of a number",
+              "explanation": "To find 36% of 750, set the unknown part over the whole and make it equal to 36 over 100. Cross multiply to solve for the missing part.",
+              "autoRun": false,
+              "typingSpeed": 60
+            },
+            "questions": [
+              {
+                "id": "q4_multiple_choice",
+                "type": "multiple_choice",
+                "question": "A basket has 18 green apples and 24 red apples. What is the ratio of green apples to red apples in simplest form?",
+                "options": ["3:4", "4:3", "6:8", "18:42"],
+                "answer": "3:4",
+                "explanation": "The greatest common factor of 18 and 24 is 6. Dividing both terms by 6 gives 18:24 = 3:4."
+              },
+              {
+                "id": "q5_true_false",
+                "type": "true_false",
+                "question": "A rate compares quantities that use different units, such as dollars per box or kilometres per hour.",
+                "answer": true,
+                "explanation": "Correct. A rate compares unlike units, and a unit rate tells how much there is for 1 unit."
+              },
+              {
+                "id": "q6_formula_test",
+                "type": "formula_test",
+                "question": "A school has 750 students. If 36% of the students joined a club, how many students joined a club?",
+                "explanation": "Use x / 750 = 36 / 100. Cross multiply to get 100x = 27000, so x = 270. Therefore, 270 students joined a club.",
+                "formula_example": {
+                  "formula": "x / 750 = 36 / 100, so x = 270",
+                  "subject": "mathematics"
+                },
+                "testCriteria": {
+                  "expectedFormula": "270"
+                }
+              }
+            ],
+            "next_lesson_id": "lesson_03"
+          }
+        ]
+      },
+      {
+        "id": "module_03",
+        "title": "Proportional Reasoning",
+        "prerequisite": "module_02",
+        "lessons": [
+          {
+            "id": "lesson_03",
+            "title": "Equivalent Ratios, Proportions, and Scale",
+            "body": "This lesson develops proportional reasoning by writing ratios in different forms, creating equivalent ratios, using cross products, and applying proportions to scale diagrams. Students learn that multiplying or dividing both terms of a ratio by the same non-zero number creates an equivalent ratio.",
+            "avatar_script": "Proportional reasoning is about seeing when two comparisons match. If the ratios are equivalent, we can use that relationship to solve missing values, read scale diagrams, and compare unit rates.",
+            "media": {},
+            "formula_example": {
+              "formula": "drawing distance / actual distance = scale distance / scale actual",
+              "subject": "mathematics",
+              "description": "Setting up a scale proportion",
+              "explanation": "If 1 cm represents 4 km, then a map distance of 7.5 cm represents 7.5 x 4 = 30 km.",
+              "autoRun": false,
+              "typingSpeed": 60
+            },
+            "questions": [
+              {
+                "id": "q7_multiple_choice",
+                "type": "multiple_choice",
+                "question": "Which ratio is equivalent to 9:15 in simplest form?",
+                "options": ["3:5", "5:3", "6:10", "18:20"],
+                "answer": "3:5",
+                "explanation": "Divide both terms of 9:15 by their greatest common factor, 3. The simplified ratio is 3:5."
+              },
+              {
+                "id": "q8_true_false",
+                "type": "true_false",
+                "question": "In a proportion a/b = c/d, the cross products a x d and b x c are equal.",
+                "answer": true,
+                "explanation": "Correct. Equal cross products are a key test for a proportion and can be used to solve a missing value."
+              },
+              {
+                "id": "q9_formula_test",
+                "type": "formula_test",
+                "question": "On a map, 1 cm represents 4 km. If two places are 7.5 cm apart on the map, what is the actual distance?",
+                "explanation": "Set the scale relationship as 1 cm to 4 km. Multiply 7.5 by 4 to find the actual distance: 30 km.",
+                "formula_example": {
+                  "formula": "7.5 cm x 4 km/cm = 30 km",
+                  "subject": "mathematics"
+                },
+                "testCriteria": {
+                  "expectedFormula": "30 km"
+                }
+              }
+            ],
+            "next_lesson_id": "lesson_04"
+          }
+        ]
+      },
+      {
+        "id": "module_04",
+        "title": "Solving Problems with Proportional Reasoning",
+        "prerequisite": "module_03",
+        "lessons": [
+          {
+            "id": "lesson_04",
+            "title": "Using Proportions in Real Problems",
+            "body": "This lesson applies proportional reasoning to mixtures, earnings, scale drawings, fuel efficiency, discounts, percent increases, and percent comparisons. Students practise choosing the right comparison, setting up a proportion, and interpreting the answer in the context of the problem.",
+            "avatar_script": "The last module pulls the ideas together. We will use ratios, rates, and percents to solve real problems: mixtures, sale prices, distances, fuel use, and changes in quantity.",
+            "media": {},
+            "formula_example": {
+              "formula": "sale price = regular price - discount amount; discount amount = regular price x discount percent",
+              "subject": "mathematics",
+              "description": "Finding a sale price after a percent discount",
+              "explanation": "For a 25% discount on $220, find 25% of 220 first, then subtract that discount from the regular price.",
+              "autoRun": false,
+              "typingSpeed": 60
+            },
+            "questions": [
+              {
+                "id": "q10_multiple_choice",
+                "type": "multiple_choice",
+                "question": "A drink mix uses 2 cups of concentrate and 7 cups of water. What is the ratio of concentrate to the total drink?",
+                "options": ["2:9", "2:7", "7:9", "9:2"],
+                "answer": "2:9",
+                "explanation": "The total drink has 2 + 7 = 9 cups. The ratio of concentrate to total drink is 2:9."
+              },
+              {
+                "id": "q11_true_false",
+                "type": "true_false",
+                "question": "If a plant that is 160 cm tall grows 20% taller, its new height is 180 cm.",
+                "answer": false,
+                "explanation": "A 20% increase of 160 cm is 32 cm. The new height is 160 + 32 = 192 cm, not 180 cm."
+              },
+              {
+                "id": "q12_formula_test",
+                "type": "formula_test",
+                "question": "A jacket has a regular price of $220 and is on sale for 25% off. What is the sale price?",
+                "explanation": "Find the discount: 25% of 220 is 0.25 x 220 = 55. Subtract the discount from the regular price: 220 - 55 = 165. The sale price is $165.",
+                "formula_example": {
+                  "formula": "$220 - (0.25 x $220) = $165",
+                  "subject": "mathematics"
+                },
+                "testCriteria": {
+                  "expectedFormula": "$165"
+                }
+              }
+            ],
+            "next_lesson_id": null
+          }
+        ]
+      }
+    ]
+  }
+}

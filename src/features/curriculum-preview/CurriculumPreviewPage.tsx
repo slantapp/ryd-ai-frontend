@@ -11,16 +11,26 @@ import {
   CheckCircle2,
   Loader2,
 } from "lucide-react";
+import Split from "react-split";
 import {
   FileUploader,
   PreviewSidebar,
   PreviewQuestion,
-  PreviewCodeEditor,
-  PreviewTestResults,
   usePreviewAvatar,
+  MathCurriculumPreview,
 } from "./components";
+import CodeEditor from "@/components/courses/exercise/CodeEditor";
+import TestResults from "@/components/courses/exercise/TestResults";
+import FullscreenModal from "@/components/courses/exercise/FullscreenModal";
 import { decodeHandoffSegment, uploadCurriculumFile } from "./handoff";
-import type { CurriculumData, Lesson } from "./types";
+import type { CurriculumData, Lesson, Question } from "./types";
+import { isMathematicsPreview } from "./types";
+import {
+  canRunCodeLive,
+  formatRunOutput,
+  runStudentJavaScript,
+} from "@/utils/runStudentCode";
+import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
 
 type PreviewState = "upload" | "preview";
 type LessonPhase = "intro" | "teaching" | "questions" | "complete";
@@ -44,7 +54,15 @@ export default function CurriculumPreviewPage() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [currentSubtitleText, setCurrentSubtitleText] = useState("");
   const [canStartQuestions, setCanStartQuestions] = useState(false);
+  const [fullscreen, setFullscreen] = useState<"editor" | "results" | null>(
+    null,
+  );
   const lessonStartedRef = useRef(false);
+
+  const getQuestionLanguage = (question: Question | undefined) =>
+    question?.type === "code_test"
+      ? question.code_example?.language || "javascript"
+      : "javascript";
 
   const handoff = (() => {
     if (!handoffCode) {
@@ -88,6 +106,12 @@ export default function CurriculumPreviewPage() {
     if (data.modules.length > 0 && data.modules[0].lessons.length > 0) {
       setCurrentLesson(data.modules[0].lessons[0]);
     }
+    const hasCodeTests = data.modules.some((mod) =>
+      mod.lessons.some((les) =>
+        les.questions.some((q) => q.type === "code_test"),
+      ),
+    );
+    if (hasCodeTests) prefetchMonacoEditor();
   }, []);
 
   const handlePublishCurriculum = useCallback(async () => {
@@ -295,25 +319,18 @@ export default function CurriculumPreviewPage() {
   }, [curriculum, currentLesson, stop, getNextLesson, speakLessonContent, speak]);
 
   const handleRunCode = useCallback(() => {
-    try {
-      const logs: string[] = [];
-      const originalLog = console.log;
-      console.log = (...args) => {
-        logs.push(args.map((a) => String(a)).join(" "));
-      };
+    const question = currentLesson?.questions[currentQuestionIndex];
+    const lang = getQuestionLanguage(question);
 
-      try {
-        eval(code);
-      } catch (err) {
-        logs.push(`Error: ${(err as Error).message}`);
-      }
-
-      console.log = originalLog;
-      setResults(logs.length > 0 ? logs : ["(No output)"]);
-    } catch (err) {
-      setResults([`Error: ${(err as Error).message}`]);
+    if (!canRunCodeLive(lang)) {
+      setResults([
+        `Live run is not available for ${lang} in the browser. Use Submit answer to check your code against the exercise rules.`,
+      ]);
+      return;
     }
-  }, [code]);
+
+    setResults(formatRunOutput(runStudentJavaScript(code)));
+  }, [code, currentLesson, currentQuestionIndex]);
 
   const handleCodeSubmit = useCallback(() => {
     if (!currentLesson) return;
@@ -321,7 +338,10 @@ export default function CurriculumPreviewPage() {
     const question = currentLesson.questions[currentQuestionIndex];
     if (!question || question.type !== "code_test") return;
 
-    handleRunCode();
+    const lang = getQuestionLanguage(question);
+    if (canRunCodeLive(lang)) {
+      handleRunCode();
+    }
 
     const criteria = question.testCriteria;
     let passed = false;
@@ -390,6 +410,18 @@ export default function CurriculumPreviewPage() {
     );
   }
 
+  if (curriculum && isMathematicsPreview(curriculum)) {
+    return (
+      <MathCurriculumPreview
+        curriculum={curriculum}
+        sourceFile={sourceFile}
+        publishStatus={publishStatus}
+        onPublish={() => void handlePublishCurriculum()}
+        onBackToUpload={handleBackToUpload}
+      />
+    );
+  }
+
   if (!curriculum || !currentLesson) {
     return (
       <div className="flex h-screen items-center justify-center ">
@@ -402,7 +434,7 @@ export default function CurriculumPreviewPage() {
   const isCodeQuestion = currentQuestion?.type === "code_test";
 
   return (
-    <div className="flex h-screen bg-gray-100 -m-4">
+    <div className="flex h-screen bg-gray-100">
       {/* Mobile sidebar toggle */}
       <button
         type="button"
@@ -614,21 +646,52 @@ export default function CurriculumPreviewPage() {
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-1 overflow-hidden">
-                      <div className="flex-1 overflow-hidden">
-                        <PreviewCodeEditor
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+                      <Split
+                        direction="vertical"
+                        className="flex h-full min-h-[320px] w-full flex-col"
+                        sizes={[55, 45]}
+                        minSize={120}
+                        gutterSize={8}
+                      >
+                        <CodeEditor
                           code={code}
                           onCodeChange={setCode}
-                          onRunCode={handleRunCode}
-                          onSubmitCode={handleCodeSubmit}
-                          canSubmit={code.trim().length > 0 && !isAnswerSubmitted}
-                          language={currentQuestion.code_example?.language || "javascript"}
+                          onTestCode={handleCodeSubmit}
+                          onTryOut={handleRunCode}
+                          language={getQuestionLanguage(currentQuestion)}
+                          onToggleFullscreen={() =>
+                            setFullscreen(
+                              fullscreen === "editor" ? null : "editor",
+                            )
+                          }
+                          isFullscreen={fullscreen === "editor"}
+                          canTest={!isAnswerSubmitted}
+                          canSubmit={
+                            code.trim().length > 0 && !isAnswerSubmitted
+                          }
                         />
-                      </div>
-                      <div className="w-80 border-l border-gray-200">
-                        <PreviewTestResults results={results} code={code} />
-                      </div>
+                        <TestResults
+                          results={results}
+                          code={code}
+                          onToggleFullscreen={() =>
+                            setFullscreen(
+                              fullscreen === "results" ? null : "results",
+                            )
+                          }
+                          isFullscreen={fullscreen === "results"}
+                        />
+                      </Split>
                     </div>
+                    {fullscreen && (
+                      <FullscreenModal
+                        type={fullscreen}
+                        code={code}
+                        results={results}
+                        onClose={() => setFullscreen(null)}
+                        onCodeChange={setCode}
+                      />
+                    )}
                     {isAnswerSubmitted && (
                       <div className="border-t border-gray-200 bg-white p-4">
                         <button

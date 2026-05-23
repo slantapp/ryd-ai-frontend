@@ -1,5 +1,5 @@
 import { Maximize2, Minimize2, Play, Send } from "lucide-react";
-import Editor from "@monaco-editor/react";
+import { MonacoEditorLazy } from "./MonacoEditorLazy";
 
 interface CodeEditorProps {
   code: string;
@@ -8,10 +8,25 @@ interface CodeEditorProps {
   onToggleFullscreen: () => void;
   isFullscreen: boolean;
   canTest: boolean;
+  /** Monaco language id (e.g. javascript, dart, python). Defaults to javascript. */
+  language?: string;
   /** When provided, shows two buttons: "Try it out" (run only) and "Submit answer" (run and submit). */
   onTryOut?: () => void;
   /** When using two-button mode, submit button is disabled when false (e.g. when code is empty). */
   canSubmit?: boolean;
+}
+
+/** Map curriculum language strings to Monaco editor language ids. */
+function toMonacoLanguage(language?: string): string {
+  const lang = (language || "javascript").toLowerCase();
+  const map: Record<string, string> = {
+    js: "javascript",
+    ts: "typescript",
+    py: "python",
+    html: "html",
+    css: "css",
+  };
+  return map[lang] ?? lang;
 }
 
 export default function CodeEditor({
@@ -21,10 +36,12 @@ export default function CodeEditor({
   onToggleFullscreen,
   isFullscreen,
   canTest,
+  language = "javascript",
   onTryOut,
   canSubmit = true,
 }: CodeEditorProps) {
   const twoButtonMode = typeof onTryOut === "function";
+  const monacoLanguage = toMonacoLanguage(language);
 
   return (
     <div className="flex flex-col h-full border border-gray-200 rounded-md overflow-hidden">
@@ -78,12 +95,10 @@ export default function CodeEditor({
         </div>
       </div>
       <div className="flex-1 min-h-0 overflow-hidden">
-        <Editor
-          defaultLanguage="javascript"
+        <MonacoEditorLazy
+          language={monacoLanguage}
           value={code}
           onChange={(val) => onCodeChange(val || "")}
-          theme="vs-dark"
-          options={{ automaticLayout: true }}
           height="100%"
         />
       </div>

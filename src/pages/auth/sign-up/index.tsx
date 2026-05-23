@@ -13,6 +13,7 @@ const initialValues: SignUpFormData = {
   state: "",
   phone: "",
   timezone: "",
+  hearAboutUs: "",
   password: "",
 };
 

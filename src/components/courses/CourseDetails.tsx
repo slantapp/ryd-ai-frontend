@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import Split from "react-split";
 import NarratorAvatar from "narrator-avatar";
 import { Volume2, RotateCcw, Mic, Play } from "lucide-react";
@@ -24,9 +24,17 @@ import {
   TrueFalseQuestion,
   FullscreenModal,
 } from "./exercise";
+import { isCodeTestQuestion } from "@/utils/curriculumQuestion";
 import { useInstructorStore } from "../../stores/instructorStore";
 import { useCoursesStore } from "../../stores/coursesStore";
 import { cn } from "../../lib/utils";
+import {
+  canRunCodeLive,
+  formatRunOutput,
+  runStudentJavaScript,
+} from "@/utils/runStudentCode";
+import { prefetchMonacoEditor } from "./exercise/MonacoEditorLazy";
+import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
 
 function useMediaQueryMinLg() {
   const [matches, setMatches] = useState(() =>
@@ -117,6 +125,7 @@ type PendingAction =
 
 function CourseDetailInner() {
   const { exercise } = useParams<{ exercise: string }>();
+  const location = useLocation();
   const { getInstructorConfig } = useInstructorStore();
   const instructorConfig = getInstructorConfig();
   const { updateCourseProgress } = useCoursesStore();
@@ -195,8 +204,18 @@ function CourseDetailInner() {
   const curriculum = exercise
     ? getCurriculumBySlug(exercise)?.curriculum || null
     : null;
-  const isCodeTestQuestion = currentQuestion?.type === "code_test";
+  const isCodeTestQuestionActive = isCodeTestQuestion(currentQuestion);
   const isLgUp = useMediaQueryMinLg();
+
+  useEffect(() => {
+    if (!curriculum) return;
+    const hasCodeTests = curriculum.modules.some((mod) =>
+      mod.lessons.some((les) =>
+        les.questions.some((q) => q.type === "code_test"),
+      ),
+    );
+    if (hasCodeTests) prefetchMonacoEditor();
+  }, [curriculum]);
 
   // ============================================================================
   // AVATAR HELPERS
@@ -288,19 +307,16 @@ function CourseDetailInner() {
       pendingSpeechQueueRef.current = [];
       setShowMobileAudioUnlock(false);
 
-      const avatar = getAvatar();
-      if (avatar && typeof avatar.stopSpeaking === "function") {
-        isManuallyStopped.current = true;
-        avatar.stopSpeaking();
-        pendingActionRef.current = { type: "none" };
-        setIsSpeaking(false);
-        // Reset manual stop flag after a short delay
-        setTimeout(() => {
-          isManuallyStopped.current = false;
-        }, 300);
-      }
+      isManuallyStopped.current = true;
+      stopAvatarSpeech(getAvatar());
+      pendingActionRef.current = { type: "none" };
+      setIsSpeaking(false);
+      setTimeout(() => {
+        isManuallyStopped.current = false;
+      }, 300);
     } catch (error) {
       console.warn("Error stopping speech:", error);
+      stopAvatarSpeech(getAvatar());
       pendingActionRef.current = { type: "none" };
       setIsSpeaking(false);
       pendingSpeechQueueRef.current = [];
@@ -599,12 +615,13 @@ function CourseDetailInner() {
       // Enable Previous button - we can always go back since nextIndex > 0
       setCanPrevious(true);
 
-      // Check if this is a code_test question with a code example to teach first
-      if (nextQuestion.type === "code_test" && nextQuestion.code_example) {
-        // Teach the code example first, then ask the question
+      // Teach worked example first, then ask the question
+      if (
+        nextQuestion.type === "code_test" &&
+        nextQuestion.code_example
+      ) {
         typeCourseDetail(nextQuestion.code_example, nextQuestion);
       } else {
-        // For non-code questions or code questions without examples, just ask
         speak(nextQuestion.question);
       }
     } else {
@@ -704,8 +721,6 @@ function CourseDetailInner() {
     stopCodeTyping,
     typeCourseDetail,
   ]);
-
-  // Keep ref updated with latest function
   useEffect(() => {
     moveToNextQuestionRef.current = moveToNextQuestion;
   }, [moveToNextQuestion]);
@@ -921,8 +936,10 @@ function CourseDetailInner() {
     const hasPrevLesson = curriculum ? !!getPreviousLessonInOrder(currentLesson, curriculum) : false;
     setCanPrevious(hasPrevQuestion || hasPrevLesson);
 
-    // Check if this is a code_test question with a code example to teach first
-    if (prevQuestion.type === "code_test" && prevQuestion.code_example) {
+    if (
+      prevQuestion.type === "code_test" &&
+      prevQuestion.code_example
+    ) {
       typeCourseDetail(prevQuestion.code_example, prevQuestion);
     } else {
       speak(prevQuestion.question);
@@ -941,11 +958,9 @@ function CourseDetailInner() {
   const handlePrevious = useCallback(() => {
     if (!canPrevious || isSpeaking) return;
 
-    // If we have a current question and it's not the first one, go to previous question
     if (currentQuestion && currentQuestionIndex > 0) {
       handlePreviousQuestion();
     } else if (canPreviousLesson) {
-      // Otherwise, go to previous lesson
       handlePreviousLesson();
     }
   }, [
@@ -991,12 +1006,9 @@ function CourseDetailInner() {
     setCanPreviousLesson(hasPrevLesson);
     setCanPrevious(hasPrevLesson); // At first question, can only go to prev lesson
 
-    // Check if this is a code_test question with a code example to teach first
     if (question.type === "code_test" && question.code_example) {
-      // Teach the code example first, then ask the question
       typeCourseDetail(question.code_example, question);
     } else {
-      // For non-code questions or code questions without examples, just ask
       speak(question.question);
     }
   }, [
@@ -1129,14 +1141,20 @@ function CourseDetailInner() {
 
   /** Run code without checking the answer – e.g. during explanation or when code is cleared. Just executes and shows success/error. */
   const handleRunCodeTryOut = useCallback(() => {
-    try {
-      eval(code || "");
-      setResults(["✓ Code ran successfully."]);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      setResults([`⚠️ Error: ${msg}`]);
+    const lang =
+      currentQuestion?.type === "code_test"
+        ? currentQuestion.code_example?.language
+        : undefined;
+
+    if (!canRunCodeLive(lang)) {
+      setResults([
+        `Live run is not available for ${lang || "this language"} in the browser. Use Submit answer to check your code against the exercise rules.`,
+      ]);
+      return;
     }
-  }, [code]);
+
+    setResults(formatRunOutput(runStudentJavaScript(code || "")));
+  }, [code, currentQuestion]);
 
   /** Deep equality for test results - handles primitives, arrays, and objects */
   const valuesEqual = useCallback((a: unknown, b: unknown): boolean => {
@@ -1459,7 +1477,7 @@ function CourseDetailInner() {
     avatarReadyRef.current = false;
     pendingSpeechQueueRef.current = [];
     setShowMobileAudioUnlock(false);
-  }, [exercise, isLgUp, isCodeTestQuestion]);
+  }, [exercise, isLgUp, isCodeTestQuestionActive]);
 
   // Sync progress to store when lesson/question changes
   useEffect(() => {
@@ -1519,6 +1537,13 @@ function CourseDetailInner() {
     updateCourseProgress,
   ]);
 
+  // Stop speech when navigating away from this course (before avatar ref is cleared).
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
+  }, [location.pathname, exercise, stopSpeaking]);
+
   // Cleanup on unmount - stop any ongoing speech and code typing
   useEffect(() => {
     return () => {
@@ -1529,19 +1554,9 @@ function CourseDetailInner() {
         codeTypingTimeoutRef.current = null;
       }
 
-      // Clear any pending speech queue
       pendingSpeechQueueRef.current = [];
       pendingActionRef.current = { type: "none" };
-
-      // Stop avatar speech - read ref at cleanup time, not mount time
-      try {
-        const avatar = avatarRef.current;
-        if (avatar && typeof avatar.stopSpeaking === "function") {
-          avatar.stopSpeaking();
-        }
-      } catch {
-        // Ignore cleanup errors - avatar may already be destroyed
-      }
+      stopAvatarSpeech(avatarRef.current);
     };
   }, []);
 
@@ -1629,7 +1644,7 @@ function CourseDetailInner() {
         <QuestionInfo question={currentQuestion} />
       )}
 
-      {isCodeTestQuestion && (
+      {isCodeTestQuestionActive && (
         <div className="my-4 hidden min-h-[100px] items-center justify-center lg:flex lg:my-6">
           <div className="relative flex items-center justify-center">
             {isSpeaking && (
@@ -1694,7 +1709,7 @@ function CourseDetailInner() {
             <>
               {lessonChromePanel}
 
-              {!isCodeTestQuestion && curriculum && (
+              {!isCodeTestQuestionActive && curriculum && (
                 <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                   <div className="flex justify-start items-center w-full h-full min-h-0 min-w-0">
                     <NarratorAvatar
@@ -1713,7 +1728,7 @@ function CourseDetailInner() {
                 </div>
               )}
 
-              {isCodeTestQuestion && curriculum && (
+              {isCodeTestQuestionActive && curriculum && (
                 <div className="pointer-events-none invisible absolute inset-0">
                   <NarratorAvatar
                     ref={avatarRef}
@@ -1785,8 +1800,8 @@ function CourseDetailInner() {
           )}
 
           <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
-            {isCodeTestQuestion ? (
-              <div className="flex flex-col min-h-0 h-full flex-1 w-full">
+            {isCodeTestQuestionActive ? (
+              <div className="flex min-h-0 h-full w-full flex-1 flex-col">
                 <Split
                   direction="vertical"
                   className="flex flex-col h-full w-full"
@@ -1808,19 +1823,23 @@ function CourseDetailInner() {
                     onCodeChange={setCode}
                     onTestCode={handleCodeTest}
                     onTryOut={handleRunCodeTryOut}
+                    language={
+                      currentQuestion?.type === "code_test"
+                        ? currentQuestion.code_example?.language
+                        : "javascript"
+                    }
                     onToggleFullscreen={() =>
-                      setFullscreen(fullscreen === "editor" ? null : "editor")
+                      setFullscreen(
+                        fullscreen === "editor" ? null : "editor",
+                      )
                     }
                     isFullscreen={fullscreen === "editor"}
-                    canTest={
-                      !!currentQuestion &&
-                      currentQuestion.type === "code_test"
-                    }
+                    canTest={!!currentQuestion}
                     canSubmit={
                       !!currentQuestion &&
-                      currentQuestion.type === "code_test" &&
                       !!code.trim() &&
-                      !isSpeaking
+                      !isSpeaking &&
+                      !isAnswerSubmitted
                     }
                   />
                   <TestResults
@@ -2118,7 +2137,7 @@ function CourseDetailInner() {
       </Split>
 
       {/* Fullscreen Overlay */}
-      {fullscreen && isCodeTestQuestion && (
+      {fullscreen && isCodeTestQuestionActive && (
         <FullscreenModal
           type={fullscreen}
           code={code}

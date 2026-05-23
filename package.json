@@ -37,6 +37,7 @@
     "country-state-city": "^3.2.1",
     "date-fns": "^4.1.0",
     "formik": "^2.4.6",
+    "katex": "^0.17.0",
     "lucide-react": "^0.544.0",
     "narrator-avatar": "^1.1.5",
     "react": "^19.0.0",

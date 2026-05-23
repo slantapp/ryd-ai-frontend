@@ -1,7 +1,14 @@
 /**
  * Compact display for school class + optional international grade number.
- * e.g. "Primary 5 · Gr. 5" — familiar in Nigeria/Africa and clear for Grade-based systems.
+ * e.g. "Grade 7 (JSS1)" — grade first, local class in parentheses.
  */
+function normalizeSchoolClassLabel(schoolClass: string): string {
+  return schoolClass
+    .replace(/\bJSS\s+(\d+)\b/gi, "JSS$1")
+    .replace(/\bSS\s+(\d+)\b/gi, "SS$1")
+    .trim();
+}
+
 export function formatSchoolClassDisplay(
   schoolClass: string | undefined,
   grade?: number,
@@ -11,14 +18,15 @@ export function formatSchoolClassDisplay(
     typeof grade === "number" && Number.isFinite(grade) && grade > 0;
 
   if (!label && !hasGrade) return null;
-  if (!hasGrade) return label ?? null;
+  if (!hasGrade) return normalizeSchoolClassLabel(label ?? "");
   if (!label) return `Grade ${grade}`;
 
-  if (new RegExp(`grade\\s*${grade}\\b`, "i").test(label)) {
-    return label;
+  const normalized = normalizeSchoolClassLabel(label);
+  if (new RegExp(`grade\\s*${grade}\\b`, "i").test(normalized)) {
+    return `Grade ${grade}`;
   }
 
-  return `${label} · Gr. ${grade}`;
+  return `Grade ${grade} (${normalized})`;
 }
 
 /** Stable key for filtering courses by class + grade together. */
@@ -32,6 +40,12 @@ export function getSchoolClassFilterKey(
 
   if (!label && !hasGrade) return null;
   return `${label ?? ""}|${hasGrade ? grade : ""}`;
+}
+
+function gradeFromFilterKey(key: string): number {
+  const gradePart = key.split("|")[1];
+  const n = Number(gradePart);
+  return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
 }
 
 export function buildSchoolClassFilterOptions(
@@ -49,5 +63,9 @@ export function buildSchoolClassFilterOptions(
 
   return Array.from(map.entries())
     .map(([key, label]) => ({ key, label }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .sort((a, b) => {
+      const gradeDiff = gradeFromFilterKey(a.key) - gradeFromFilterKey(b.key);
+      if (gradeDiff !== 0) return gradeDiff;
+      return a.label.localeCompare(b.label);
+    });
 }

@@ -4,3 +4,4 @@ export { PreviewTestResults } from "./PreviewTestResults";
 export { PreviewQuestion } from "./PreviewQuestion";
 export { PreviewSidebar } from "./PreviewSidebar";
 export { FileUploader } from "./FileUploader";
+export { MathCurriculumPreview } from "./MathCurriculumPreview";

@@ -61,6 +61,8 @@ const defaultCourseImages: Record<string, string> = {
     "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=200&fit=crop",
   "css_flex_grid_lessons":
     "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=200&fit=crop",
+  "grade-9-basic-skills-review":
+    "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400&h=200&fit=crop",
   "javascript-fundamentals":
     "https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=400&h=200&fit=crop",
   "machine-learning-basics":
@@ -144,6 +146,12 @@ const defaultCourseMetadata: Record<
     duration: "4 weeks",
     level: "Intermediate",
     rating: 4.7,
+  },
+  "grade-9-basic-skills-review": {
+    minAge: 14,
+    duration: "6 weeks",
+    level: "Intermediate",
+    rating: 4.8,
   },
 };
 

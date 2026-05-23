@@ -36,6 +36,8 @@ export interface AiRegisterPayload {
   country: string;
   state: string;
   timezone: string;
+  /** Optional — how the parent heard about RYD (maps to signupSource on API). */
+  hearAboutUs?: string;
 }
 
 /** Never persist these on `user` (API sometimes echoes password hash). */
@@ -129,7 +131,12 @@ export const useAuthStore = create<AuthState>()(
         });
       },
       register: async (payload) => {
-        const res = await axiosInstance.post("/parent/auth/register/ai", payload);
+        const { hearAboutUs, ...rest } = payload;
+        const body = {
+          ...rest,
+          ...(hearAboutUs?.trim() ? { signupSource: hearAboutUs.trim() } : {}),
+        };
+        const res = await axiosInstance.post("/parent/auth/register/ai", body);
         const { accessToken, user, expiresAt } = extractSession(res);
         set({
           accessToken,

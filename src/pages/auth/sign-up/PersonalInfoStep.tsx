@@ -505,9 +505,9 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
             <span className="font-normal text-[#4F4D55]">(optional)</span>
           </Label>
           <Select
-            value={formData.hearAboutUs || undefined}
+            value={formData.survey || undefined}
             onValueChange={(value) =>
-              setFormData((p) => ({ ...p, hearAboutUs: value }))
+              setFormData((p) => ({ ...p, survey: value }))
             }
           >
             <SelectTrigger id="su-hear" className={inputClass}>

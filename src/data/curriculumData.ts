@@ -9,7 +9,7 @@ import cssFlexGridLessons from "./css_flex_grid_lessons.json";
 import webDevelopmentBasics from "./web-development-basics.json";
 import cssBasics from "./css-basics.json";
 import htmlCssCombined from "./html-css-combined.json";
-import grade9Maths from "./grade9-maths.json";
+// import grade9Maths from "./grade9-maths.json";
 
 export interface FormulaExample {
   formula: string;
@@ -299,7 +299,7 @@ export const curriculaData: Curriculum[] = [
   pythonIntermediate as Curriculum,
   pythonAdvance as Curriculum,
   cssFlexGridLessons as Curriculum,
-  grade9Maths as Curriculum,
+  // grade9Maths as Curriculum,
 ];
 
 // Legacy export for backward compatibility (uses first curriculum)

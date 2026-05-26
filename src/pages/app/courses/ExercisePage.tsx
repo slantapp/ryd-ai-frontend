@@ -19,6 +19,10 @@ import {
   FullscreenModal,
   type ActionData,
 } from "../../../components/courses/exercise";
+import {
+  evaluateCodeTest,
+  formatCodeTestResults,
+} from "@/utils/codeTestValidation";
 
 interface CurriculumLearningRef {
   isAvatarReady?: () => boolean;
@@ -396,224 +400,21 @@ function CodingExerciseInner() {
     setCurrentQuestion(null);
   }, [canNextLesson]);
 
-  // Handle code test execution (updated to match NewExcercis.tsx logic)
   const handleCodeTest = () => {
     const question = currentQuestion;
     if (!question || question.type !== "code_test") return;
 
-    let passed = false;
-    const testResults: Array<{
-      test: string;
-      passed: boolean;
-      actual?: unknown;
-      expected?: unknown;
-    }> = [];
-
     try {
-      // Test based on question criteria
-      if (
-        question.testCriteria?.expectedVariable &&
-        question.testCriteria.expectedValues
-      ) {
-        // Test array (check for expectedValues first)
-        const testCode = `${code}; Array.isArray(${question.testCriteria.expectedVariable})`;
-        const isArray = eval(testCode) as boolean;
+      const { passed, testResults } = evaluateCodeTest(
+        code,
+        question.testCriteria,
+      );
 
-        if (isArray) {
-          const actualArray = eval(
-            `${code}; ${question.testCriteria.expectedVariable}`
-          );
-          passed =
-            JSON.stringify(actualArray) ===
-            JSON.stringify(question.testCriteria.expectedValues);
-          testResults.push({
-            test: `Array '${question.testCriteria.expectedVariable}' matches expected values`,
-            passed: passed,
-            actual: actualArray,
-            expected: question.testCriteria.expectedValues,
-          });
-        }
-      } else if (question.testCriteria?.expectedVariable) {
-        // Check if variable exists and has correct value
-        const testCode = `${code}; typeof ${question.testCriteria.expectedVariable} !== 'undefined'`;
-        const varExists = eval(testCode) as boolean;
-
-        if (varExists && question.testCriteria.expectedValue !== undefined) {
-          const actualValue = eval(
-            `${code}; ${question.testCriteria.expectedVariable}`
-          );
-          passed = actualValue === question.testCriteria.expectedValue;
-          testResults.push({
-            test: `Variable '${question.testCriteria.expectedVariable}' has value '${question.testCriteria.expectedValue}'`,
-            passed: passed,
-            actual: actualValue,
-            expected: question.testCriteria.expectedValue,
-          });
-        } else {
-          passed = varExists;
-          testResults.push({
-            test: `Variable '${question.testCriteria.expectedVariable}' exists`,
-            passed: passed,
-          });
-        }
-      } else if (question.testCriteria?.expectedHTML) {
-        // Test HTML code - check if code contains expected HTML pattern
-        const expectedHTML = question.testCriteria.expectedHTML.toLowerCase();
-        const codeLower = code.toLowerCase();
-
-        // Remove whitespace for comparison to be more flexible
-        const normalizedExpected = expectedHTML.replace(/\s+/g, " ").trim();
-        const normalizedCode = codeLower.replace(/\s+/g, " ").trim();
-
-        // Check if the code contains the expected HTML pattern
-        passed = normalizedCode.includes(normalizedExpected);
-
-        testResults.push({
-          test: `Code contains expected HTML: ${expectedHTML}`,
-          passed: passed,
-          actual: code.trim() || "(empty)",
-          expected: expectedHTML,
-        });
-      } else if (
-        question.testCriteria &&
-        question.testCriteria.expectedCSS !== undefined
-      ) {
-        const { expectedCSS } = question.testCriteria;
-        const normalizedExpected = expectedCSS
-          .toLowerCase()
-          .replace(/\s+/g, " ")
-          .replace(/'/g, '"')
-          .trim();
-        const normalizedCode = code
-          .toLowerCase()
-          .replace(/\s+/g, " ")
-          .replace(/'/g, '"')
-          .trim();
-        passed = normalizedCode.includes(normalizedExpected);
-        testResults.push({
-          test: `Code contains expected CSS: ${expectedCSS}`,
-          passed: passed,
-          actual: code.trim() || "(empty)",
-          expected: expectedCSS,
-        });
-      } else if (
-        question.testCriteria &&
-        question.testCriteria.expectedJS !== undefined
-      ) {
-        const { expectedJS } = question.testCriteria;
-        const haystack = code.toLowerCase();
-        const needle = expectedJS.toLowerCase();
-        passed = haystack.includes(needle);
-        testResults.push({
-          test: `Code includes required JavaScript: ${expectedJS}`,
-          passed: passed,
-          actual: code.trim() || "(empty)",
-          expected: expectedJS,
-        });
-      } else if (question.testCriteria?.expectedCode) {
-        const pattern = question.testCriteria.expectedCode;
-        try {
-          const re = new RegExp(pattern, "i");
-          passed = re.test(code);
-        } catch {
-          const normalized = code
-            .toLowerCase()
-            .replace(/\s+/g, " ")
-            .trim();
-          const literal = pattern
-            .toLowerCase()
-            .replace(/\s+/g, " ")
-            .replace(/\\n/g, " ")
-            .trim();
-          passed = normalized.includes(literal);
-        }
-        testResults.push({
-          test: "Code matches the required pattern",
-          passed: passed,
-          actual: code.trim() || "(empty)",
-          expected: pattern,
-        });
-      } else if (question.testCriteria?.expectedFunction) {
-        // Test function
-        const testCode = `${code}; typeof ${question.testCriteria.expectedFunction} === 'function'`;
-        const funcExists = eval(testCode) as boolean;
-
-        if (!funcExists) {
-          // Function doesn't exist - fail immediately
-          passed = false;
-          testResults.push({
-            test: `Function '${question.testCriteria.expectedFunction}' exists`,
-            passed: false,
-          });
-        } else if (
-          question.testCriteria.testCases &&
-          question.testCriteria.testCases.length > 0
-        ) {
-          // Test function with test cases - initialize passed to true (all must pass)
-          passed = true;
-          question.testCriteria.testCases.forEach((testCase, index) => {
-            try {
-              const funcCall = `${question.testCriteria?.expectedFunction
-                }(${testCase.input
-                  .map((v: unknown) =>
-                    typeof v === "string" ? `"${v}"` : String(v)
-                  )
-                  .join(", ")})`;
-              const actualResult = eval(`${code}; ${funcCall}`);
-              const testPassed = actualResult === testCase.expected;
-              passed = passed && testPassed; // All tests must pass
-
-              testResults.push({
-                test: `Test case ${index + 1}: ${funcCall} === ${JSON.stringify(
-                  testCase.expected
-                )}`,
-                passed: testPassed,
-                actual: actualResult,
-                expected: testCase.expected,
-              });
-            } catch {
-              // Individual test case failed
-              passed = false;
-              testResults.push({
-                test: `Test case ${index + 1}: Execution error`,
-                passed: false,
-              });
-            }
-          });
-        } else {
-          // Function exists but no test cases - just check existence
-          passed = true;
-          testResults.push({
-            test: `Function '${question.testCriteria.expectedFunction}' exists`,
-            passed: true,
-          });
-        }
-      }
-
-      // Update results display
-      const displayResults = testResults.map((r) => {
-        if (r.passed) {
-          return `✅ PASS: ${r.test}`;
-        } else {
-          return `❌ FAIL: ${r.test}${r.actual !== undefined || r.expected !== undefined
-            ? ` (got: ${JSON.stringify(r.actual)}, expected: ${JSON.stringify(
-              r.expected
-            )})`
-            : ""
-            }`;
-        }
-      });
-
-      // If no test results were generated, add a generic failure
+      const displayResults = formatCodeTestResults(testResults);
       if (testResults.length === 0) {
         displayResults.push(
-          "⚠️ No test criteria matched - please check the question requirements"
+          "⚠️ No test criteria matched - please check the question requirements",
         );
-        testResults.push({
-          test: "Code test execution",
-          passed: false,
-        });
-        passed = false;
       }
 
       setResults(displayResults);

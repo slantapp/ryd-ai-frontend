@@ -30,6 +30,10 @@ import {
   formatRunOutput,
   runStudentJavaScript,
 } from "@/utils/runStudentCode";
+import {
+  evaluateCodeTest,
+  formatCodeTestResults,
+} from "@/utils/codeTestValidation";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
 
 type PreviewState = "upload" | "preview";
@@ -318,60 +322,75 @@ export default function CurriculumPreviewPage() {
     }
   }, [curriculum, currentLesson, stop, getNextLesson, speakLessonContent, speak]);
 
-  const handleRunCode = useCallback(() => {
-    const question = currentLesson?.questions[currentQuestionIndex];
-    const lang = getQuestionLanguage(question);
-
-    if (!canRunCodeLive(lang)) {
-      setResults([
-        `Live run is not available for ${lang} in the browser. Use Submit answer to check your code against the exercise rules.`,
-      ]);
-      return;
-    }
-
-    setResults(formatRunOutput(runStudentJavaScript(code)));
-  }, [code, currentLesson, currentQuestionIndex]);
-
-  const handleCodeSubmit = useCallback(() => {
-    if (!currentLesson) return;
+  /** Validate code against criteria without submitting the final answer. */
+  const handleCodeTest = useCallback(() => {
+    if (!currentLesson || isAnswerSubmitted) return;
 
     const question = currentLesson.questions[currentQuestionIndex];
     if (!question || question.type !== "code_test") return;
 
     const lang = getQuestionLanguage(question);
-    if (canRunCodeLive(lang)) {
-      handleRunCode();
+    const runOutput = canRunCodeLive(lang)
+      ? formatRunOutput(runStudentJavaScript(code))
+      : [];
+
+    try {
+      const { passed, testResults } = evaluateCodeTest(
+        code,
+        question.testCriteria,
+      );
+      const validationResults = formatCodeTestResults(testResults);
+      setResults([
+        ...runOutput,
+        ...validationResults,
+        passed
+          ? "✓ Test passed — submit when you are ready."
+          : "✗ Test failed. Check your code and try again.",
+      ]);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setResults([...runOutput, `⚠️ Error: ${errorMessage}`]);
     }
+  }, [currentLesson, currentQuestionIndex, code, isAnswerSubmitted]);
 
-    const criteria = question.testCriteria;
-    let passed = false;
+  const handleCodeSubmit = useCallback(() => {
+    if (!currentLesson || isAnswerSubmitted) return;
 
-    if (criteria?.expectedHTML) {
-      const normalizedCode = code.replace(/["']/g, "'").replace(/\s+/g, " ");
-      const normalizedExpected = criteria.expectedHTML.replace(/["']/g, "'").replace(/\s+/g, " ");
-      passed = normalizedCode.includes(normalizedExpected);
-    } else if (criteria?.expectedCSS) {
-      passed = code.replace(/\s+/g, " ").includes(criteria.expectedCSS.replace(/\s+/g, " "));
-    } else if (criteria?.expectedJS) {
-      passed = code.includes(criteria.expectedJS);
-    } else if (criteria?.expectedCode) {
-      const regex = new RegExp(criteria.expectedCode);
-      passed = regex.test(code);
-    } else {
-      passed = code.trim().length > 0;
+    const question = currentLesson.questions[currentQuestionIndex];
+    if (!question || question.type !== "code_test") return;
+
+    const lang = getQuestionLanguage(question);
+    const runOutput = canRunCodeLive(lang)
+      ? formatRunOutput(runStudentJavaScript(code))
+      : [];
+
+    try {
+      const { passed, testResults } = evaluateCodeTest(
+        code,
+        question.testCriteria,
+      );
+      setResults([
+        ...runOutput,
+        ...formatCodeTestResults(testResults),
+        passed ? "✓ Test passed!" : "✗ Test failed. Check your code and try again.",
+      ]);
+      setIsAnswerSubmitted(true);
+
+      if (passed) {
+        const feedbackText = `Correct! Well done. ${question.explanation || ""}`;
+        speak(feedbackText);
+      } else {
+        speak("That's not quite right. Check your code and try again.");
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setResults([...runOutput, `⚠️ Error: ${errorMessage}`]);
+      setIsAnswerSubmitted(true);
+      speak(`There was an error running your code: ${errorMessage}`);
     }
-
-    setIsAnswerSubmitted(true);
-
-    if (passed) {
-      setResults((prev) => [...prev, "✓ Test passed!"]);
-      const feedbackText = `Correct! Well done. ${question.explanation || ""}`;
-      speak(feedbackText);
-    } else {
-      setResults((prev) => [...prev, "✗ Test failed. Check your code and try again."]);
-      speak("That's not quite right. Check your code and try again.");
-    }
-  }, [currentLesson, currentQuestionIndex, code, handleRunCode, speak]);
+  }, [currentLesson, currentQuestionIndex, code, isAnswerSubmitted, speak]);
 
   const handleBackToUpload = useCallback(() => {
     stop();
@@ -658,7 +677,7 @@ export default function CurriculumPreviewPage() {
                           code={code}
                           onCodeChange={setCode}
                           onTestCode={handleCodeSubmit}
-                          onTryOut={handleRunCode}
+                          onTryOut={handleCodeTest}
                           language={getQuestionLanguage(currentQuestion)}
                           onToggleFullscreen={() =>
                             setFullscreen(
@@ -666,7 +685,7 @@ export default function CurriculumPreviewPage() {
                             )
                           }
                           isFullscreen={fullscreen === "editor"}
-                          canTest={!isAnswerSubmitted}
+                          canTest={!isAnswerSubmitted && code.trim().length > 0}
                           canSubmit={
                             code.trim().length > 0 && !isAnswerSubmitted
                           }

@@ -33,6 +33,10 @@ import {
   formatRunOutput,
   runStudentJavaScript,
 } from "@/utils/runStudentCode";
+import {
+  evaluateCodeTest,
+  formatCodeTestResults,
+} from "@/utils/codeTestValidation";
 import { prefetchMonacoEditor } from "./exercise/MonacoEditorLazy";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
 
@@ -1139,214 +1143,51 @@ function CourseDetailInner() {
     speak(feedbackText, { type: "next_question" });
   }, [isAnswerSubmitted, selectedAnswer, currentQuestion, speak]);
 
-  /** Run code without checking the answer – e.g. during explanation or when code is cleared. Just executes and shows success/error. */
-  const handleRunCodeTryOut = useCallback(() => {
-    const lang =
-      currentQuestion?.type === "code_test"
-        ? currentQuestion.code_example?.language
-        : undefined;
-
-    if (!canRunCodeLive(lang)) {
-      setResults([
-        `Live run is not available for ${lang || "this language"} in the browser. Use Submit answer to check your code against the exercise rules.`,
-      ]);
-      return;
-    }
-
-    setResults(formatRunOutput(runStudentJavaScript(code || "")));
-  }, [code, currentQuestion]);
-
-  /** Deep equality for test results - handles primitives, arrays, and objects */
-  const valuesEqual = useCallback((a: unknown, b: unknown): boolean => {
-    if (a === b) return true;
-    if (a === null || b === null) return a === b;
-    if (typeof a === "number" && typeof b === "number" && Number.isNaN(a) && Number.isNaN(b))
-      return true;
-    if (typeof a === "object" && typeof b === "object")
-      return JSON.stringify(a) === JSON.stringify(b);
-    return false;
-  }, []);
-
-  const handleCodeTest = useCallback(() => {
+  /** Check code against test criteria without recording a final answer. */
+  const handleTryCodeTest = useCallback(() => {
     if (!currentQuestion || currentQuestion.type !== "code_test") return;
 
-    let passed = false;
-    const testResults: Array<{
-      test: string;
-      passed: boolean;
-      actual?: unknown;
-      expected?: unknown;
-    }> = [];
+    const lang = currentQuestion.code_example?.language;
+    const runOutput = canRunCodeLive(lang)
+      ? formatRunOutput(runStudentJavaScript(code || ""))
+      : [];
 
     try {
-      const criteria = currentQuestion.testCriteria;
-
-      if (criteria?.expectedVariable && criteria.expectedValues) {
-        const testCode = `${code}; Array.isArray(${criteria.expectedVariable})`;
-        const isArray = eval(testCode) as boolean;
-        if (isArray) {
-          const actualArray = eval(`${code}; ${criteria.expectedVariable}`);
-          passed =
-            JSON.stringify(actualArray) ===
-            JSON.stringify(criteria.expectedValues);
-          testResults.push({
-            test: `Array '${criteria.expectedVariable}' matches expected values`,
-            passed,
-            actual: actualArray,
-            expected: criteria.expectedValues,
-          });
-        }
-      } else if (criteria?.expectedVariable) {
-        const varExists = eval(
-          `${code}; typeof ${criteria.expectedVariable} !== 'undefined'`
-        ) as boolean;
-        if (varExists && criteria.expectedValue !== undefined) {
-          const actualValue = eval(`${code}; ${criteria.expectedVariable}`);
-          passed = valuesEqual(actualValue, criteria.expectedValue);
-          testResults.push({
-            test: `Variable '${criteria.expectedVariable}' has value '${criteria.expectedValue}'`,
-            passed,
-            actual: actualValue,
-            expected: criteria.expectedValue,
-          });
-        } else {
-          passed = varExists;
-          testResults.push({
-            test: `Variable '${criteria.expectedVariable}' exists`,
-            passed,
-          });
-        }
-      } else if (criteria?.expectedHTML) {
-        const normalizedExpected = criteria.expectedHTML
-          .toLowerCase()
-          .replace(/\s+/g, " ")
-          .replace(/'/g, '"')
-          .trim();
-        const normalizedCode = code
-          .toLowerCase()
-          .replace(/\s+/g, " ")
-          .replace(/'/g, '"')
-          .trim();
-        passed = normalizedCode.includes(normalizedExpected);
-        testResults.push({
-          test: `Code contains expected HTML: ${criteria.expectedHTML}`,
-          passed,
-          actual: code.trim() || "(empty)",
-          expected: criteria.expectedHTML,
-        });
-      } else if (criteria?.expectedCSS) {
-        const normalizedExpected = criteria.expectedCSS
-          .toLowerCase()
-          .replace(/\s+/g, " ")
-          .replace(/'/g, '"')
-          .trim();
-        const normalizedCode = code
-          .toLowerCase()
-          .replace(/\s+/g, " ")
-          .replace(/'/g, '"')
-          .trim();
-        passed = normalizedCode.includes(normalizedExpected);
-        testResults.push({
-          test: `Code contains expected CSS: ${criteria.expectedCSS}`,
-          passed,
-          actual: code.trim() || "(empty)",
-          expected: criteria.expectedCSS,
-        });
-      } else if (criteria?.expectedJS) {
-        const haystack = code.toLowerCase();
-        const needle = criteria.expectedJS.toLowerCase();
-        passed = haystack.includes(needle);
-        testResults.push({
-          test: `Code includes required JavaScript: ${criteria.expectedJS}`,
-          passed,
-          actual: code.trim() || "(empty)",
-          expected: criteria.expectedJS,
-        });
-      } else if (criteria?.expectedCode) {
-        try {
-          const re = new RegExp(criteria.expectedCode, "i");
-          passed = re.test(code);
-        } catch {
-          const normalized = code
-            .toLowerCase()
-            .replace(/\s+/g, " ")
-            .trim();
-          const literal = criteria.expectedCode
-            .toLowerCase()
-            .replace(/\s+/g, " ")
-            .replace(/\\n/g, " ")
-            .trim();
-          passed = normalized.includes(literal);
-        }
-        testResults.push({
-          test: "Code matches the required pattern",
-          passed,
-          actual: code.trim() || "(empty)",
-          expected: criteria.expectedCode,
-        });
-      } else if (criteria?.expectedFunction) {
-        const funcExists = eval(
-          `${code}; typeof ${criteria.expectedFunction} === 'function'`
-        ) as boolean;
-        if (!funcExists) {
-          testResults.push({
-            test: `Function '${criteria.expectedFunction}' exists`,
-            passed: false,
-          });
-        } else if (criteria.testCases?.length) {
-          passed = true;
-          criteria.testCases.forEach((testCase, index) => {
-            try {
-              const funcCall = `${criteria.expectedFunction}(${testCase.input
-                .map((v: unknown) =>
-                  typeof v === "string" ? `"${v}"` : String(v)
-                )
-                .join(", ")})`;
-              const actualResult = eval(`${code}; ${funcCall}`);
-              const testPassed = valuesEqual(actualResult, testCase.expected);
-              passed = passed && testPassed;
-              testResults.push({
-                test: `Test case ${index + 1}: ${funcCall} === ${JSON.stringify(
-                  testCase.expected
-                )}`,
-                passed: testPassed,
-                actual: actualResult,
-                expected: testCase.expected,
-              });
-            } catch {
-              passed = false;
-              testResults.push({
-                test: `Test case ${index + 1}: Execution error`,
-                passed: false,
-              });
-            }
-          });
-        } else {
-          passed = true;
-          testResults.push({
-            test: `Function '${criteria.expectedFunction}' exists`,
-            passed: true,
-          });
-        }
-      }
-
-      if (testResults.length === 0) {
-        testResults.push({ test: "Code test execution", passed: false });
-        passed = false;
-      }
-
-      const displayResults = testResults.map((r) =>
-        r.passed
-          ? `✅ PASS: ${r.test}`
-          : `❌ FAIL: ${r.test}${r.actual !== undefined
-            ? ` (got: ${JSON.stringify(
-              r.actual
-            )}, expected: ${JSON.stringify(r.expected)})`
-            : ""
-          }`
+      const { passed, testResults } = evaluateCodeTest(
+        code,
+        currentQuestion.testCriteria,
       );
+      const displayResults = formatCodeTestResults(testResults);
+      setResults([
+        ...runOutput,
+        ...displayResults,
+        passed
+          ? "✓ Tests passed — you can submit when ready."
+          : "✗ Tests failed — adjust your code and test again.",
+      ]);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setResults([...runOutput, `⚠️ Error: ${errorMessage}`]);
+    }
+  }, [currentQuestion, code]);
 
-      setResults(displayResults);
+  const handleSubmitCodeAnswer = useCallback(() => {
+    if (!currentQuestion || currentQuestion.type !== "code_test") return;
+    if (isAnswerSubmitted) return;
+
+    const lang = currentQuestion.code_example?.language;
+    const runOutput = canRunCodeLive(lang)
+      ? formatRunOutput(runStudentJavaScript(code || ""))
+      : [];
+
+    try {
+      const { passed, testResults } = evaluateCodeTest(
+        code,
+        currentQuestion.testCriteria,
+      );
+      setResults([...runOutput, ...formatCodeTestResults(testResults)]);
+      setIsAnswerSubmitted(true);
 
       const passedCount = testResults.filter((r) => r.passed).length;
       const totalCount = testResults.length;
@@ -1354,7 +1195,6 @@ function CourseDetailInner() {
         ? `Excellent! You passed this coding test. ${passedCount} out of ${totalCount} tests correct. ${currentQuestion.explanation || ""}`
         : `You failed this coding test. ${passedCount} out of ${totalCount} tests passed. ${currentQuestion.explanation || ""}`;
 
-      // Track the answer result (code test is considered correct if all tests passed)
       setTotalQuestionsAnswered((prev) => prev + 1);
       if (passed) {
         setCorrectAnswersCount((prev) => prev + 1);
@@ -1364,16 +1204,15 @@ function CourseDetailInner() {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      setResults([`⚠️ Error: ${errorMessage}`]);
-
-      // Track the answer result (code test with error is considered incorrect)
+      setResults([...runOutput, `⚠️ Error: ${errorMessage}`]);
+      setIsAnswerSubmitted(true);
       setTotalQuestionsAnswered((prev) => prev + 1);
 
       speak(`There was an error running your code: ${errorMessage}`, {
         type: "next_question",
       });
     }
-  }, [currentQuestion, code, speak, valuesEqual]);
+  }, [currentQuestion, code, speak, isAnswerSubmitted]);
 
   // ============================================================================
   // EFFECTS
@@ -1399,55 +1238,55 @@ function CourseDetailInner() {
       }
 
       const saved: CourseProgress = {
-      lessonId: stored.currentLessonId ?? null,
-      lessonIndex: typeof stored.lessonIndex === "number" ? stored.lessonIndex : undefined,
-      questionIndex: typeof stored.questionIndex === "number" ? stored.questionIndex : 0,
-      lessonStarted: stored.lessonStarted ?? false,
-      canStartQuestions: stored.canStartQuestions ?? false,
-      lastUpdated: typeof stored.lastUpdated === "number" ? stored.lastUpdated : 0,
-    };
-    // Prefer lessonIndex (position in curriculum) so we restore the correct lesson when IDs repeat across modules
-    const lesson =
-      typeof saved?.lessonIndex === "number"
-        ? getLessonByIndex(saved.lessonIndex, curriculum)
-        : saved?.lessonId
-          ? findLessonById(saved.lessonId, curriculum)
-          : null;
-    if (lesson && saved) {
-      setCurrentLesson(lesson);
-      setCurrentQuestionIndex(saved.questionIndex ?? 0);
-      setLessonStarted(saved.lessonStarted ?? false);
-      setCanStartQuestions(saved.canStartQuestions ?? false);
+        lessonId: stored.currentLessonId ?? null,
+        lessonIndex: typeof stored.lessonIndex === "number" ? stored.lessonIndex : undefined,
+        questionIndex: typeof stored.questionIndex === "number" ? stored.questionIndex : 0,
+        lessonStarted: stored.lessonStarted ?? false,
+        canStartQuestions: stored.canStartQuestions ?? false,
+        lastUpdated: typeof stored.lastUpdated === "number" ? stored.lastUpdated : 0,
+      };
+      // Prefer lessonIndex (position in curriculum) so we restore the correct lesson when IDs repeat across modules
+      const lesson =
+        typeof saved?.lessonIndex === "number"
+          ? getLessonByIndex(saved.lessonIndex, curriculum)
+          : saved?.lessonId
+            ? findLessonById(saved.lessonId, curriculum)
+            : null;
+      if (lesson && saved) {
+        setCurrentLesson(lesson);
+        setCurrentQuestionIndex(saved.questionIndex ?? 0);
+        setLessonStarted(saved.lessonStarted ?? false);
+        setCanStartQuestions(saved.canStartQuestions ?? false);
 
-      const questionCount = lesson.questions?.length ?? 0;
-      const allQuestionsDone = questionCount > 0 && (saved.questionIndex ?? 0) >= questionCount;
+        const questionCount = lesson.questions?.length ?? 0;
+        const allQuestionsDone = questionCount > 0 && (saved.questionIndex ?? 0) >= questionCount;
 
-      const hasPrevLesson = !!getPreviousLessonInOrder(lesson, curriculum);
-      const questionIndex = saved.questionIndex ?? 0;
+        const hasPrevLesson = !!getPreviousLessonInOrder(lesson, curriculum);
+        const questionIndex = saved.questionIndex ?? 0;
 
-      if (allQuestionsDone) {
-        // Restore "lesson completed" state: no current question, enable Next/Previous Lesson
-        setCurrentQuestion(null);
-        if (getNextLessonInOrder(lesson, curriculum)) {
-          setCanNextLesson(true);
+        if (allQuestionsDone) {
+          // Restore "lesson completed" state: no current question, enable Next/Previous Lesson
+          setCurrentQuestion(null);
+          if (getNextLessonInOrder(lesson, curriculum)) {
+            setCanNextLesson(true);
+          }
+          setCanPreviousLesson(hasPrevLesson);
+          setCanPrevious(hasPrevLesson); // No current question, can only go to prev lesson
+        } else if (
+          questionIndex >= 0 &&
+          lesson.questions?.[questionIndex]
+        ) {
+          setCurrentQuestion(lesson.questions[questionIndex]);
+          // Enable Previous when restoring to lesson mid-flow
+          setCanPreviousLesson(hasPrevLesson);
+          // Can go to previous question if not on first question, or to previous lesson
+          setCanPrevious(questionIndex > 0 || hasPrevLesson);
+        } else {
+          // Restored at start of lesson (no current question yet) - enable Previous if applicable
+          setCanPreviousLesson(hasPrevLesson);
+          setCanPrevious(hasPrevLesson);
         }
-        setCanPreviousLesson(hasPrevLesson);
-        setCanPrevious(hasPrevLesson); // No current question, can only go to prev lesson
-      } else if (
-        questionIndex >= 0 &&
-        lesson.questions?.[questionIndex]
-      ) {
-        setCurrentQuestion(lesson.questions[questionIndex]);
-        // Enable Previous when restoring to lesson mid-flow
-        setCanPreviousLesson(hasPrevLesson);
-        // Can go to previous question if not on first question, or to previous lesson
-        setCanPrevious(questionIndex > 0 || hasPrevLesson);
-      } else {
-        // Restored at start of lesson (no current question yet) - enable Previous if applicable
-        setCanPreviousLesson(hasPrevLesson);
-        setCanPrevious(hasPrevLesson);
       }
-    }
     })();
 
     return () => {
@@ -1821,8 +1660,8 @@ function CourseDetailInner() {
                   <CodeEditor
                     code={code}
                     onCodeChange={setCode}
-                    onTestCode={handleCodeTest}
-                    onTryOut={handleRunCodeTryOut}
+                    onTestCode={handleSubmitCodeAnswer}
+                    onTryOut={handleTryCodeTest}
                     language={
                       currentQuestion?.type === "code_test"
                         ? currentQuestion.code_example?.language
@@ -1834,7 +1673,7 @@ function CourseDetailInner() {
                       )
                     }
                     isFullscreen={fullscreen === "editor"}
-                    canTest={!!currentQuestion}
+                    canTest={!!currentQuestion && !isAnswerSubmitted}
                     canSubmit={
                       !!currentQuestion &&
                       !!code.trim() &&

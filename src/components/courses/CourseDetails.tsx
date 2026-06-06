@@ -6,6 +6,7 @@ import { Volume2, RotateCcw, Mic, Play } from "lucide-react";
 import {
   type Question,
   type Lesson,
+  type CodeExample,
   findLessonById,
   getFirstLesson,
   getCurriculumBySlug,
@@ -121,7 +122,13 @@ type PendingAction =
   | { type: "show_completion" }
   | { type: "ask_question"; question: Question }
   | { type: "clear_code_and_ask"; question: Question }
-  | { type: "wait_then_clear_and_ask"; question: Question };
+  | { type: "wait_then_clear_and_ask"; question: Question }
+  | { type: "start_lesson_code_demo"; lesson: Lesson }
+  | {
+      type: "lesson_code_outro";
+      hasQuestions: boolean;
+      hasNextLesson: boolean;
+    };
 
 // ============================================================================
 // MAIN COMPONENT
@@ -164,6 +171,7 @@ function CourseDetailInner() {
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [lessonStarted, setLessonStarted] = useState(false);
+  const [isLessonCodeDemoActive, setIsLessonCodeDemoActive] = useState(false);
 
   // UI control state
   const [canStartQuestions, setCanStartQuestions] = useState(false);
@@ -209,16 +217,23 @@ function CourseDetailInner() {
     ? getCurriculumBySlug(exercise)?.curriculum || null
     : null;
   const isCodeTestQuestionActive = isCodeTestQuestion(currentQuestion);
+  const showCodePanel = isCodeTestQuestionActive || isLessonCodeDemoActive;
+  const codePanelLanguage =
+    (isCodeTestQuestionActive
+      ? currentQuestion?.code_example?.language
+      : currentLesson?.code_example?.language) || "javascript";
   const isLgUp = useMediaQueryMinLg();
 
   useEffect(() => {
     if (!curriculum) return;
-    const hasCodeTests = curriculum.modules.some((mod) =>
-      mod.lessons.some((les) =>
-        les.questions.some((q) => q.type === "code_test"),
+    const hasCodeExamples = curriculum.modules.some((mod) =>
+      mod.lessons.some(
+        (les) =>
+          !!les.code_example ||
+          les.questions.some((q) => q.type === "code_test"),
       ),
     );
-    if (hasCodeTests) prefetchMonacoEditor();
+    if (hasCodeExamples) prefetchMonacoEditor();
   }, [curriculum]);
 
   // ============================================================================
@@ -310,6 +325,7 @@ function CourseDetailInner() {
 
       pendingSpeechQueueRef.current = [];
       setShowMobileAudioUnlock(false);
+      setIsLessonCodeDemoActive(false);
 
       isManuallyStopped.current = true;
       stopAvatarSpeech(getAvatar());
@@ -334,88 +350,8 @@ function CourseDetailInner() {
   }, []);
 
   // ============================================================================
-  // CODE EXAMPLE TYPING (for teaching code before questions)
+  // CODE EXAMPLE TYPING (lesson demos + question teaching)
   // ============================================================================
-
-  const typeCourseDetail = useCallback(
-    (
-      CourseDetail: { code: string; description?: string; explanation?: string },
-      question: Question
-    ) => {
-      // Clear any existing typing
-      if (codeTypingTimeoutRef.current) {
-        clearTimeout(codeTypingTimeoutRef.current);
-        codeTypingTimeoutRef.current = null;
-      }
-
-      isTypingCodeRef.current = true;
-      setCode("");
-      setResults([]);
-
-      const codeToType = CourseDetail.code;
-      const typingSpeed = 30; // ms per character
-      let currentIndex = 0;
-
-      // First, speak the description if available
-      if (CourseDetail.description) {
-        speak(CourseDetail.description);
-      }
-
-      // Start typing after a short delay (to let speech begin)
-      const startTyping = () => {
-        const typeNextChar = () => {
-          if (!isTypingCodeRef.current) return; // Stop if cancelled
-
-          if (currentIndex < codeToType.length) {
-            setCode(codeToType.substring(0, currentIndex + 1));
-            currentIndex++;
-            codeTypingTimeoutRef.current = setTimeout(
-              typeNextChar,
-              typingSpeed
-            );
-          } else {
-            // Typing complete
-            isTypingCodeRef.current = false;
-            console.log("Typing complete", CourseDetail);
-
-            // After typing, speak the explanation if available
-            // The explanation teaches what the code does - student sees code while listening
-            if (CourseDetail.explanation) {
-              // Wait a moment for the code to be fully visible before explaining
-              setTimeout(() => {
-                // Speak the explanation - when done, we'll wait a bit, then clear and ask
-                speak(CourseDetail.explanation!, {
-                  type: "wait_then_clear_and_ask",
-                  question,
-                });
-              }, 800);
-            } else {
-              // No explanation, just announce we're clearing and ask the question
-              setTimeout(() => {
-                speak(
-                  "Now it's your turn! I've cleared the example. Try solving the problem yourself.",
-                  { type: "clear_code_and_ask", question }
-                );
-              }, 1500);
-            }
-          }
-        };
-
-        codeTypingTimeoutRef.current = setTimeout(typeNextChar, 500);
-      };
-
-      // Start typing after description speech delay (estimate)
-      const descriptionDelay = CourseDetail.description
-        ? Math.max(
-          2000,
-          (CourseDetail.description.split(/\s+/).length / 2.5) * 1000
-        )
-        : 500;
-
-      setTimeout(startTyping, descriptionDelay);
-    },
-    [speak]
-  );
 
   const stopCodeTyping = useCallback(() => {
     isTypingCodeRef.current = false;
@@ -424,6 +360,136 @@ function CourseDetailInner() {
       codeTypingTimeoutRef.current = null;
     }
   }, []);
+
+  const speakLessonCodeOutro = useCallback(
+    (hasQuestions: boolean, hasNextLesson: boolean) => {
+      setIsLessonCodeDemoActive(false);
+      setCode("");
+      setResults([]);
+
+      if (hasQuestions) {
+        speak(
+          "Great! Now let's test your understanding with some questions. Click 'Start Questions' when you're ready.",
+          { type: "enable_start_questions" },
+        );
+      } else if (hasNextLesson) {
+        speak(
+          "You've completed this lesson! Click 'Next Lesson' to continue.",
+          { type: "enable_next_lesson" },
+        );
+      } else {
+        speak(
+          "Congratulations! You've completed all lessons in this module.",
+          { type: "show_completion" },
+        );
+      }
+    },
+    [speak],
+  );
+
+  const runCodeExampleTyping = useCallback(
+    (
+      example: CodeExample,
+      onTypingComplete: () => void,
+    ) => {
+      stopCodeTyping();
+      isTypingCodeRef.current = true;
+      setCode("");
+      setResults([]);
+
+      const codeToType = example.code;
+      const typingSpeed = example.typingSpeed ?? 30;
+      let currentIndex = 0;
+
+      const startTyping = () => {
+        const typeNextChar = () => {
+          if (!isTypingCodeRef.current) return;
+
+          if (currentIndex < codeToType.length) {
+            setCode(codeToType.substring(0, currentIndex + 1));
+            currentIndex++;
+            codeTypingTimeoutRef.current = setTimeout(
+              typeNextChar,
+              typingSpeed,
+            );
+          } else {
+            isTypingCodeRef.current = false;
+            onTypingComplete();
+          }
+        };
+
+        codeTypingTimeoutRef.current = setTimeout(typeNextChar, 500);
+      };
+
+      const descriptionDelay = example.description
+        ? Math.max(
+            2000,
+            (example.description.split(/\s+/).length / 2.5) * 1000,
+          )
+        : 500;
+
+      setTimeout(startTyping, descriptionDelay);
+    },
+    [stopCodeTyping],
+  );
+
+  const playLessonCodeExample = useCallback(
+    (example: CodeExample, lesson: Lesson) => {
+      setIsLessonCodeDemoActive(true);
+      setCanStartQuestions(false);
+
+      const hasQuestions = (lesson.questions?.length ?? 0) > 0;
+      const hasNextLesson = !!lesson.next_lesson_id;
+
+      if (example.description) {
+        speak(example.description);
+      }
+
+      runCodeExampleTyping(example, () => {
+        if (example.explanation) {
+          setTimeout(() => {
+            speak(example.explanation!, {
+              type: "lesson_code_outro",
+              hasQuestions,
+              hasNextLesson,
+            });
+          }, 800);
+        } else {
+          speakLessonCodeOutro(hasQuestions, hasNextLesson);
+        }
+      });
+    },
+    [runCodeExampleTyping, speak, speakLessonCodeOutro],
+  );
+
+  const typeCourseDetail = useCallback(
+    (example: CodeExample, question: Question) => {
+      setIsLessonCodeDemoActive(false);
+
+      if (example.description) {
+        speak(example.description);
+      }
+
+      runCodeExampleTyping(example, () => {
+        if (example.explanation) {
+          setTimeout(() => {
+            speak(example.explanation!, {
+              type: "wait_then_clear_and_ask",
+              question,
+            });
+          }, 800);
+        } else {
+          setTimeout(() => {
+            speak(
+              "Now it's your turn! I've cleared the example. Try solving the problem yourself.",
+              { type: "clear_code_and_ask", question },
+            );
+          }, 1500);
+        }
+      });
+    },
+    [runCodeExampleTyping, speak],
+  );
 
   // ============================================================================
   // PROGRESS HELPERS
@@ -549,13 +615,32 @@ function CourseDetailInner() {
           );
         }, 1500); // 1.5 second pause after explanation before clearing
         break;
+      case "start_lesson_code_demo":
+        if (action.lesson.code_example) {
+          playLessonCodeExample(action.lesson.code_example, action.lesson);
+        } else {
+          speakLessonCodeOutro(
+            (action.lesson.questions?.length ?? 0) > 0,
+            !!action.lesson.next_lesson_id,
+          );
+        }
+        break;
+      case "lesson_code_outro":
+        speakLessonCodeOutro(action.hasQuestions, action.hasNextLesson);
+        break;
       default:
         break;
     }
 
     // Continue any speech queued before avatar was ready (multi-chunk flush)
     flushNextQueuedSpeech();
-  }, [speak, stopSubtitles, flushNextQueuedSpeech]);
+  }, [
+    speak,
+    stopSubtitles,
+    flushNextQueuedSpeech,
+    playLessonCodeExample,
+    speakLessonCodeOutro,
+  ]);
 
   const handleSpeechEnd = useCallback(() => {
     // Ignore if manually stopped
@@ -734,30 +819,36 @@ function CourseDetailInner() {
   // ============================================================================
 
   const speakLessonContent = useCallback(
-    (lesson: Lesson, onComplete: () => void) => {
-      // Combine all lesson content into one speech
+    (lesson: Lesson, onComplete?: () => void) => {
       const parts: string[] = [];
-
-      // Add a teacher-like introduction with the lesson title
       const intro = `Welcome! In this lesson, you will be learning about ${lesson.title}.`;
       parts.push(intro);
 
       if (lesson.body) parts.push(lesson.body);
       if (lesson.avatar_script) parts.push(lesson.avatar_script);
 
-      const fullText = parts.join(" ");
+      const introText = parts.join(" ");
+      const hasQuestions = (lesson.questions?.length ?? 0) > 0;
 
-      if (fullText) {
-        // Set pending action based on what happens after lesson content
-        const hasQuestions = lesson.questions && lesson.questions.length > 0;
+      if (lesson.code_example) {
+        setIsLessonCodeDemoActive(false);
+        setCanStartQuestions(false);
+        if (introText) {
+          speak(introText, { type: "start_lesson_code_demo", lesson });
+        } else {
+          playLessonCodeExample(lesson.code_example, lesson);
+        }
+        return;
+      }
+
+      if (introText) {
         const action: PendingAction = hasQuestions
           ? { type: "enable_start_questions" }
           : lesson.next_lesson_id
             ? { type: "enable_next_lesson" }
             : { type: "show_completion" };
 
-        // Add transition message
-        let finalText = fullText;
+        let finalText = introText;
         if (hasQuestions) {
           finalText +=
             " Great! Now let's test your understanding with some questions. Click 'Start Questions' when you're ready.";
@@ -771,10 +862,10 @@ function CourseDetailInner() {
 
         speak(finalText, action);
       } else {
-        onComplete();
+        onComplete?.();
       }
     },
-    [speak]
+    [playLessonCodeExample, speak],
   );
 
   const handleStartLesson = useCallback(() => {
@@ -873,6 +964,7 @@ function CourseDetailInner() {
     setCanPrevious(false);
     setCode("");
     setResults([]);
+    setIsLessonCodeDemoActive(false);
 
     // Reset answer tracking for new lesson
     setCorrectAnswersCount(0);
@@ -982,6 +1074,7 @@ function CourseDetailInner() {
 
     stopSpeaking();
     stopCodeTyping();
+    setIsLessonCodeDemoActive(false);
     setCanStartQuestions(false);
 
     const question = currentLesson.questions[0];
@@ -1051,6 +1144,7 @@ function CourseDetailInner() {
     setCanPrevious(false);
     setCode("");
     setResults([]);
+    setIsLessonCodeDemoActive(false);
 
     // Reset answer tracking for new lesson
     setCorrectAnswersCount(0);
@@ -1316,7 +1410,7 @@ function CourseDetailInner() {
     avatarReadyRef.current = false;
     pendingSpeechQueueRef.current = [];
     setShowMobileAudioUnlock(false);
-  }, [exercise, isLgUp, isCodeTestQuestionActive]);
+  }, [exercise, isLgUp, showCodePanel]);
 
   // Sync progress to store when lesson/question changes
   useEffect(() => {
@@ -1630,7 +1724,7 @@ function CourseDetailInner() {
                 </div>
               )}
               {/* Lesson controls / code question info — hidden until lesson starts (start lives in main content) */}
-              {(lessonStarted || currentQuestion?.type === "code_test") && (
+              {(lessonStarted || isLessonCodeDemoActive || currentQuestion?.type === "code_test") && (
                 <div className="px-3 pb-3">
                   {lessonChromePanel}
                 </div>
@@ -1639,8 +1733,23 @@ function CourseDetailInner() {
           )}
 
           <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
-            {isCodeTestQuestionActive ? (
+            {showCodePanel ? (
               <div className="flex min-h-0 h-full w-full flex-1 flex-col">
+                {isLessonCodeDemoActive && currentLesson && (
+                  <div className="border-b border-primary/10 bg-white/90 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
+                      Code example
+                    </p>
+                    <h3 className="font-solway text-lg font-bold text-gray-900">
+                      {currentLesson.title}
+                    </h3>
+                    {currentLesson.code_example?.description && (
+                      <p className="mt-1 text-sm text-gray-600">
+                        {currentLesson.code_example.description}
+                      </p>
+                    )}
+                  </div>
+                )}
                 <Split
                   direction="vertical"
                   className="flex flex-col h-full w-full"
@@ -1661,20 +1770,23 @@ function CourseDetailInner() {
                     code={code}
                     onCodeChange={setCode}
                     onTestCode={handleSubmitCodeAnswer}
-                    onTryOut={handleTryCodeTest}
-                    language={
-                      currentQuestion?.type === "code_test"
-                        ? currentQuestion.code_example?.language
-                        : "javascript"
+                    onTryOut={
+                      isLessonCodeDemoActive ? undefined : handleTryCodeTest
                     }
+                    language={codePanelLanguage}
                     onToggleFullscreen={() =>
                       setFullscreen(
                         fullscreen === "editor" ? null : "editor",
                       )
                     }
                     isFullscreen={fullscreen === "editor"}
-                    canTest={!!currentQuestion && !isAnswerSubmitted}
+                    canTest={
+                      !isLessonCodeDemoActive &&
+                      !!currentQuestion &&
+                      !isAnswerSubmitted
+                    }
                     canSubmit={
+                      !isLessonCodeDemoActive &&
                       !!currentQuestion &&
                       !!code.trim() &&
                       !isSpeaking &&
@@ -1976,7 +2088,7 @@ function CourseDetailInner() {
       </Split>
 
       {/* Fullscreen Overlay */}
-      {fullscreen && isCodeTestQuestionActive && (
+      {fullscreen && showCodePanel && (
         <FullscreenModal
           type={fullscreen}
           code={code}

@@ -17,6 +17,46 @@ interface FileUploaderProps {
   handoffName?: string;
 }
 
+function validateCodeExampleField(
+  value: unknown,
+  label: string,
+  errors: string[],
+): void {
+  if (!value || typeof value !== "object") {
+    errors.push(`${label}: 'code_example' must be an object`);
+    return;
+  }
+
+  const ex = value as Record<string, unknown>;
+
+  if (!ex.code || typeof ex.code !== "string") {
+    errors.push(`${label}: code_example requires a 'code' string`);
+  }
+
+  if (!ex.language || typeof ex.language !== "string") {
+    errors.push(`${label}: code_example requires a 'language' string`);
+  }
+
+  if (ex.description !== undefined && typeof ex.description !== "string") {
+    errors.push(`${label}: code_example 'description' must be a string`);
+  }
+
+  if (ex.explanation !== undefined && typeof ex.explanation !== "string") {
+    errors.push(`${label}: code_example 'explanation' must be a string`);
+  }
+
+  if (ex.autoRun !== undefined && typeof ex.autoRun !== "boolean") {
+    errors.push(`${label}: code_example 'autoRun' must be a boolean`);
+  }
+
+  if (
+    ex.typingSpeed !== undefined &&
+    (typeof ex.typingSpeed !== "number" || !Number.isFinite(ex.typingSpeed))
+  ) {
+    errors.push(`${label}: code_example 'typingSpeed' must be a number`);
+  }
+}
+
 function validateCurriculum(data: unknown): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -145,9 +185,17 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
       }
 
       if (les.code_example) {
-        errors.push(
-          `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: remove 'code_example' from the lesson — use it only on code_test questions`,
-        );
+        if (curriculumData.category === "mathematics") {
+          errors.push(
+            `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: code_example is not supported in mathematics curricula`,
+          );
+        } else {
+          validateCodeExampleField(
+            les.code_example,
+            `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}`,
+            errors,
+          );
+        }
       }
 
       if (les.formula_example) {
@@ -175,8 +223,12 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
 
         if (qType !== "code_test" && q.code_example) {
           errors.push(
-            `${label}: 'code_example' is only allowed on code_test questions`,
+            `${label}: 'code_example' is only allowed on code_test questions or at the lesson level`,
           );
+        }
+
+        if (qType === "code_test" && q.code_example) {
+          validateCodeExampleField(q.code_example, label, errors);
         }
 
         if (qType === "formula_test") {
@@ -509,8 +561,8 @@ export function FileUploader({
                 <h3 className="font-semibold text-gray-800">Coding template</h3>
               </div>
               <p className="mb-4 text-sm text-gray-600">
-                Starter for coding courses: multiple choice, true/false, and code
-                tests. Set category to coding.
+                Starter for coding courses: lesson code examples, multiple
+                choice, true/false, and code tests. Set category to coding.
               </p>
               <button
                 type="button"

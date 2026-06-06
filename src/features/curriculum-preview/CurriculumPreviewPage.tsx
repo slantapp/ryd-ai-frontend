@@ -23,7 +23,7 @@ import CodeEditor from "@/components/courses/exercise/CodeEditor";
 import TestResults from "@/components/courses/exercise/TestResults";
 import FullscreenModal from "@/components/courses/exercise/FullscreenModal";
 import { decodeHandoffSegment, uploadCurriculumFile } from "./handoff";
-import type { CurriculumData, Lesson, Question } from "./types";
+import type { CurriculumData, Lesson, Question, CodeExample } from "./types";
 import { isMathematicsPreview } from "./types";
 import {
   canRunCodeLive,
@@ -58,10 +58,16 @@ export default function CurriculumPreviewPage() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [currentSubtitleText, setCurrentSubtitleText] = useState("");
   const [canStartQuestions, setCanStartQuestions] = useState(false);
+  const [isLessonCodeDemo, setIsLessonCodeDemo] = useState(false);
   const [fullscreen, setFullscreen] = useState<"editor" | "results" | null>(
     null,
   );
   const lessonStartedRef = useRef(false);
+  const afterSpeechRef = useRef<(() => void) | null>(null);
+  const codeTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const isTypingCodeRef = useRef(false);
 
   const getQuestionLanguage = (question: Question | undefined) =>
     question?.type === "code_test"
@@ -110,12 +116,14 @@ export default function CurriculumPreviewPage() {
     if (data.modules.length > 0 && data.modules[0].lessons.length > 0) {
       setCurrentLesson(data.modules[0].lessons[0]);
     }
-    const hasCodeTests = data.modules.some((mod) =>
-      mod.lessons.some((les) =>
-        les.questions.some((q) => q.type === "code_test"),
+    const hasCodeExamples = data.modules.some((mod) =>
+      mod.lessons.some(
+        (les) =>
+          !!les.code_example ||
+          les.questions.some((q) => q.type === "code_test"),
       ),
     );
-    if (hasCodeTests) prefetchMonacoEditor();
+    if (hasCodeExamples) prefetchMonacoEditor();
   }, []);
 
   const handlePublishCurriculum = useCallback(async () => {
@@ -148,30 +156,139 @@ export default function CurriculumPreviewPage() {
       setResults([]);
       setCurrentSubtitleText("");
       setCanStartQuestions(false);
+      setIsLessonCodeDemo(false);
       lessonStartedRef.current = false;
+      afterSpeechRef.current = null;
+      if (codeTypingTimeoutRef.current) {
+        clearTimeout(codeTypingTimeoutRef.current);
+        codeTypingTimeoutRef.current = null;
+      }
+      isTypingCodeRef.current = false;
     },
     [stop]
   );
 
-  // Enable "Start Questions" button when teaching speech finishes
+  const stopCodeTyping = useCallback(() => {
+    isTypingCodeRef.current = false;
+    if (codeTypingTimeoutRef.current) {
+      clearTimeout(codeTypingTimeoutRef.current);
+      codeTypingTimeoutRef.current = null;
+    }
+  }, []);
+
+  const speakLessonCodeOutro = useCallback(
+    (hasQuestions: boolean) => {
+      setIsLessonCodeDemo(false);
+      setCode("");
+      setResults([]);
+
+      if (hasQuestions) {
+        speak(
+          "Great! Now let's test your understanding with some questions. Click 'Start Questions' when you're ready.",
+        );
+        setCanStartQuestions(true);
+      } else if (currentLesson?.next_lesson_id) {
+        speak("You've completed this lesson! Click 'Next Lesson' to continue.");
+      } else {
+        speak("Congratulations! You've completed all lessons in this module.");
+      }
+    },
+    [currentLesson?.next_lesson_id, speak],
+  );
+
+  const runLessonCodeExample = useCallback(
+    (example: CodeExample, lesson: Lesson) => {
+      stopCodeTyping();
+      setIsLessonCodeDemo(true);
+      setCanStartQuestions(false);
+      setCode("");
+      setResults([]);
+
+      const hasQuestions = (lesson.questions?.length ?? 0) > 0;
+      const typingSpeed = example.typingSpeed ?? 30;
+      let currentIndex = 0;
+
+      const startTyping = () => {
+        const typeNextChar = () => {
+          if (!isTypingCodeRef.current) return;
+          if (currentIndex < example.code.length) {
+            setCode(example.code.substring(0, currentIndex + 1));
+            currentIndex++;
+            codeTypingTimeoutRef.current = setTimeout(
+              typeNextChar,
+              typingSpeed,
+            );
+          } else {
+            isTypingCodeRef.current = false;
+            if (example.explanation) {
+              speak(example.explanation);
+              afterSpeechRef.current = () =>
+                speakLessonCodeOutro(hasQuestions);
+            } else {
+              speakLessonCodeOutro(hasQuestions);
+            }
+          }
+        };
+        codeTypingTimeoutRef.current = setTimeout(typeNextChar, 500);
+      };
+
+      if (example.description) {
+        speak(example.description);
+      }
+
+      isTypingCodeRef.current = true;
+      const descriptionDelay = example.description
+        ? Math.max(
+            2000,
+            (example.description.split(/\s+/).length / 2.5) * 1000,
+          )
+        : 500;
+      setTimeout(startTyping, descriptionDelay);
+    },
+    [speak, speakLessonCodeOutro, stopCodeTyping],
+  );
+
+  // Enable "Start Questions" when teaching speech finishes (unless a custom handler runs)
   useEffect(() => {
-    if (lessonPhase === "teaching" && !isSpeaking && currentLesson?.questions?.length) {
+    if (lessonPhase !== "teaching" || isSpeaking) return;
+
+    if (afterSpeechRef.current) {
+      const fn = afterSpeechRef.current;
+      afterSpeechRef.current = null;
+      fn();
+      return;
+    }
+
+    if (!isLessonCodeDemo && currentLesson?.questions?.length) {
       setCanStartQuestions(true);
     }
-  }, [lessonPhase, isSpeaking, currentLesson]);
+  }, [lessonPhase, isSpeaking, currentLesson, isLessonCodeDemo]);
 
   const speakLessonContent = useCallback(
     (lesson: Lesson) => {
       const parts: string[] = [];
-
       const intro = `Welcome! In this lesson, you will be learning about ${lesson.title}.`;
       parts.push(intro);
 
       if (lesson.body) parts.push(lesson.body);
       if (lesson.avatar_script) parts.push(lesson.avatar_script);
 
-      let fullText = parts.join(" ");
+      const introText = parts.join(" ");
 
+      if (lesson.code_example) {
+        setIsLessonCodeDemo(false);
+        setCanStartQuestions(false);
+        if (introText) {
+          speak(introText);
+          afterSpeechRef.current = () =>
+            runLessonCodeExample(lesson.code_example!, lesson);
+        } else {
+          runLessonCodeExample(lesson.code_example, lesson);
+        }
+        return;
+      }
+
+      let fullText = introText;
       const hasQuestions = lesson.questions && lesson.questions.length > 0;
       if (hasQuestions) {
         fullText +=
@@ -186,7 +303,7 @@ export default function CurriculumPreviewPage() {
 
       speak(fullText);
     },
-    [speak]
+    [runLessonCodeExample, speak],
   );
 
   const startLesson = useCallback(() => {
@@ -200,6 +317,8 @@ export default function CurriculumPreviewPage() {
 
   const startQuestions = useCallback(() => {
     if (!currentLesson || currentLesson.questions.length === 0 || !canStartQuestions) return;
+    stopCodeTyping();
+    setIsLessonCodeDemo(false);
     setLessonPhase("questions");
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
@@ -314,6 +433,7 @@ export default function CurriculumPreviewPage() {
       setResults([]);
       setCurrentSubtitleText("");
       setCanStartQuestions(false);
+      setIsLessonCodeDemo(false);
       lessonStartedRef.current = true;
 
       speakLessonContent(nextLesson);
@@ -633,7 +753,7 @@ export default function CurriculumPreviewPage() {
 
           {/* Main panel */}
           <div className="flex flex-1 flex-col overflow-hidden">
-            {lessonPhase === "intro" || lessonPhase === "teaching" ? (
+            {lessonPhase === "intro" || (lessonPhase === "teaching" && !isLessonCodeDemo) ? (
               <div className="flex-1 overflow-y-auto p-6">
                 <div className="mx-auto max-w-2xl">
                   <div className="rounded-xl bg-white p-6 shadow-sm">
@@ -647,7 +767,62 @@ export default function CurriculumPreviewPage() {
                         <p className="text-gray-700 text-sm leading-relaxed">{currentLesson.avatar_script}</p>
                       </div>
                     )}
+                    {currentLesson.code_example && lessonPhase === "intro" && (
+                      <div className="mt-6 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4">
+                        <p className="text-sm text-gray-600">
+                          This lesson includes a live code example after the instructor finishes the lesson script.
+                        </p>
+                      </div>
+                    )}
                   </div>
+                </div>
+              </div>
+            ) : lessonPhase === "teaching" && isLessonCodeDemo ? (
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+                <div className="mb-3 rounded-xl border border-primary/15 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
+                    Code example
+                  </p>
+                  <h3 className="font-semibold text-gray-900">{currentLesson.title}</h3>
+                  {currentLesson.code_example?.description && (
+                    <p className="mt-1 text-sm text-gray-600">
+                      {currentLesson.code_example.description}
+                    </p>
+                  )}
+                </div>
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <Split
+                    direction="vertical"
+                    className="flex h-full min-h-[320px] w-full flex-col"
+                    sizes={[55, 45]}
+                    minSize={120}
+                    gutterSize={8}
+                  >
+                    <CodeEditor
+                      code={code}
+                      onCodeChange={setCode}
+                      onTestCode={() => {}}
+                      language={currentLesson.code_example?.language || "javascript"}
+                      onToggleFullscreen={() =>
+                        setFullscreen(
+                          fullscreen === "editor" ? null : "editor",
+                        )
+                      }
+                      isFullscreen={fullscreen === "editor"}
+                      canTest={false}
+                      canSubmit={false}
+                    />
+                    <TestResults
+                      results={results}
+                      code={code}
+                      onToggleFullscreen={() =>
+                        setFullscreen(
+                          fullscreen === "results" ? null : "results",
+                        )
+                      }
+                      isFullscreen={fullscreen === "results"}
+                    />
+                  </Split>
                 </div>
               </div>
             ) : lessonPhase === "questions" && currentQuestion ? (

@@ -24,6 +24,15 @@ export const sampleCurriculum: Curriculum = {
             avatar_script:
               "Welcome to the course! I'm so excited to have you here. In this lesson, we'll cover the basics and get you started on your learning journey. Let's dive in!",
             media: {},
+            code_example: {
+              code: "console.log('Welcome to the course!');",
+              language: "javascript",
+              description: "A simple welcome message in the console",
+              explanation:
+                "Watch how I use console.log to print a message. The text goes inside quotes, and console.log displays it in the browser's developer console. After the lesson script, the instructor walks through this example before your quiz questions.",
+              autoRun: false,
+              typingSpeed: 60,
+            },
             questions: [
               {
                 id: "q1_multiple_choice",

@@ -1,11 +1,6 @@
-export interface FormulaExample {
-  formula: string;
-  subject?: string;
-  description?: string;
-  explanation?: string;
-  autoRun?: boolean;
-  typingSpeed?: number;
-}
+import type { CodeExample, FormulaExample } from "@/data/curriculumData";
+
+export type { CodeExample, FormulaExample };
 
 export interface Question {
   id?: string;
@@ -14,14 +9,7 @@ export interface Question {
   options?: string[];
   answer?: string | boolean;
   explanation?: string;
-  code_example?: {
-    code: string;
-    language: string;
-    description?: string;
-    explanation?: string;
-    autoRun?: boolean;
-    typingSpeed?: number;
-  };
+  code_example?: CodeExample;
   formula_example?: FormulaExample;
   testCriteria?: {
     expectedVariable?: string;
@@ -50,6 +38,7 @@ export interface Lesson {
     video?: string;
   };
   formula_example?: FormulaExample;
+  code_example?: CodeExample;
   questions: Question[];
   next_lesson_id: string | null;
 }

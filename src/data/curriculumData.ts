@@ -20,6 +20,15 @@ export interface FormulaExample {
   typingSpeed?: number;
 }
 
+export interface CodeExample {
+  code: string;
+  language: string;
+  description?: string;
+  explanation?: string;
+  autoRun?: boolean;
+  typingSpeed?: number;
+}
+
 export interface Question {
   id?: string;
   type: "multiple_choice" | "true_false" | "code_test" | "formula_test";
@@ -27,14 +36,7 @@ export interface Question {
   options?: string[];
   answer?: string | boolean;
   explanation?: string;
-  code_example?: {
-    code: string;
-    language: string;
-    description?: string;
-    explanation?: string;
-    autoRun?: boolean;
-    typingSpeed?: number;
-  };
+  code_example?: CodeExample;
   formula_example?: FormulaExample;
   testCriteria?: {
     expectedVariable?: string;
@@ -65,6 +67,8 @@ export interface Lesson {
   };
   /** Lesson-level worked example for mathematics curricula. */
   formula_example?: FormulaExample;
+  /** Optional lesson demo shown after the avatar script (coding curricula). */
+  code_example?: CodeExample;
   questions: Question[];
   next_lesson_id: string | null;
 }

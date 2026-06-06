@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { isAgeClassFilterableCategory } from "@/data/courseCategories";
 import { type Course } from "@/stores/coursesStore";
 
 interface CourseCardProps {
@@ -68,8 +69,12 @@ const CourseCard = ({
     }
   };
 
+  const showAgeClassMeta = isAgeClassFilterableCategory(course.categoryId);
+
   const ageLabel =
-    typeof course.minAge === "number" && Number.isFinite(course.minAge)
+    showAgeClassMeta &&
+    typeof course.minAge === "number" &&
+    Number.isFinite(course.minAge)
       ? `${course.minAge}+`
       : null;
 

@@ -7,7 +7,8 @@ export type CourseCategoryId =
   | "design"
   | "data"
   | "careers"
-  | "mathematics";
+  | "mathematics"
+  | "english";
 
 export type CourseCategory = {
   id: CourseCategoryId;
@@ -25,6 +26,11 @@ export const COURSE_CATEGORIES: CourseCategory[] = [
     id: "mathematics",
     title: "Mathematics",
     subtitle: "Numbers, algebra, geometry, and problem solving",
+  },
+  {
+    id: "english",
+    title: "English",
+    subtitle: "Reading, writing, grammar, and comprehension",
   },
   {
     id: "design",
@@ -72,6 +78,18 @@ export const COURSE_SLUG_TO_CATEGORY: Partial<
 
 export function getCategoryIdForCourseSlug(slug: string): CourseCategoryId {
   return COURSE_SLUG_TO_CATEGORY[slug] ?? "coding";
+}
+
+/** Learner age / class filters apply to these categories only (not coding). */
+export const FILTERABLE_COURSE_CATEGORIES: CourseCategoryId[] = [
+  "mathematics",
+  "english",
+];
+
+export function isAgeClassFilterableCategory(
+  categoryId: CourseCategoryId,
+): boolean {
+  return FILTERABLE_COURSE_CATEGORIES.includes(categoryId);
 }
 
 export function getCategoryMeta(id: CourseCategoryId): CourseCategory {

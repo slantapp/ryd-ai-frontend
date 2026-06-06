@@ -74,7 +74,14 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
     );
   }
 
-  const validCategories = ["coding", "design", "data", "careers", "mathematics"];
+  const validCategories = [
+    "coding",
+    "design",
+    "data",
+    "careers",
+    "mathematics",
+    "english",
+  ];
   if (
     !curriculumData.category ||
     typeof curriculumData.category !== "string" ||

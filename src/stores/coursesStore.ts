@@ -1,7 +1,11 @@
 // src/stores/coursesStore.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { curriculaData, type Curriculum } from "../data/curriculumData";
+import {
+  getAllCurricula,
+  setRemoteCurricula,
+  type Curriculum,
+} from "../data/curriculumData";
 import { type CourseCategoryId } from "../data/courseCategories";
 import type { CourseProgressRecord } from "@/api/courseProgress";
 import {
@@ -10,6 +14,7 @@ import {
   upsertCourseProgress as upsertCourseProgressRequest,
   type CourseProgressPutBody,
 } from "@/api/courseProgress";
+import { fetchVisibleCurriculums as fetchVisibleCurriculumsRequest } from "@/api/curriculum";
 
 export type CourseStatus = "not-started" | "ongoing" | "completed";
 
@@ -186,7 +191,9 @@ function curriculumToCourse(curriculum: Curriculum): Course {
   };
 }
 
-export const coursesData: Course[] = curriculaData.map(curriculumToCourse);
+function buildCoursesFromCurricula(curricula: Curriculum[]): Course[] {
+  return curricula.map(curriculumToCourse);
+}
 
 export interface CourseProgressDataEntry {
   status: CourseStatus;
@@ -253,6 +260,8 @@ function clearPersistTimer(slug: string) {
 interface CoursesState {
   wishlist: Set<string>;
   courseProgress: CourseProgressData;
+  /** Bumped when visible curriculums are loaded from the API. */
+  curriculaRevision: number;
   addToWishlist: (slug: string) => void;
   removeFromWishlist: (slug: string) => void;
   isInWishlist: (slug: string) => boolean;
@@ -264,6 +273,7 @@ interface CoursesState {
   ) => void;
   getCourseProgress: (slug: string) => CourseProgressDataEntry | null;
   fetchAllCourseProgress: () => Promise<void>;
+  fetchVisibleCurriculums: () => Promise<void>;
   hydrateCourseProgressFromApi: (slug: string) => Promise<void>;
   getAllCourses: () => Course[];
   getCompletedCourses: () => Course[];
@@ -343,6 +353,7 @@ export const useCoursesStore = create<CoursesState>()(
     (set, get) => ({
       wishlist: new Set<string>(),
       courseProgress: {},
+      curriculaRevision: 0,
       reset: () => {
         persistTimers.forEach((t) => clearTimeout(t));
         persistTimers.clear();
@@ -359,6 +370,16 @@ export const useCoursesStore = create<CoursesState>()(
           set({ courseProgress: next });
         } catch {
           /* ignore — dashboard still usable */
+        }
+      },
+      fetchVisibleCurriculums: async () => {
+        try {
+          const res = await fetchVisibleCurriculumsRequest();
+          if (!res.status || !Array.isArray(res.data)) return;
+          setRemoteCurricula(res.data);
+          set((state) => ({ curriculaRevision: state.curriculaRevision + 1 }));
+        } catch {
+          /* ignore — local JSON curriculums still available */
         }
       },
       hydrateCourseProgressFromApi: async (slug: string) => {
@@ -445,7 +466,7 @@ export const useCoursesStore = create<CoursesState>()(
       },
       getAllCourses: () => {
         const state = get();
-        return coursesData.map((course) => {
+        return buildCoursesFromCurricula(getAllCurricula()).map((course) => {
           const progress = state.courseProgress[course.slug];
           if (progress) {
             return {
@@ -460,7 +481,7 @@ export const useCoursesStore = create<CoursesState>()(
       },
       getCompletedCourses: () => {
         const state = get();
-        return coursesData
+        return buildCoursesFromCurricula(getAllCurricula())
           .filter((course) => {
             const progress = state.courseProgress[course.slug];
             return progress?.status === "completed";
@@ -480,7 +501,7 @@ export const useCoursesStore = create<CoursesState>()(
       },
       getOngoingCourses: () => {
         const state = get();
-        return coursesData
+        return buildCoursesFromCurricula(getAllCurricula())
           .filter((course) => {
             const progress = state.courseProgress[course.slug];
             return progress?.status === "ongoing";
@@ -499,7 +520,7 @@ export const useCoursesStore = create<CoursesState>()(
       },
       getEnrolledCourses: () => {
         const state = get();
-        return coursesData.filter((course) => {
+        return buildCoursesFromCurricula(getAllCurricula()).filter((course) => {
           const progress = state.courseProgress[course.slug];
           const status = progress?.status || course.status;
           return status === "ongoing" || status === "completed";

@@ -17,6 +17,7 @@ import {
   Database,
   Briefcase,
   Calculator,
+  BookText,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ import CourseCategoryFolder from "@/components/courses/CourseCategoryFolder";
 import {
   listCategoriesWithCounts,
   getCategoryMeta,
+  isAgeClassFilterableCategory,
   type CourseCategoryId,
 } from "@/data/courseCategories";
 import {
@@ -36,6 +38,7 @@ import {
 const CATEGORY_ICONS: Record<CourseCategoryId, LucideIcon> = {
   coding: Braces,
   mathematics: Calculator,
+  english: BookText,
   design: Palette,
   data: Database,
   careers: Briefcase,
@@ -60,8 +63,15 @@ const CoursesPage = () => {
     getCompletedCourses,
   } = useCoursesStore();
 
+  const showAgeClassFilters =
+    selectedCategoryId !== null &&
+    isAgeClassFilterableCategory(selectedCategoryId);
+
   const classFilterOptions = useMemo(
-    () => buildSchoolClassFilterOptions(getAllCourses()),
+    () =>
+      buildSchoolClassFilterOptions(
+        getAllCourses().filter((c) => isAgeClassFilterableCategory(c.categoryId)),
+      ),
     [getAllCourses],
   );
 
@@ -84,7 +94,7 @@ const CoursesPage = () => {
 
     let result = withCompletedProgress;
 
-    if (ageFilter !== "all") {
+    if (showAgeClassFilters && ageFilter !== "all") {
       const learnerAge = Number(ageFilter);
       result = result.filter((c) => {
         if (c.minAge == null) return true;
@@ -92,7 +102,7 @@ const CoursesPage = () => {
       });
     }
 
-    if (classFilter !== "all") {
+    if (showAgeClassFilters && classFilter !== "all") {
       result = result.filter(
         (c) => getSchoolClassFilterKey(c.class, c.grade) === classFilter,
       );
@@ -103,6 +113,7 @@ const CoursesPage = () => {
     activeTab,
     ageFilter,
     classFilter,
+    showAgeClassFilters,
     getAllCourses,
     getOngoingCourses,
     getCompletedCourses,
@@ -135,6 +146,12 @@ const CoursesPage = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [ageFilter, classFilter]);
+
+  useEffect(() => {
+    if (showAgeClassFilters) return;
+    setAgeFilter("all");
+    setClassFilter("all");
+  }, [showAgeClassFilters]);
 
   useEffect(() => {
     if (
@@ -177,7 +194,8 @@ const CoursesPage = () => {
     ? getCategoryMeta(selectedCategoryId)
     : null;
 
-  const hasActiveFilters = ageFilter !== "all" || classFilter !== "all";
+  const hasActiveFilters =
+    showAgeClassFilters && (ageFilter !== "all" || classFilter !== "all");
 
   const resetFilters = () => {
     setAgeFilter("all");
@@ -224,67 +242,69 @@ const CoursesPage = () => {
               </TabsList>
             </div>
 
-            <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-              <div className="flex items-center justify-between gap-2 sm:justify-end">
-                <label className="font-inter text-xs font-medium text-gray-600">
-                  Learner age
-                </label>
-                <div className="min-w-[min(100%,11rem)] sm:min-w-[10rem]">
-                  <Select
-                    value={ageFilter}
-                    onValueChange={(v) =>
-                      setAgeFilter(
-                        v as "all" | "6" | "8" | "10" | "12" | "14" | "16",
-                      )
-                    }
+            {showAgeClassFilters && (
+              <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <div className="flex items-center justify-between gap-2 sm:justify-end">
+                  <label className="font-inter text-xs font-medium text-gray-600">
+                    Learner age
+                  </label>
+                  <div className="min-w-[min(100%,11rem)] sm:min-w-[10rem]">
+                    <Select
+                      value={ageFilter}
+                      onValueChange={(v) =>
+                        setAgeFilter(
+                          v as "all" | "6" | "8" | "10" | "12" | "14" | "16",
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-10 shadow-none">
+                        <SelectValue placeholder="All ages" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All ages</SelectItem>
+                        <SelectItem value="6">6 years</SelectItem>
+                        <SelectItem value="8">8 years</SelectItem>
+                        <SelectItem value="10">10 years</SelectItem>
+                        <SelectItem value="12">12 years</SelectItem>
+                        <SelectItem value="14">14 years</SelectItem>
+                        <SelectItem value="16">16+ years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2 sm:justify-end">
+                  <label className="font-inter text-xs font-medium text-gray-600">
+                    Class
+                  </label>
+                  <div className="min-w-[min(100%,11rem)] sm:min-w-[12rem]">
+                    <Select value={classFilter} onValueChange={setClassFilter}>
+                      <SelectTrigger className="h-10 shadow-none">
+                        <SelectValue placeholder="All classes" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All classes</SelectItem>
+                        {classFilterOptions.map(({ key, label }) => (
+                          <SelectItem key={key} value={key}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {hasActiveFilters && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-10 shrink-0 font-inter shadow-none"
+                    onClick={resetFilters}
                   >
-                    <SelectTrigger className="h-10 shadow-none">
-                      <SelectValue placeholder="All ages" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All ages</SelectItem>
-                      <SelectItem value="6">6 years</SelectItem>
-                      <SelectItem value="8">8 years</SelectItem>
-                      <SelectItem value="10">10 years</SelectItem>
-                      <SelectItem value="12">12 years</SelectItem>
-                      <SelectItem value="14">14 years</SelectItem>
-                      <SelectItem value="16">16+ years</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    Reset filters
+                  </Button>
+                )}
               </div>
-              <div className="flex items-center justify-between gap-2 sm:justify-end">
-                <label className="font-inter text-xs font-medium text-gray-600">
-                  Class
-                </label>
-                <div className="min-w-[min(100%,11rem)] sm:min-w-[12rem]">
-                  <Select value={classFilter} onValueChange={setClassFilter}>
-                    <SelectTrigger className="h-10 shadow-none">
-                      <SelectValue placeholder="All classes" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All classes</SelectItem>
-                      {classFilterOptions.map(({ key, label }) => (
-                        <SelectItem key={key} value={key}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {hasActiveFilters && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-10 shrink-0 font-inter shadow-none"
-                  onClick={resetFilters}
-                >
-                  Reset filters
-                </Button>
-              )}
-            </div>
+            )}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">

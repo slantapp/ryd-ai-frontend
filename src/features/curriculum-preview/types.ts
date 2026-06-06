@@ -67,7 +67,8 @@ export type CurriculumCategory =
   | "design"
   | "data"
   | "careers"
-  | "mathematics";
+  | "mathematics"
+  | "english";
 
 export interface CurriculumData {
   title: string;

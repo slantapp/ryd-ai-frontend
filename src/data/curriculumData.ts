@@ -75,7 +75,8 @@ export type CurriculumCategory =
   | "design"
   | "data"
   | "careers"
-  | "mathematics";
+  | "mathematics"
+  | "english";
 
 export interface Curriculum {
   slug: string;
@@ -243,9 +244,27 @@ export function getFirstLesson(
   return null;
 }
 
+/** Curricula loaded from `/parent/curriculum/visible` (merged with local JSON below). */
+let remoteCurricula: Curriculum[] = [];
+
+export function setRemoteCurricula(curricula: Curriculum[]): void {
+  remoteCurricula = curricula;
+}
+
+/** Local JSON plus API curriculums; API wins when the same slug exists in both. */
+export function getAllCurricula(): Curriculum[] {
+  const remoteSlugs = new Set(remoteCurricula.map((c) => c.slug));
+  return [
+    ...remoteCurricula,
+    ...curriculaData.filter((c) => !remoteSlugs.has(c.slug)),
+  ];
+}
+
 // Helper function to get curriculum by slug
 export function getCurriculumBySlug(slug: string): Curriculum | null {
-  return curriculaData.find((curriculum) => curriculum.slug === slug) || null;
+  return (
+    getAllCurricula().find((curriculum) => curriculum.slug === slug) || null
+  );
 }
 
 // Helper to find the module containing a lesson and whether it's the last lesson in that module

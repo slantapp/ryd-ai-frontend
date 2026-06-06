@@ -46,11 +46,13 @@ const DashboardLayout = ({ children }: DashboardProps) => {
 
   useEffect(() => {
     if (devSkipSubscriptionGate) {
+      void useCoursesStore.getState().fetchVisibleCurriculums();
       void useCoursesStore.getState().fetchAllCourseProgress();
       return;
     }
     if (!subscriptionStatus.isFetched || !subscriptionStatus.isSuccess) return;
     if (subscribed !== true) return;
+    void useCoursesStore.getState().fetchVisibleCurriculums();
     void useCoursesStore.getState().fetchAllCourseProgress();
   }, [subscribed, subscriptionStatus.isFetched, subscriptionStatus.isSuccess]);
 

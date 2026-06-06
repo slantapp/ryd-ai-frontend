@@ -22,6 +22,14 @@ type Props = {
 const inputClass =
   "h-11 rounded-xl border-[#E8E8EC] bg-[#F8F8FA] px-4 font-inter text-[#0A090B] placeholder:text-[#4F4D55]/70";
 
+function RequiredMark() {
+  return (
+    <span className="text-destructive" aria-hidden="true">
+      {" *"}
+    </span>
+  );
+}
+
 const MIN_PASSWORD_LENGTH = 8;
 
 type PasswordFieldErrors = Partial<Record<"password" | "confirmPassword", string>>;
@@ -123,6 +131,7 @@ export function PasswordStep({ formData, setFormData, onBack, step }: Props) {
         <div className="space-y-2">
           <Label htmlFor="su-pw" className="font-inter text-[#0A090B]">
             Password
+            <RequiredMark />
           </Label>
           <div className="relative">
             <Input
@@ -160,6 +169,7 @@ export function PasswordStep({ formData, setFormData, onBack, step }: Props) {
         <div className="space-y-2">
           <Label htmlFor="su-pw2" className="font-inter text-[#0A090B]">
             Confirm password
+            <RequiredMark />
           </Label>
           <Input
             id="su-pw2"

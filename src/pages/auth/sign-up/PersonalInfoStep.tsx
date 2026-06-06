@@ -97,6 +97,14 @@ type Props = {
 const inputClass =
   "h-11 rounded-xl border-border bg-[#F8F8FA] px-4 font-inter text-[#0A090B] placeholder:text-[#4F4D55]/70 shadow-none";
 
+function RequiredMark() {
+  return (
+    <span className="text-destructive" aria-hidden="true">
+      {" *"}
+    </span>
+  );
+}
+
 export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props) {
   const [fieldErrors, setFieldErrors] = React.useState<PersonalInfoFieldErrors>({});
   const [termsAccepted, setTermsAccepted] = React.useState(false);
@@ -246,6 +254,7 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
           <div className="space-y-2">
             <Label htmlFor="su-fn" className="font-inter text-[#0A090B]">
               First name
+              <RequiredMark />
             </Label>
             <Input
               id="su-fn"
@@ -270,6 +279,7 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
           <div className="space-y-2">
             <Label htmlFor="su-ln" className="font-inter text-[#0A090B]">
               Last name
+              <RequiredMark />
             </Label>
             <Input
               id="su-ln"
@@ -295,6 +305,7 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
         <div className="space-y-2">
           <Label htmlFor="su-email" className="font-inter text-[#0A090B]">
             Email
+            <RequiredMark />
           </Label>
           <Input
             id="su-email"
@@ -322,6 +333,7 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
           <div className="space-y-2">
             <Label htmlFor="su-country" className="font-inter text-[#0A090B]">
               Country
+              <RequiredMark />
             </Label>
             <Select
               value={selectedCountryIso || undefined}
@@ -367,6 +379,7 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
           <div className="space-y-2">
             <Label htmlFor="su-state" className="font-inter text-[#0A090B]">
               State / province
+              {states.length > 0 ? <RequiredMark /> : null}
             </Label>
             <Select
               value={formData.state || undefined}
@@ -413,6 +426,7 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
           <div className="space-y-2">
             <Label htmlFor="su-phone" className="font-inter text-[#0A090B]">
               Phone
+              <RequiredMark />
             </Label>
             <Input
               id="su-phone"
@@ -457,6 +471,7 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
           <div className="space-y-2">
             <Label htmlFor="su-tz" className="font-inter text-[#0A090B]">
               Timezone
+              {timezones.length > 0 ? <RequiredMark /> : null}
             </Label>
             <Select
               value={formData.timezone || undefined}
@@ -501,8 +516,7 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
         </div>
         <div className="space-y-2">
           <Label htmlFor="su-hear" className="font-inter text-[#0A090B]">
-            How did you hear about us?{" "}
-            <span className="font-normal text-[#4F4D55]">(optional)</span>
+            How did you hear about us?
           </Label>
           <Select
             value={formData.survey || undefined}
@@ -543,6 +557,7 @@ export function PersonalInfoStep({ formData, setFormData, onNext, step }: Props)
               className="font-inter text-xs leading-relaxed text-[#4F4D55]"
             >
               I agree to the terms and privacy policy for the AI LMS.
+              <RequiredMark />
             </label>
           </div>
           {fieldErrors.terms ? (

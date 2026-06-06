@@ -4,7 +4,7 @@ import { Heart, MessageSquarePlus, Send, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { getContactApiErrorMessage, requestCourse } from "@/api/contact";
-import { useCoursesStore, coursesData } from "@/stores/coursesStore";
+import { useCoursesStore } from "@/stores/coursesStore";
 import { useAuthStore } from "@/stores/authStore";
 import CourseCard from "@/components/shared/CourseCard";
 import {
@@ -165,7 +165,8 @@ function CourseRequestFormCard({
 
 const WishlistPage = () => {
   const navigate = useNavigate();
-  const { wishlist, removeFromWishlist, isInWishlist } = useCoursesStore();
+  const { wishlist, removeFromWishlist, isInWishlist, getAllCourses, curriculaRevision } =
+    useCoursesStore();
   const user = useAuthStore((state) => state.user);
   const [showRequestFormNarrow, setShowRequestFormNarrow] = useState(false);
 
@@ -189,11 +190,9 @@ const WishlistPage = () => {
     }
   }, [user]);
 
-  // Get wishlist courses
   const wishlistCourses = useMemo(() => {
-    return coursesData.filter((course) => isInWishlist(course.slug));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wishlist.size]);
+    return getAllCourses().filter((course) => isInWishlist(course.slug));
+  }, [getAllCourses, isInWishlist, wishlist.size, curriculaRevision]);
 
   const handleCourseRequestChange = (
     field: keyof CourseRequestState,

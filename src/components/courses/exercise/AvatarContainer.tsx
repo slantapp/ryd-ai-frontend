@@ -1,6 +1,6 @@
 import { forwardRef, useMemo } from "react";
 import { CurriculumLearning } from "@sage-rsc/talking-head-react";
-import { type Curriculum, curriculumData } from "../../../data/curriculumData";
+import type { Curriculum } from "../../../data/curriculumData";
 import { useInstructorStore } from "../../../stores/instructorStore";
 
 interface CurriculumLearningRef {
@@ -54,7 +54,7 @@ interface AvatarContainerProps {
   onLessonComplete?: (data: unknown) => void;
   onQuestionAnswer?: (data: unknown) => void;
   className?: string;
-  curriculum?: Curriculum["curriculum"];
+  curriculum: Curriculum["curriculum"];
 }
 
 const animations = {
@@ -80,20 +80,10 @@ export const AvatarContainer = forwardRef<
     const { getInstructorConfig } = useInstructorStore();
     const instructorConfig = getInstructorConfig();
 
-    // Use provided curriculum or fallback to default
-    const curriculumToUse = curriculum || curriculumData.curriculum;
-
-    // Prepare curriculum data for CurriculumLearning component
-    const transformedCurriculumData = useMemo(() => {
-      if (!curriculumToUse) {
-        console.warn("No curriculum data available");
-        return { curriculum: curriculumData.curriculum };
-      }
-      // Wrap in curriculum property as expected by CurriculumLearning component
-      return {
-        curriculum: curriculumToUse,
-      };
-    }, [curriculumToUse]);
+    const transformedCurriculumData = useMemo(
+      () => ({ curriculum }),
+      [curriculum],
+    );
 
     // Build avatar config from selected instructor
     const avatarConfig = useMemo(

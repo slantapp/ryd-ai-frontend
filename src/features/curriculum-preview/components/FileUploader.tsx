@@ -114,6 +114,37 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
     );
   }
 
+  const validLevels = ["Beginner", "Intermediate", "Advanced"];
+  if (
+    curriculumData.duration !== undefined &&
+    (typeof curriculumData.duration !== "string" ||
+      !curriculumData.duration.trim())
+  ) {
+    errors.push(
+      'Invalid \'duration\' field (optional string — e.g. "6 weeks")',
+    );
+  }
+
+  if (
+    curriculumData.level !== undefined &&
+    (typeof curriculumData.level !== "string" ||
+      !validLevels.includes(curriculumData.level))
+  ) {
+    errors.push(
+      "Invalid 'level' field (optional — must be Beginner, Intermediate, or Advanced)",
+    );
+  }
+
+  if (
+    curriculumData.rating !== undefined &&
+    (typeof curriculumData.rating !== "number" ||
+      !Number.isFinite(curriculumData.rating) ||
+      curriculumData.rating < 0 ||
+      curriculumData.rating > 5)
+  ) {
+    errors.push("Invalid 'rating' field (optional number from 0 to 5)");
+  }
+
   const validCategories = [
     "coding",
     "design",
@@ -199,11 +230,17 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
       }
 
       if (les.formula_example) {
-        const fe = les.formula_example as Record<string, unknown>;
-        if (!fe.formula || typeof fe.formula !== "string") {
+        if (curriculumData.category !== "mathematics") {
           errors.push(
-            `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: formula_example requires a 'formula' string`,
+            `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: formula_example is only supported in mathematics curricula`,
           );
+        } else {
+          const fe = les.formula_example as Record<string, unknown>;
+          if (!fe.formula || typeof fe.formula !== "string") {
+            errors.push(
+              `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: formula_example requires a 'formula' string`,
+            );
+          }
         }
       }
 
@@ -221,13 +258,21 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
         const qType = q.type;
         const label = `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Question ${questionIndex + 1}`;
 
-        if (qType !== "code_test" && q.code_example) {
+        if (curriculumData.category === "mathematics" && q.code_example) {
           errors.push(
-            `${label}: 'code_example' is only allowed on code_test questions or at the lesson level`,
+            `${label}: code_example is not supported in mathematics curricula`,
+          );
+        } else if (qType !== "code_test" && q.code_example) {
+          errors.push(
+            `${label}: 'code_example' is only allowed on code_test questions or at the lesson level (coding curricula only)`,
           );
         }
 
-        if (qType === "code_test" && q.code_example) {
+        if (
+          curriculumData.category !== "mathematics" &&
+          qType === "code_test" &&
+          q.code_example
+        ) {
           validateCodeExampleField(q.code_example, label, errors);
         }
 
@@ -561,8 +606,9 @@ export function FileUploader({
                 <h3 className="font-semibold text-gray-800">Coding template</h3>
               </div>
               <p className="mb-4 text-sm text-gray-600">
-                Starter for coding courses: lesson code examples, multiple
-                choice, true/false, and code tests. Set category to coding.
+                Starter for coding courses: optional duration, level, and
+                rating, lesson code examples, multiple choice, true/false, and
+                code tests. Set category to coding.
               </p>
               <button
                 type="button"
@@ -580,8 +626,9 @@ export function FileUploader({
               <h3 className="font-semibold text-gray-800">Math template</h3>
             </div>
             <p className="mb-4 text-sm text-gray-600">
-              Starter for mathematics: formula examples, multiple choice,
-              true/false, and formula tests. Set category to mathematics.
+              Starter for mathematics: optional duration, level, and rating,
+              formula examples, multiple choice, true/false, and formula tests.
+              Set category to mathematics.
             </p>
             <button
               type="button"

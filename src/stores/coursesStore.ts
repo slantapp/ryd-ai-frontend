@@ -15,6 +15,10 @@ import {
   type CourseProgressPutBody,
 } from "@/api/courseProgress";
 import { fetchVisibleCurriculums as fetchVisibleCurriculumsRequest } from "@/api/curriculum";
+import {
+  getCourseImageFallback,
+  resolveCourseImages as resolveCourseImagesRequest,
+} from "@/utils/courseImage";
 
 export type CourseStatus = "not-started" | "ongoing" | "completed";
 
@@ -37,152 +41,37 @@ export interface Course {
   rating?: number;
 }
 
-const defaultCourseImages: Record<string, string> = {
-  "intro-computer-science":
-    "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=200&fit=crop",
-  "web-development-basics":
-    "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=400&h=200&fit=crop",
-  "css-basics":
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=200&fit=crop",
-  "html-css-combined":
-    "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=200&fit=crop",
-  "javascript-beginner":
-    "https://images.unsplash.com/photo-1627398242454-45a5d1b07c2c?w=400&h=200&fit=crop",
-  "web-basics":
-    "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=200&fit=crop",
-  "javascript-intermediate":
-    "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=200&fit=crop",
-  "javascript-professional":
-    "https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=400&h=200&fit=crop",
-  "data-structures-algorithms":
-    "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=200&fit=crop",
-  "python-programming":
-    "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=200&fit=crop",
-  "python-beginner":
-    "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=200&fit=crop",
-  "python-intermediate":
-    "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=200&fit=crop",
-  "python-advance":
-    "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=200&fit=crop",
-  "css_flex_grid_lessons":
-    "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=200&fit=crop",
-  "grade-9-basic-skills-review":
-    "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400&h=200&fit=crop",
-  "javascript-fundamentals":
-    "https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=400&h=200&fit=crop",
-  "machine-learning-basics":
-    "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&h=200&fit=crop",
-  "ui-ux-design-principles":
-    "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=400&h=200&fit=crop",
-  "mobile-app-development":
-    "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&h=200&fit=crop",
-  "database-management":
-    "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=200&fit=crop",
-  "software-engineering":
-    "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=200&fit=crop",
-};
-
 /** Static listing metadata only — progress comes from API via `courseProgress`. */
-const defaultCourseMetadata: Record<
-  string,
-  {
-    minAge?: number;
-    duration?: string;
-    level?: "Beginner" | "Intermediate" | "Advanced";
-    rating?: number;
-  }
-> = {
-  "intro-computer-science": {
-    minAge: 9,
-    duration: "6 weeks",
-    level: "Beginner",
-    rating: 4.8,
-  },
-  "web-development-basics": {
-    minAge: 10,
-    duration: "4 weeks",
-    level: "Beginner",
-    rating: 4.9,
-  },
-  "javascript-beginner": {
-    minAge: 11,
-    duration: "5 weeks",
-    level: "Beginner",
-    rating: 4.6,
-  },
-  "web-basics": {
-    minAge: 9,
-    duration: "3 weeks",
-    level: "Beginner",
-    rating: 4.5,
-  },
-  "javascript-intermediate": {
-    minAge: 12,
-    duration: "6 weeks",
-    level: "Intermediate",
-    rating: 4.7,
-  },
-  "javascript-professional": {
-    minAge: 13,
-    duration: "8 weeks",
-    level: "Advanced",
-    rating: 4.8,
-  },
-  "python-beginner": {
-    minAge: 9,
-    duration: "6 weeks",
-    level: "Beginner",
-    rating: 4.7,
-  },
-  "python-intermediate": {
-    minAge: 12,
-    duration: "8 weeks",
-    level: "Intermediate",
-    rating: 4.8,
-  },
-  "python-advance": {
-    minAge: 14,
-    duration: "10 weeks",
-    level: "Advanced",
-    rating: 4.9,
-  },
-  "css_flex_grid_lessons": {
-    minAge: 10,
-    duration: "4 weeks",
-    level: "Intermediate",
-    rating: 4.7,
-  },
-  "grade-9-basic-skills-review": {
-    minAge: 14,
-    duration: "6 weeks",
-    level: "Intermediate",
-    rating: 4.8,
-  },
-};
-
-function curriculumToCourse(curriculum: Curriculum): Course {
-  const metadata = defaultCourseMetadata[curriculum.slug] || {
-    duration: "4 weeks",
-    level: "Beginner" as const,
-    rating: 4.5,
-  };
-
-  const { category, age, class: schoolClass, grade } = curriculum.curriculum;
+function curriculumToCourse(
+  curriculum: Curriculum,
+  courseImages: Record<string, string>,
+): Course {
+  const {
+    category,
+    age,
+    class: schoolClass,
+    grade,
+    title,
+    duration,
+    level,
+    rating,
+  } = curriculum.curriculum;
+  const categoryId = (category as CourseCategoryId) || "coding";
 
   return {
-    title: curriculum.curriculum.title,
+    title,
     desc: curriculum.curriculum.description,
     img:
-      defaultCourseImages[curriculum.slug] ||
-      defaultCourseImages["intro-computer-science"],
+      courseImages[curriculum.slug] ??
+      getCourseImageFallback(title, categoryId),
     slug: curriculum.slug,
-    categoryId: (category as CourseCategoryId) || "coding",
+    categoryId,
     status: "not-started",
-    ...metadata,
-    minAge:
-      typeof age === "number" && Number.isFinite(age)
-        ? age
-        : (metadata.minAge ?? 8),
+    duration: duration ?? "4 weeks",
+    level: level ?? "Beginner",
+    rating:
+      typeof rating === "number" && Number.isFinite(rating) ? rating : 4.5,
+    minAge: typeof age === "number" && Number.isFinite(age) ? age : 8,
     class: typeof schoolClass === "string" ? schoolClass : undefined,
     grade:
       typeof grade === "number" && Number.isFinite(grade) && grade > 0
@@ -191,8 +80,13 @@ function curriculumToCourse(curriculum: Curriculum): Course {
   };
 }
 
-function buildCoursesFromCurricula(curricula: Curriculum[]): Course[] {
-  return curricula.map(curriculumToCourse);
+function buildCoursesFromCurricula(
+  curricula: Curriculum[],
+  courseImages: Record<string, string>,
+): Course[] {
+  return curricula.map((curriculum) =>
+    curriculumToCourse(curriculum, courseImages),
+  );
 }
 
 export interface CourseProgressDataEntry {
@@ -227,7 +121,7 @@ function apiRecordToEntry(rec: CourseProgressRecord): CourseProgressDataEntry {
 
 function entryToPutBody(
   entry: CourseProgressDataEntry,
-  clientUpdatedAt: number
+  clientUpdatedAt: number,
 ): CourseProgressPutBody {
   const body: CourseProgressPutBody = {
     clientUpdatedAt,
@@ -262,6 +156,11 @@ interface CoursesState {
   courseProgress: CourseProgressData;
   /** Bumped when visible curriculums are loaded from the API. */
   curriculaRevision: number;
+  curriculaLoading: boolean;
+  curriculaFetched: boolean;
+  /** Bumped when async course images finish resolving. */
+  courseImagesRevision: number;
+  courseImages: Record<string, string>;
   addToWishlist: (slug: string) => void;
   removeFromWishlist: (slug: string) => void;
   isInWishlist: (slug: string) => boolean;
@@ -269,11 +168,12 @@ interface CoursesState {
   updateCourseProgress: (
     slug: string,
     progress: Partial<CourseProgressDataEntry>,
-    options?: { immediate?: boolean }
+    options?: { immediate?: boolean },
   ) => void;
   getCourseProgress: (slug: string) => CourseProgressDataEntry | null;
   fetchAllCourseProgress: () => Promise<void>;
   fetchVisibleCurriculums: () => Promise<void>;
+  resolveCourseImages: () => Promise<void>;
   hydrateCourseProgressFromApi: (slug: string) => Promise<void>;
   getAllCourses: () => Course[];
   getCompletedCourses: () => Course[];
@@ -288,8 +188,8 @@ async function flushProgressToApi(
   set: (
     partial:
       | Partial<CoursesState>
-      | ((state: CoursesState) => Partial<CoursesState>)
-  ) => void
+      | ((state: CoursesState) => Partial<CoursesState>),
+  ) => void,
 ) {
   const entry = get().courseProgress[slug];
   if (!entry) return;
@@ -299,7 +199,7 @@ async function flushProgressToApi(
   try {
     const res = await upsertCourseProgressRequest(
       slug,
-      entryToPutBody(entry, clientUpdatedAt)
+      entryToPutBody(entry, clientUpdatedAt),
     );
     if (!res.status || !res.data) {
       throw new Error(res.message || "Course progress save failed");
@@ -335,8 +235,8 @@ function scheduleFlush(
   set: (
     partial:
       | Partial<CoursesState>
-      | ((state: CoursesState) => Partial<CoursesState>)
-  ) => void
+      | ((state: CoursesState) => Partial<CoursesState>),
+  ) => void,
 ) {
   clearPersistTimer(slug);
   persistTimers.set(
@@ -344,7 +244,7 @@ function scheduleFlush(
     setTimeout(() => {
       persistTimers.delete(slug);
       void flushProgressToApi(slug, get, set);
-    }, 450)
+    }, 450),
   );
 }
 
@@ -354,6 +254,10 @@ export const useCoursesStore = create<CoursesState>()(
       wishlist: new Set<string>(),
       courseProgress: {},
       curriculaRevision: 0,
+      curriculaLoading: false,
+      curriculaFetched: false,
+      courseImagesRevision: 0,
+      courseImages: {},
       reset: () => {
         persistTimers.forEach((t) => clearTimeout(t));
         persistTimers.clear();
@@ -373,14 +277,38 @@ export const useCoursesStore = create<CoursesState>()(
         }
       },
       fetchVisibleCurriculums: async () => {
+        set({ curriculaLoading: true });
         try {
           const res = await fetchVisibleCurriculumsRequest();
-          if (!res.status || !Array.isArray(res.data)) return;
+          if (!res.status || !Array.isArray(res.data)) {
+            set({ curriculaFetched: true, curriculaLoading: false });
+            return;
+          }
           setRemoteCurricula(res.data);
-          set((state) => ({ curriculaRevision: state.curriculaRevision + 1 }));
+          set((state) => ({
+            curriculaRevision: state.curriculaRevision + 1,
+            curriculaFetched: true,
+            curriculaLoading: false,
+          }));
+          await get().resolveCourseImages();
         } catch {
-          /* ignore — local JSON curriculums still available */
+          set({ curriculaFetched: true, curriculaLoading: false });
         }
+      },
+      resolveCourseImages: async () => {
+        const curricula = getAllCurricula();
+        const resolved = await resolveCourseImagesRequest(
+          curricula.map((curriculum) => ({
+            slug: curriculum.slug,
+            title: curriculum.curriculum.title,
+            categoryId:
+              (curriculum.curriculum.category as CourseCategoryId) || "coding",
+          })),
+        );
+        set((state) => ({
+          courseImages: { ...state.courseImages, ...resolved },
+          courseImagesRevision: state.courseImagesRevision + 1,
+        }));
       },
       hydrateCourseProgressFromApi: async (slug: string) => {
         try {
@@ -425,7 +353,7 @@ export const useCoursesStore = create<CoursesState>()(
       updateCourseProgress: (
         slug: string,
         progress: Partial<CourseProgressDataEntry>,
-        options?: { immediate?: boolean }
+        options?: { immediate?: boolean },
       ) => {
         set((state) => {
           const currentProgress = state.courseProgress[slug] || {
@@ -466,7 +394,10 @@ export const useCoursesStore = create<CoursesState>()(
       },
       getAllCourses: () => {
         const state = get();
-        return buildCoursesFromCurricula(getAllCurricula()).map((course) => {
+        return buildCoursesFromCurricula(
+          getAllCurricula(),
+          state.courseImages,
+        ).map((course) => {
           const progress = state.courseProgress[course.slug];
           if (progress) {
             return {
@@ -481,7 +412,7 @@ export const useCoursesStore = create<CoursesState>()(
       },
       getCompletedCourses: () => {
         const state = get();
-        return buildCoursesFromCurricula(getAllCurricula())
+        return buildCoursesFromCurricula(getAllCurricula(), state.courseImages)
           .filter((course) => {
             const progress = state.courseProgress[course.slug];
             return progress?.status === "completed";
@@ -501,7 +432,7 @@ export const useCoursesStore = create<CoursesState>()(
       },
       getOngoingCourses: () => {
         const state = get();
-        return buildCoursesFromCurricula(getAllCurricula())
+        return buildCoursesFromCurricula(getAllCurricula(), state.courseImages)
           .filter((course) => {
             const progress = state.courseProgress[course.slug];
             return progress?.status === "ongoing";
@@ -520,7 +451,10 @@ export const useCoursesStore = create<CoursesState>()(
       },
       getEnrolledCourses: () => {
         const state = get();
-        return buildCoursesFromCurricula(getAllCurricula()).filter((course) => {
+        return buildCoursesFromCurricula(
+          getAllCurricula(),
+          state.courseImages,
+        ).filter((course) => {
           const progress = state.courseProgress[course.slug];
           const status = progress?.status || course.status;
           return status === "ongoing" || status === "completed";
@@ -533,13 +467,15 @@ export const useCoursesStore = create<CoursesState>()(
         wishlist: Array.from(state.wishlist),
       }),
       merge: (persistedState, currentState) => {
-        const p = persistedState as { wishlist?: string[] } | undefined;
+        const savedWishlist = (
+          persistedState as { wishlist?: string[] } | undefined
+        )?.wishlist;
         return {
           ...currentState,
-          wishlist: new Set(Array.isArray(p?.wishlist) ? p.wishlist : []),
+          wishlist: new Set(Array.isArray(savedWishlist) ? savedWishlist : []),
           courseProgress: currentState.courseProgress,
         };
       },
-    }
-  )
+    },
+  ),
 );

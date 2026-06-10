@@ -8,10 +8,12 @@ import {
   Star,
   Heart,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { isAgeClassFilterableCategory } from "@/data/courseCategories";
 import { type Course } from "@/stores/coursesStore";
+import { getCourseImageFallback } from "@/utils/courseImage";
 
 interface CourseCardProps {
   course: Course;
@@ -29,6 +31,15 @@ const CourseCard = ({
   wishlistButtonVariant = "toggle",
 }: CourseCardProps) => {
   const navigate = useNavigate();
+  const [imgSrc, setImgSrc] = useState(course.img);
+
+  useEffect(() => {
+    setImgSrc(course.img);
+  }, [course.img]);
+
+  const handleImageError = () => {
+    setImgSrc(getCourseImageFallback(course.title, course.categoryId));
+  };
 
   const getStatusBadge = (status: Course["status"]) => {
     switch (status) {
@@ -90,8 +101,9 @@ const CourseCard = ({
       {/* Image Container */}
       <div className="relative h-40 overflow-hidden sm:h-48">
         <img
-          src={course.img}
+          src={imgSrc}
           alt={course.title}
+          onError={handleImageError}
           className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
         />
         {/* Gradient Overlay */}

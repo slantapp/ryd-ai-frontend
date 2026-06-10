@@ -11,6 +11,9 @@ export const sampleCurriculum: Curriculum = {
     age: 10,
     class: "Primary 5",
     grade: 5,
+    duration: "4 weeks",
+    level: "Beginner",
+    rating: 4.8,
     modules: [
       {
         id: "module_01",
@@ -84,7 +87,7 @@ export const sampleCurriculum: Curriculum = {
                   typingSpeed: 60,
                 },
                 testCriteria: {
-                  expectedJS: "let message",
+                  expectedCode: "let message",
                 },
               },
             ],

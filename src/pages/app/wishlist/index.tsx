@@ -165,7 +165,7 @@ function CourseRequestFormCard({
 
 const WishlistPage = () => {
   const navigate = useNavigate();
-  const { wishlist, removeFromWishlist, isInWishlist, getAllCourses, curriculaRevision } =
+  const { wishlist, removeFromWishlist, isInWishlist, getAllCourses, curriculaRevision, courseImagesRevision } =
     useCoursesStore();
   const user = useAuthStore((state) => state.user);
   const [showRequestFormNarrow, setShowRequestFormNarrow] = useState(false);
@@ -192,7 +192,7 @@ const WishlistPage = () => {
 
   const wishlistCourses = useMemo(() => {
     return getAllCourses().filter((course) => isInWishlist(course.slug));
-  }, [getAllCourses, isInWishlist, wishlist.size, curriculaRevision]);
+  }, [getAllCourses, isInWishlist, wishlist.size, curriculaRevision, courseImagesRevision]);
 
   const handleCourseRequestChange = (
     field: keyof CourseRequestState,

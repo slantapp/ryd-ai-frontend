@@ -37,17 +37,22 @@ export interface Lesson {
     image?: string;
     video?: string;
   };
+  /** Mathematics curricula only — optional worked example after the avatar script. */
   formula_example?: FormulaExample;
-  code_example?: CodeExample;
   questions: Question[];
   next_lesson_id: string | null;
+}
+
+/** Coding curricula only — extends Lesson with an optional post-script code demo. */
+export interface CodingLesson extends Lesson {
+  code_example?: CodeExample;
 }
 
 export interface Module {
   id: string;
   title: string;
   prerequisite: string | null;
-  lessons: Lesson[];
+  lessons: Array<Lesson | CodingLesson>;
 }
 
 /** Category for grouping courses in the library folder view. */
@@ -59,6 +64,8 @@ export type CurriculumCategory =
   | "mathematics"
   | "english";
 
+export type CurriculumLevel = "Beginner" | "Intermediate" | "Advanced";
+
 export interface CurriculumData {
   title: string;
   description: string;
@@ -67,6 +74,9 @@ export interface CurriculumData {
   age: number;
   class: string;
   grade?: number;
+  duration?: string;
+  level?: CurriculumLevel;
+  rating?: number;
   modules: Module[];
 }
 

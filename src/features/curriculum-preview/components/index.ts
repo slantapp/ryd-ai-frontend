@@ -1,3 +1,4 @@
+export { PreviewSkipPanel } from "./PreviewSkipPanel";
 export { usePreviewAvatar } from "./PreviewAvatar";
 export { PreviewCodeEditor } from "./PreviewCodeEditor";
 export { PreviewTestResults } from "./PreviewTestResults";

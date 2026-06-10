@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -61,7 +62,16 @@ const CoursesPage = () => {
     getAllCourses,
     getOngoingCourses,
     getCompletedCourses,
+    courseImagesRevision,
+    curriculaRevision,
+    curriculaLoading,
+    curriculaFetched,
+    fetchVisibleCurriculums,
   } = useCoursesStore();
+
+  useEffect(() => {
+    void fetchVisibleCurriculums();
+  }, [fetchVisibleCurriculums]);
 
   const showAgeClassFilters =
     selectedCategoryId !== null &&
@@ -117,6 +127,8 @@ const CoursesPage = () => {
     getAllCourses,
     getOngoingCourses,
     getCompletedCourses,
+    courseImagesRevision,
+    curriculaRevision,
   ]);
 
   const coursesInCategory = useMemo(() => {
@@ -308,7 +320,14 @@ const CoursesPage = () => {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {filteredCourses.length === 0 ? (
+            {curriculaLoading && !curriculaFetched ? (
+              <div className="flex flex-col items-center justify-center px-2 py-16 text-center">
+                <Loader2 className="mb-3 size-10 animate-spin text-primary" />
+                <p className="font-inter text-sm text-gray-600">
+                  Loading courses…
+                </p>
+              </div>
+            ) : filteredCourses.length === 0 ? (
               <div className="flex flex-col items-center justify-center px-2 py-12 text-center sm:py-16">
                 <BookOpen className="mb-3 size-14 text-gray-300 sm:mb-4 sm:size-16" />
                 <h3 className="mb-2 text-base font-semibold text-gray-700 sm:text-lg">

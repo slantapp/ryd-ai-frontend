@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Play,
   SkipForward,
@@ -13,8 +13,14 @@ import {
 import type { PublishStatus } from "../types";
 import type { CurriculumData, FormulaExample, Lesson, Question } from "../types";
 import { PreviewSidebar } from "./PreviewSidebar";
+import { PreviewSkipPanel } from "./PreviewSkipPanel";
 import { PreviewQuestion } from "./PreviewQuestion";
 import { usePreviewAvatar } from "./PreviewAvatar";
+import {
+  getTeachingSegments,
+  type LessonJumpTarget,
+  type TeachingSegmentKind,
+} from "../lessonSegments";
 import MathFormulaBoard from "@/components/courses/math/MathFormulaBoard";
 import MathAnswerWorkspace from "@/components/courses/math/MathAnswerWorkspace";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
@@ -55,6 +61,7 @@ export function MathCurriculumPreview({
   const [showSidebar, setShowSidebar] = useState(true);
   const [currentSubtitleText, setCurrentSubtitleText] = useState("");
   const [canStartQuestions, setCanStartQuestions] = useState(false);
+  const [teachingSegmentIndex, setTeachingSegmentIndex] = useState(0);
   const [displayedFormula, setDisplayedFormula] = useState("");
   const [isFormulaTyping, setIsFormulaTyping] = useState(false);
   const [activeFormulaExample, setActiveFormulaExample] =
@@ -66,6 +73,9 @@ export function MathCurriculumPreview({
   );
   const isTypingFormulaRef = useRef(false);
   const pendingAfterSpeechRef = useRef<(() => void) | null>(null);
+  const playTeachingSegmentRef = useRef<
+    (lesson: Lesson, segment: TeachingSegmentKind) => void
+  >(() => {});
 
   const {
     AvatarComponent,
@@ -169,28 +179,61 @@ export function MathCurriculumPreview({
 
   const speakLessonContent = useCallback(
     (lesson: Lesson) => {
-      const parts = [
-        `Welcome! In this lesson, you will be learning about ${lesson.title}.`,
-      ];
-      if (lesson.body) parts.push(lesson.body);
-      if (lesson.avatar_script) parts.push(lesson.avatar_script);
-      const introText = parts.join(" ");
+      setTeachingSegmentIndex(0);
+      const segments = getTeachingSegments(lesson, "math");
+      playTeachingSegmentRef.current(lesson, segments[0]);
+    },
+    [],
+  );
 
-      if (lesson.formula_example) {
-        setActiveFormulaExample(lesson.formula_example);
-        setDisplayedFormula("");
-        setIsFormulaTyping(false);
-        speakWithCallback(introText, () =>
-          playLessonFormulaTyping(lesson.formula_example!, lesson),
-        );
-      } else {
-        setActiveFormulaExample(null);
-        setDisplayedFormula("");
-        speakWithCallback(introText, () => speakLessonOutro(lesson));
+  const playTeachingSegment = useCallback(
+    (lesson: Lesson, segment: TeachingSegmentKind) => {
+      const segments = getTeachingSegments(lesson, "math");
+      const segmentIndex = segments.indexOf(segment);
+      if (segmentIndex >= 0) {
+        setTeachingSegmentIndex(segmentIndex);
+      }
+
+      const advance = () => {
+        const next = segments[segments.indexOf(segment) + 1];
+        if (next) {
+          playTeachingSegmentRef.current(lesson, next);
+        } else {
+          speakLessonOutro(lesson);
+        }
+      };
+
+      switch (segment) {
+        case "intro":
+          speakWithCallback(
+            `Welcome! In this lesson, you will be learning about ${lesson.title}.`,
+            advance,
+          );
+          break;
+        case "body":
+          speakWithCallback(lesson.body!, advance);
+          break;
+        case "avatar_script":
+          speakWithCallback(lesson.avatar_script!, advance);
+          break;
+        case "formula_example":
+          if (lesson.formula_example) {
+            playLessonFormulaTyping(lesson.formula_example, lesson);
+          } else {
+            advance();
+          }
+          break;
+        default:
+          advance();
+          break;
       }
     },
     [playLessonFormulaTyping, speakLessonOutro, speakWithCallback],
   );
+
+  useEffect(() => {
+    playTeachingSegmentRef.current = playTeachingSegment;
+  }, [playTeachingSegment]);
 
   const resetQuestionState = useCallback(() => {
     setSelectedAnswer(null);
@@ -211,6 +254,7 @@ export function MathCurriculumPreview({
       setActiveFormulaExample(null);
       setCurrentSubtitleText("");
       setCanStartQuestions(false);
+      setTeachingSegmentIndex(0);
       lessonStartedRef.current = false;
     },
     [resetQuestionState, stop, stopFormulaTyping],
@@ -277,6 +321,39 @@ export function MathCurriculumPreview({
       }
     },
     [resetQuestionState, speak, typeQuestionFormula],
+  );
+
+  const jumpToTarget = useCallback(
+    (target: LessonJumpTarget) => {
+      stop();
+      stopFormulaTyping();
+      pendingAfterSpeechRef.current = null;
+      setCurrentSubtitleText("");
+      setCanStartQuestions(false);
+      setDisplayedFormula("");
+      setActiveFormulaExample(null);
+      setIsFormulaTyping(false);
+      resetQuestionState();
+      lessonStartedRef.current = true;
+
+      if (target.type === "teaching") {
+        setLessonPhase("teaching");
+        playTeachingSegment(currentLesson, target.segment);
+        return;
+      }
+
+      setLessonPhase("questions");
+      setCurrentQuestionIndex(target.index);
+      beginQuestion(currentLesson.questions[target.index]);
+    },
+    [
+      beginQuestion,
+      currentLesson,
+      playTeachingSegment,
+      resetQuestionState,
+      stop,
+      stopFormulaTyping,
+    ],
   );
 
   const startQuestions = useCallback(() => {
@@ -371,6 +448,7 @@ export function MathCurriculumPreview({
       setDisplayedFormula("");
       setActiveFormulaExample(null);
       setCanStartQuestions(false);
+      setTeachingSegmentIndex(0);
       lessonStartedRef.current = true;
       speakLessonContent(nextLesson);
     } else {
@@ -398,8 +476,20 @@ export function MathCurriculumPreview({
     currentQuestion?.type === "multiple_choice" ||
     currentQuestion?.type === "true_false";
 
+  const activeSkipItemId = useMemo(() => {
+    if (lessonPhase === "questions") {
+      return `question-${currentQuestionIndex}`;
+    }
+    if (lessonPhase === "teaching") {
+      const segment =
+        getTeachingSegments(currentLesson, "math")[teachingSegmentIndex];
+      return segment ? `teaching-${segment}` : null;
+    }
+    return null;
+  }, [currentLesson, currentQuestionIndex, lessonPhase, teachingSegmentIndex]);
+
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen min-h-0 bg-gray-100">
       <button
         type="button"
         onClick={() => setShowSidebar(!showSidebar)}
@@ -409,12 +499,12 @@ export function MathCurriculumPreview({
       </button>
 
       <div
-        className={`fixed inset-y-0 left-0 z-40 w-80 transform border-r border-gray-200 bg-white shadow-lg transition-transform lg:relative lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex h-full min-h-0 w-80 shrink-0 flex-col transform border-r border-gray-200 bg-white shadow-lg transition-transform lg:relative lg:translate-x-0 ${
           showSidebar ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex h-full flex-col">
-          <div className="space-y-3 border-b border-gray-200 p-4">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="shrink-0 space-y-3 border-b border-gray-200 p-4">
             <div className="flex items-center justify-between gap-2">
               <button
                 type="button"
@@ -464,16 +554,18 @@ export function MathCurriculumPreview({
               Mathematics preview
             </div>
           </div>
-          <PreviewSidebar
-            curriculum={curriculum}
-            currentLesson={currentLesson}
-            onSelectLesson={handleSelectLesson}
-            completedLessons={completedLessons}
-          />
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <PreviewSidebar
+              curriculum={curriculum}
+              currentLesson={currentLesson}
+              onSelectLesson={handleSelectLesson}
+              completedLessons={completedLessons}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
           <div className="flex min-w-0 items-center gap-4">
             <h1 className="truncate text-lg font-semibold text-gray-900">
@@ -547,7 +639,14 @@ export function MathCurriculumPreview({
           </div>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        <PreviewSkipPanel
+          lesson={currentLesson}
+          activeItemId={activeSkipItemId}
+          onJump={jumpToTarget}
+          mode="math"
+        />
+
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           <div className="flex w-80 shrink-0 flex-col border-r border-gray-200 bg-linear-to-b from-primary/10 to-white">
             <div className="flex-1 overflow-hidden p-4">
               <div className="h-64 overflow-hidden rounded-xl border border-primary/20 bg-white shadow-inner">

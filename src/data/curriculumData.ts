@@ -1,16 +1,3 @@
-import beginnerDetailed from "./beginner_detailed.json";
-import htmlcssJavascriptCurriculum from "./htmlcss-jacascript-curriculum.json";
-import intermediateDetailed from "./intermediate_detailed.json";
-import professionalDetailed from "./professional_detailed.json";
-import pythonBeginner from "./python-beginner.json";
-import pythonIntermediate from "./python-intermediate.json";
-import pythonAdvance from "./python-advance.json";
-import cssFlexGridLessons from "./css_flex_grid_lessons.json";
-import webDevelopmentBasics from "./web-development-basics.json";
-import cssBasics from "./css-basics.json";
-import htmlCssCombined from "./html-css-combined.json";
-// import grade9Maths from "./grade9-maths.json";
-
 export interface FormulaExample {
   formula: string;
   subject?: string;
@@ -65,9 +52,9 @@ export interface Lesson {
     image?: string;
     video?: string;
   };
-  /** Lesson-level worked example for mathematics curricula. */
+  /** Lesson-level worked example for mathematics curricula only. */
   formula_example?: FormulaExample;
-  /** Optional lesson demo shown after the avatar script (coding curricula). */
+  /** Optional lesson demo after the avatar script — coding curricula only, not mathematics. */
   code_example?: CodeExample;
   questions: Question[];
   next_lesson_id: string | null;
@@ -96,6 +83,12 @@ export interface Curriculum {
     class: string;
     /** Optional international grade number (shown as Gr. N next to class). */
     grade?: number;
+    /** Estimated time to complete, e.g. "6 weeks". */
+    duration?: string;
+    /** Difficulty label shown on course cards. */
+    level?: "Beginner" | "Intermediate" | "Advanced";
+    /** Display rating from 0 to 5. */
+    rating?: number;
     modules: Array<{
       id: string;
       title: string;
@@ -248,27 +241,21 @@ export function getFirstLesson(
   return null;
 }
 
-/** Curricula loaded from `/parent/curriculum/visible` (merged with local JSON below). */
+/** Curricula loaded from `/parent/curriculum/visible`. */
 let remoteCurricula: Curriculum[] = [];
 
 export function setRemoteCurricula(curricula: Curriculum[]): void {
   remoteCurricula = curricula;
 }
 
-/** Local JSON plus API curriculums; API wins when the same slug exists in both. */
+/** Visible curriculums from the API only (no bundled local JSON). */
 export function getAllCurricula(): Curriculum[] {
-  const remoteSlugs = new Set(remoteCurricula.map((c) => c.slug));
-  return [
-    ...remoteCurricula,
-    ...curriculaData.filter((c) => !remoteSlugs.has(c.slug)),
-  ];
+  return remoteCurricula;
 }
 
 // Helper function to get curriculum by slug
 export function getCurriculumBySlug(slug: string): Curriculum | null {
-  return (
-    getAllCurricula().find((curriculum) => curriculum.slug === slug) || null
-  );
+  return remoteCurricula.find((curriculum) => curriculum.slug === slug) || null;
 }
 
 // Helper to find the module containing a lesson and whether it's the last lesson in that module
@@ -307,23 +294,5 @@ export function isNextModule(
   return curriculum.modules.some((m) => m.id === nextLessonId);
 }
 
-// Course `age` and `class` live on each curriculum object in JSON / `curriculaData`.
-// Images, duration, level, and rating remain in `defaultCourseMetadata` in coursesStore.
-
-export const curriculaData: Curriculum[] = [
-  webDevelopmentBasics as Curriculum,
-  cssBasics as Curriculum,
-  htmlCssCombined as Curriculum,
-  beginnerDetailed as Curriculum,
-  htmlcssJavascriptCurriculum as Curriculum,
-  intermediateDetailed as Curriculum,
-  professionalDetailed as Curriculum,
-  pythonBeginner as Curriculum,
-  pythonIntermediate as Curriculum,
-  pythonAdvance as Curriculum,
-  cssFlexGridLessons as Curriculum,
-  // grade9Maths as Curriculum,
-];
-
-// Legacy export for backward compatibility (uses first curriculum)
-export const curriculumData = curriculaData[0];
+// Course `age`, `class`, `duration`, `level`, and `rating` live on each curriculum from the API.
+// Card images are resolved from curriculum title via `src/utils/courseImage.ts`.

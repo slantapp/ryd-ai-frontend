@@ -11,6 +11,9 @@ export const sampleMathCurriculum: Curriculum = {
     age: 12,
     class: "Grade 7",
     grade: 7,
+    duration: "6 weeks",
+    level: "Intermediate",
+    rating: 4.8,
     modules: [
       {
         id: "module_01",

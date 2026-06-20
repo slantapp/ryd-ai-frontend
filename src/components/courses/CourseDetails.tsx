@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import Split from "react-split";
 import NarratorAvatar from "narrator-avatar";
@@ -20,6 +20,7 @@ import {
 import {
   QuestionInfo,
   CodeEditor,
+  WebCodeWorkspace,
   TestResults,
   MultipleChoiceQuestion,
   TrueFalseQuestion,
@@ -30,14 +31,20 @@ import { useInstructorStore } from "../../stores/instructorStore";
 import { useCoursesStore } from "../../stores/coursesStore";
 import { cn } from "../../lib/utils";
 import {
-  canRunCodeLive,
-  formatRunOutput,
-  runStudentJavaScript,
-} from "@/utils/runStudentCode";
+  buildSubmitCodeResultLines,
+  buildTryCodeResultLines,
+  evaluateSubmissionCodeTest,
+  runSubmissionCodeOutput,
+  submissionHasContent,
+} from "@/utils/codeTestRunner";
+import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import {
-  evaluateCodeTest,
-  formatCodeTestResults,
-} from "@/utils/codeTestValidation";
+  defaultWebEditorTab,
+  EMPTY_WEB_CODE,
+  isWebWorkspaceLanguage,
+  seedWebCodeFromExample,
+  type WebCodeSources,
+} from "@/utils/webCodeWorkspace";
 import { prefetchMonacoEditor } from "./exercise/MonacoEditorLazy";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
 
@@ -124,6 +131,7 @@ type PendingAction =
   | { type: "clear_code_and_ask"; question: Question }
   | { type: "wait_then_clear_and_ask"; question: Question }
   | { type: "start_lesson_code_demo"; lesson: Lesson }
+  | { type: "start_code_example_typing" }
   | {
       type: "lesson_code_outro";
       hasQuestions: boolean;
@@ -161,6 +169,9 @@ function CourseDetailInner() {
   const isTypingCodeRef = useRef(false);
   const speechStartTimeRef = useRef<number>(0);
   const lastSpeechTextRef = useRef<string>("");
+  /** Runs after the avatar finishes the current speech chunk (reliable multi-step lesson flow). */
+  const afterSpeechRef = useRef<(() => void) | null>(null);
+  const pendingTypingStartRef = useRef<(() => void) | null>(null);
 
   // ============================================================================
   // STATE
@@ -197,6 +208,10 @@ function CourseDetailInner() {
 
   // Code editor state
   const [code, setCode] = useState("");
+  const [webCode, setWebCode] = useState<WebCodeSources>(EMPTY_WEB_CODE);
+  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+  const [isExecutingCode, setIsExecutingCode] = useState(false);
+  const [runLanguage, setRunLanguage] = useState("javascript");
   const [results, setResults] = useState<string[]>([]);
   const [fullscreen, setFullscreen] = useState<"editor" | "results" | null>(
     null
@@ -222,7 +237,91 @@ function CourseDetailInner() {
     (isCodeTestQuestionActive
       ? currentQuestion?.code_example?.language
       : currentLesson?.code_example?.language) || "javascript";
+  const normalizedCodePanelLanguage = normalizeRunLanguage(codePanelLanguage);
+  const useWebWorkspace = useMemo(() => {
+    if (isLessonCodeDemoActive && currentLesson?.code_example) {
+      return isWebWorkspaceLanguage(currentLesson.code_example.language);
+    }
+    if (isCodeTestQuestionActive && currentQuestion) {
+      return isWebWorkspaceLanguage(
+        currentQuestion.code_example?.language,
+        currentQuestion.testCriteria,
+      );
+    }
+    return false;
+  }, [
+    currentLesson,
+    currentQuestion,
+    isCodeTestQuestionActive,
+    isLessonCodeDemoActive,
+  ]);
+  const webEditorTab = useMemo(
+    () => defaultWebEditorTab(normalizedCodePanelLanguage),
+    [normalizedCodePanelLanguage],
+  );
   const isLgUp = useMediaQueryMinLg();
+
+  useEffect(() => {
+    setRunLanguage(normalizedCodePanelLanguage);
+  }, [normalizedCodePanelLanguage]);
+
+  const resetCodeState = useCallback(() => {
+    setCode("");
+    setWebCode(EMPTY_WEB_CODE);
+    setResults([]);
+    setPreviewRefreshKey(0);
+  }, []);
+
+  const getCodeSubmission = useCallback(
+    () => ({
+      code,
+      webCode: useWebWorkspace ? webCode : undefined,
+      language: runLanguage,
+    }),
+    [code, runLanguage, useWebWorkspace, webCode],
+  );
+
+  const activeTestCriteria = isCodeTestQuestionActive
+    ? currentQuestion?.testCriteria
+    : undefined;
+
+  const runLessonExampleCode = useCallback(
+    async (submission: ReturnType<typeof getCodeSubmission>) => {
+      setIsExecutingCode(true);
+      setResults(["⏳ Running code..."]);
+      try {
+        const runOutput = await runSubmissionCodeOutput(submission, undefined);
+        setResults(
+          runOutput.length > 0 ? runOutput : ["✓ Code ran successfully."],
+        );
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        setResults([`⚠️ Error: ${errorMessage}`]);
+      } finally {
+        setIsExecutingCode(false);
+      }
+    },
+    [],
+  );
+
+  const handleRunLessonCode = useCallback(() => {
+    if (!currentLesson?.code_example || isExecutingCode) return;
+
+    if (useWebWorkspace) {
+      setPreviewRefreshKey((key) => key + 1);
+      setResults(["✓ Preview updated."]);
+      return;
+    }
+
+    void runLessonExampleCode(getCodeSubmission());
+  }, [
+    currentLesson?.code_example,
+    getCodeSubmission,
+    isExecutingCode,
+    runLessonExampleCode,
+    useWebWorkspace,
+  ]);
 
   useEffect(() => {
     if (!curriculum) return;
@@ -326,6 +425,8 @@ function CourseDetailInner() {
       pendingSpeechQueueRef.current = [];
       setShowMobileAudioUnlock(false);
       setIsLessonCodeDemoActive(false);
+      afterSpeechRef.current = null;
+      pendingTypingStartRef.current = null;
 
       isManuallyStopped.current = true;
       stopAvatarSpeech(getAvatar());
@@ -364,8 +465,7 @@ function CourseDetailInner() {
   const speakLessonCodeOutro = useCallback(
     (hasQuestions: boolean, hasNextLesson: boolean) => {
       setIsLessonCodeDemoActive(false);
-      setCode("");
-      setResults([]);
+      resetCodeState();
 
       if (hasQuestions) {
         speak(
@@ -384,7 +484,7 @@ function CourseDetailInner() {
         );
       }
     },
-    [speak],
+    [speak, resetCodeState],
   );
 
   const runCodeExampleTyping = useCallback(
@@ -394,9 +494,9 @@ function CourseDetailInner() {
     ) => {
       stopCodeTyping();
       isTypingCodeRef.current = true;
-      setCode("");
-      setResults([]);
 
+      const isWeb = isWebWorkspaceLanguage(example.language);
+      const webTab = defaultWebEditorTab(example.language);
       const codeToType = example.code;
       const typingSpeed = example.typingSpeed ?? 30;
       let currentIndex = 0;
@@ -406,7 +506,12 @@ function CourseDetailInner() {
           if (!isTypingCodeRef.current) return;
 
           if (currentIndex < codeToType.length) {
-            setCode(codeToType.substring(0, currentIndex + 1));
+            const partial = codeToType.substring(0, currentIndex + 1);
+            if (isWeb) {
+              setWebCode((prev) => ({ ...prev, [webTab]: partial }));
+            } else {
+              setCode(partial);
+            }
             currentIndex++;
             codeTypingTimeoutRef.current = setTimeout(
               typeNextChar,
@@ -421,74 +526,91 @@ function CourseDetailInner() {
         codeTypingTimeoutRef.current = setTimeout(typeNextChar, 500);
       };
 
-      const descriptionDelay = example.description
-        ? Math.max(
-            2000,
-            (example.description.split(/\s+/).length / 2.5) * 1000,
-          )
-        : 500;
-
-      setTimeout(startTyping, descriptionDelay);
+      if (example.description) {
+        pendingTypingStartRef.current = startTyping;
+        speak(example.description, { type: "start_code_example_typing" });
+      } else {
+        setTimeout(startTyping, 500);
+      }
     },
-    [stopCodeTyping],
+    [speak, stopCodeTyping],
   );
 
   const playLessonCodeExample = useCallback(
     (example: CodeExample, lesson: Lesson) => {
+      stopCodeTyping();
       setIsLessonCodeDemoActive(true);
       setCanStartQuestions(false);
+      resetCodeState();
 
       const hasQuestions = (lesson.questions?.length ?? 0) > 0;
       const hasNextLesson = !!lesson.next_lesson_id;
+      const isWeb = isWebWorkspaceLanguage(example.language);
 
-      if (example.description) {
-        speak(example.description);
-      }
-
-      runCodeExampleTyping(example, () => {
+      const proceedAfterExample = () => {
         if (example.explanation) {
-          setTimeout(() => {
-            speak(example.explanation!, {
-              type: "lesson_code_outro",
-              hasQuestions,
-              hasNextLesson,
-            });
-          }, 800);
+          speak(example.explanation);
+          afterSpeechRef.current = () =>
+            speakLessonCodeOutro(hasQuestions, hasNextLesson);
         } else {
           speakLessonCodeOutro(hasQuestions, hasNextLesson);
         }
+      };
+
+      runCodeExampleTyping(example, () => {
+        if (example.autoRun) {
+          if (isWeb) {
+            setPreviewRefreshKey((key) => key + 1);
+            setResults(["✓ Preview updated."]);
+            proceedAfterExample();
+          } else {
+            void runLessonExampleCode({
+              code: example.code,
+              webCode: isWeb
+                ? seedWebCodeFromExample(example.code, example.language)
+                : undefined,
+              language: normalizeRunLanguage(example.language),
+            }).then(proceedAfterExample);
+          }
+        } else {
+          proceedAfterExample();
+        }
       });
     },
-    [runCodeExampleTyping, speak, speakLessonCodeOutro],
+    [
+      resetCodeState,
+      runCodeExampleTyping,
+      runLessonExampleCode,
+      speak,
+      speakLessonCodeOutro,
+      stopCodeTyping,
+    ],
   );
 
   const typeCourseDetail = useCallback(
     (example: CodeExample, question: Question) => {
       setIsLessonCodeDemoActive(false);
+      resetCodeState();
 
-      if (example.description) {
-        speak(example.description);
-      }
+      const announceStudentTurn = () => {
+        setTimeout(() => {
+          speak(
+            "Now it's your turn! I've cleared the example. Try solving the problem yourself.",
+            { type: "clear_code_and_ask", question },
+          );
+        }, 1500);
+      };
 
       runCodeExampleTyping(example, () => {
         if (example.explanation) {
-          setTimeout(() => {
-            speak(example.explanation!, {
-              type: "wait_then_clear_and_ask",
-              question,
-            });
-          }, 800);
+          speak(example.explanation);
+          afterSpeechRef.current = announceStudentTurn;
         } else {
-          setTimeout(() => {
-            speak(
-              "Now it's your turn! I've cleared the example. Try solving the problem yourself.",
-              { type: "clear_code_and_ask", question },
-            );
-          }, 1500);
+          announceStudentTurn();
         }
       });
     },
-    [runCodeExampleTyping, speak],
+    [resetCodeState, runCodeExampleTyping, speak],
   );
 
   // ============================================================================
@@ -597,9 +719,7 @@ function CourseDetailInner() {
         }, 300);
         break;
       case "clear_code_and_ask":
-        // Clear the code and then ask the question
-        setCode("");
-        setResults([]);
+        resetCodeState();
         setTimeout(() => {
           speak(action.question.question);
         }, 500);
@@ -625,6 +745,12 @@ function CourseDetailInner() {
           );
         }
         break;
+      case "start_code_example_typing": {
+        const startTyping = pendingTypingStartRef.current;
+        pendingTypingStartRef.current = null;
+        startTyping?.();
+        break;
+      }
       case "lesson_code_outro":
         speakLessonCodeOutro(action.hasQuestions, action.hasNextLesson);
         break;
@@ -640,6 +766,7 @@ function CourseDetailInner() {
     flushNextQueuedSpeech,
     playLessonCodeExample,
     speakLessonCodeOutro,
+    resetCodeState,
   ]);
 
   const handleSpeechEnd = useCallback(() => {
@@ -668,6 +795,14 @@ function CourseDetailInner() {
     handleSpeechEndInternal();
   }, [handleSpeechEndInternal]);
 
+  // Chain lesson speech steps after each avatar utterance finishes (e.g. explanation → start questions).
+  useEffect(() => {
+    if (isSpeaking || !afterSpeechRef.current) return;
+    const fn = afterSpeechRef.current;
+    afterSpeechRef.current = null;
+    fn();
+  }, [isSpeaking]);
+
   // ============================================================================
   // QUESTION NAVIGATION
   // ============================================================================
@@ -687,8 +822,7 @@ function CourseDetailInner() {
       setCurrentQuestionIndex(nextIndex);
       setSelectedAnswer(null);
       setIsAnswerSubmitted(false);
-      setCode("");
-      setResults([]);
+      resetCodeState();
 
       persistCoursePosition({
         lessonId: currentLesson.id,
@@ -932,8 +1066,7 @@ function CourseDetailInner() {
     setCanNextLesson(false);
     setCanPreviousLesson(false);
     setCanPrevious(false);
-    setCode("");
-    setResults([]);
+    resetCodeState();
     setCorrectAnswersCount(0);
     setTotalQuestionsAnswered(0);
     setModuleCorrectCount(0);
@@ -962,8 +1095,7 @@ function CourseDetailInner() {
     setCanNextLesson(false);
     setCanPreviousLesson(false);
     setCanPrevious(false);
-    setCode("");
-    setResults([]);
+    resetCodeState();
     setIsLessonCodeDemoActive(false);
 
     // Reset answer tracking for new lesson
@@ -1016,8 +1148,7 @@ function CourseDetailInner() {
     setCurrentQuestionIndex(prevIndex);
     setSelectedAnswer(null);
     setIsAnswerSubmitted(false);
-    setCode("");
-    setResults([]);
+    resetCodeState();
 
     persistCoursePosition({
       lessonId: currentLesson.id,
@@ -1082,8 +1213,7 @@ function CourseDetailInner() {
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
     setIsAnswerSubmitted(false);
-    setCode("");
-    setResults([]);
+    resetCodeState();
 
     // Reset answer tracking when starting questions
     setCorrectAnswersCount(0);
@@ -1142,8 +1272,7 @@ function CourseDetailInner() {
     setCanNextLesson(false);
     setCanPreviousLesson(false);
     setCanPrevious(false);
-    setCode("");
-    setResults([]);
+    resetCodeState();
     setIsLessonCodeDemoActive(false);
 
     // Reset answer tracking for new lesson
@@ -1238,49 +1367,70 @@ function CourseDetailInner() {
   }, [isAnswerSubmitted, selectedAnswer, currentQuestion, speak]);
 
   /** Check code against test criteria without recording a final answer. */
-  const handleTryCodeTest = useCallback(() => {
+  const handleTryCodeTest = useCallback(async () => {
     if (!currentQuestion || currentQuestion.type !== "code_test") return;
 
-    const lang = currentQuestion.code_example?.language;
-    const runOutput = canRunCodeLive(lang)
-      ? formatRunOutput(runStudentJavaScript(code || ""))
-      : [];
+    const submission = getCodeSubmission();
+
+    if (useWebWorkspace) {
+      setPreviewRefreshKey((key) => key + 1);
+    } else {
+      setIsExecutingCode(true);
+      setResults(["⏳ Running code..."]);
+    }
 
     try {
-      const { passed, testResults } = evaluateCodeTest(
-        code,
+      const runOutput = useWebWorkspace
+        ? []
+        : await runSubmissionCodeOutput(
+            submission,
+            currentQuestion.testCriteria,
+          );
+      const { passed, testResults } = evaluateSubmissionCodeTest(
+        submission,
         currentQuestion.testCriteria,
       );
-      const displayResults = formatCodeTestResults(testResults);
-      setResults([
-        ...runOutput,
-        ...displayResults,
-        passed
-          ? "✓ Tests passed — you can submit when ready."
-          : "✗ Tests failed — adjust your code and test again.",
-      ]);
+      setResults(
+        buildTryCodeResultLines(runOutput, passed, testResults, {
+          web: useWebWorkspace,
+        }),
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      setResults([...runOutput, `⚠️ Error: ${errorMessage}`]);
+      setResults([`⚠️ Error: ${errorMessage}`]);
+    } finally {
+      if (!useWebWorkspace) {
+        setIsExecutingCode(false);
+      }
     }
-  }, [currentQuestion, code]);
+  }, [currentQuestion, getCodeSubmission, useWebWorkspace]);
 
-  const handleSubmitCodeAnswer = useCallback(() => {
+  const handleSubmitCodeAnswer = useCallback(async () => {
     if (!currentQuestion || currentQuestion.type !== "code_test") return;
     if (isAnswerSubmitted) return;
 
-    const lang = currentQuestion.code_example?.language;
-    const runOutput = canRunCodeLive(lang)
-      ? formatRunOutput(runStudentJavaScript(code || ""))
-      : [];
+    const submission = getCodeSubmission();
+
+    if (useWebWorkspace) {
+      setPreviewRefreshKey((key) => key + 1);
+    } else {
+      setIsExecutingCode(true);
+      setResults(["⏳ Running code..."]);
+    }
 
     try {
-      const { passed, testResults } = evaluateCodeTest(
-        code,
+      const runOutput = useWebWorkspace
+        ? []
+        : await runSubmissionCodeOutput(
+            submission,
+            currentQuestion.testCriteria,
+          );
+      const { passed, testResults } = evaluateSubmissionCodeTest(
+        submission,
         currentQuestion.testCriteria,
       );
-      setResults([...runOutput, ...formatCodeTestResults(testResults)]);
+      setResults(buildSubmitCodeResultLines(runOutput, passed, testResults));
       setIsAnswerSubmitted(true);
 
       const passedCount = testResults.filter((r) => r.passed).length;
@@ -1298,15 +1448,25 @@ function CourseDetailInner() {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      setResults([...runOutput, `⚠️ Error: ${errorMessage}`]);
+      setResults([`⚠️ Error: ${errorMessage}`]);
       setIsAnswerSubmitted(true);
       setTotalQuestionsAnswered((prev) => prev + 1);
 
       speak(`There was an error running your code: ${errorMessage}`, {
         type: "next_question",
       });
+    } finally {
+      if (!useWebWorkspace) {
+        setIsExecutingCode(false);
+      }
     }
-  }, [currentQuestion, code, speak, isAnswerSubmitted]);
+  }, [
+    currentQuestion,
+    getCodeSubmission,
+    isAnswerSubmitted,
+    speak,
+    useWebWorkspace,
+  ]);
 
   // ============================================================================
   // EFFECTS
@@ -1405,12 +1565,15 @@ function CourseDetailInner() {
     }
   }, [currentLesson, curriculum, lessonStarted, currentQuestionIndex]);
 
-  // Avatar remounts when layout or code-test mode changes — reset readiness until onReady fires again.
+  // Avatar remounts only when the course, layout, or code-test mode changes (desktop swaps avatar
+  // instances between the lesson view and the code-test view). A lesson code demo does NOT remount the
+  // avatar, so we must not reset readiness for it — otherwise speech after the demo (the explanation)
+  // gets queued and never flushed because onReady never fires again.
   useEffect(() => {
     avatarReadyRef.current = false;
     pendingSpeechQueueRef.current = [];
     setShowMobileAudioUnlock(false);
-  }, [exercise, isLgUp, showCodePanel]);
+  }, [exercise, isLgUp, isCodeTestQuestionActive]);
 
   // Sync progress to store when lesson/question changes
   useEffect(() => {
@@ -1750,58 +1913,131 @@ function CourseDetailInner() {
                     )}
                   </div>
                 )}
-                <Split
-                  direction="vertical"
-                  className="flex flex-col h-full w-full"
-                  sizes={[35, 65]}
-                  minSize={100}
-                  gutterSize={8}
-                  gutterStyle={(dimension, gutterSize) =>
-                    dimension === "height"
-                      ? {
-                        height: `${gutterSize}px`,
-                        cursor: "row-resize",
-                        pointerEvents: "auto",
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  {useWebWorkspace ? (
+                    <WebCodeWorkspace
+                      sources={webCode}
+                      onSourcesChange={setWebCode}
+                      onTestCode={
+                        isLessonCodeDemoActive
+                          ? handleRunLessonCode
+                          : () => void handleSubmitCodeAnswer()
                       }
-                      : {}
-                  }
-                >
-                  <CodeEditor
-                    code={code}
-                    onCodeChange={setCode}
-                    onTestCode={handleSubmitCodeAnswer}
-                    onTryOut={
-                      isLessonCodeDemoActive ? undefined : handleTryCodeTest
-                    }
-                    language={codePanelLanguage}
-                    onToggleFullscreen={() =>
-                      setFullscreen(
-                        fullscreen === "editor" ? null : "editor",
-                      )
-                    }
-                    isFullscreen={fullscreen === "editor"}
-                    canTest={
-                      !isLessonCodeDemoActive &&
-                      !!currentQuestion &&
-                      !isAnswerSubmitted
-                    }
-                    canSubmit={
-                      !isLessonCodeDemoActive &&
-                      !!currentQuestion &&
-                      !!code.trim() &&
-                      !isSpeaking &&
-                      !isAnswerSubmitted
-                    }
-                  />
-                  <TestResults
-                    results={results}
-                    code={code}
-                    onToggleFullscreen={() =>
-                      setFullscreen(fullscreen === "results" ? null : "results")
-                    }
-                    isFullscreen={fullscreen === "results"}
-                  />
-                </Split>
+                      onTryOut={
+                        isLessonCodeDemoActive
+                          ? undefined
+                          : () => void handleTryCodeTest()
+                      }
+                      onToggleFullscreen={() =>
+                        setFullscreen(
+                          fullscreen === "editor" ? null : "editor",
+                        )
+                      }
+                      isFullscreen={fullscreen === "editor"}
+                      canTest={
+                        isLessonCodeDemoActive
+                          ? submissionHasContent(
+                              getCodeSubmission(),
+                              undefined,
+                            ) && !isExecutingCode
+                          : submissionHasContent(
+                              getCodeSubmission(),
+                              activeTestCriteria,
+                            ) &&
+                            !isAnswerSubmitted &&
+                            !isExecutingCode
+                      }
+                      canSubmit={
+                        !isLessonCodeDemoActive &&
+                        submissionHasContent(
+                          getCodeSubmission(),
+                          activeTestCriteria,
+                        ) &&
+                        !isSpeaking &&
+                        !isAnswerSubmitted &&
+                        !isExecutingCode
+                      }
+                      isRunning={isExecutingCode}
+                      results={results}
+                      previewRefreshKey={previewRefreshKey}
+                      initialTab={webEditorTab}
+                    />
+                  ) : (
+                    <Split
+                      direction="vertical"
+                      className="flex flex-col h-full w-full"
+                      sizes={[35, 65]}
+                      minSize={100}
+                      gutterSize={8}
+                      gutterStyle={(dimension, gutterSize) =>
+                        dimension === "height"
+                          ? {
+                            height: `${gutterSize}px`,
+                            cursor: "row-resize",
+                            pointerEvents: "auto",
+                          }
+                          : {}
+                      }
+                    >
+                      <CodeEditor
+                        code={code}
+                        onCodeChange={setCode}
+                        onTestCode={
+                          isLessonCodeDemoActive
+                            ? handleRunLessonCode
+                            : () => void handleSubmitCodeAnswer()
+                        }
+                        onTryOut={
+                          isLessonCodeDemoActive
+                            ? undefined
+                            : () => void handleTryCodeTest()
+                        }
+                        language={runLanguage}
+                        onLanguageChange={setRunLanguage}
+                        onToggleFullscreen={() =>
+                          setFullscreen(
+                            fullscreen === "editor" ? null : "editor",
+                          )
+                        }
+                        isFullscreen={fullscreen === "editor"}
+                        canTest={
+                          isLessonCodeDemoActive
+                            ? submissionHasContent(
+                                getCodeSubmission(),
+                                undefined,
+                              ) && !isExecutingCode
+                            : submissionHasContent(
+                                getCodeSubmission(),
+                                activeTestCriteria,
+                              ) &&
+                            !isAnswerSubmitted &&
+                            !isExecutingCode
+                        }
+                        canSubmit={
+                          !isLessonCodeDemoActive &&
+                          submissionHasContent(
+                            getCodeSubmission(),
+                            activeTestCriteria,
+                          ) &&
+                          !isSpeaking &&
+                          !isAnswerSubmitted &&
+                          !isExecutingCode
+                        }
+                        isRunning={isExecutingCode}
+                      />
+                      <TestResults
+                        results={results}
+                        code={code}
+                        onToggleFullscreen={() =>
+                          setFullscreen(
+                            fullscreen === "results" ? null : "results",
+                          )
+                        }
+                        isFullscreen={fullscreen === "results"}
+                      />
+                    </Split>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="relative flex w-full min-h-0 flex-1 flex-col overflow-y-auto border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-6 lg:min-h-screen lg:border-l-2">
@@ -2088,7 +2324,7 @@ function CourseDetailInner() {
       </Split>
 
       {/* Fullscreen Overlay */}
-      {fullscreen && showCodePanel && (
+      {fullscreen && showCodePanel && !useWebWorkspace && (
         <FullscreenModal
           type={fullscreen}
           code={code}

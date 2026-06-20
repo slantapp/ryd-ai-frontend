@@ -1,13 +1,15 @@
-/** Languages we can execute in the browser (sandboxed). */
+import {
+  canExecuteCode,
+  executeStudentCode,
+  formatRunOutput,
+} from "./codeExecution";
+
+/** Languages we can execute via the configured code runner. */
 export function canRunCodeLive(language?: string): boolean {
-  const lang = (language || "javascript").toLowerCase();
-  return (
-    lang === "javascript" ||
-    lang === "js" ||
-    lang === "typescript" ||
-    lang === "ts"
-  );
+  return canExecuteCode(language);
 }
+
+export { executeStudentCode, formatRunOutput };
 
 /**
  * Run learner JavaScript without calling the browser's window.print().
@@ -36,16 +38,4 @@ export function runStudentJavaScript(code: string): {
     const message = err instanceof Error ? err.message : String(err);
     return { logs, error: message };
   }
-}
-
-export function formatRunOutput(
-  result: { logs: string[]; error?: string },
-  emptyLabel = "(No output)"
-): string[] {
-  if (result.error) {
-    return result.logs.length > 0
-      ? [...result.logs, `Error: ${result.error}`]
-      : [`Error: ${result.error}`];
-  }
-  return result.logs.length > 0 ? result.logs : [emptyLabel];
 }

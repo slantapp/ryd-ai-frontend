@@ -21,21 +21,28 @@ import {
   MathCurriculumPreview,
 } from "./components";
 import CodeEditor from "@/components/courses/exercise/CodeEditor";
+import WebCodeWorkspace from "@/components/courses/exercise/WebCodeWorkspace";
 import TestResults from "@/components/courses/exercise/TestResults";
 import FullscreenModal from "@/components/courses/exercise/FullscreenModal";
 import { decodeHandoffSegment, uploadCurriculumFile } from "./handoff";
 import type { CodingLesson, CurriculumData, Lesson, Question, CodeExample } from "./types";
 import { isMathematicsPreview } from "./types";
 import {
-  canRunCodeLive,
-  formatRunOutput,
-  runStudentJavaScript,
-} from "@/utils/runStudentCode";
-import {
-  evaluateCodeTest,
-  formatCodeTestResults,
-} from "@/utils/codeTestValidation";
+  buildSubmitCodeResultLines,
+  buildTryCodeResultLines,
+  evaluateSubmissionCodeTest,
+  runSubmissionCodeOutput,
+  submissionHasContent,
+} from "@/utils/codeTestRunner";
+import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
+import {
+  defaultWebEditorTab,
+  EMPTY_WEB_CODE,
+  isWebWorkspaceLanguage,
+  seedWebCodeFromExample,
+  type WebCodeSources,
+} from "@/utils/webCodeWorkspace";
 import {
   getTeachingSegments,
   type LessonJumpTarget,
@@ -61,6 +68,11 @@ export default function CurriculumPreviewPage() {
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [code, setCode] = useState("");
   const [results, setResults] = useState<string[]>([]);
+  const [isExecutingCode, setIsExecutingCode] = useState(false);
+  const [isTypingLessonCode, setIsTypingLessonCode] = useState(false);
+  const [runLanguage, setRunLanguage] = useState("javascript");
+  const [webCode, setWebCode] = useState<WebCodeSources>(EMPTY_WEB_CODE);
+  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
   const [showSidebar, setShowSidebar] = useState(true);
   const [currentSubtitleText, setCurrentSubtitleText] = useState("");
   const [canStartQuestions, setCanStartQuestions] = useState(false);
@@ -70,7 +82,6 @@ export default function CurriculumPreviewPage() {
     null,
   );
   const lessonStartedRef = useRef(false);
-  const afterSpeechRef = useRef<(() => void) | null>(null);
   const codeTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -79,10 +90,96 @@ export default function CurriculumPreviewPage() {
     (lesson: CodingLesson, segment: TeachingSegmentKind) => void
   >(() => {});
 
-  const getQuestionLanguage = (question: Question | undefined) =>
-    question?.type === "code_test"
-      ? question.code_example?.language || "javascript"
-      : "javascript";
+  const inferredRunLanguage = useMemo(() => {
+    if (lessonPhase === "teaching" && isLessonCodeDemo && currentLesson?.code_example) {
+      return normalizeRunLanguage(currentLesson.code_example.language);
+    }
+    if (lessonPhase === "questions" && currentLesson) {
+      const question = currentLesson.questions[currentQuestionIndex];
+      if (question?.type === "code_test") {
+        return normalizeRunLanguage(question.code_example?.language);
+      }
+    }
+    return "javascript";
+  }, [
+    currentLesson,
+    currentQuestionIndex,
+    isLessonCodeDemo,
+    lessonPhase,
+  ]);
+
+  useEffect(() => {
+    setRunLanguage(inferredRunLanguage);
+  }, [inferredRunLanguage]);
+
+  const useWebWorkspace = useMemo(() => {
+    if (lessonPhase === "teaching" && isLessonCodeDemo && currentLesson?.code_example) {
+      return isWebWorkspaceLanguage(currentLesson.code_example.language);
+    }
+    if (lessonPhase === "questions" && currentLesson) {
+      const question = currentLesson.questions[currentQuestionIndex];
+      if (question?.type === "code_test") {
+        return isWebWorkspaceLanguage(
+          question.code_example?.language,
+          question.testCriteria,
+        );
+      }
+    }
+    return false;
+  }, [
+    currentLesson,
+    currentQuestionIndex,
+    isLessonCodeDemo,
+    lessonPhase,
+  ]);
+
+  const webEditorTab = useMemo(
+    () => defaultWebEditorTab(inferredRunLanguage),
+    [inferredRunLanguage],
+  );
+
+  const resetCodeState = useCallback(() => {
+    setCode("");
+    setWebCode(EMPTY_WEB_CODE);
+    setResults([]);
+    setPreviewRefreshKey(0);
+  }, []);
+
+  const runCodeOutput = useCallback(
+    async (submission: { code: string; webCode?: WebCodeSources; language: string }, criteria?: Question["testCriteria"]) => {
+      return runSubmissionCodeOutput(
+        { code: submission.code, webCode: submission.webCode, language: submission.language },
+        criteria,
+      );
+    },
+    [],
+  );
+
+  const runLessonExampleCode = useCallback(
+    async (
+      submission: { code: string; webCode?: WebCodeSources; language: string },
+      criteria?: Question["testCriteria"],
+    ) => {
+      setIsExecutingCode(true);
+      setResults(["⏳ Running code..."]);
+      try {
+        const runOutput = await runCodeOutput(submission, criteria);
+        setResults(runOutput);
+      } finally {
+        setIsExecutingCode(false);
+      }
+    },
+    [runCodeOutput],
+  );
+
+  const getCodeSubmission = useCallback(
+    () => ({
+      code,
+      webCode: useWebWorkspace ? webCode : undefined,
+      language: runLanguage,
+    }),
+    [code, runLanguage, useWebWorkspace, webCode],
+  );
 
   const handoff = (() => {
     if (!handoffCode) {
@@ -106,6 +203,8 @@ export default function CurriculumPreviewPage() {
     AvatarComponent,
     speak,
     stop,
+    scheduleAfterSpeech,
+    clearScheduledAfterSpeech,
     isSpeaking,
     currentSubtitle,
     selectedInstructor,
@@ -162,21 +261,22 @@ export default function CurriculumPreviewPage() {
       setCurrentQuestionIndex(0);
       setSelectedAnswer(null);
       setIsAnswerSubmitted(false);
-      setCode("");
-      setResults([]);
+      resetCodeState();
       setCurrentSubtitleText("");
       setCanStartQuestions(false);
       setIsLessonCodeDemo(false);
+      setIsTypingLessonCode(false);
+      setIsExecutingCode(false);
       setTeachingSegmentIndex(0);
       lessonStartedRef.current = false;
-      afterSpeechRef.current = null;
+      clearScheduledAfterSpeech();
       if (codeTypingTimeoutRef.current) {
         clearTimeout(codeTypingTimeoutRef.current);
         codeTypingTimeoutRef.current = null;
       }
       isTypingCodeRef.current = false;
     },
-    [stop]
+    [resetCodeState, stop, clearScheduledAfterSpeech]
   );
 
   const stopCodeTyping = useCallback(() => {
@@ -190,8 +290,7 @@ export default function CurriculumPreviewPage() {
   const speakLessonCodeOutro = useCallback(
     (hasQuestions: boolean) => {
       setIsLessonCodeDemo(false);
-      setCode("");
-      setResults([]);
+      resetCodeState();
 
       if (hasQuestions) {
         speak(
@@ -204,40 +303,73 @@ export default function CurriculumPreviewPage() {
         speak("Congratulations! You've completed all lessons in this module.");
       }
     },
-    [currentLesson?.next_lesson_id, speak],
+    [currentLesson?.next_lesson_id, resetCodeState, speak],
   );
 
   const runLessonCodeExample = useCallback(
     (example: CodeExample, lesson: CodingLesson) => {
       stopCodeTyping();
       setIsLessonCodeDemo(true);
+      setIsTypingLessonCode(true);
       setCanStartQuestions(false);
-      setCode("");
-      setResults([]);
+      resetCodeState();
 
+      const isWeb = isWebWorkspaceLanguage(example.language);
+      const webTab = defaultWebEditorTab(example.language);
       const hasQuestions = (lesson.questions?.length ?? 0) > 0;
       const typingSpeed = example.typingSpeed ?? 30;
       let currentIndex = 0;
 
+      const proceedAfterExample = () => {
+        if (example.explanation) {
+          speak(example.explanation);
+          scheduleAfterSpeech(() => speakLessonCodeOutro(hasQuestions));
+        } else {
+          speakLessonCodeOutro(hasQuestions);
+        }
+      };
+
+      const finishTyping = () => {
+        isTypingCodeRef.current = false;
+        setIsTypingLessonCode(false);
+
+        if (example.autoRun) {
+          if (isWeb) {
+            setPreviewRefreshKey((key) => key + 1);
+            setResults(["✓ Preview updated."]);
+            proceedAfterExample();
+          } else {
+            void runLessonExampleCode({
+              code: example.code,
+              webCode: isWeb
+                ? seedWebCodeFromExample(example.code, example.language)
+                : undefined,
+              language: normalizeRunLanguage(example.language),
+            }).then(proceedAfterExample);
+          }
+        } else {
+          proceedAfterExample();
+        }
+      };
+
       const startTyping = () => {
+        isTypingCodeRef.current = true;
         const typeNextChar = () => {
           if (!isTypingCodeRef.current) return;
           if (currentIndex < example.code.length) {
-            setCode(example.code.substring(0, currentIndex + 1));
+            const partial = example.code.substring(0, currentIndex + 1);
+            if (isWeb) {
+              setWebCode((prev) => ({ ...prev, [webTab]: partial }));
+            } else {
+              setCode(partial);
+            }
             currentIndex++;
             codeTypingTimeoutRef.current = setTimeout(
               typeNextChar,
               typingSpeed,
             );
           } else {
-            isTypingCodeRef.current = false;
-            if (example.explanation) {
-              speak(example.explanation);
-              afterSpeechRef.current = () =>
-                speakLessonCodeOutro(hasQuestions);
-            } else {
-              speakLessonCodeOutro(hasQuestions);
-            }
+            finishTyping();
           }
         };
         codeTypingTimeoutRef.current = setTimeout(typeNextChar, 500);
@@ -245,27 +377,20 @@ export default function CurriculumPreviewPage() {
 
       if (example.description) {
         speak(example.description);
+        scheduleAfterSpeech(startTyping);
+      } else {
+        setTimeout(startTyping, 500);
       }
-
-      isTypingCodeRef.current = true;
-      const descriptionDelay = example.description
-        ? Math.max(
-            2000,
-            (example.description.split(/\s+/).length / 2.5) * 1000,
-          )
-        : 500;
-      setTimeout(startTyping, descriptionDelay);
     },
-    [speak, speakLessonCodeOutro, stopCodeTyping],
+    [
+      resetCodeState,
+      runLessonExampleCode,
+      scheduleAfterSpeech,
+      speak,
+      speakLessonCodeOutro,
+      stopCodeTyping,
+    ],
   );
-
-  // Run queued actions after avatar speech finishes
-  useEffect(() => {
-    if (isSpeaking || !afterSpeechRef.current) return;
-    const fn = afterSpeechRef.current;
-    afterSpeechRef.current = null;
-    fn();
-  }, [isSpeaking]);
 
   const presentQuestion = useCallback(
     (question: Question) => {
@@ -306,15 +431,15 @@ export default function CurriculumPreviewPage() {
           speak(
             `Welcome! In this lesson, you will be learning about ${lesson.title}.`,
           );
-          afterSpeechRef.current = advance;
+          scheduleAfterSpeech(advance);
           break;
         case "body":
           speak(lesson.body!);
-          afterSpeechRef.current = advance;
+          scheduleAfterSpeech(advance);
           break;
         case "avatar_script":
           speak(lesson.avatar_script!);
-          afterSpeechRef.current = advance;
+          scheduleAfterSpeech(advance);
           break;
         case "code_example":
           if (lesson.code_example) {
@@ -325,7 +450,7 @@ export default function CurriculumPreviewPage() {
           break;
       }
     },
-    [runLessonCodeExample, speak, speakLessonCodeOutro],
+    [runLessonCodeExample, scheduleAfterSpeech, speak, speakLessonCodeOutro],
   );
 
   useEffect(() => {
@@ -338,12 +463,13 @@ export default function CurriculumPreviewPage() {
 
       stop();
       stopCodeTyping();
-      afterSpeechRef.current = null;
+      clearScheduledAfterSpeech();
       setCurrentSubtitleText("");
       setCanStartQuestions(false);
       setIsLessonCodeDemo(false);
-      setCode("");
-      setResults([]);
+      setIsTypingLessonCode(false);
+      setIsExecutingCode(false);
+      resetCodeState();
       setSelectedAnswer(null);
       setIsAnswerSubmitted(false);
       lessonStartedRef.current = true;
@@ -358,7 +484,7 @@ export default function CurriculumPreviewPage() {
       setCurrentQuestionIndex(target.index);
       presentQuestion(currentLesson.questions[target.index]);
     },
-    [currentLesson, playTeachingSegment, presentQuestion, stop, stopCodeTyping],
+    [clearScheduledAfterSpeech, currentLesson, playTeachingSegment, presentQuestion, resetCodeState, stop, stopCodeTyping],
   );
 
   const startLesson = useCallback(() => {
@@ -380,13 +506,12 @@ export default function CurriculumPreviewPage() {
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
     setIsAnswerSubmitted(false);
-    setCode("");
-    setResults([]);
+    resetCodeState();
     setCanStartQuestions(false);
 
     const question = currentLesson.questions[0];
     presentQuestion(question);
-  }, [currentLesson, canStartQuestions, presentQuestion, stopCodeTyping]);
+  }, [currentLesson, canStartQuestions, presentQuestion, resetCodeState, stopCodeTyping]);
 
   const handleSubmitAnswer = useCallback(() => {
     if (!currentLesson || selectedAnswer === null) return;
@@ -418,8 +543,7 @@ export default function CurriculumPreviewPage() {
       setCurrentQuestionIndex(nextIndex);
       setSelectedAnswer(null);
       setIsAnswerSubmitted(false);
-      setCode("");
-      setResults([]);
+      resetCodeState();
 
       const question = currentLesson.questions[nextIndex];
       presentQuestion(question);
@@ -428,7 +552,7 @@ export default function CurriculumPreviewPage() {
       setCompletedLessons((prev) => new Set([...prev, currentLesson.id]));
       speak("Great job! You've completed this lesson.");
     }
-  }, [currentLesson, currentQuestionIndex, presentQuestion, speak]);
+  }, [currentLesson, currentQuestionIndex, presentQuestion, resetCodeState, speak]);
 
   const getNextLesson = useCallback((): CodingLesson | null => {
     if (!curriculum || !currentLesson) return null;
@@ -462,11 +586,12 @@ export default function CurriculumPreviewPage() {
       setCurrentQuestionIndex(0);
       setSelectedAnswer(null);
       setIsAnswerSubmitted(false);
-      setCode("");
-      setResults([]);
+      resetCodeState();
       setCurrentSubtitleText("");
       setCanStartQuestions(false);
       setIsLessonCodeDemo(false);
+      setIsTypingLessonCode(false);
+      setIsExecutingCode(false);
       setTeachingSegmentIndex(0);
       lessonStartedRef.current = true;
 
@@ -475,77 +600,131 @@ export default function CurriculumPreviewPage() {
     } else {
       speak("Congratulations! You've completed all lessons in this curriculum.");
     }
-  }, [curriculum, currentLesson, stop, getNextLesson, playTeachingSegment, speak]);
+  }, [curriculum, currentLesson, getNextLesson, playTeachingSegment, resetCodeState, speak, stop]);
+
+  const handleRunLessonCode = useCallback(() => {
+    if (!currentLesson?.code_example || isTypingLessonCode || isExecutingCode) return;
+
+    if (useWebWorkspace) {
+      setPreviewRefreshKey((key) => key + 1);
+      setResults(["✓ Preview updated."]);
+      return;
+    }
+
+    void runLessonExampleCode(getCodeSubmission());
+  }, [
+    currentLesson?.code_example,
+    getCodeSubmission,
+    isExecutingCode,
+    isTypingLessonCode,
+    runLessonExampleCode,
+    useWebWorkspace,
+  ]);
 
   /** Validate code against criteria without submitting the final answer. */
-  const handleCodeTest = useCallback(() => {
-    if (!currentLesson || isAnswerSubmitted) return;
+  const handleCodeTest = useCallback(async () => {
+    if (!currentLesson || isAnswerSubmitted || isExecutingCode) return;
 
     const question = currentLesson.questions[currentQuestionIndex];
     if (!question || question.type !== "code_test") return;
 
-    const lang = getQuestionLanguage(question);
-    const runOutput = canRunCodeLive(lang)
-      ? formatRunOutput(runStudentJavaScript(code))
-      : [];
+    const submission = getCodeSubmission();
+
+    if (useWebWorkspace) {
+      setPreviewRefreshKey((key) => key + 1);
+    } else {
+      setIsExecutingCode(true);
+      setResults(["⏳ Running code..."]);
+    }
 
     try {
-      const { passed, testResults } = evaluateCodeTest(
-        code,
+      const runOutput = useWebWorkspace
+        ? []
+        : await runCodeOutput(submission, question.testCriteria);
+      const { passed, testResults } = evaluateSubmissionCodeTest(
+        submission,
         question.testCriteria,
       );
-      const validationResults = formatCodeTestResults(testResults);
-      setResults([
-        ...runOutput,
-        ...validationResults,
-        passed
-          ? "✓ Test passed — submit when you are ready."
-          : "✗ Test failed. Check your code and try again.",
-      ]);
+      setResults(
+        buildTryCodeResultLines(runOutput, passed, testResults, {
+          web: useWebWorkspace,
+        }),
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      setResults([...runOutput, `⚠️ Error: ${errorMessage}`]);
+      setResults([`⚠️ Error: ${errorMessage}`]);
+    } finally {
+      if (!useWebWorkspace) {
+        setIsExecutingCode(false);
+      }
     }
-  }, [currentLesson, currentQuestionIndex, code, isAnswerSubmitted]);
+  }, [
+    currentLesson,
+    currentQuestionIndex,
+    getCodeSubmission,
+    isAnswerSubmitted,
+    isExecutingCode,
+    runCodeOutput,
+    useWebWorkspace,
+  ]);
 
-  const handleCodeSubmit = useCallback(() => {
-    if (!currentLesson || isAnswerSubmitted) return;
+  const handleCodeSubmit = useCallback(async () => {
+    if (!currentLesson || isAnswerSubmitted || isExecutingCode) return;
 
     const question = currentLesson.questions[currentQuestionIndex];
     if (!question || question.type !== "code_test") return;
 
-    const lang = getQuestionLanguage(question);
-    const runOutput = canRunCodeLive(lang)
-      ? formatRunOutput(runStudentJavaScript(code))
-      : [];
+    const submission = getCodeSubmission();
+
+    if (useWebWorkspace) {
+      setPreviewRefreshKey((key) => key + 1);
+    } else {
+      setIsExecutingCode(true);
+      setResults(["⏳ Running code..."]);
+    }
 
     try {
-      const { passed, testResults } = evaluateCodeTest(
-        code,
+      const runOutput = useWebWorkspace
+        ? []
+        : await runCodeOutput(submission, question.testCriteria);
+      const { passed, testResults } = evaluateSubmissionCodeTest(
+        submission,
         question.testCriteria,
       );
-      setResults([
-        ...runOutput,
-        ...formatCodeTestResults(testResults),
-        passed ? "✓ Test passed!" : "✗ Test failed. Check your code and try again.",
-      ]);
+      setResults(buildSubmitCodeResultLines(runOutput, passed, testResults));
       setIsAnswerSubmitted(true);
 
       if (passed) {
-        const feedbackText = `Correct! Well done. ${question.explanation || ""}`;
-        speak(feedbackText);
+        speak(`Correct! Well done. ${question.explanation || ""}`);
       } else {
-        speak("That's not quite right. Check your code and try again.");
+        speak(
+          useWebWorkspace
+            ? "That's not quite right. Check your HTML, CSS, and JavaScript."
+            : "That's not quite right. Check your code and try again.",
+        );
       }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      setResults([...runOutput, `⚠️ Error: ${errorMessage}`]);
+      setResults([`⚠️ Error: ${errorMessage}`]);
       setIsAnswerSubmitted(true);
       speak(`There was an error running your code: ${errorMessage}`);
+    } finally {
+      if (!useWebWorkspace) {
+        setIsExecutingCode(false);
+      }
     }
-  }, [currentLesson, currentQuestionIndex, code, isAnswerSubmitted, speak]);
+  }, [
+    currentLesson,
+    currentQuestionIndex,
+    getCodeSubmission,
+    isAnswerSubmitted,
+    isExecutingCode,
+    runCodeOutput,
+    speak,
+    useWebWorkspace,
+  ]);
 
   const handleBackToUpload = useCallback(() => {
     stop();
@@ -853,38 +1032,65 @@ export default function CurriculumPreviewPage() {
                   )}
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <Split
-                    direction="vertical"
-                    className="flex h-full min-h-[320px] w-full flex-col"
-                    sizes={[55, 45]}
-                    minSize={120}
-                    gutterSize={8}
-                  >
-                    <CodeEditor
-                      code={code}
-                      onCodeChange={setCode}
-                      onTestCode={() => {}}
-                      language={currentLesson.code_example?.language || "javascript"}
+                  {useWebWorkspace ? (
+                    <WebCodeWorkspace
+                      sources={webCode}
+                      onSourcesChange={setWebCode}
+                      onTestCode={handleRunLessonCode}
                       onToggleFullscreen={() =>
                         setFullscreen(
                           fullscreen === "editor" ? null : "editor",
                         )
                       }
                       isFullscreen={fullscreen === "editor"}
-                      canTest={false}
-                      canSubmit={false}
-                    />
-                    <TestResults
-                      results={results}
-                      code={code}
-                      onToggleFullscreen={() =>
-                        setFullscreen(
-                          fullscreen === "results" ? null : "results",
-                        )
+                      canTest={
+                        !isTypingLessonCode &&
+                        submissionHasContent(getCodeSubmission(), undefined)
                       }
-                      isFullscreen={fullscreen === "results"}
+                      results={results}
+                      previewRefreshKey={previewRefreshKey}
+                      initialTab={webEditorTab}
                     />
-                  </Split>
+                  ) : (
+                    <Split
+                      direction="vertical"
+                      className="flex h-full min-h-[320px] w-full flex-col"
+                      sizes={[55, 45]}
+                      minSize={120}
+                      gutterSize={8}
+                    >
+                      <CodeEditor
+                        code={code}
+                        onCodeChange={setCode}
+                        onTestCode={handleRunLessonCode}
+                        language={runLanguage}
+                        onLanguageChange={setRunLanguage}
+                        onToggleFullscreen={() =>
+                          setFullscreen(
+                            fullscreen === "editor" ? null : "editor",
+                          )
+                        }
+                        isFullscreen={fullscreen === "editor"}
+                        canTest={
+                          !isTypingLessonCode &&
+                          !isExecutingCode &&
+                          code.trim().length > 0
+                        }
+                        isRunning={isExecutingCode}
+                        canSubmit={false}
+                      />
+                      <TestResults
+                        results={results}
+                        code={code}
+                        onToggleFullscreen={() =>
+                          setFullscreen(
+                            fullscreen === "results" ? null : "results",
+                          )
+                        }
+                        isFullscreen={fullscreen === "results"}
+                      />
+                    </Split>
+                  )}
                 </div>
               </div>
             ) : lessonPhase === "questions" && currentQuestion ? (
@@ -903,43 +1109,88 @@ export default function CurriculumPreviewPage() {
                       )}
                     </div>
                     <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
-                      <Split
-                        direction="vertical"
-                        className="flex h-full min-h-[320px] w-full flex-col"
-                        sizes={[55, 45]}
-                        minSize={120}
-                        gutterSize={8}
-                      >
-                        <CodeEditor
-                          code={code}
-                          onCodeChange={setCode}
-                          onTestCode={handleCodeSubmit}
-                          onTryOut={handleCodeTest}
-                          language={getQuestionLanguage(currentQuestion)}
+                      {useWebWorkspace ? (
+                        <WebCodeWorkspace
+                          sources={webCode}
+                          onSourcesChange={setWebCode}
+                          onTestCode={() => void handleCodeSubmit()}
+                          onTryOut={() => void handleCodeTest()}
                           onToggleFullscreen={() =>
                             setFullscreen(
                               fullscreen === "editor" ? null : "editor",
                             )
                           }
                           isFullscreen={fullscreen === "editor"}
-                          canTest={!isAnswerSubmitted && code.trim().length > 0}
-                          canSubmit={
-                            code.trim().length > 0 && !isAnswerSubmitted
-                          }
-                        />
-                        <TestResults
-                          results={results}
-                          code={code}
-                          onToggleFullscreen={() =>
-                            setFullscreen(
-                              fullscreen === "results" ? null : "results",
+                          canTest={
+                            !isAnswerSubmitted &&
+                            submissionHasContent(
+                              getCodeSubmission(),
+                              currentQuestion.testCriteria,
                             )
                           }
-                          isFullscreen={fullscreen === "results"}
+                          canSubmit={
+                            submissionHasContent(
+                              getCodeSubmission(),
+                              currentQuestion.testCriteria,
+                            ) && !isAnswerSubmitted
+                          }
+                          results={results}
+                          previewRefreshKey={previewRefreshKey}
+                          initialTab={webEditorTab}
                         />
-                      </Split>
+                      ) : (
+                        <Split
+                          direction="vertical"
+                          className="flex h-full min-h-[320px] w-full flex-col"
+                          sizes={[55, 45]}
+                          minSize={120}
+                          gutterSize={8}
+                        >
+                          <CodeEditor
+                            code={code}
+                            onCodeChange={setCode}
+                            onTestCode={() => void handleCodeSubmit()}
+                            onTryOut={() => void handleCodeTest()}
+                            language={runLanguage}
+                            onLanguageChange={setRunLanguage}
+                            onToggleFullscreen={() =>
+                              setFullscreen(
+                                fullscreen === "editor" ? null : "editor",
+                              )
+                            }
+                            isFullscreen={fullscreen === "editor"}
+                            canTest={
+                              !isAnswerSubmitted &&
+                              !isExecutingCode &&
+                              submissionHasContent(
+                                getCodeSubmission(),
+                                currentQuestion.testCriteria,
+                              )
+                            }
+                            canSubmit={
+                              submissionHasContent(
+                                getCodeSubmission(),
+                                currentQuestion.testCriteria,
+                              ) &&
+                              !isAnswerSubmitted &&
+                              !isExecutingCode
+                            }
+                            isRunning={isExecutingCode}
+                          />
+                          <TestResults
+                            results={results}
+                            code={code}
+                            onToggleFullscreen={() =>
+                              setFullscreen(
+                                fullscreen === "results" ? null : "results",
+                              )
+                            }
+                            isFullscreen={fullscreen === "results"}
+                          />
+                        </Split>
+                      )}
                     </div>
-                    {fullscreen && (
+                    {fullscreen && !useWebWorkspace && (
                       <FullscreenModal
                         type={fullscreen}
                         code={code}

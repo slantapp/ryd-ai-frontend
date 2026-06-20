@@ -33,6 +33,8 @@ export function usePreviewAvatar() {
   const avatarRef = useRef<NarratorAvatarRef | null>(null);
   const avatarReadyRef = useRef(false);
   const pendingSpeechQueueRef = useRef<string[]>([]);
+  /** Runs once after the current utterance finishes (and any queued speech is flushed). */
+  const afterSpeechRef = useRef<(() => void) | null>(null);
   const [showMobileAudioUnlock, setShowMobileAudioUnlock] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [currentSubtitle, setCurrentSubtitle] = useState("");
@@ -77,9 +79,18 @@ export function usePreviewAvatar() {
     [speakImmediate]
   );
 
+  const scheduleAfterSpeech = useCallback((fn: () => void) => {
+    afterSpeechRef.current = fn;
+  }, []);
+
+  const clearScheduledAfterSpeech = useCallback(() => {
+    afterSpeechRef.current = null;
+  }, []);
+
   const stop = useCallback(() => {
     try {
       pendingSpeechQueueRef.current = [];
+      afterSpeechRef.current = null;
       setShowMobileAudioUnlock(false);
       stopAvatarSpeech(avatarRef.current);
       setIsSpeaking(false);
@@ -123,7 +134,15 @@ export function usePreviewAvatar() {
   const handleSpeechEnd = useCallback(() => {
     setIsSpeaking(false);
     setCurrentSubtitle("");
+    const hadQueuedSpeech = pendingSpeechQueueRef.current.length > 0;
     flushNextQueuedSpeech();
+    if (hadQueuedSpeech) return;
+
+    const fn = afterSpeechRef.current;
+    if (fn) {
+      afterSpeechRef.current = null;
+      fn();
+    }
   }, [flushNextQueuedSpeech]);
 
   const handleSubtitle = useCallback((text: string) => {
@@ -180,6 +199,8 @@ export function usePreviewAvatar() {
     AvatarComponent,
     speak,
     stop,
+    scheduleAfterSpeech,
+    clearScheduledAfterSpeech,
     isReady,
     isSpeaking,
     currentSubtitle,

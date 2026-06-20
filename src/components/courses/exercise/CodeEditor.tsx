@@ -1,5 +1,9 @@
-import { Maximize2, Minimize2, Play, Send } from "lucide-react";
+import { Loader2, Maximize2, Minimize2, Play, Send } from "lucide-react";
 import { MonacoEditorLazy } from "./MonacoEditorLazy";
+import {
+  CODE_RUN_LANGUAGES,
+  normalizeRunLanguage,
+} from "@/utils/codeExecution/languages";
 
 interface CodeEditorProps {
   code: string;
@@ -8,23 +12,24 @@ interface CodeEditorProps {
   onToggleFullscreen: () => void;
   isFullscreen: boolean;
   canTest: boolean;
-  /** Monaco language id (e.g. javascript, dart, python). Defaults to javascript. */
+  /** Monaco + runner language (e.g. javascript, python). Defaults to javascript. */
   language?: string;
+  /** When provided, shows a language dropdown the user can override. */
+  onLanguageChange?: (language: string) => void;
   /** When provided, shows two buttons: "Try it out" (run only) and "Submit answer" (run and submit). */
   onTryOut?: () => void;
   /** When using two-button mode, submit button is disabled when false (e.g. when code is empty). */
   canSubmit?: boolean;
+  /** Shows a running state and disables action buttons while code executes. */
+  isRunning?: boolean;
 }
 
 /** Map curriculum language strings to Monaco editor language ids. */
 function toMonacoLanguage(language?: string): string {
-  const lang = (language || "javascript").toLowerCase();
+  const lang = normalizeRunLanguage(language);
   const map: Record<string, string> = {
-    js: "javascript",
-    ts: "typescript",
-    py: "python",
-    html: "html",
-    css: "css",
+    cpp: "cpp",
+    csharp: "csharp",
   };
   return map[lang] ?? lang;
 }
@@ -37,58 +42,79 @@ export default function CodeEditor({
   isFullscreen,
   canTest,
   language = "javascript",
+  onLanguageChange,
   onTryOut,
   canSubmit = true,
+  isRunning = false,
 }: CodeEditorProps) {
   const twoButtonMode = typeof onTryOut === "function";
   const monacoLanguage = toMonacoLanguage(language);
+  const testDisabled = !canTest || isRunning;
+  const submitDisabled = !canSubmit || isRunning;
+  const selectedLanguage = normalizeRunLanguage(language);
+  const showLanguageSelector = typeof onLanguageChange === "function";
 
   return (
     <div className="flex flex-col h-full border border-gray-200 rounded-md overflow-hidden">
-      <div className="flex justify-between items-center px-3 py-2 border-b bg-gray-50 shrink-0">
-        <h3 className="font-medium text-gray-700">Editor</h3>
-        <div className="flex items-center gap-2">
+      <div className="flex justify-between items-center px-3 py-2 border-b bg-gray-50 shrink-0 gap-2">
+        <h3 className="font-medium text-gray-700 shrink-0">Editor</h3>
+        <div className="flex items-center gap-2 min-w-0">
+          {showLanguageSelector && (
+            <select
+              value={selectedLanguage}
+              onChange={(e) => onLanguageChange(e.target.value)}
+              disabled={isRunning}
+              aria-label="Programming language"
+              className="h-8 max-w-38 truncate rounded border border-gray-300 bg-white px-2 text-sm text-gray-700 disabled:cursor-not-allowed disabled:bg-gray-100"
+            >
+              {CODE_RUN_LANGUAGES.map((lang) => (
+                <option key={lang.value} value={lang.value}>
+                  {lang.label}
+                </option>
+              ))}
+            </select>
+          )}
           {twoButtonMode ? (
             <>
               <button
                 onClick={onTryOut}
-                disabled={!canTest}
-                className={`flex items-center gap-2 px-3 py-1 rounded text-white text-sm ${!canTest
+                disabled={testDisabled}
+                className={`flex items-center gap-2 px-3 py-1 rounded text-white text-sm shrink-0 ${testDisabled
                   ? "bg-gray-500 cursor-not-allowed"
                   : "bg-gray-600 hover:bg-gray-700"
                   }`}
               >
-                <Play size={14} />
-                Test Code
+                {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                {isRunning ? "Running..." : "Test Code"}
               </button>
               <button
                 onClick={onTestCode}
-                disabled={!canSubmit}
-                className={`flex items-center gap-2 px-3 py-1 rounded text-white text-sm ${!canSubmit
+                disabled={submitDisabled}
+                className={`flex items-center gap-2 px-3 py-1 rounded text-white text-sm shrink-0 ${submitDisabled
                   ? "bg-gray-500 cursor-not-allowed"
                   : "bg-primary hover:bg-primary/80"
                   }`}
               >
-                <Send size={14} />
-                Submit answer
+                {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                {isRunning ? "Running..." : "Submit answer"}
               </button>
             </>
           ) : (
             <button
               onClick={onTestCode}
-              disabled={!canTest}
-              className={`flex items-center gap-2 px-3 py-1 rounded text-white text-sm ${!canTest
+              disabled={testDisabled}
+              className={`flex items-center gap-2 px-3 py-1 rounded text-white text-sm shrink-0 ${testDisabled
                 ? "bg-gray-500 cursor-not-allowed"
                 : "bg-primary hover:bg-primary/80"
                 }`}
             >
-              <Play size={14} />
-              Run Code
+              {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+              {isRunning ? "Running..." : "Run Code"}
             </button>
           )}
           <button
             onClick={onToggleFullscreen}
-            className="p-1 rounded hover:bg-gray-200"
+            className="p-1 rounded hover:bg-gray-200 shrink-0"
           >
             {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>

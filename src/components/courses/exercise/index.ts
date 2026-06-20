@@ -7,4 +7,5 @@ export { default as FormulaExamplePanel } from "./FormulaExamplePanel";
 export { default as TestResults } from "./TestResults";
 export { default as MultipleChoiceQuestion } from "./MultipleChoiceQuestion";
 export { default as TrueFalseQuestion } from "./TrueFalseQuestion";
+export { default as WebCodeWorkspace } from "./WebCodeWorkspace";
 export { default as FullscreenModal } from "./FullscreenModal";

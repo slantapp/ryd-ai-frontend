@@ -5,7 +5,7 @@ export type CurriculumHandoff = {
   name: string;
 };
 
-export type CurriculumCodePayload = CurriculumHandoff & {
+export type CurriculumCodePayload = {
   /** Curriculum record id used with GET /common/curriculum/preview/:id */
   curriculumId: string;
 };
@@ -34,24 +34,36 @@ export function decodeHandoffSegment(segment: string): CurriculumHandoff {
   return { token: o.token, name: String(o.name || "") };
 }
 
-/** Decode `?curriculumCode=` — token/id field is the curriculum record id for preview fetch. */
+/** Decode `?curriculumCode=` — base64 of the curriculum id (`btoa(String(id))`). */
 export function decodeCurriculumCode(segment: string): CurriculumCodePayload {
-  const o = decodeBase64JsonSegment(segment);
-  const curriculumId =
-    (typeof o.curriculumId === "string" && o.curriculumId) ||
-    (typeof o.id === "string" && o.id) ||
-    (typeof o.token === "string" && o.token) ||
-    "";
+  const trimmed = segment.trim();
+  if (!trimmed) {
+    throw new Error("Invalid curriculum preview code.");
+  }
+
+  let encoded = trimmed;
+  try {
+    encoded = decodeURIComponent(trimmed);
+  } catch {
+    encoded = trimmed;
+  }
+
+  const pad =
+    encoded.length % 4 === 0 ? "" : "=".repeat(4 - (encoded.length % 4));
+  const b64 = encoded.replace(/-/g, "+").replace(/_/g, "/") + pad;
+
+  let curriculumId = "";
+  try {
+    curriculumId = atob(b64).trim();
+  } catch {
+    throw new Error("Invalid curriculum preview code.");
+  }
 
   if (!curriculumId) {
     throw new Error("Invalid curriculum preview code: missing curriculum id");
   }
 
-  return {
-    token: curriculumId,
-    curriculumId,
-    name: String(o.name || ""),
-  };
+  return { curriculumId };
 }
 
 function getApiBaseUrl(): string {

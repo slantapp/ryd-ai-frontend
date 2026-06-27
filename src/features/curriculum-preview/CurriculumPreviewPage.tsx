@@ -137,7 +137,7 @@ export default function CurriculumPreviewPage() {
   const isTypingCodeRef = useRef(false);
   const playTeachingSegmentRef = useRef<
     (lesson: CodingLesson, segment: TeachingSegmentKind) => void
-  >(() => {});
+  >(() => { });
 
   const inferredRunLanguage = useMemo(() => {
     if (lessonPhase === "teaching" && isLessonCodeDemo && currentLesson?.code_example) {
@@ -305,7 +305,15 @@ export default function CurriculumPreviewPage() {
   }, [applyCurriculumData, isRemotePreview, remotePreviewMeta.data]);
 
   const handlePublishCurriculum = useCallback(async () => {
-    if (!handoff.data || !sourceFile || publishStatus === "uploading") return;
+    if (
+      !handoff.data ||
+      !sourceFile ||
+      publishStatus === "uploading" ||
+      isRemotePreview ||
+      !("token" in handoff.data)
+    ) {
+      return;
+    }
 
     try {
       setPublishStatus("uploading");
@@ -320,7 +328,7 @@ export default function CurriculumPreviewPage() {
           : "Could not publish your curriculum. Please try again.",
       );
     }
-  }, [handoff.data, publishStatus, sourceFile]);
+  }, [handoff.data, isRemotePreview, publishStatus, sourceFile]);
 
   const handleSelectLesson = useCallback(
     (lesson: Lesson) => {
@@ -870,11 +878,7 @@ export default function CurriculumPreviewPage() {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-3 bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-gray-600">
-          {handoff.data.name
-            ? `Loading curriculum for ${handoff.data.name}…`
-            : "Loading curriculum preview…"}
-        </p>
+        <p className="text-sm text-gray-600">Loading curriculum preview…</p>
       </div>
     );
   }
@@ -882,7 +886,9 @@ export default function CurriculumPreviewPage() {
   if (!isRemotePreview && state === "upload") {
     return (
       <FileUploader
-        handoffName={handoff.data.name}
+        handoffName={
+          handoff.data && "name" in handoff.data ? handoff.data.name : undefined
+        }
         onCurriculumLoaded={handleCurriculumLoaded}
       />
     );
@@ -941,9 +947,7 @@ export default function CurriculumPreviewPage() {
                 </button>
               ) : (
                 <p className="text-sm font-medium text-gray-700">
-                  {handoff.data?.name
-                    ? `Preview · ${handoff.data.name}`
-                    : "Curriculum preview"}
+                  Curriculum preview
                 </p>
               )}
               <select

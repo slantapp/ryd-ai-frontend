@@ -24,7 +24,12 @@ import CodeEditor from "@/components/courses/exercise/CodeEditor";
 import WebCodeWorkspace from "@/components/courses/exercise/WebCodeWorkspace";
 import TestResults from "@/components/courses/exercise/TestResults";
 import FullscreenModal from "@/components/courses/exercise/FullscreenModal";
-import { decodeHandoffSegment, uploadCurriculumFile } from "./handoff";
+import {
+  decodeCurriculumCode,
+  decodeHandoffSegment,
+  fetchCurriculumPreview,
+  uploadCurriculumFile,
+} from "./handoff";
 import type { CodingLesson, CurriculumData, Lesson, Question, CodeExample } from "./types";
 import { isMathematicsPreview } from "./types";
 import {
@@ -53,10 +58,51 @@ type PreviewState = "upload" | "preview";
 type LessonPhase = "intro" | "teaching" | "questions" | "complete";
 type PublishStatus = "idle" | "uploading" | "published";
 
+type RemoteLoadStatus = "idle" | "loading" | "success" | "error";
+
 export default function CurriculumPreviewPage() {
   const [searchParams] = useSearchParams();
+  const curriculumCodeParam = searchParams.get("curriculumCode");
   const handoffCode = searchParams.get("code");
-  const [state, setState] = useState<PreviewState>("upload");
+  const isRemotePreview = Boolean(curriculumCodeParam?.trim());
+
+  const remotePreviewMeta = useMemo(() => {
+    if (!curriculumCodeParam?.trim()) {
+      return { data: null as ReturnType<typeof decodeCurriculumCode> | null, error: null as string | null };
+    }
+    try {
+      return { data: decodeCurriculumCode(curriculumCodeParam.trim()), error: null };
+    } catch {
+      return {
+        data: null,
+        error: "Invalid curriculum preview code.",
+      };
+    }
+  }, [curriculumCodeParam]);
+
+  const handoff = useMemo(() => {
+    if (isRemotePreview) {
+      return { data: remotePreviewMeta.data, error: remotePreviewMeta.error };
+    }
+    if (!handoffCode) {
+      return {
+        data: null,
+        error: "No curriculum preview code found in the URL.",
+      };
+    }
+    try {
+      return { data: decodeHandoffSegment(handoffCode), error: null };
+    } catch {
+      return {
+        data: null,
+        error: "Invalid curriculum preview code.",
+      };
+    }
+  }, [handoffCode, isRemotePreview, remotePreviewMeta.data, remotePreviewMeta.error]);
+
+  const [state, setState] = useState<PreviewState>(() =>
+    isRemotePreview ? "preview" : "upload",
+  );
   const [curriculum, setCurriculum] = useState<CurriculumData | null>(null);
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [publishStatus, setPublishStatus] = useState<PublishStatus>("idle");
@@ -81,6 +127,9 @@ export default function CurriculumPreviewPage() {
   const [fullscreen, setFullscreen] = useState<"editor" | "results" | null>(
     null,
   );
+  const [remoteLoadStatus, setRemoteLoadStatus] =
+    useState<RemoteLoadStatus>("idle");
+  const [remoteLoadError, setRemoteLoadError] = useState<string | null>(null);
   const lessonStartedRef = useRef(false);
   const codeTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -181,23 +230,22 @@ export default function CurriculumPreviewPage() {
     [code, runLanguage, useWebWorkspace, webCode],
   );
 
-  const handoff = (() => {
-    if (!handoffCode) {
-      return {
-        data: null,
-        error: "No curriculum preview code found in the URL.",
-      };
+  const applyCurriculumData = useCallback((data: CurriculumData) => {
+    setCurriculum(data);
+    setPublishStatus("idle");
+    setState("preview");
+    if (data.modules.length > 0 && data.modules[0].lessons.length > 0) {
+      setCurrentLesson(data.modules[0].lessons[0] as CodingLesson);
     }
-
-    try {
-      return { data: decodeHandoffSegment(handoffCode), error: null };
-    } catch {
-      return {
-        data: null,
-        error: "Invalid curriculum preview code.",
-      };
-    }
-  })();
+    const hasCodeExamples = data.modules.some((mod) =>
+      mod.lessons.some(
+        (les) =>
+          !!(les as CodingLesson).code_example ||
+          les.questions.some((q) => q.type === "code_test"),
+      ),
+    );
+    if (hasCodeExamples) prefetchMonacoEditor();
+  }, []);
 
   const {
     AvatarComponent,
@@ -217,23 +265,44 @@ export default function CurriculumPreviewPage() {
     }
   }, [currentSubtitle]);
 
-  const handleCurriculumLoaded = useCallback((data: CurriculumData, file: File) => {
-    setCurriculum(data);
-    setSourceFile(file);
-    setPublishStatus("idle");
-    setState("preview");
-    if (data.modules.length > 0 && data.modules[0].lessons.length > 0) {
-      setCurrentLesson(data.modules[0].lessons[0] as CodingLesson);
-    }
-    const hasCodeExamples = data.modules.some((mod) =>
-      mod.lessons.some(
-        (les) =>
-          !!(les as CodingLesson).code_example ||
-          les.questions.some((q) => q.type === "code_test"),
-      ),
-    );
-    if (hasCodeExamples) prefetchMonacoEditor();
-  }, []);
+  const handleCurriculumLoaded = useCallback(
+    (data: CurriculumData, file: File) => {
+      setSourceFile(file);
+      applyCurriculumData(data);
+    },
+    [applyCurriculumData],
+  );
+
+  useEffect(() => {
+    if (!isRemotePreview || !remotePreviewMeta.data) return;
+
+    let cancelled = false;
+    setRemoteLoadStatus("loading");
+    setRemoteLoadError(null);
+
+    void (async () => {
+      try {
+        const data = await fetchCurriculumPreview(
+          remotePreviewMeta.data!.curriculumId,
+        );
+        if (cancelled) return;
+        applyCurriculumData(data);
+        setRemoteLoadStatus("success");
+      } catch (error) {
+        if (cancelled) return;
+        setRemoteLoadStatus("error");
+        setRemoteLoadError(
+          error instanceof Error
+            ? error.message
+            : "Could not load curriculum preview.",
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyCurriculumData, isRemotePreview, remotePreviewMeta.data]);
 
   const handlePublishCurriculum = useCallback(async () => {
     if (!handoff.data || !sourceFile || publishStatus === "uploading") return;
@@ -773,7 +842,44 @@ export default function CurriculumPreviewPage() {
     );
   }
 
-  if (state === "upload") {
+  if (isRemotePreview && remoteLoadStatus === "error") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-primary/10 via-white to-primary/5 p-6">
+        <div className="w-full max-w-md rounded-2xl border border-red-100 bg-white p-6 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+            <X className="h-7 w-7 text-red-600" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">
+            Could Not Load Curriculum
+          </h1>
+          <p className="mt-2 text-sm text-gray-600">
+            {remoteLoadError || "The curriculum preview could not be loaded."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    isRemotePreview &&
+    (remoteLoadStatus === "loading" ||
+      remoteLoadStatus === "idle" ||
+      !curriculum ||
+      !currentLesson)
+  ) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-gray-600">
+          {handoff.data.name
+            ? `Loading curriculum for ${handoff.data.name}…`
+            : "Loading curriculum preview…"}
+        </p>
+      </div>
+    );
+  }
+
+  if (!isRemotePreview && state === "upload") {
     return (
       <FileUploader
         handoffName={handoff.data.name}
@@ -824,14 +930,22 @@ export default function CurriculumPreviewPage() {
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="shrink-0 space-y-3 border-b border-gray-200 p-4">
             <div className="flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={handleBackToUpload}
-                className="flex items-center gap-2 text-sm text-primary hover:text-primary/80"
-              >
-                <Upload className="h-4 w-4" />
-                Upload New
-              </button>
+              {!isRemotePreview ? (
+                <button
+                  type="button"
+                  onClick={handleBackToUpload}
+                  className="flex items-center gap-2 text-sm text-primary hover:text-primary/80"
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload New
+                </button>
+              ) : (
+                <p className="text-sm font-medium text-gray-700">
+                  {handoff.data?.name
+                    ? `Preview · ${handoff.data.name}`
+                    : "Curriculum preview"}
+                </p>
+              )}
               <select
                 value={selectedInstructor}
                 onChange={(e) =>
@@ -843,35 +957,39 @@ export default function CurriculumPreviewPage() {
                 <option value="man">Male Instructor</option>
               </select>
             </div>
-            <button
-              type="button"
-              onClick={() => void handlePublishCurriculum()}
-              disabled={
-                !sourceFile ||
-                publishStatus === "uploading" ||
-                publishStatus === "published"
-              }
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
-            >
-              {publishStatus === "uploading" ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Publishing...
-                </>
-              ) : publishStatus === "published" ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Published
-                </>
-              ) : (
-                "Publish curriculum"
-              )}
-            </button>
-            {publishStatus === "idle" && (
-              <p className="text-xs leading-relaxed text-gray-500">
-                Preview your lessons first. When you are satisfied, publish to
-                save this curriculum.
-              </p>
+            {!isRemotePreview && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void handlePublishCurriculum()}
+                  disabled={
+                    !sourceFile ||
+                    publishStatus === "uploading" ||
+                    publishStatus === "published"
+                  }
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+                >
+                  {publishStatus === "uploading" ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : publishStatus === "published" ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Published
+                    </>
+                  ) : (
+                    "Publish curriculum"
+                  )}
+                </button>
+                {publishStatus === "idle" && (
+                  <p className="text-xs leading-relaxed text-gray-500">
+                    Preview your lessons first. When you are satisfied, publish to
+                    save this curriculum.
+                  </p>
+                )}
+              </>
             )}
           </div>
           <div className="min-h-0 flex-1 overflow-hidden">

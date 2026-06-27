@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/select";
 import {
   ChevronLeft,
-  ChevronRight,
   BookOpen,
   Braces,
   Palette,
@@ -47,7 +46,6 @@ const CATEGORY_ICONS: Record<CourseCategoryId, LucideIcon> = {
 
 const CoursesPage = () => {
   const [activeTab, setActiveTab] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
   /** Learner age (years): show courses where learner meets the course minimum age. */
   const [ageFilter, setAgeFilter] = useState<
     "all" | "6" | "8" | "10" | "12" | "14" | "16"
@@ -55,7 +53,6 @@ const CoursesPage = () => {
   const [classFilter, setClassFilter] = useState<string>("all");
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CourseCategoryId | null>(null);
-  const coursesPerPage = 6;
   const {
     toggleWishlist,
     isInWishlist,
@@ -136,28 +133,14 @@ const CoursesPage = () => {
     return filteredCourses.filter((c) => c.categoryId === selectedCategoryId);
   }, [filteredCourses, selectedCategoryId]);
 
-  const listForPagination = selectedCategoryId
-    ? coursesInCategory
-    : filteredCourses;
-
-  const totalPages = Math.ceil(listForPagination.length / coursesPerPage);
-  const startIndex = (currentPage - 1) * coursesPerPage;
-  const endIndex = startIndex + coursesPerPage;
-  const currentCourses = listForPagination.slice(startIndex, endIndex);
-
   const categoryFolders = useMemo(
     () => listCategoriesWithCounts(filteredCourses),
     [filteredCourses]
   );
 
   useEffect(() => {
-    setCurrentPage(1);
     setSelectedCategoryId(null);
   }, [activeTab]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [ageFilter, classFilter]);
 
   useEffect(() => {
     if (showAgeClassFilters) return;
@@ -175,10 +158,6 @@ const CoursesPage = () => {
   }, [classFilter, classFilterOptions]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategoryId]);
-
-  useEffect(() => {
     if (
       selectedCategoryId &&
       !categoryFolders.some((f) => f.category.id === selectedCategoryId)
@@ -186,14 +165,6 @@ const CoursesPage = () => {
       setSelectedCategoryId(null);
     }
   }, [categoryFolders, selectedCategoryId]);
-
-  const handlePreviousPage = () => {
-    setCurrentPage((prev) => Math.max(1, prev - 1));
-  };
-
-  const handleNextPage = () => {
-    setCurrentPage((prev) => Math.min(totalPages, prev + 1));
-  };
 
   const tabTriggerClass = cn(
     "shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-all sm:px-4 sm:py-2 sm:text-sm md:px-6",
@@ -212,7 +183,6 @@ const CoursesPage = () => {
   const resetFilters = () => {
     setAgeFilter("all");
     setClassFilter("all");
-    setCurrentPage(1);
   };
 
   return (
@@ -233,10 +203,7 @@ const CoursesPage = () => {
 
         <Tabs
           value={activeTab}
-          onValueChange={(value) => {
-            setActiveTab(value);
-            setCurrentPage(1);
-          }}
+          onValueChange={setActiveTab}
           className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 sm:gap-4"
         >
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -400,7 +367,7 @@ const CoursesPage = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6">
-                    {currentCourses.map((course) => (
+                    {coursesInCategory.map((course) => (
                       <CourseCard
                         key={course.slug}
                         course={course}
@@ -416,59 +383,6 @@ const CoursesPage = () => {
             )}
           </div>
         </Tabs>
-
-        {selectedCategoryId &&
-          filteredCourses.length > 0 &&
-          coursesInCategory.length > 0 &&
-          totalPages > 1 && (
-            <div className="flex shrink-0 flex-col gap-3 border-t border-gray-200 pt-3 sm:flex-row sm:items-center sm:justify-between sm:pt-4">
-              <p className="text-center font-sans-serifbookflf text-xs text-gray-600 sm:text-left sm:text-sm">
-                Showing {startIndex + 1} to{" "}
-                {Math.min(endIndex, listForPagination.length)} of{" "}
-                {listForPagination.length} courses
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handlePreviousPage}
-                  disabled={currentPage === 1}
-                  className="size-9 shrink-0 rounded-full border-none bg-primary text-white shadow disabled:bg-gray-200 disabled:text-gray-400 sm:size-10"
-                >
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <div className="flex max-w-full flex-wrap items-center justify-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                        className={cn(
-                          "min-w-8 px-2 text-xs sm:min-w-9 sm:px-3 sm:text-sm",
-                          currentPage === page
-                            ? "bg-primary text-white"
-                            : "bg-white hover:bg-gray-100"
-                        )}
-                      >
-                        {page}
-                      </Button>
-                    )
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
-                  className="size-9 shrink-0 rounded-full border-none bg-primary text-white shadow disabled:bg-gray-200 disabled:text-gray-400 sm:size-10"
-                >
-                  <ChevronRight className="size-4" />
-                </Button>
-              </div>
-            </div>
-          )}
       </section>
     </div>
   );

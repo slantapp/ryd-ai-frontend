@@ -6,6 +6,40 @@ function escapeLatexText(text: string): string {
 }
 
 /**
+ * Convert "x" to \\times only when it clearly means multiplication
+ * (between numbers or after a closing bracket/brace), not for variables like "x tens".
+ */
+function replaceNumericMultiplicationX(s: string): string {
+  return s
+    .replace(/(\d)\s+x\s+(\d)/gi, "$1 \\times $2")
+    .replace(/(\})\s+x\s+(\d)/gi, "$1 \\times $2")
+    .replace(/(\))\s+x\s+(\d)/gi, "$1 \\times $2")
+    .replace(/(\d)\s+x\s+\(/gi, "$1 \\times (");
+}
+
+/**
+ * Preserve spaces before place-value words (tens, ones, etc.) using \\text{...}.
+ * e.g. "3 tens" → "3\\ \\text{tens}", "x tens" → "x\\ \\text{tens}".
+ */
+function wrapPlaceValueWords(s: string): string {
+  return s
+    .replace(/(\d+)\s+([A-Za-z]{2,})\b/g, (_, num: string, word: string) => {
+      return `${num}\\ \\text{${escapeLatexText(word)}}`;
+    })
+    .replace(/([A-Za-z])\s+([A-Za-z]{2,})\b/g, (_, letter: string, word: string) => {
+      return `${letter}\\ \\text{${escapeLatexText(word)}}`;
+    });
+}
+
+function containsMathLatex(s: string): boolean {
+  return (
+    /\\sqrt|\\times|\\text|\\left|\\right/.test(s) ||
+    /\^/.test(s) ||
+    /=\s*\d/.test(s)
+  );
+}
+
+/**
  * Convert curriculum plain-text math (powers, sqrt, multiplication) into LaTeX
  * suitable for KaTeX display in the math learning environment.
  */
@@ -24,6 +58,8 @@ export function curriculumMathToLatex(raw: string): string {
     return `\\sqrt{${inner.trim()}}`;
   });
 
+  s = replaceNumericMultiplicationX(s);
+
   s = s.replace(/\(([^()]+)\)\^(\d+)/g, (_, base: string, exp: string) => {
     return `\\left(${base.trim()}\\right)^{${exp}}`;
   });
@@ -32,14 +68,15 @@ export function curriculumMathToLatex(raw: string): string {
     return `${base}^{${exp}}`;
   });
 
-  s = s.replace(/\s+x\s+/gi, " \\times ");
+  s = replaceNumericMultiplicationX(s);
+  s = wrapPlaceValueWords(s);
   s = s.replace(/(\d+)\s*:\s*(\d+)/g, "$1 : $2");
 
   dollarTokens.forEach((replacement, index) => {
     s = s.replace(`__DOLLAR_${index}__`, replacement);
   });
 
-  if (/\\sqrt|\\times|\^|\$/.test(s) || /=\s*\d/.test(s)) {
+  if (containsMathLatex(s)) {
     return s;
   }
 
@@ -50,6 +87,6 @@ export function curriculumMathToLatex(raw: string): string {
 export function looksLikeMath(text: string): boolean {
   return (
     /sqrt\(|\^|\d\s*x\s*\d|\$\d|=\s*\d|\\frac|\d+\/\d+/.test(text) ||
-    /\\sqrt|\\times|\^/.test(text)
+    /\\sqrt|\\times|\\text|\^/.test(text)
   );
 }

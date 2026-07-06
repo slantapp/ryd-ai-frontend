@@ -40,12 +40,23 @@ function valuesEqual(a: unknown, b: unknown): boolean {
 /** True when expectedCode was authored as a RegExp pattern (not plain source code). */
 export function isRegexExpectedCode(pattern: string): boolean {
   if (pattern.startsWith("regex:")) return true;
-  if (/^[\^]|[$]$/.test(pattern)) return true;
+
+  // Multi-line snippets and statement-like code are curriculum answers, not regex.
+  if (
+    pattern.includes("\n") ||
+    /[;{}]/.test(pattern) ||
+    /(?:^|\s)(?:let|const|var|for|while|function|if|return)\b/.test(pattern)
+  ) {
+    return false;
+  }
+
+  if (/^[\^].*[$]$/.test(pattern)) return true;
   if (/\.\*|\.\+/.test(pattern)) return true;
-  if (/\[[^\]]*\]/.test(pattern)) return true;
   if (/\(\?:/.test(pattern)) return true;
   if (/\\[dswDSWbBfnrt0-9]/.test(pattern)) return true;
   if (/\\[^nrt]/.test(pattern)) return true;
+  // Regex character class — but not a JS array literal (arrays contain commas).
+  if (/\[[^\]]*\]/.test(pattern) && !/\[[^\]]*,/.test(pattern)) return true;
   return false;
 }
 
@@ -53,16 +64,7 @@ function normalizeCodeForMatch(value: string): string {
   return value
     .toLowerCase()
     .replace(/\r\n/g, "\n")
-    .replace(/\s+/g, " ")
-    .replace(/'/g, '"')
-    .trim();
-}
-
-function normalizeExpectedLiteral(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/\\n/g, " ")
-    .replace(/\n/g, " ")
+    .replace(/\\n/g, "\n")
     .replace(/\s+/g, " ")
     .replace(/'/g, '"')
     .trim();
@@ -87,7 +89,7 @@ export function matchExpectedCode(code: string, expectedCode: string): boolean {
   }
 
   const normalizedCode = normalizeCodeForMatch(code);
-  const literal = normalizeExpectedLiteral(pattern);
+  const literal = normalizeCodeForMatch(pattern);
   return normalizedCode.includes(literal);
 }
 

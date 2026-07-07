@@ -47,7 +47,7 @@ export default function MathAnswerWorkspace({
         <input
           id="math-answer"
           type="text"
-          inputMode="decimal"
+          inputMode="text"
           autoComplete="off"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -55,7 +55,7 @@ export default function MathAnswerWorkspace({
             if (e.key === "Enter" && canSubmit) onSubmit();
           }}
           disabled={disabled || isSubmitted}
-          placeholder="e.g. 34, 30 km, or $165"
+          placeholder="e.g. 34, 3:5, 30 km, or $165"
           className={cn(
             "w-full min-w-0 rounded-xl border-2 px-3 py-3 text-base font-medium text-gray-900 outline-none transition-colors sm:px-4 sm:py-3.5",
             "border-primary/20 focus:border-primary focus:ring-4 focus:ring-primary/10",
@@ -63,7 +63,7 @@ export default function MathAnswerWorkspace({
           )}
         />
         <p className="mt-2 text-xs text-gray-500">
-          Enter a number, expression, or answer with units if needed.
+          Enter a number, ratio (e.g. 3:5), expression, or answer with units if needed.
         </p>
       </div>
 

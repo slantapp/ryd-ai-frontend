@@ -71,6 +71,33 @@ function normalizeCodeForMatch(value: string): string {
 }
 
 /**
+ * Normalize JavaScript for comparison: ignore line endings, indentation, and
+ * brace placement while preserving spaces inside string literals.
+ */
+function normalizeJsCodeForMatch(value: string): string {
+  const strings: string[] = [];
+  let s = value.replace(/\r\n/g, "\n");
+
+  const protectString = (match: string) => {
+    const token = `__STR${strings.length}__`;
+    strings.push(match.toLowerCase().replace(/'/g, '"'));
+    return token;
+  };
+
+  s = s.replace(/"([^"\\]|\\.)*"/g, protectString);
+  s = s.replace(/'([^'\\]|\\.)*'/g, protectString);
+  s = s.replace(/`([^`\\]|\\.)*`/g, protectString);
+
+  s = s.toLowerCase().replace(/\\n/g, "\n").replace(/\s+/g, "");
+
+  strings.forEach((literal, index) => {
+    s = s.replace(`__STR${index}__`, literal);
+  });
+
+  return s;
+}
+
+/**
  * Match student code against expectedCode.
  * Plain code snippets (e.g. `if (score > 50)`) use literal substring matching so
  * regex metacharacters like `(`, `+`, and `{` do not cause false failures.
@@ -88,8 +115,8 @@ export function matchExpectedCode(code: string, expectedCode: string): boolean {
     }
   }
 
-  const normalizedCode = normalizeCodeForMatch(code);
-  const literal = normalizeCodeForMatch(pattern);
+  const normalizedCode = normalizeJsCodeForMatch(code);
+  const literal = normalizeJsCodeForMatch(pattern);
   return normalizedCode.includes(literal);
 }
 
@@ -155,8 +182,8 @@ export function evaluateCodeTest(
       expected: criteria.expectedCSS,
     });
   } else if (criteria?.expectedJS !== undefined) {
-    const haystack = code.toLowerCase();
-    const needle = criteria.expectedJS.toLowerCase();
+    const haystack = normalizeJsCodeForMatch(code);
+    const needle = normalizeJsCodeForMatch(criteria.expectedJS);
     passed = haystack.includes(needle);
     testResults.push({
       test: `Code includes required JavaScript: ${criteria.expectedJS}`,

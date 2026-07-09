@@ -47,24 +47,9 @@ import {
 } from "@/utils/webCodeWorkspace";
 import { prefetchMonacoEditor } from "./exercise/MonacoEditorLazy";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
+import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
+import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
 
-function useMediaQueryMinLg() {
-  const [matches, setMatches] = useState(() =>
-    typeof window !== "undefined"
-      ? window.matchMedia("(min-width: 1024px)").matches
-      : false,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const onChange = () => setMatches(mq.matches);
-    mq.addEventListener("change", onChange);
-    onChange();
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return matches;
-}
-
-/** Compact mic + pulses for narrow viewports (avatar hidden; stays in sync with `isSpeaking`). */
 function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
   return (
     <div className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
@@ -260,6 +245,7 @@ function CourseDetailInner() {
     [normalizedCodePanelLanguage],
   );
   const isLgUp = useMediaQueryMinLg();
+  useAvatarAudioRecovery(avatarRef, isSpeaking);
 
   useEffect(() => {
     setRunLanguage(normalizedCodePanelLanguage);
@@ -2087,7 +2073,7 @@ function CourseDetailInner() {
                                 isAnswerSubmitted ||
                                 isSpeaking
                               }
-                              className={`w-full py-3 px-6 rounded-xl font-semibold text-lg transition-all duration-200 transform ${selectedAnswer !== null &&
+                              className={`w-full transform rounded-xl px-4 py-3 text-base font-semibold transition-all duration-200 sm:py-3.5 sm:text-lg ${selectedAnswer !== null &&
                                 !isAnswerSubmitted &&
                                 !isSpeaking
                                 ? "bg-linear-to-r from-primary via-primary/90 to-primary/80 text-white shadow-lg shadow-primary/40 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/50"

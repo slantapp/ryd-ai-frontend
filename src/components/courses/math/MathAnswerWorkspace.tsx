@@ -31,7 +31,7 @@ export default function MathAnswerWorkspace({
         <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-primary/80">
           Your turn
         </p>
-        <h3 className="text-base font-bold leading-snug text-gray-900 sm:text-lg">
+        <h3 className="text-lg font-bold leading-snug text-gray-900 sm:text-xl">
           <MathText>{question}</MathText>
         </h3>
       </div>
@@ -49,6 +49,9 @@ export default function MathAnswerWorkspace({
           type="text"
           inputMode="text"
           autoComplete="off"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
@@ -57,7 +60,7 @@ export default function MathAnswerWorkspace({
           disabled={disabled || isSubmitted}
           placeholder="e.g. 34, 3:5, 30 km, or $165"
           className={cn(
-            "w-full min-w-0 rounded-xl border-2 px-3 py-3 text-base font-medium text-gray-900 outline-none transition-colors sm:px-4 sm:py-3.5",
+            "w-full min-w-0 rounded-xl border-2 px-3 py-3 text-base font-medium text-gray-900 outline-none transition-colors sm:px-4 sm:py-3.5 sm:text-lg",
             "border-primary/20 focus:border-primary focus:ring-4 focus:ring-primary/10",
             (disabled || isSubmitted) && "cursor-not-allowed bg-gray-50 opacity-80",
           )}

@@ -35,22 +35,8 @@ import { useInstructorStore } from "@/stores/instructorStore";
 import { useCoursesStore } from "@/stores/coursesStore";
 import { cn } from "@/lib/utils";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
-
-function useMediaQueryMinLg() {
-  const [matches, setMatches] = useState(() =>
-    typeof window !== "undefined"
-      ? window.matchMedia("(min-width: 1024px)").matches
-      : false,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const onChange = () => setMatches(mq.matches);
-    mq.addEventListener("change", onChange);
-    onChange();
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return matches;
-}
+import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
+import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
 
 interface NarratorAvatarRef {
   speakText: (text: string, options?: Record<string, unknown>) => void;
@@ -95,11 +81,19 @@ function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
       )}
       <div
         className={cn(
-          "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md sm:size-10",
-          isSpeaking ? "border-primary shadow-primary/25" : "border-primary/25",
+          "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md transition-all duration-300 sm:size-10",
+          isSpeaking
+            ? "scale-105 border-primary shadow-lg shadow-primary/25"
+            : "border-primary/25",
         )}
       >
-        <Mic className="size-5 text-primary" aria-hidden />
+        <Mic
+          className={cn(
+            "size-[1.15rem] text-primary sm:size-5",
+            isSpeaking && "animate-pulse",
+          )}
+          aria-hidden
+        />
       </div>
     </div>
   );
@@ -166,6 +160,7 @@ function MathCourseDetailsInner() {
     ? getCurriculumBySlug(exercise)?.curriculum ?? null
     : null;
   const isLgUp = useMediaQueryMinLg();
+  useAvatarAudioRecovery(avatarRef, isSpeaking);
 
   const getAvatar = useCallback(() => avatarRef.current, []);
 
@@ -1046,9 +1041,14 @@ function MathCourseDetailsInner() {
 
   const lessonControls = (
     <div className="mb-4 shrink-0 rounded-2xl border border-primary/10 bg-white/60 p-3 shadow-sm backdrop-blur sm:p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary/70">
-        Lesson controls
-      </p>
+      <div className="mb-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
+          Lesson controls
+        </p>
+        <p className="text-xs text-gray-500 sm:text-sm">
+          Navigate lessons and practice questions.
+        </p>
+      </div>
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <button
           type="button"
@@ -1103,14 +1103,27 @@ function MathCourseDetailsInner() {
     </div>
   );
 
+  const renderQuestionHint = (explanation?: string) => {
+    if (!explanation) return null;
+    return (
+      <div className="mt-6 rounded-r-lg border-l-4 border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-3 shadow-sm backdrop-blur-sm sm:mt-8 sm:p-4">
+        <p className="mb-1 text-sm font-semibold text-primary">Hint</p>
+        <p className="text-xs leading-relaxed text-gray-700 sm:text-sm">
+          <MathText>{explanation}</MathText>
+        </p>
+      </div>
+    );
+  };
+
   const renderQuestion = () => {
     if (!currentQuestion) return null;
     if (currentQuestion.type === "multiple_choice") {
       return (
         <>
-          <h3 className="mb-4 text-base font-bold leading-snug text-gray-900 sm:text-lg">
+          <h3 className="mb-3 text-lg font-bold leading-snug text-gray-900 sm:mb-4 sm:text-xl lg:text-2xl">
             <MathText>{currentQuestion.question}</MathText>
           </h3>
+          <div className="h-1 w-16 rounded-full bg-linear-to-r from-primary via-primary/80 to-primary/60 sm:w-20" />
           <MultipleChoiceQuestion
             question={currentQuestion}
             selectedAnswer={selectedAnswer as string | null}
@@ -1124,23 +1137,25 @@ function MathCourseDetailsInner() {
               selectedAnswer === null || isAnswerSubmitted || isSpeaking
             }
             className={cn(
-              "mt-6 w-full rounded-xl py-3 text-lg font-semibold",
+              "mt-5 w-full rounded-xl px-4 py-3 text-base font-semibold transition-all sm:mt-6 sm:py-3.5 sm:text-lg",
               selectedAnswer !== null && !isAnswerSubmitted && !isSpeaking
                 ? "bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary/90"
                 : "cursor-not-allowed bg-gray-200 text-gray-500",
             )}
           >
-            Submit answer
+            {isAnswerSubmitted ? "Answer submitted" : "Submit answer"}
           </button>
+          {renderQuestionHint(currentQuestion.explanation)}
         </>
       );
     }
     if (currentQuestion.type === "true_false") {
       return (
         <>
-          <h3 className="mb-4 text-base font-bold leading-snug text-gray-900 sm:text-lg">
+          <h3 className="mb-3 text-lg font-bold leading-snug text-gray-900 sm:mb-4 sm:text-xl lg:text-2xl">
             <MathText>{currentQuestion.question}</MathText>
           </h3>
+          <div className="h-1 w-16 rounded-full bg-linear-to-r from-primary via-primary/80 to-primary/60 sm:w-20" />
           <TrueFalseQuestion
             selectedAnswer={selectedAnswer as boolean | null}
             onSelect={(v) => !isAnswerSubmitted && setSelectedAnswer(v)}
@@ -1153,14 +1168,15 @@ function MathCourseDetailsInner() {
               selectedAnswer === null || isAnswerSubmitted || isSpeaking
             }
             className={cn(
-              "mt-6 w-full rounded-xl py-3 text-lg font-semibold",
+              "mt-5 w-full rounded-xl px-4 py-3 text-base font-semibold transition-all sm:mt-6 sm:py-3.5 sm:text-lg",
               selectedAnswer !== null && !isAnswerSubmitted && !isSpeaking
                 ? "bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary/90"
                 : "cursor-not-allowed bg-gray-200 text-gray-500",
             )}
           >
-            Submit answer
+            {isAnswerSubmitted ? "Answer submitted" : "Submit answer"}
           </button>
+          {renderQuestionHint(currentQuestion.explanation)}
         </>
       );
     }
@@ -1244,9 +1260,12 @@ function MathCourseDetailsInner() {
               <div className="flex items-center gap-3 px-3 py-2">
                 <InstructorSpeakingIndicator isSpeaking={isSpeaking} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/80">
-                    Instructor audio
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <Calculator className="size-3.5 shrink-0 text-primary sm:size-4" aria-hidden />
+                    <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/80">
+                      Math instructor
+                    </p>
+                  </div>
                   <p
                     className="truncate text-xs text-gray-600 sm:text-sm"
                     title={
@@ -1264,15 +1283,15 @@ function MathCourseDetailsInner() {
               {showMobileAudioUnlock && (
                 <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
                   <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
-                    Your phone needs one tap to allow instructor voice.
+                    Your phone needs one tap to allow instructor voice. This is normal on Safari and Chrome mobile.
                   </p>
                   <button
                     type="button"
                     onClick={handleMobileAudioUnlock}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md hover:bg-primary/90"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
                   >
                     <Volume2 className="size-5 shrink-0" aria-hidden />
-                    Tap to start voice
+                    <span className="whitespace-nowrap">Tap to start voice</span>
                   </button>
                 </div>
               )}
@@ -1282,10 +1301,10 @@ function MathCourseDetailsInner() {
             </div>
           )}
 
-          <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-5">
+          <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-5 lg:p-6">
             {currentQuestion ? (
               <div className="mx-auto w-full min-w-0 max-w-3xl">
-                <div className="min-w-0 overflow-hidden rounded-2xl border border-primary/15 bg-white/90 p-4 shadow-sm sm:p-6">
+                <div className="min-w-0 overflow-hidden rounded-2xl border border-primary/15 bg-white/90 p-4 shadow-sm sm:p-5 lg:p-6">
                   {currentQuestion.type === "formula_test" &&
                     activeFormulaExample && (
                       <MathFormulaBoard
@@ -1294,7 +1313,7 @@ function MathCourseDetailsInner() {
                           isFormulaTyping ? displayedFormula : undefined
                         }
                         compact
-                        className="mb-6"
+                        className="mb-4 sm:mb-6"
                       />
                     )}
                   {renderQuestion()}
@@ -1303,24 +1322,42 @@ function MathCourseDetailsInner() {
             ) : currentLesson ? (
               <div className="mx-auto w-full min-w-0 max-w-3xl space-y-4 sm:space-y-5">
                 <div>
-                  <p className="mb-1 text-xs font-bold uppercase tracking-wider text-primary/80">
-                    {lessonStarted ? "Lesson in progress" : "Ready"}
-                  </p>
-                  <h2 className="text-xl font-bold leading-tight text-gray-900 sm:text-2xl">
+                  <div className="mb-2 flex items-center gap-2">
+                    <div className="size-2 animate-pulse rounded-full bg-primary" />
+                    <p className="text-xs font-medium uppercase tracking-wide text-primary/70 sm:text-sm">
+                      {lessonStarted ? "Lesson in progress" : "Ready"}
+                    </p>
+                  </div>
+                  <h2 className="text-xl font-bold leading-tight text-gray-900 sm:text-2xl lg:text-3xl">
                     {currentLesson.title}
                   </h2>
+                  <div className="mt-3 h-1 w-16 rounded-full bg-linear-to-r from-primary via-primary/80 to-primary/60 sm:w-20" />
                 </div>
 
                 {isShowingSubtitles && currentSubtitle ? (
-                  <div className="rounded-2xl border-2 border-primary/20 bg-white/90 p-6 text-center shadow-lg sm:p-10">
-                    <p className="text-base font-medium leading-relaxed break-words text-gray-800 sm:text-lg">
-                      {currentSubtitle}
-                    </p>
+                  <div className="flex min-h-[180px] items-center justify-center sm:min-h-[220px]">
+                    <div className="w-full max-w-2xl px-2 sm:px-4">
+                      <div className="mb-4 flex items-center justify-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <div className="size-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "0ms" }} />
+                          <div className="size-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "150ms" }} />
+                          <div className="size-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "300ms" }} />
+                        </div>
+                        <span className="text-xs font-medium text-primary/70 sm:text-sm">
+                          Your instructor is speaking…
+                        </span>
+                      </div>
+                      <div className="rounded-2xl border-2 border-primary/20 bg-white/90 p-5 text-center shadow-lg sm:p-8">
+                        <p className="text-base font-medium leading-relaxed break-words text-gray-800 sm:text-lg lg:text-xl">
+                          {currentSubtitle}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <>
-                    <div className="rounded-2xl border border-primary/10 bg-white/90 p-5 shadow-sm">
-                      <p className="leading-relaxed text-gray-700">
+                    <div className="rounded-2xl border border-primary/10 bg-white/90 p-4 shadow-sm sm:p-5">
+                      <p className="text-sm leading-relaxed text-gray-700 sm:text-base">
                         {currentLesson.body}
                       </p>
                     </div>
@@ -1333,11 +1370,11 @@ function MathCourseDetailsInner() {
                       />
                     )}
                     {currentLesson.avatar_script && (
-                      <div className="rounded-2xl border-l-4 border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-5">
-                        <p className="text-sm font-semibold text-primary">
+                      <div className="rounded-2xl border-l-4 border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-4 sm:p-5">
+                        <p className="text-sm font-semibold text-primary sm:text-base">
                           What you&apos;ll learn
                         </p>
-                        <p className="mt-2 leading-relaxed text-gray-700">
+                        <p className="mt-2 text-sm leading-relaxed text-gray-700 sm:text-base">
                           {currentLesson.avatar_script}
                         </p>
                       </div>
@@ -1346,24 +1383,24 @@ function MathCourseDetailsInner() {
                 )}
               </div>
             ) : (
-              <div className="flex flex-1 items-center justify-center">
-                <div className="max-w-md text-center">
-                  <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-full bg-primary text-white shadow-lg">
-                    <Calculator className="size-8" />
+              <div className="flex flex-1 items-center justify-center px-2 py-8 sm:py-12">
+                <div className="w-full max-w-md text-center">
+                  <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg sm:mb-6 sm:size-16">
+                    <Calculator className="size-7 sm:size-8" />
                   </div>
-                  <h2 className="mb-2 text-2xl font-bold text-gray-900">
+                  <h2 className="mb-2 text-xl font-bold text-gray-900 sm:text-2xl">
                     Ready for math?
                   </h2>
-                  <p className="mb-6 text-gray-600">
+                  <p className="mb-6 text-sm leading-relaxed text-gray-600 sm:text-base">
                     Your instructor will guide you through formulas, examples,
                     and practice questions — built for learning mathematics.
                   </p>
                   <button
                     type="button"
                     onClick={handleStartLesson}
-                    className="inline-flex items-center gap-3 rounded-full bg-primary px-8 py-4 font-bold text-white shadow-lg hover:bg-primary/90"
+                    className="mx-auto flex w-full max-w-xs items-center justify-center gap-3 rounded-full bg-primary px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 active:scale-[0.98] sm:max-w-none sm:px-10 sm:py-4"
                   >
-                    <Play className="size-5 fill-white" />
+                    <Play className="size-5 shrink-0 fill-white" />
                     Start learning
                   </button>
                 </div>

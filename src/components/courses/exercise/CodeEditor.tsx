@@ -55,17 +55,19 @@ export default function CodeEditor({
   const showLanguageSelector = typeof onLanguageChange === "function";
 
   return (
-    <div className="flex flex-col h-full border border-gray-200 rounded-md overflow-hidden">
-      <div className="flex justify-between items-center px-3 py-2 border-b bg-gray-50 shrink-0 gap-2">
-        <h3 className="font-medium text-gray-700 shrink-0">Editor</h3>
-        <div className="flex items-center gap-2 min-w-0">
+    <div className="flex h-full flex-col overflow-hidden rounded-md border border-gray-200">
+      <div className="flex shrink-0 flex-col gap-2 border-b bg-gray-50 px-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-3">
+        <h3 className="shrink-0 text-sm font-medium text-gray-700 sm:text-base">
+          Editor
+        </h3>
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
           {showLanguageSelector && (
             <select
               value={selectedLanguage}
               onChange={(e) => onLanguageChange(e.target.value)}
               disabled={isRunning}
               aria-label="Programming language"
-              className="h-8 max-w-38 truncate rounded border border-gray-300 bg-white px-2 text-sm text-gray-700 disabled:cursor-not-allowed disabled:bg-gray-100"
+              className="h-8 max-w-full truncate rounded border border-gray-300 bg-white px-2 text-xs text-gray-700 disabled:cursor-not-allowed disabled:bg-gray-100 sm:max-w-38 sm:text-sm"
             >
               {CODE_RUN_LANGUAGES.map((lang) => (
                 <option key={lang.value} value={lang.value}>
@@ -79,7 +81,7 @@ export default function CodeEditor({
               <button
                 onClick={onTryOut}
                 disabled={testDisabled}
-                className={`flex items-center gap-2 px-3 py-1 rounded text-white text-sm shrink-0 ${testDisabled
+                className={`flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-white sm:gap-2 sm:px-3 sm:text-sm ${testDisabled
                   ? "bg-gray-500 cursor-not-allowed"
                   : "bg-gray-600 hover:bg-gray-700"
                   }`}
@@ -90,7 +92,7 @@ export default function CodeEditor({
               <button
                 onClick={onTestCode}
                 disabled={submitDisabled}
-                className={`flex items-center gap-2 px-3 py-1 rounded text-white text-sm shrink-0 ${submitDisabled
+                className={`flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-white sm:gap-2 sm:px-3 sm:text-sm ${submitDisabled
                   ? "bg-gray-500 cursor-not-allowed"
                   : "bg-primary hover:bg-primary/80"
                   }`}
@@ -103,7 +105,7 @@ export default function CodeEditor({
             <button
               onClick={onTestCode}
               disabled={testDisabled}
-              className={`flex items-center gap-2 px-3 py-1 rounded text-white text-sm shrink-0 ${testDisabled
+              className={`flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-white sm:gap-2 sm:px-3 sm:text-sm ${testDisabled
                 ? "bg-gray-500 cursor-not-allowed"
                 : "bg-primary hover:bg-primary/80"
                 }`}

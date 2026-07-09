@@ -12,23 +12,28 @@ export default function TrueFalseQuestion({
   disabled = false,
 }: TrueFalseQuestionProps) {
   return (
-    <div className="flex gap-4 mt-6">
+    <div className="mt-4 flex w-full min-w-0 flex-col gap-3 sm:mt-6 sm:flex-row sm:gap-4">
       <button
+        type="button"
         onClick={() => onSelect(true)}
         disabled={disabled}
-        className={`group relative p-4 px-10 text-lg font-semibold rounded-xl border-2 transition-all duration-200 transform ${
-          disabled ? "opacity-60 cursor-not-allowed" : "hover:scale-105"
+        className={`group relative min-w-0 flex-1 rounded-xl border-2 px-4 py-3 text-base font-semibold transition-all duration-200 sm:px-8 sm:py-4 sm:text-lg ${
+          disabled ? "cursor-not-allowed opacity-60" : "hover:scale-[1.02] sm:hover:scale-105"
         } ${
           selectedAnswer === true
-            ? "bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white border-primary shadow-lg shadow-primary/40"
-            : "bg-white/80 backdrop-blur-sm text-gray-700 border-primary/20 hover:border-primary/50 hover:bg-primary/5 shadow-sm hover:shadow-md"
+            ? "border-primary bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-white shadow-lg shadow-primary/40"
+            : "border-primary/20 bg-white/80 text-gray-700 shadow-sm backdrop-blur-sm hover:border-primary/50 hover:bg-primary/5 hover:shadow-md"
         }`}
       >
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-center gap-2 sm:gap-3">
           {selectedAnswer === true ? (
-            <CheckCircle2 size={24} strokeWidth={2.5} className="text-white" />
+            <CheckCircle2
+              size={22}
+              strokeWidth={2.5}
+              className="shrink-0 text-white sm:size-6"
+            />
           ) : (
-            <div className="w-6 h-6 rounded-full border-2 border-primary/30 group-hover:border-primary/60 transition-colors" />
+            <div className="size-5 shrink-0 rounded-full border-2 border-primary/30 transition-colors group-hover:border-primary/60 sm:size-6" />
           )}
           <span
             className={selectedAnswer === true ? "text-white" : "text-gray-800"}
@@ -38,21 +43,26 @@ export default function TrueFalseQuestion({
         </div>
       </button>
       <button
+        type="button"
         onClick={() => onSelect(false)}
         disabled={disabled}
-        className={`group relative p-4 px-10 text-lg font-semibold rounded-xl border-2 transition-all duration-200 transform ${
-          disabled ? "opacity-60 cursor-not-allowed" : "hover:scale-105"
+        className={`group relative min-w-0 flex-1 rounded-xl border-2 px-4 py-3 text-base font-semibold transition-all duration-200 sm:px-8 sm:py-4 sm:text-lg ${
+          disabled ? "cursor-not-allowed opacity-60" : "hover:scale-[1.02] sm:hover:scale-105"
         } ${
           selectedAnswer === false
-            ? "bg-gradient-to-br from-primary/70 via-primary/60 to-primary/50 text-white border-primary/70 shadow-lg shadow-primary/30"
-            : "bg-white/80 backdrop-blur-sm text-gray-700 border-primary/20 hover:border-primary/50 hover:bg-primary/5 shadow-sm hover:shadow-md"
+            ? "border-primary/70 bg-gradient-to-br from-primary/70 via-primary/60 to-primary/50 text-white shadow-lg shadow-primary/30"
+            : "border-primary/20 bg-white/80 text-gray-700 shadow-sm backdrop-blur-sm hover:border-primary/50 hover:bg-primary/5 hover:shadow-md"
         }`}
       >
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-center gap-2 sm:gap-3">
           {selectedAnswer === false ? (
-            <XCircle size={24} strokeWidth={2.5} className="text-white" />
+            <XCircle
+              size={22}
+              strokeWidth={2.5}
+              className="shrink-0 text-white sm:size-6"
+            />
           ) : (
-            <div className="w-6 h-6 rounded-full border-2 border-primary/30 group-hover:border-primary/60 transition-colors" />
+            <div className="size-5 shrink-0 rounded-full border-2 border-primary/30 transition-colors group-hover:border-primary/60 sm:size-6" />
           )}
           <span
             className={

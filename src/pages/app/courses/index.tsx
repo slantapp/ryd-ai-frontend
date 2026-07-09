@@ -313,7 +313,7 @@ const CoursesPage = () => {
                 <p className="font-inter text-sm font-medium text-gray-800">
                   Categories
                 </p>
-                <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:gap-4">
                   {categoryFolders.map(({ category, count }) => (
                     <CourseCategoryFolder
                       key={category.id}

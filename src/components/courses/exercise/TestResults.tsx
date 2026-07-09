@@ -131,16 +131,17 @@ export default function TestResults({
   }, [isHTML]);
 
   return (
-    <div className="flex flex-col h-full border border-gray-200 rounded-md overflow-hidden bg-black text-white">
-      <div className="grid grid-cols-3 h-full">
-        <div className="col-span-1 w-full h-full">
+    <div className="flex h-full flex-col overflow-hidden rounded-md border border-gray-200 bg-black text-white">
+      <div className="flex h-full min-h-0 flex-col lg:grid lg:grid-cols-3">
+        <div className="flex min-h-[140px] w-full min-w-0 flex-1 flex-col lg:col-span-1 lg:min-h-0">
           {/* Header with tabs */}
-          <div className="flex justify-between items-center border-b border-gray-700 bg-gray-900 shrink-0">
-            <div className="flex items-center flex-1">
+          <div className="flex shrink-0 items-center justify-between border-b border-gray-700 bg-gray-900">
+            <div className="flex flex-1 items-center">
               <div className="flex gap-1">
                 <button
+                  type="button"
                   onClick={() => setActiveTab("console")}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all ${
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:text-sm ${
                     activeTab === "console"
                       ? "text-white bg-gray-800 border-b-2 border-blue-500"
                       : "text-gray-400 hover:text-gray-300 hover:bg-gray-800/50"
@@ -160,7 +161,7 @@ export default function TestResults({
               {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </button> */}
           </div>
-          <div className="p-4 font-mono overflow-auto text-sm h-full bg-gray-950">
+          <div className="h-full overflow-auto bg-gray-950 p-3 font-mono text-xs sm:p-4 sm:text-sm">
             {results.length > 0 ? (
               <div className="space-y-1">
                 {results.map((r, i) => {
@@ -185,14 +186,15 @@ export default function TestResults({
             )}
           </div>
         </div>
-        <div className="col-span-2 w-full h-full">
+        <div className="flex min-h-[200px] w-full min-w-0 flex-1 flex-col lg:col-span-2 lg:min-h-0">
           {/* Header with tabs */}
-          <div className="flex justify-between items-center border-b border-gray-700 bg-gray-900 shrink-0">
-            <div className="flex items-center flex-1">
+          <div className="flex shrink-0 items-center justify-between border-b border-gray-700 bg-gray-900">
+            <div className="flex flex-1 items-center">
               <div className="flex gap-1">
                 <button
+                  type="button"
                   onClick={() => setActiveTab("preview")}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all ${
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:text-sm ${
                     activeTab === "preview"
                       ? "text-white bg-gray-800 border-b-2 border-blue-500"
                       : "text-gray-400 hover:text-gray-300 hover:bg-gray-800/50"

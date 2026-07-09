@@ -23,6 +23,9 @@ import {
   evaluateCodeTest,
   formatCodeTestResults,
 } from "@/utils/codeTestValidation";
+import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
+import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
+import { cn } from "@/lib/utils";
 
 interface CurriculumLearningRef {
   isAvatarReady?: () => boolean;
@@ -52,6 +55,7 @@ interface CurriculumLearningRef {
 // ✅ Main Exercise Content (logic + layout)
 function CodingExerciseInner() {
   const { exercise } = useParams<{ exercise: string }>();
+  const isLgUp = useMediaQueryMinLg();
   const curriculumRef = useRef<CurriculumLearningRef | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
@@ -489,97 +493,16 @@ function CodingExerciseInner() {
   const showCodeEditorLayout = isCodeTestQuestion || hasActiveExample;
   const splitSizes = [35, 65];
 
-  return (
-    <div className="relative h-full overflow-hidden">
-      <Split
-        className="flex h-full"
-        sizes={[35, 65]}
-        minSize={200}
-        gutterSize={8}
-        gutterStyle={(dimension, gutterSize) =>
-          dimension === "width"
-            ? {
-              width: `${gutterSize}px`,
-              cursor: "col-resize",
-              pointerEvents: "auto",
-            }
-            : {}
-        }
-      >
-        {/* LEFT SIDE: Question Info + Avatar */}
-        <div className="relative pr-4 overflow-y-auto min-h-0 flex flex-col scrollbar-hide">
-          {/* Start Lesson Button - shown only when lesson hasn't started */}
-          {!lessonStarted && (
-            <div className="mb-4 pb-4">
-              <StartLessonButton onStart={handleStartTeaching} />
-            </div>
-          )}
-          {lessonStarted && (
-            <div className="mb-4 rounded-2xl border border-primary/10 bg-white/60 p-4 shadow-sm backdrop-blur">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
-                    Manual Controls
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Drive modules, lessons, or questions on-demand.
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={handleStartQuestionsFlow}
-                  disabled={!canStartQuestions}
-                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${canStartQuestions
-                    ? "bg-primary text-white shadow hover:bg-primary/90"
-                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                    }`}
-                >
-                  Start Questions
-                </button>
-                <button
-                  onClick={handleNextQuestionFlow}
-                  disabled={!canNextQuestion}
-                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${canNextQuestion
-                    ? "bg-amber-500 text-white shadow hover:bg-amber-600"
-                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                    }`}
-                >
-                  Next Question
-                </button>
-                <button
-                  onClick={handleCompleteLessonFlow}
-                  disabled={!canCompleteLesson}
-                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${canCompleteLesson
-                    ? "bg-emerald-500 text-white shadow hover:bg-emerald-600"
-                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                    }`}
-                >
-                  Complete Lesson
-                </button>
-                <button
-                  onClick={handleNextLessonFlow}
-                  disabled={!canNextLesson}
-                  className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${canNextLesson
-                    ? "bg-rose-500 text-white shadow hover:bg-rose-600"
-                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                    }`}
-                >
-                  Next Lesson / Module
-                </button>
-              </div>
-            </div>
-          )}
-          {currentQuestion && currentQuestion.type === "code_test" && (
-            <QuestionInfo question={currentQuestion} />
-          )}
-          <div className="flex justify-center w-full h-[250px] mt-4 flex-1 relative">
-            {curriculum && (
-              <AvatarContainer
-                ref={curriculumRef}
-                curriculum={curriculum}
-                onCustomAction={handleCustomAction}
-                onLessonStart={(data: unknown) => {
+  useAvatarAudioRecovery(curriculumRef, false);
+
+  const renderAvatarContainer = (className?: string) =>
+    curriculum ? (
+      <AvatarContainer
+        ref={curriculumRef}
+        className={className}
+        curriculum={curriculum}
+        onCustomAction={handleCustomAction}
+        onLessonStart={(data: unknown) => {
                   console.log(
                     "onLessonStart callback - full data:",
                     JSON.stringify(data, null, 2)
@@ -675,24 +598,133 @@ function CodingExerciseInner() {
                       );
                     });
                 }}
-                onQuestionAnswer={(data: unknown) => {
-                  console.log("Question answered:", data);
-                }}
-              />
-            )}
-          </div>
+        onQuestionAnswer={(data: unknown) => {
+          console.log("Question answered:", data);
+        }}
+      />
+    ) : null;
+
+  const manualControlsPanel = (
+    <div className="mb-4 rounded-2xl border border-primary/10 bg-white/60 p-3 shadow-sm backdrop-blur sm:p-4">
+      <div className="mb-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
+          Manual Controls
+        </p>
+        <p className="text-xs text-gray-500 sm:text-sm">
+          Drive modules, lessons, or questions on-demand.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <button
+          type="button"
+          onClick={handleStartQuestionsFlow}
+          disabled={!canStartQuestions}
+          className={`rounded-xl px-2 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm ${canStartQuestions
+            ? "bg-primary text-white shadow hover:bg-primary/90"
+            : "cursor-not-allowed bg-gray-200 text-gray-500"
+            }`}
+        >
+          Start Questions
+        </button>
+        <button
+          type="button"
+          onClick={handleNextQuestionFlow}
+          disabled={!canNextQuestion}
+          className={`rounded-xl px-2 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm ${canNextQuestion
+            ? "bg-amber-500 text-white shadow hover:bg-amber-600"
+            : "cursor-not-allowed bg-gray-200 text-gray-500"
+            }`}
+        >
+          Next Question
+        </button>
+        <button
+          type="button"
+          onClick={handleCompleteLessonFlow}
+          disabled={!canCompleteLesson}
+          className={`rounded-xl px-2 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm ${canCompleteLesson
+            ? "bg-emerald-500 text-white shadow hover:bg-emerald-600"
+            : "cursor-not-allowed bg-gray-200 text-gray-500"
+            }`}
+        >
+          Complete Lesson
+        </button>
+        <button
+          type="button"
+          onClick={handleNextLessonFlow}
+          disabled={!canNextLesson}
+          className={`rounded-xl px-2 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm ${canNextLesson
+            ? "bg-rose-500 text-white shadow hover:bg-rose-600"
+            : "cursor-not-allowed bg-gray-200 text-gray-500"
+            }`}
+        >
+          Next Lesson
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="relative h-full overflow-hidden">
+      <Split
+        className="flex h-full"
+        sizes={isLgUp ? [35, 65] : [0, 100]}
+        minSize={isLgUp ? 200 : 0}
+        gutterSize={isLgUp ? 8 : 0}
+        gutterStyle={(dimension, gutterSize) =>
+          dimension === "width" && gutterSize > 0
+            ? {
+              width: `${gutterSize}px`,
+              cursor: "col-resize",
+              pointerEvents: "auto",
+            }
+            : { width: "0px", pointerEvents: "none" }
+        }
+      >
+        {/* LEFT SIDE: Question Info + Avatar (desktop) */}
+        <div
+          className={cn(
+            "relative flex min-h-0 flex-col overflow-y-auto scrollbar-hide",
+            isLgUp ? "pr-4" : "min-w-0 overflow-hidden",
+          )}
+        >
+          {isLgUp && (
+            <>
+              {!lessonStarted && (
+                <div className="mb-4 pb-4">
+                  <StartLessonButton onStart={handleStartTeaching} />
+                </div>
+              )}
+              {lessonStarted && manualControlsPanel}
+              {currentQuestion?.type === "code_test" && (
+                <QuestionInfo question={currentQuestion} />
+              )}
+              <div className="relative mt-4 flex h-[220px] min-h-[180px] w-full flex-1 justify-center sm:h-[250px]">
+                {renderAvatarContainer()}
+              </div>
+            </>
+          )}
         </div>
 
         {/* RIGHT SIDE */}
-        <div className="overflow-y-auto min-h-0 flex flex-col scrollbar-hide w-full">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {!isLgUp && lessonStarted && (
+            <div className="shrink-0 border-b border-primary/10 bg-white/95 px-3 py-3 shadow-sm backdrop-blur-md">
+              {manualControlsPanel}
+              {currentQuestion?.type === "code_test" && (
+                <QuestionInfo question={currentQuestion} />
+              )}
+            </div>
+          )}
+
+          <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
           {showCodeEditorLayout ? (
-            <div className="flex flex-col min-h-0 h-full flex-1 w-full">
+            <div className="flex h-full min-h-0 w-full flex-1 flex-col">
               <Split
                 direction="vertical"
-                className="flex flex-col h-full w-full"
-                sizes={splitSizes}
-                minSize={100}
-                gutterSize={8}
+                className="flex h-full w-full flex-col"
+                sizes={isLgUp ? splitSizes : [55, 45]}
+                minSize={isLgUp ? 100 : 80}
+                gutterSize={isLgUp ? 8 : 6}
                 gutterStyle={(dimension, gutterSize) =>
                   dimension === "height"
                     ? {
@@ -731,7 +763,15 @@ function CodingExerciseInner() {
               </Split>
             </div>
           ) : (
-            <div className="w-full bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-6 overflow-y-auto border-l-2 border-primary/20 min-h-screen flex flex-col relative">
+            <div className="relative flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-y-auto border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-6 lg:min-h-screen lg:border-l-2">
+              {!lessonStarted && !isLgUp && (
+                <div className="relative z-10 mb-6">
+                  <StartLessonButton
+                    onStart={handleStartTeaching}
+                    className="w-full py-3 text-base sm:w-auto"
+                  />
+                </div>
+              )}
               {/* Decorative background pattern */}
               <div className="absolute inset-0 opacity-5 pointer-events-none">
                 <div className="absolute top-20 right-10 w-32 h-32 bg-primary rounded-full blur-3xl"></div>
@@ -741,8 +781,8 @@ function CodingExerciseInner() {
               <div className="relative z-10">
                 {currentQuestion ? (
                   <>
-                    <div className="mb-6">
-                      <h3 className="text-2xl font-bold mb-3 text-gray-900 leading-tight">
+                    <div className="mb-4 sm:mb-6">
+                      <h3 className="mb-3 text-lg font-bold leading-snug text-gray-900 sm:text-xl lg:text-2xl">
                         {currentQuestion.question}
                       </h3>
                       <div className="h-1 w-20 bg-gradient-to-r from-primary via-primary/80 to-primary/60 rounded-full"></div>
@@ -767,7 +807,7 @@ function CodingExerciseInner() {
 
                     {/* Question Explanation */}
                     {currentQuestion.explanation && (
-                      <div className="mt-8 p-4 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-l-4 border-primary rounded-r-lg shadow-sm backdrop-blur-sm">
+                      <div className="mt-6 rounded-r-lg border-l-4 border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-3 shadow-sm backdrop-blur-sm sm:mt-8 sm:p-4">
                         <div className="flex items-start gap-3">
                           <div className="mt-0.5">
                             <svg
@@ -797,22 +837,22 @@ function CodingExerciseInner() {
                     )}
                   </>
                 ) : currentLesson ? (
-                  <div className="space-y-6">
-                    <div className="mb-6">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                        <span className="text-sm font-medium text-primary/70 uppercase tracking-wide">
+                  <div className="space-y-4 sm:space-y-6">
+                    <div className="mb-4 sm:mb-6">
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="h-2 w-2 animate-pulse rounded-full bg-primary"></div>
+                        <span className="text-xs font-medium uppercase tracking-wide text-primary/70 sm:text-sm">
                           Lesson in Progress
                         </span>
                       </div>
-                      <h2 className="text-3xl font-bold mb-3 text-gray-900 leading-tight">
+                      <h2 className="mb-3 text-xl font-bold leading-tight text-gray-900 sm:text-2xl lg:text-3xl">
                         {currentLesson.title}
                       </h2>
                       <div className="h-1 w-24 bg-gradient-to-r from-primary via-primary/80 to-primary/60 rounded-full"></div>
                     </div>
 
-                    <div className="space-y-4">
-                      <div className="p-5 bg-white/60 backdrop-blur-sm rounded-xl border border-primary/20 shadow-sm">
+                    <div className="space-y-3 sm:space-y-4">
+                      <div className="rounded-xl border border-primary/20 bg-white/60 p-4 shadow-sm backdrop-blur-sm sm:p-5">
                         <div className="flex items-start gap-3 mb-3">
                           <div className="mt-1">
                             <svg
@@ -830,10 +870,10 @@ function CodingExerciseInner() {
                             </svg>
                           </div>
                           <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            <h3 className="mb-2 text-base font-semibold text-gray-900 sm:text-lg">
                               Overview
                             </h3>
-                            <p className="text-gray-700 leading-relaxed">
+                            <p className="text-sm leading-relaxed text-gray-700 sm:text-base">
                               {currentLesson.body}
                             </p>
                           </div>
@@ -841,7 +881,7 @@ function CodingExerciseInner() {
                       </div>
 
                       {currentLesson.avatar_script && (
-                        <div className="p-5 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-xl border-l-4 border-primary shadow-sm backdrop-blur-sm">
+                        <div className="rounded-xl border-l-4 border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-4 shadow-sm backdrop-blur-sm sm:p-5">
                           <div className="flex items-start gap-3">
                             <div className="mt-1">
                               <svg
@@ -859,10 +899,10 @@ function CodingExerciseInner() {
                               </svg>
                             </div>
                             <div className="flex-1">
-                              <h3 className="text-lg font-semibold text-primary mb-2">
+                              <h3 className="mb-2 text-base font-semibold text-primary sm:text-lg">
                                 What You'll Learn
                               </h3>
-                              <p className="text-gray-700 leading-relaxed">
+                              <p className="text-sm leading-relaxed text-gray-700 sm:text-base">
                                 {currentLesson.avatar_script}
                               </p>
                             </div>
@@ -872,16 +912,26 @@ function CodingExerciseInner() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-full">
+                  <div className="flex h-full min-h-[200px] items-center justify-center py-8">
                     <div className="text-center">
-                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary/30 border-t-primary mb-4"></div>
-                      <p className="text-gray-400 text-lg font-medium">
+                      <div className="mb-4 inline-block h-10 w-10 animate-spin rounded-full border-b-2 border-primary/30 border-t-primary sm:h-12 sm:w-12"></div>
+                      <p className="text-base font-medium text-gray-400 sm:text-lg">
                         Waiting to start lesson...
                       </p>
                     </div>
                   </div>
                 )}
               </div>
+            </div>
+          )}
+          </div>
+
+          {!isLgUp && curriculum && (
+            <div
+              className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
+              aria-hidden
+            >
+              {renderAvatarContainer("h-full w-full")}
             </div>
           )}
         </div>

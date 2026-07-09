@@ -1,0 +1,461 @@
+{
+  "slug": "javascript-fundamentals-v2",
+  "schema_version": 2,
+  "curriculum": {
+    "title": "JavaScript Fundamentals",
+    "description": "Learn variables, data types, and basic programming concepts through guided, conversational lessons with your AI instructor.",
+    "language": "en",
+    "category": "coding",
+    "age": 10,
+    "class": "Primary 5",
+    "grade": 5,
+    "duration": "4 weeks",
+    "level": "Beginner",
+    "rating": 4.8,
+    "defaults": {
+      "avatar": {
+        "intro_template": "Welcome! In this lesson, you will be learning about {{lesson_title}}.",
+        "continue_prompt": "Click Continue when you're ready.",
+        "start_questions_prompt": "Great! When you're ready, click Start Questions.",
+        "handoff_to_practice": "Now it's your turn! I've cleared the example. Try solving the problem yourself.",
+        "lesson_complete_template": "In this lesson, you learned about {{lesson_title}}.",
+        "correct_feedback": "That's correct! Well done.",
+        "incorrect_feedback": "Not quite — let's look at that again."
+      },
+      "advance": {
+        "pause_min_seconds": 2
+      }
+    },
+    "modules": [
+      {
+        "id": "module_01",
+        "title": "Getting Started",
+        "unlock": null,
+        "lessons": [
+          {
+            "id": "module_01__lesson_01",
+            "title": "Welcome to the Course",
+            "goal": "Understand what this course covers and how lessons work.",
+            "estimated_minutes": 5,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Hey there! I'm so glad you're here. Before we write any code, let me show you how our lessons work — it's going to be fun!"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "course_overview",
+                "type": "display",
+                "phase": "teach",
+                "title": "What you'll learn",
+                "body": "In this course you will:\n\n- Understand what programming is\n- Write your first lines of JavaScript\n- Use variables to store information\n- Solve small coding challenges with help from your instructor",
+                "avatar": {
+                  "text": "We'll take it step by step. I'll explain ideas, show you examples, ask quick questions, and then let you practise. No rush — learning is a journey!",
+                  "timing": "with_display"
+                },
+                "advance": "manual"
+              },
+              {
+                "id": "first_demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "console.log('Welcome to the course!');",
+                  "language": "javascript",
+                  "description": "Let me show you the simplest program possible. Watch the code appear on screen.",
+                  "explanation": "This line tells the computer to print a message. console.log is like the computer's voice — whatever you put inside the quotes gets displayed.",
+                  "autoRun": true,
+                  "typingSpeed": 60
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "reflect_pause",
+                "type": "pause",
+                "phase": "teach",
+                "avatar": {
+                  "text": "Take a moment to look at the code. Notice the quotes around the message — that's how we tell JavaScript it's text."
+                },
+                "advance": "manual",
+                "min_seconds": 2
+              },
+              {
+                "id": "micro_check_1",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "q1_multiple_choice",
+                  "type": "multiple_choice",
+                  "question": "What is the purpose of this course?",
+                  "options": [
+                    "To learn new skills",
+                    "To play games",
+                    "To watch movies",
+                    "To sleep"
+                  ],
+                  "answer": "To learn new skills",
+                  "explanation": "This course is designed to help you learn new skills and grow your knowledge!"
+                },
+                "avatar": {
+                  "on_ask": "Quick check — what are we here to do?",
+                  "on_correct": "Exactly! You're here to learn and grow.",
+                  "on_wrong": "Think about it — we're building skills, not just having fun!"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "micro_check_2",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "q2_true_false",
+                  "type": "true_false",
+                  "question": "Learning can be fun and engaging.",
+                  "answer": true,
+                  "explanation": "Absolutely! Learning is most effective when it's enjoyable and interactive."
+                },
+                "avatar": {
+                  "on_ask": "One more — true or false?",
+                  "on_correct": "Yes! Fun and learning go together.",
+                  "on_wrong": "Actually, learning can definitely be fun — especially with practice!"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "Lessons follow a teach → practise → check rhythm",
+                  "Your instructor explains, demonstrates, then lets you try",
+                  "You ran your first console.log program"
+                ],
+                "avatar": {
+                  "text": "Great start! You know how lessons work and you've seen your first line of code. Ready for more?"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "bridge_next",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "Next, we'll create your first variable. That's where programming really gets interesting!"
+                },
+                "next": "module_01__lesson_02",
+                "advance": "manual"
+              }
+            ]
+          },
+          {
+            "id": "module_01__lesson_02",
+            "title": "Your First Variable",
+            "goal": "Create a variable and print its value.",
+            "estimated_minutes": 10,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Have you ever labeled a box to remember what's inside? Variables work the same way in code!"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "concept",
+                "type": "display",
+                "phase": "teach",
+                "title": "What is a variable?",
+                "body": "A **variable** is a named container that stores data.\n\nIn JavaScript we often use `let` to create one:\n\n`let message = 'Hello World';`",
+                "avatar": {
+                  "text": "We give the variable a name, use an equals sign, and put a value on the right. Simple as that!",
+                  "timing": "with_display"
+                },
+                "advance": "manual"
+              },
+              {
+                "id": "demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "let message = 'Hello World';\nconsole.log(message);",
+                  "language": "javascript",
+                  "description": "Watch — I'll create a variable called message and print it.",
+                  "explanation": "First we declare with let, then we name it message, assign 'Hello World', and console.log prints whatever is stored inside.",
+                  "autoRun": true,
+                  "typingSpeed": 50
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "practice",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "q3_code_test",
+                  "type": "code_test",
+                  "question": "Create a variable called 'message' and set it to 'Hello World'.",
+                  "explanation": "Excellent! You've created your first variable. Variables are containers that store information.",
+                  "code_example": {
+                    "code": "let message = 'Hello World';\nconsole.log(message);",
+                    "language": "javascript",
+                    "description": "Here's one way to do it — pay attention to let, the name, and the quotes.",
+                    "explanation": "We use let to declare, pick a name, and assign a string value in quotes.",
+                    "autoRun": false,
+                    "typingSpeed": 60
+                  },
+                  "testCriteria": {
+                    "expectedCode": "let message"
+                  }
+                },
+                "avatar": {
+                  "before_demo": "I'll walk through an example first, then it's your turn.",
+                  "handoff": "Now it's your turn! I've cleared the example. Try solving the problem yourself."
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "Variables store data under a name",
+                  "Use let to declare a variable",
+                  "console.log shows the stored value"
+                ],
+                "avatar": {
+                  "text": "You did it! You created a real variable. That's a huge first step in programming."
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "bridge_module_02",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "In the next module, we'll build on this and explore more ways to use variables."
+                },
+                "next": "module_02__lesson_01",
+                "advance": "manual"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "module_02",
+        "title": "Building on the Basics",
+        "unlock": {
+          "requires": "module_01"
+        },
+        "lessons": [
+          {
+            "id": "module_02__lesson_01",
+            "title": "Changing Variable Values",
+            "goal": "Update a variable after it has been created.",
+            "estimated_minutes": 8,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Welcome to Module 2! Variables aren't locked forever — you can change what's inside them. Let me show you."
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "concept",
+                "type": "display",
+                "phase": "teach",
+                "title": "Reassigning values",
+                "body": "After creating a variable, you can assign a **new value** to the same name:\n\n`let score = 10;\nscore = 20;`",
+                "avatar": {
+                  "text": "The second line doesn't need let again — we're updating the box, not making a new one.",
+                  "timing": "with_display"
+                },
+                "advance": "manual"
+              },
+              {
+                "id": "quiz_1",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "q4_multiple_choice",
+                  "type": "multiple_choice",
+                  "question": "What's the best way to learn something new?",
+                  "options": [
+                    "Practice regularly",
+                    "Never make mistakes",
+                    "Memorize everything",
+                    "Skip the hard parts"
+                  ],
+                  "answer": "Practice regularly",
+                  "explanation": "Practice makes perfect! Regular practice helps reinforce what you've learned."
+                },
+                "avatar": {
+                  "on_ask": "Before we wrap up — what's the best way to learn?",
+                  "on_correct": "Spot on. Practice is everything!",
+                  "on_wrong": "The best learners practise regularly — mistakes are part of the process."
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "quiz_2",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "q5_true_false",
+                  "type": "true_false",
+                  "question": "Making mistakes is a normal part of learning.",
+                  "answer": true,
+                  "explanation": "Correct! Mistakes are valuable learning opportunities."
+                },
+                "avatar": {
+                  "on_ask": "Last one — true or false?",
+                  "on_correct": "Yes! Every expert was once a beginner.",
+                  "on_wrong": "Actually, mistakes are completely normal — they help us improve."
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "course_complete",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "Congratulations! You've completed this course. Keep practising — you're on your way to becoming a confident coder!"
+                },
+                "next": null,
+                "advance": "manual"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "module_math_appendix",
+        "title": "Math Flow Example (Reference)",
+        "unlock": null,
+        "lessons": [
+          {
+            "id": "module_math_appendix__lesson_01",
+            "title": "Powers and Order of Operations",
+            "goal": "Evaluate expressions using brackets, powers, and order of operations.",
+            "estimated_minutes": 12,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Welcome! In this lesson we will practise powers, square roots, and careful order of operations. Watch the signs closely when negative numbers are raised to powers."
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "concept",
+                "type": "display",
+                "phase": "teach",
+                "title": "Order of operations",
+                "body": "Remember the order:\n\n1. Brackets first\n2. Powers (and roots)\n3. Multiplication and division\n4. Addition and subtraction",
+                "avatar": {
+                  "text": "When negative numbers are inside brackets, the sign matters. (-3) squared is positive nine.",
+                  "timing": "with_display"
+                },
+                "advance": "manual"
+              },
+              {
+                "id": "formula_demo",
+                "type": "formula_demo",
+                "phase": "teach",
+                "formula_example": {
+                  "formula": "(6 - 2)^2 + (-3)^2 x 2 = 4^2 + 9 x 2 = 16 + 18 = 34",
+                  "subject": "mathematics",
+                  "description": "Let's work through this expression step by step.",
+                  "explanation": "Start inside the brackets: 6 minus 2 is 4. Square it to get 16. (-3) squared is 9. Multiply 9 by 2 to get 18. Add 16 and 18 to get 34.",
+                  "autoRun": false,
+                  "typingSpeed": 60
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "media_diagram",
+                "type": "media",
+                "phase": "teach",
+                "media": {
+                  "image": "https://example.com/images/order-of-operations-chart.png",
+                  "alt": "Order of operations pyramid diagram"
+                },
+                "avatar": {
+                  "text": "Here's a visual reminder. Keep this order in mind whenever you see a long expression."
+                },
+                "advance": "manual"
+              },
+              {
+                "id": "quiz_mc",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "q_math_mc",
+                  "type": "multiple_choice",
+                  "question": "Which two perfect square numbers does 80 lie between?",
+                  "options": ["64 and 81", "49 and 64", "81 and 100", "100 and 121"],
+                  "answer": "64 and 81",
+                  "explanation": "Since 8^2 = 64 and 9^2 = 81, the number 80 lies between 64 and 81."
+                },
+                "avatar": {
+                  "on_ask": "Quick check on square numbers — which pair does 80 fall between?",
+                  "on_correct": "Correct! 80 is between 64 and 81.",
+                  "on_wrong": "Try 8 squared and 9 squared — that gives you the interval."
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "quiz_formula",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "q_math_formula",
+                  "type": "formula_test",
+                  "question": "Evaluate (6 - 2)^2 + (-3)^2 x 2.",
+                  "explanation": "Bracket: 4. Square: 16 and 9. Multiply: 18. Add: 34.",
+                  "formula_example": {
+                    "formula": "(6 - 2)^2 + (-3)^2 x 2 = 34",
+                    "subject": "mathematics"
+                  },
+                  "testCriteria": {
+                    "expectedFormula": "34"
+                  }
+                },
+                "avatar": {
+                  "before_demo": "I'll work through the steps on the board, then you try.",
+                  "handoff": "Your turn — work it out and enter your final answer."
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "Brackets before powers",
+                  "Powers before multiplication",
+                  "(-3)^2 = 9 because the negative is inside the brackets"
+                ],
+                "avatar": {
+                  "text": "Great work! Order of operations takes practice — keep checking each step carefully."
+                },
+                "advance": "auto"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

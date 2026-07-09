@@ -44,8 +44,8 @@ export default function MathFormulaBoard({
           className={cn(
             "text-gray-900",
             compact
-              ? "text-base sm:text-lg"
-              : "text-lg sm:text-xl",
+              ? "text-sm sm:text-base lg:text-lg"
+              : "text-base sm:text-lg lg:text-xl",
           )}
         >
           {formula}

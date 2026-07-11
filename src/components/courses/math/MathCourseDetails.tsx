@@ -1106,11 +1106,11 @@ function MathCourseDetailsInner() {
   const renderQuestionHint = (explanation?: string) => {
     if (!explanation) return null;
     return (
-      <div className="mt-6 rounded-r-lg border-l-4 border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-3 shadow-sm backdrop-blur-sm sm:mt-8 sm:p-4">
+      <div className="mt-6 min-w-0 max-w-full overflow-hidden rounded-r-lg border-l-4 border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-3 shadow-sm backdrop-blur-sm sm:mt-8 sm:p-4">
         <p className="mb-1 text-sm font-semibold text-primary">Hint</p>
-        <p className="text-xs leading-relaxed text-gray-700 sm:text-sm">
+        <div className="min-w-0 max-w-full text-xs leading-relaxed text-gray-700 wrap-anywhere sm:text-sm">
           <MathText>{explanation}</MathText>
-        </p>
+        </div>
       </div>
     );
   };
@@ -1145,7 +1145,9 @@ function MathCourseDetailsInner() {
           >
             {isAnswerSubmitted ? "Answer submitted" : "Submit answer"}
           </button>
-          {renderQuestionHint(currentQuestion.explanation)}
+          {renderQuestionHint(
+            isAnswerSubmitted ? currentQuestion.explanation : undefined,
+          )}
         </>
       );
     }
@@ -1176,7 +1178,9 @@ function MathCourseDetailsInner() {
           >
             {isAnswerSubmitted ? "Answer submitted" : "Submit answer"}
           </button>
-          {renderQuestionHint(currentQuestion.explanation)}
+          {renderQuestionHint(
+            isAnswerSubmitted ? currentQuestion.explanation : undefined,
+          )}
         </>
       );
     }

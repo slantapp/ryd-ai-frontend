@@ -26,7 +26,10 @@ import {
   TrueFalseQuestion,
   FullscreenModal,
 } from "./exercise";
-import { isCodeTestQuestion } from "@/utils/curriculumQuestion";
+import MathAnswerWorkspace from "./math/MathAnswerWorkspace";
+import MathText from "./math/MathText";
+import { isCodeTestQuestion, isFormulaTestQuestion } from "@/utils/curriculumQuestion";
+import { compareFormulaAnswer } from "@/utils/formulaAnswer";
 import { useInstructorStore } from "../../stores/instructorStore";
 import { useCoursesStore } from "../../stores/coursesStore";
 import { cn } from "../../lib/utils";
@@ -127,8 +130,15 @@ type PendingAction =
 // MAIN COMPONENT
 // ============================================================================
 
-function CourseDetailInner() {
-  const { exercise } = useParams<{ exercise: string }>();
+function CourseDetailInner({
+  slugOverride,
+  onCourseCompleted,
+}: {
+  slugOverride?: string;
+  onCourseCompleted?: () => void;
+}) {
+  const { exercise: exerciseParam } = useParams<{ exercise: string }>();
+  const exercise = slugOverride ?? exerciseParam;
   const location = useLocation();
   const { getInstructorConfig } = useInstructorStore();
   const instructorConfig = getInstructorConfig();
@@ -157,6 +167,7 @@ function CourseDetailInner() {
   /** Runs after the avatar finishes the current speech chunk (reliable multi-step lesson flow). */
   const afterSpeechRef = useRef<(() => void) | null>(null);
   const pendingTypingStartRef = useRef<(() => void) | null>(null);
+  const courseCompletedNotifiedRef = useRef(false);
 
   // ============================================================================
   // STATE
@@ -181,6 +192,10 @@ function CourseDetailInner() {
     null
   );
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
+  const [studentAnswer, setStudentAnswer] = useState("");
+  const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(
+    null,
+  );
 
   // Track correct answers for the current lesson
   const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
@@ -808,6 +823,8 @@ function CourseDetailInner() {
       setCurrentQuestionIndex(nextIndex);
       setSelectedAnswer(null);
       setIsAnswerSubmitted(false);
+      setStudentAnswer("");
+      setLastAnswerCorrect(null);
       resetCodeState();
 
       persistCoursePosition({
@@ -1134,6 +1151,8 @@ function CourseDetailInner() {
     setCurrentQuestionIndex(prevIndex);
     setSelectedAnswer(null);
     setIsAnswerSubmitted(false);
+    setStudentAnswer("");
+    setLastAnswerCorrect(null);
     resetCodeState();
 
     persistCoursePosition({
@@ -1199,6 +1218,8 @@ function CourseDetailInner() {
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
     setIsAnswerSubmitted(false);
+    setStudentAnswer("");
+    setLastAnswerCorrect(null);
     resetCodeState();
 
     // Reset answer tracking when starting questions
@@ -1351,6 +1372,26 @@ function CourseDetailInner() {
     // Speak feedback, then auto-progress to next question
     speak(feedbackText, { type: "next_question" });
   }, [isAnswerSubmitted, selectedAnswer, currentQuestion, speak]);
+
+  const handleSubmitFormula = useCallback(() => {
+    if (!currentQuestion || !isFormulaTestQuestion(currentQuestion)) return;
+    if (isAnswerSubmitted) return;
+
+    setIsAnswerSubmitted(true);
+    const expected =
+      currentQuestion.testCriteria?.expectedFormula?.trim() ?? "";
+    const isCorrect = expected
+      ? compareFormulaAnswer(studentAnswer, expected)
+      : false;
+    setLastAnswerCorrect(isCorrect);
+    setTotalQuestionsAnswered((prev) => prev + 1);
+    if (isCorrect) setCorrectAnswersCount((prev) => prev + 1);
+
+    const feedbackText = isCorrect
+      ? `Correct! Well done. ${currentQuestion.explanation ?? ""}`
+      : `Not quite. The expected answer is ${expected}. ${currentQuestion.explanation ?? ""}`;
+    speak(feedbackText, { type: "next_question" });
+  }, [currentQuestion, isAnswerSubmitted, speak, studentAnswer]);
 
   /** Check code against test criteria without recording a final answer. */
   const handleTryCodeTest = useCallback(async () => {
@@ -1608,6 +1649,14 @@ function CourseDetailInner() {
       // Flush immediately when course is completed to avoid data loss
       { immediate: status === "completed" }
     );
+
+    if (status === "completed" && !courseCompletedNotifiedRef.current) {
+      courseCompletedNotifiedRef.current = true;
+      onCourseCompleted?.();
+    }
+    if (status !== "completed") {
+      courseCompletedNotifiedRef.current = false;
+    }
   }, [
     currentLesson,
     currentQuestionIndex,
@@ -1617,6 +1666,7 @@ function CourseDetailInner() {
     completedLessonIds,
     calculateProgress,
     updateCourseProgress,
+    onCourseCompleted,
   ]);
 
   // Stop speech when navigating away from this course (before avatar ref is cleared).
@@ -2036,86 +2086,113 @@ function CourseDetailInner() {
                 <div className="relative z-10">
                   {currentQuestion ? (
                     <>
-                      <div className="mb-6">
-                        <h3 className="mb-3 text-xl font-bold leading-tight text-gray-900 sm:text-2xl">
-                          {currentQuestion.question}
-                        </h3>
-                        <div className="h-1 w-20 bg-linear-to-r from-primary via-primary/80 to-primary/60 rounded-full"></div>
-                      </div>
-
-                      {/* Multiple Choice UI */}
-                      {currentQuestion.type === "multiple_choice" && (
-                        <MultipleChoiceQuestion
-                          question={currentQuestion}
-                          selectedAnswer={selectedAnswer as string | null}
-                          onSelect={handleMultipleChoiceSelect}
-                          disabled={isAnswerSubmitted}
+                      {isFormulaTestQuestion(currentQuestion) ? (
+                        <MathAnswerWorkspace
+                          question={currentQuestion.question}
+                          value={studentAnswer}
+                          onChange={setStudentAnswer}
+                          onSubmit={handleSubmitFormula}
+                          canSubmit={
+                            !!studentAnswer.trim() &&
+                            !isSpeaking &&
+                            !isAnswerSubmitted
+                          }
+                          disabled={isSpeaking}
+                          isSubmitted={isAnswerSubmitted}
+                          isCorrect={lastAnswerCorrect}
+                          expectedAnswer={
+                            currentQuestion.testCriteria?.expectedFormula
+                          }
                         />
-                      )}
-
-                      {/* True/False UI */}
-                      {currentQuestion.type === "true_false" && (
-                        <TrueFalseQuestion
-                          selectedAnswer={selectedAnswer as boolean | null}
-                          onSelect={handleTrueFalseSelect}
-                          disabled={isAnswerSubmitted}
-                        />
-                      )}
-
-                      {/* Submit Button */}
-                      {(currentQuestion.type === "multiple_choice" ||
-                        currentQuestion.type === "true_false") && (
-                          <div className="mt-6">
-                            <button
-                              onClick={handleSubmitAnswer}
-                              disabled={
-                                selectedAnswer === null ||
-                                isAnswerSubmitted ||
-                                isSpeaking
-                              }
-                              className={`w-full transform rounded-xl px-4 py-3 text-base font-semibold transition-all duration-200 sm:py-3.5 sm:text-lg ${selectedAnswer !== null &&
-                                !isAnswerSubmitted &&
-                                !isSpeaking
-                                ? "bg-linear-to-r from-primary via-primary/90 to-primary/80 text-white shadow-lg shadow-primary/40 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/50"
-                                : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-60"
-                                }`}
-                            >
-                              {isAnswerSubmitted
-                                ? "Answer Submitted"
-                                : "Submit Answer"}
-                            </button>
+                      ) : (
+                        <>
+                          <div className="mb-6">
+                            <h3 className="mb-3 text-xl font-bold leading-tight text-gray-900 sm:text-2xl">
+                              <MathText>{currentQuestion.question}</MathText>
+                            </h3>
+                            <div className="h-1 w-20 bg-linear-to-r from-primary via-primary/80 to-primary/60 rounded-full"></div>
                           </div>
-                        )}
 
-                      {/* Hint */}
-                      {currentQuestion.explanation && (
-                        <div className="mt-8 p-4 bg-linear-to-br from-primary/10 via-primary/5 to-transparent border-l-4 border-primary rounded-r-lg shadow-sm backdrop-blur-sm">
-                          <div className="flex items-start gap-3">
-                            <div className="mt-0.5">
-                              <svg
-                                className="w-5 h-5 text-primary"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                              </svg>
+                          {/* Multiple Choice UI */}
+                          {currentQuestion.type === "multiple_choice" && (
+                            <MultipleChoiceQuestion
+                              question={currentQuestion}
+                              selectedAnswer={selectedAnswer as string | null}
+                              onSelect={handleMultipleChoiceSelect}
+                              disabled={isAnswerSubmitted}
+                            />
+                          )}
+
+                          {/* True/False UI */}
+                          {currentQuestion.type === "true_false" && (
+                            <TrueFalseQuestion
+                              selectedAnswer={selectedAnswer as boolean | null}
+                              onSelect={handleTrueFalseSelect}
+                              disabled={isAnswerSubmitted}
+                            />
+                          )}
+
+                          {/* Submit Button */}
+                          {(currentQuestion.type === "multiple_choice" ||
+                            currentQuestion.type === "true_false") && (
+                              <div className="mt-6">
+                                <button
+                                  onClick={handleSubmitAnswer}
+                                  disabled={
+                                    selectedAnswer === null ||
+                                    isAnswerSubmitted ||
+                                    isSpeaking
+                                  }
+                                  className={`w-full transform rounded-xl px-4 py-3 text-base font-semibold transition-all duration-200 sm:py-3.5 sm:text-lg ${selectedAnswer !== null &&
+                                    !isAnswerSubmitted &&
+                                    !isSpeaking
+                                    ? "bg-linear-to-r from-primary via-primary/90 to-primary/80 text-white shadow-lg shadow-primary/40 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/50"
+                                    : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-60"
+                                    }`}
+                                >
+                                  {isAnswerSubmitted
+                                    ? "Answer Submitted"
+                                    : "Submit Answer"}
+                                </button>
+                              </div>
+                            )}
+
+                          {/* Explanation after submit — curriculum "explanation" often contains the full solution */}
+                          {currentQuestion.explanation &&
+                            isAnswerSubmitted &&
+                            (currentQuestion.type === "multiple_choice" ||
+                              currentQuestion.type === "true_false") && (
+                            <div className="mt-8 min-w-0 max-w-full overflow-hidden rounded-r-lg border-l-4 border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-4 shadow-sm backdrop-blur-sm">
+                              <div className="flex min-w-0 items-start gap-3">
+                                <div className="mt-0.5 shrink-0">
+                                  <svg
+                                    className="h-5 w-5 text-primary"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    />
+                                  </svg>
+                                </div>
+                                <div className="min-w-0 flex-1 overflow-hidden">
+                                  <strong className="mb-1 block font-semibold text-primary">
+                                    Hint:
+                                  </strong>
+                                  <div className="min-w-0 max-w-full text-sm leading-relaxed text-gray-700 wrap-anywhere">
+                                    <MathText>
+                                      {currentQuestion.explanation}
+                                    </MathText>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex-1">
-                              <strong className="text-primary font-semibold block mb-1">
-                                Hint:
-                              </strong>
-                              <p className="text-gray-700 text-sm leading-relaxed">
-                                {currentQuestion.explanation}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
+                          )}
+                        </>
                       )}
                     </>
                   ) : currentLesson ? (
@@ -2327,6 +2404,17 @@ function CourseDetailInner() {
 // EXPORT
 // ============================================================================
 
-export default function CourseDetail() {
-  return <CourseDetailInner />;
+export default function CourseDetail({
+  slugOverride,
+  onCourseCompleted,
+}: {
+  slugOverride?: string;
+  onCourseCompleted?: () => void;
+} = {}) {
+  return (
+    <CourseDetailInner
+      slugOverride={slugOverride}
+      onCourseCompleted={onCourseCompleted}
+    />
+  );
 }

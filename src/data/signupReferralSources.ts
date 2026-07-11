@@ -1,6 +1,7 @@
-/** Picklist for "How did you hear about us?" on sign-up (optional field). */
+/** Picklist for "How did you hear about us?" on sign-up. */
 export const HEAR_ABOUT_US_OPTIONS = [
   { value: "Google", label: "Google" },
+  { value: "Instagram", label: "Instagram" },
   { value: "Group Chats", label: "Group Chats" },
   { value: "Friends", label: "Friends" },
   { value: "Social Media", label: "Social Media" },

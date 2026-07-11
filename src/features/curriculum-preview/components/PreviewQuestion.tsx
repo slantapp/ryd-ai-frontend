@@ -21,16 +21,16 @@ export function PreviewQuestion({
   const isCorrect = selectedAnswer === question.answer;
 
   return (
-    <div className="space-y-6">
-      <div className="mb-6">
-        <h3 className="mb-3 text-xl font-bold leading-tight text-gray-900 sm:text-2xl">
+    <div className="space-y-4">
+      <div>
+        <h3 className="mb-2 text-base font-semibold leading-snug text-gray-900 sm:text-lg">
           {question.question}
         </h3>
-        <div className="h-1 w-20 rounded-full bg-gradient-to-r from-primary via-primary/80 to-primary/60" />
+        <div className="h-0.5 w-14 rounded-full bg-linear-to-r from-primary via-primary/80 to-primary/60" />
       </div>
 
       {question.type === "multiple_choice" && question.options && (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {question.options.map((option, index) => {
             const isSelected = selectedAnswer === option;
             const showCorrect = isSubmitted && option === question.answer;
@@ -42,7 +42,7 @@ export function PreviewQuestion({
                 type="button"
                 onClick={() => !isSubmitted && !disabled && onSelectAnswer(option)}
                 disabled={isSubmitted || disabled}
-                className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
+                className={`w-full rounded-lg border-2 p-2.5 text-left transition-all sm:p-3 ${
                   showCorrect
                     ? "border-green-500 bg-green-50"
                     : showIncorrect
@@ -52,10 +52,10 @@ export function PreviewQuestion({
                     : "border-gray-200 bg-white hover:border-primary/50 hover:bg-primary/5"
                 } ${isSubmitted || disabled ? "cursor-default" : "cursor-pointer"}`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2.5">
                     <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-bold ${
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold ${
                         showCorrect
                           ? "border-green-500 bg-green-500 text-white"
                           : showIncorrect
@@ -67,10 +67,12 @@ export function PreviewQuestion({
                     >
                       {String.fromCharCode(65 + index)}
                     </div>
-                    <span className="font-medium text-gray-800">{option}</span>
+                    <span className="text-sm font-medium text-gray-800">
+                      {option}
+                    </span>
                   </div>
-                  {showCorrect && <CheckCircle className="h-6 w-6 text-green-500" />}
-                  {showIncorrect && <XCircle className="h-6 w-6 text-red-500" />}
+                  {showCorrect && <CheckCircle className="h-4 w-4 shrink-0 text-green-500" />}
+                  {showIncorrect && <XCircle className="h-4 w-4 shrink-0 text-red-500" />}
                 </div>
               </button>
             );
@@ -79,11 +81,12 @@ export function PreviewQuestion({
       )}
 
       {question.type === "true_false" && (
-        <div className="flex gap-4">
+        <div className="flex gap-2.5 sm:gap-3">
           {[true, false].map((value) => {
             const isSelected = selectedAnswer === value;
             const showCorrect = isSubmitted && value === question.answer;
-            const showIncorrect = isSubmitted && isSelected && selectedAnswer !== question.answer;
+            const showIncorrect =
+              isSubmitted && isSelected && selectedAnswer !== question.answer;
 
             return (
               <button
@@ -91,7 +94,7 @@ export function PreviewQuestion({
                 type="button"
                 onClick={() => !isSubmitted && !disabled && onSelectAnswer(value)}
                 disabled={isSubmitted || disabled}
-                className={`flex-1 rounded-xl border-2 p-6 text-center transition-all ${
+                className={`flex flex-1 items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-center transition-all sm:py-3 ${
                   showCorrect
                     ? "border-green-500 bg-green-50"
                     : showIncorrect
@@ -101,13 +104,11 @@ export function PreviewQuestion({
                     : "border-gray-200 bg-white hover:border-primary/50 hover:bg-primary/5"
                 } ${isSubmitted || disabled ? "cursor-default" : "cursor-pointer"}`}
               >
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-2xl font-bold text-gray-800">
-                    {value ? "True" : "False"}
-                  </span>
-                  {showCorrect && <CheckCircle className="h-6 w-6 text-green-500" />}
-                  {showIncorrect && <XCircle className="h-6 w-6 text-red-500" />}
-                </div>
+                <span className="text-sm font-semibold text-gray-800 sm:text-base">
+                  {value ? "True" : "False"}
+                </span>
+                {showCorrect && <CheckCircle className="h-4 w-4 text-green-500" />}
+                {showIncorrect && <XCircle className="h-4 w-4 text-red-500" />}
               </button>
             );
           })}
@@ -115,15 +116,15 @@ export function PreviewQuestion({
       )}
 
       {(question.type === "multiple_choice" || question.type === "true_false") && (
-        <div className="mt-6">
+        <div>
           <button
             type="button"
             onClick={onSubmit}
             disabled={selectedAnswer === null || isSubmitted || disabled}
-            className={`w-full rounded-xl py-3 px-6 font-semibold text-lg transition-all ${
+            className={`w-full rounded-lg px-4 py-2 text-sm font-semibold transition-all sm:w-auto ${
               selectedAnswer !== null && !isSubmitted && !disabled
-                ? "bg-gradient-to-r from-primary to-primary/90 text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                : "cursor-not-allowed bg-gray-200 text-gray-500"
             }`}
           >
             {isSubmitted ? "Answer Submitted" : "Submit Answer"}
@@ -133,23 +134,27 @@ export function PreviewQuestion({
 
       {isSubmitted && question.explanation && (
         <div
-          className={`mt-6 rounded-xl border-l-4 p-4 ${
+          className={`rounded-lg border-l-4 p-3 ${
             isCorrect
               ? "border-green-500 bg-green-50"
               : "border-red-500 bg-red-50"
           }`}
         >
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-2.5">
             {isCorrect ? (
-              <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
             ) : (
-              <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+              <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
             )}
             <div>
-              <p className={`font-semibold ${isCorrect ? "text-green-800" : "text-red-800"}`}>
+              <p
+                className={`text-sm font-semibold ${
+                  isCorrect ? "text-green-800" : "text-red-800"
+                }`}
+              >
                 {isCorrect ? "Correct!" : "Incorrect"}
               </p>
-              <p className="mt-1 text-sm text-gray-700">{question.explanation}</p>
+              <p className="mt-0.5 text-sm text-gray-700">{question.explanation}</p>
             </div>
           </div>
         </div>

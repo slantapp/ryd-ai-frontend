@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { Minimize2, Maximize2, Terminal, Eye } from "lucide-react";
+import { prepareHtmlForPreview } from "@/utils/prepareHtmlForPreview";
 
 interface TestResultsProps {
   results: string[];
@@ -12,26 +13,10 @@ interface TestResultsProps {
 function isHTMLCode(code: string): boolean {
   if (!code || !code.trim()) return false;
 
-  // Simple and reliable HTML detection
-  // Look for HTML tag patterns: <tag> or </tag> or <tag />
-  // This matches: <h2>, <p>, <div>, </h2>, <img />, etc.
-  // Pattern explanation:
-  // - < matches literal <
-  // - [a-z] matches first letter (required)
-  // - [a-z0-9]* matches zero or more letters/numbers (for tags like h1, h2, img, etc.)
-  // - Optional attributes/whitespace: (\s[^>]*)?
-  // - Optional self-closing: (\/)?
-  // - > matches literal >
-
   const trimmedCode = code.trim();
-
-  // Check for opening tags: <tag> or <tag />
   const openingTagPattern = /<[a-z][a-z0-9]*(?:\s[^>]*)?\/?>/i;
-
-  // Check for closing tags: </tag>
   const closingTagPattern = /<\/[a-z][a-z0-9]*>/i;
 
-  // If we find either pattern, it's HTML
   return (
     openingTagPattern.test(trimmedCode) || closingTagPattern.test(trimmedCode)
   );
@@ -41,16 +26,14 @@ function isHTMLCode(code: string): boolean {
 function wrapHTML(html: string): string {
   if (!html) return "";
 
-  // Check if it already has html/body tags
   const hasHTMLTag = /<html[\s>]/i.test(html);
   const hasBodyTag = /<body[\s>]/i.test(html);
 
   if (hasHTMLTag && hasBodyTag) {
-    return html;
+    return prepareHtmlForPreview(html);
   }
 
-  // Wrap in basic HTML structure
-  return `<!DOCTYPE html>
+  return prepareHtmlForPreview(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -62,12 +45,16 @@ function wrapHTML(html: string): string {
       padding: 16px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     }
+    img {
+      max-width: 100%;
+      height: auto;
+    }
   </style>
 </head>
 <body>
 ${html}
 </body>
-</html>`;
+</html>`);
 }
 
 export default function TestResults({
@@ -78,41 +65,20 @@ export default function TestResults({
 }: TestResultsProps) {
   const [activeTab, setActiveTab] = useState<"console" | "preview">("console");
 
-  const isHTML = useMemo(() => {
-    const detected = isHTMLCode(code);
-    return detected;
-  }, [code]);
+  const isHTML = useMemo(() => isHTMLCode(code), [code]);
 
   const htmlContent = useMemo(() => {
     if (!isHTML || !code.trim()) return "";
     return wrapHTML(code);
   }, [code, isHTML]);
 
-  // Create blob URL for iframe src - recreate when htmlContent changes
-  const previewSrc = useMemo(() => {
-    if (!htmlContent) return "";
-    const blob = new Blob([htmlContent], { type: "text/html" });
-    return URL.createObjectURL(blob);
-  }, [htmlContent]);
-
-  // Auto-switch to preview tab when HTML is detected and user hasn't manually switched
+  // Prefer preview when HTML is present so learners see rendered output (images, etc.).
   useEffect(() => {
-    if (isHTML && activeTab === "console" && htmlContent) {
-      // Only auto-switch if we're on console and HTML is detected
-      // But let's not force it - let user decide
+    if (isHTML && htmlContent) {
+      setActiveTab("preview");
     }
-  }, [isHTML, htmlContent, activeTab]);
+  }, [isHTML, htmlContent]);
 
-  // Cleanup blob URL on unmount or when htmlContent changes
-  useEffect(() => {
-    return () => {
-      if (previewSrc) {
-        URL.revokeObjectURL(previewSrc);
-      }
-    };
-  }, [previewSrc]);
-
-  // Keyboard shortcut: Ctrl/Cmd + 1 for Console, Ctrl/Cmd + 2 for Preview
   useEffect(() => {
     if (!isHTML) return;
 
@@ -134,7 +100,6 @@ export default function TestResults({
     <div className="flex h-full flex-col overflow-hidden rounded-md border border-gray-200 bg-black text-white">
       <div className="flex h-full min-h-0 flex-col lg:grid lg:grid-cols-3">
         <div className="flex min-h-[140px] w-full min-w-0 flex-1 flex-col lg:col-span-1 lg:min-h-0">
-          {/* Header with tabs */}
           <div className="flex shrink-0 items-center justify-between border-b border-gray-700 bg-gray-900">
             <div className="flex flex-1 items-center">
               <div className="flex gap-1">
@@ -143,8 +108,8 @@ export default function TestResults({
                   onClick={() => setActiveTab("console")}
                   className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:text-sm ${
                     activeTab === "console"
-                      ? "text-white bg-gray-800 border-b-2 border-blue-500"
-                      : "text-gray-400 hover:text-gray-300 hover:bg-gray-800/50"
+                      ? "border-b-2 border-blue-500 bg-gray-800 text-white"
+                      : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-300"
                   }`}
                   title="Console (Ctrl/Cmd + 1)"
                 >
@@ -153,15 +118,12 @@ export default function TestResults({
                 </button>
               </div>
             </div>
-            {/* <button
-              onClick={onToggleFullscreen}
-              className="p-2 mr-2 rounded hover:bg-gray-800 transition-colors"
-              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            >
-              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-            </button> */}
           </div>
-          <div className="h-full overflow-auto bg-gray-950 p-3 font-mono text-xs sm:p-4 sm:text-sm">
+          <div
+            className={`h-full overflow-auto bg-gray-950 p-3 font-mono text-xs sm:p-4 sm:text-sm ${
+              activeTab !== "console" && isHTML ? "hidden lg:block" : ""
+            }`}
+          >
             {results.length > 0 ? (
               <div className="space-y-1">
                 {results.map((r, i) => {
@@ -170,7 +132,7 @@ export default function TestResults({
                   else if (r.startsWith("❌")) color = "text-red-400";
                   else if (r.startsWith("⚠️")) color = "text-yellow-400";
                   return (
-                    <div key={i} className={color}>
+                    <div key={i} className={`${color} break-all`}>
                       {r}
                     </div>
                   );
@@ -187,7 +149,6 @@ export default function TestResults({
           </div>
         </div>
         <div className="flex min-h-[200px] w-full min-w-0 flex-1 flex-col lg:col-span-2 lg:min-h-0">
-          {/* Header with tabs */}
           <div className="flex shrink-0 items-center justify-between border-b border-gray-700 bg-gray-900">
             <div className="flex flex-1 items-center">
               <div className="flex gap-1">
@@ -196,8 +157,8 @@ export default function TestResults({
                   onClick={() => setActiveTab("preview")}
                   className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:text-sm ${
                     activeTab === "preview"
-                      ? "text-white bg-gray-800 border-b-2 border-blue-500"
-                      : "text-gray-400 hover:text-gray-300 hover:bg-gray-800/50"
+                      ? "border-b-2 border-blue-500 bg-gray-800 text-white"
+                      : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-300"
                   }`}
                   title="Preview (Ctrl/Cmd + 2)"
                 >
@@ -207,26 +168,32 @@ export default function TestResults({
               </div>
             </div>
             <button
+              type="button"
               onClick={onToggleFullscreen}
-              className="p-2 mr-2 rounded hover:bg-gray-800 transition-colors"
+              className="mr-2 rounded p-2 transition-colors hover:bg-gray-800"
               title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
             >
               {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </button>
           </div>
-          <div className="h-full bg-white border-t border-gray-700">
-            {htmlContent && previewSrc ? (
+          <div
+            className={`h-full border-t border-gray-700 bg-white ${
+              activeTab !== "preview" && isHTML ? "hidden lg:block" : ""
+            }`}
+          >
+            {htmlContent ? (
               <iframe
-                key={previewSrc} // Force re-render when previewSrc changes
-                src={previewSrc}
-                className="w-full h-full border-0"
+                key={htmlContent.slice(0, 64)}
+                srcDoc={htmlContent}
+                className="h-full w-full border-0"
                 title="HTML Preview"
-                sandbox="allow-same-origin allow-scripts"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="flex h-full items-center justify-center text-gray-500">
                 <div className="text-center">
-                  <div className="text-lg mb-2">No HTML to preview</div>
+                  <div className="mb-2 text-lg">No HTML to preview</div>
                   <div className="text-sm">
                     Write some HTML code to see the preview
                   </div>

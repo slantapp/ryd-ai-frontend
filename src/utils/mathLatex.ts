@@ -145,13 +145,29 @@ export function curriculumMathToLatex(raw: string): string {
 
   s = replaceNumericMultiplicationX(s);
 
+  // Word "times" / "multiplied by" between values → ×
+  s = s.replace(
+    /(\d+(?:\.\d+)?|\})\s+(?:times|multiplied by)\s+(\d+(?:\.\d+)?|\\)/gi,
+    "$1 \\times $2",
+  );
+
   s = s.replace(/\(([^()]+)\)\^(\d+)/g, (_, base: string, exp: string) => {
     return `\\left(${base.trim()}\\right)^{${exp}}`;
   });
 
+  // Powers: 5^2, x^10, 5^{2}
+  s = s.replace(/([A-Za-z0-9.]+)\^\{([^}]+)\}/g, (_, base: string, exp: string) => {
+    return `${base}^{${exp.trim()}}`;
+  });
   s = s.replace(/([A-Za-z0-9.]+)\^(\d+)/g, (_, base: string, exp: string) => {
     return `${base}^{${exp}}`;
   });
+
+  // After power conversion, catch "5^{2} times 5^{3}"
+  s = s.replace(
+    /(\^\{[^}]+\})\s+(?:times|multiplied by)\s+/gi,
+    "$1 \\times ",
+  );
 
   s = replaceNumericMultiplicationX(s);
   s = s.replace(/(\d+)\s*:\s*(\d+)/g, "$1 : $2");
@@ -176,6 +192,57 @@ export function curriculumMathToLatex(raw: string): string {
 export function looksLikeMath(text: string): boolean {
   return (
     /sqrt\(|\^|\d\s*x\s*\d|\$\d|=\s*\d|\\frac|\d+\/\d+/.test(text) ||
+    /\d\s+(?:times|multiplied by)\s+\d/i.test(text) ||
     /\\sqrt|\\times|\\text|\^/.test(text)
   );
+}
+
+/**
+ * Split prose + math so long explanations wrap normally while math fragments
+ * still render with KaTeX (avoids one giant non-wrapping katex line).
+ */
+export function splitMixedMathText(
+  text: string,
+): Array<{ type: "text" | "math"; value: string }> {
+  const input = text.trim();
+  if (!input) return [];
+
+  // Short pure-math strings: keep as a single math segment.
+  const wordCount = input.split(/\s+/).filter(Boolean).length;
+  if (wordCount <= 8 && looksLikeMath(input) && !/[.!?].+\s/.test(input)) {
+    return [{ type: "math", value: input }];
+  }
+
+  if (!looksLikeMath(input)) {
+    return [{ type: "text", value: input }];
+  }
+
+  const mathRun =
+    /\$\d+(?:\.\d+)?|sqrt\([^)]+\)|\d+(?:\.\d+)?(?:\^\d+)?(?:\s*(?:times|multiplied by|[+\-×x*/=:])\s*\d+(?:\.\d+)?(?:\^\d+)?)+|\d+(?:\.\d+)?\^\d+/gi;
+
+  const parts: Array<{ type: "text" | "math"; value: string }> = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = mathRun.exec(input)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({
+        type: "text",
+        value: input.slice(lastIndex, match.index),
+      });
+    }
+    parts.push({ type: "math", value: match[0] });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < input.length) {
+    parts.push({ type: "text", value: input.slice(lastIndex) });
+  }
+
+  // If we failed to find useful math runs, fall back to one math block.
+  if (parts.length === 0 || parts.every((p) => p.type === "text")) {
+    return [{ type: "math", value: input }];
+  }
+
+  return parts.filter((p) => p.value.length > 0);
 }

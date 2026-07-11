@@ -1,0 +1,185 @@
+{
+  "slug": "puppy-html-web-app",
+  "curriculum": {
+    "title": "Puppy Pic Web App",
+    "description": "A quick, cheerful HTML mini-course. Learners build one web page, load a puppy photo from the internet, and give it a neat finish.",
+    "language": "en",
+    "category": "coding",
+    "age": 7,
+    "class": "Year 3",
+    "grade": 3,
+    "modules": [
+      {
+        "id": "html_module_01",
+        "title": "Make a Puppy Pic App",
+        "prerequisite": null,
+        "lessons": [
+          {
+            "id": "html_lesson_01",
+            "title": "Simple Page Design with HTML",
+            "body": "HTML is the page skeleton. Start with a title, a big heading, and one friendly line.",
+            "avatar_script": "First, we build a tiny stage for our puppy app: a title, a big hello, and one cheerful line.",
+            "media": {},
+            "code_example": {
+              "code": "<!DOCTYPE html>\n<html>\n  <head>\n    <title>Puppy App</title>\n  </head>\n  <body>\n    <h1>Puppy Picture App</h1>\n    <p>A puppy page is coming soon.</p>\n  </body>\n</html>",
+              "language": "html",
+              "description": "Starting the puppy web page.",
+              "explanation": "The h1 tag makes the big heading. The p tag adds the friendly paragraph.",
+              "autoRun": false,
+              "typingSpeed": 70
+            },
+            "questions": [
+              {
+                "id": "q1_multiple_choice",
+                "type": "multiple_choice",
+                "question": "Which tag makes the big page heading?",
+                "options": [
+                  "<p>",
+                  "<img>",
+                  "<h1>",
+                  "<title>"
+                ],
+                "answer": "<h1>",
+                "explanation": "The h1 tag creates the main heading."
+              },
+              {
+                "id": "q2_true_false",
+                "type": "true_false",
+                "question": "The p tag adds a paragraph line of page text.",
+                "answer": true,
+                "explanation": "The p tag adds paragraph text."
+              },
+              {
+                "id": "q3_code_test",
+                "type": "code_test",
+                "question": "Write the full starter page for the Puppy Picture App.",
+                "explanation": "Build it from DOCTYPE to closing html. Add the title, heading, and one friendly line.",
+                "code_example": {
+                  "code": "<!DOCTYPE html>\n<html>\n  <head>\n    <title>Puppy App</title>\n  </head>\n  <body>\n    <h1>Puppy Picture App</h1>\n    <p>A puppy page is coming soon.</p>\n  </body>\n</html>",
+                  "language": "html",
+                  "description": "Starting the puppy web page.",
+                  "explanation": "This complete page creates a title, heading, and short line.",
+                  "autoRun": false,
+                  "typingSpeed": 70
+                },
+                "testCriteria": {
+                  "expectedCode": "<!DOCTYPE html>\n<html>\n  <head>\n    <title>Puppy App</title>\n  </head>\n  <body>\n    <h1>Puppy Picture App</h1>\n    <p>A puppy page is coming soon.</p>\n  </body>\n</html>"
+                }
+              }
+            ],
+            "next_lesson_id": "html_lesson_02"
+          },
+          {
+            "id": "html_lesson_02",
+            "title": "Adding a Photo",
+            "body": "Pictures use IMG tags. The image link points to the puppy photo, and alt says what is in it.",
+            "avatar_script": "Now for the star of the page: the puppy photo. Paste the link, add alt text, and the app comes alive.",
+            "media": {},
+            "code_example": {
+              "code": "<!DOCTYPE html>\n<html>\n  <head>\n    <title>Puppy App</title>\n  </head>\n  <body>\n    <h1>Puppy Picture App</h1>\n    <img src=\"https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg\" alt=\"Two happy puppies sitting in grass\">\n  </body>\n</html>",
+              "language": "html",
+              "description": "Showing an online puppy photo.",
+              "explanation": "The IMG tag shows the photo. SRC holds the link, and ALT describes the image.",
+              "autoRun": false,
+              "typingSpeed": 70
+            },
+            "questions": [
+              {
+                "id": "q4_multiple_choice",
+                "type": "multiple_choice",
+                "question": "Which tag shows a picture?",
+                "options": [
+                  "<p>",
+                  "<h1>",
+                  "<img>",
+                  "<style>"
+                ],
+                "answer": "<img>",
+                "explanation": "The IMG tag displays an image."
+              },
+              {
+                "type": "true_false",
+                "question": "SRC is the web address for the picture.",
+                "answer": true,
+                "explanation": "The browser uses SRC to load the image."
+              },
+              {
+                "id": "q6_code_test",
+                "type": "code_test",
+                "question": "Write the full page that shows the online puppy photo.",
+                "explanation": "Build it from DOCTYPE to closing html. Add the puppy image link inside img.",
+                "code_example": {
+                  "code": "<!DOCTYPE html>\n<html>\n  <head>\n    <title>Puppy App</title>\n  </head>\n  <body>\n    <h1>Puppy Picture App</h1>\n    <img src=\"https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg\" alt=\"Two happy puppies sitting in grass\">\n  </body>\n</html>",
+                  "language": "html",
+                  "description": "Showing an online puppy photo.",
+                  "explanation": "This complete page loads the puppy photo from the internet.",
+                  "autoRun": false,
+                  "typingSpeed": 70
+                },
+                "testCriteria": {
+                  "expectedCode": "<!DOCTYPE html>\n<html>\n  <head>\n    <title>Puppy App</title>\n  </head>\n  <body>\n    <h1>Puppy Picture App</h1>\n    <img src=\"https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg\" alt=\"Two happy puppies sitting in grass\">\n  </body>\n</html>"
+                }
+              }
+            ],
+            "next_lesson_id": "html_lesson_03"
+          },
+          {
+            "id": "html_lesson_03",
+            "title": "Styling It Up with CSS",
+            "body": "CSS dresses the page. Center the text, soften the corners, and keep the puppy photo tidy.",
+            "avatar_script": "Final polish: a clean background, centered text, and a puppy photo that fits nicely.",
+            "media": {},
+            "code_example": {
+              "code": "<!DOCTYPE html>\n<html>\n  <head>\n    <title>Puppy App</title>\n    <style>\n      body {\n        font-family: Arial, sans-serif;\n        text-align: center;\n        background-color: #f6fbff;\n      }\n\n      img {\n        width: 320px;\n        max-width: 100%;\n        border-radius: 8px;\n      }\n    </style>\n  </head>\n  <body>\n    <h1>Puppy Picture App</h1>\n    <p>Say hello to two happy puppies.</p>\n    <img src=\"https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg\" alt=\"Two happy puppies sitting in grass\">\n  </body>\n</html>",
+              "language": "html",
+              "description": "Finishing the puppy web app.",
+              "explanation": "The style tag adds CSS. The page is centered, bright, and easy to read.",
+              "autoRun": false,
+              "typingSpeed": 70
+            },
+            "questions": [
+              {
+                "id": "q7_multiple_choice",
+                "type": "multiple_choice",
+                "question": "Which tag holds CSS on this page?",
+                "options": [
+                  "<style>",
+                  "<img>",
+                  "<body>",
+                  "<p>"
+                ],
+                "answer": "<style>",
+                "explanation": "The style tag holds the page's CSS rules."
+              },
+              {
+                "id": "q8_true_false",
+                "type": "true_false",
+                "question": "CSS can resize an image.",
+                "answer": true,
+                "explanation": "The width rule can make an image bigger or smaller."
+              },
+              {
+                "id": "q9_code_test",
+                "type": "code_test",
+                "question": "Write the full polished Puppy Picture App.",
+                "explanation": "Use the complete code from DOCTYPE to closing html. Include the CSS, heading, line of text, and puppy photo.",
+                "code_example": {
+                  "code": "<!DOCTYPE html>\n<html>\n  <head>\n    <title>Puppy App</title>\n    <style>\n      body {\n        font-family: Arial, sans-serif;\n        text-align: center;\n        background-color: #f6fbff;\n      }\n\n      img {\n        width: 320px;\n        max-width: 100%;\n        border-radius: 8px;\n      }\n    </style>\n  </head>\n  <body>\n    <h1>Puppy Picture App</h1>\n    <p>Say hello to two happy puppies.</p>\n    <img src=\"https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg\" alt=\"Two happy puppies sitting in grass\">\n  </body>\n</html>",
+                  "language": "html",
+                  "description": "Finishing the puppy web app.",
+                  "explanation": "This complete page centers the content, styles the background, and shows the puppy photo.",
+                  "autoRun": false,
+                  "typingSpeed": 70
+                },
+                "testCriteria": {
+                  "expectedCode": "<!DOCTYPE html>\n<html>\n  <head>\n    <title>Puppy App</title>\n    <style>\n      body {\n        font-family: Arial, sans-serif;\n        text-align: center;\n        background-color: #f6fbff;\n      }\n\n      img {\n        width: 320px;\n        max-width: 100%;\n        border-radius: 8px;\n      }\n    </style>\n  </head>\n  <body>\n    <h1>Puppy Picture App</h1>\n    <p>Say hello to two happy puppies.</p>\n    <img src=\"https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg\" alt=\"Two happy puppies sitting in grass\">\n  </body>\n</html>"
+                }
+              }
+            ],
+            "next_lesson_id": null
+          }
+        ]
+      }
+    ]
+  }
+}

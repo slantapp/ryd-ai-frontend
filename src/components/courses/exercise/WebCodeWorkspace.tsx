@@ -53,8 +53,14 @@ export default function WebCodeWorkspace({
     TAB_CONFIG.find((tab) => tab.id === activeTab) ?? TAB_CONFIG[0];
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden border border-gray-200 rounded-md">
-      <div className="flex items-center justify-between gap-2 border-b bg-gray-50 px-3 py-2 shrink-0">
+    <div
+      className={
+        isFullscreen
+          ? "fixed inset-0 z-9999 flex min-h-0 flex-col overflow-hidden border-0 bg-white"
+          : "flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-gray-200"
+      }
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-gray-50 px-3 py-2">
         <div className="flex min-w-0 items-center gap-1">
           {TAB_CONFIG.map((tab) => (
             <button
@@ -140,7 +146,7 @@ export default function WebCodeWorkspace({
 
       <Split
         direction="vertical"
-        className="flex h-full min-h-[320px] w-full flex-col"
+        className="flex min-h-0 w-full flex-1 flex-col"
         sizes={[42, 58]}
         minSize={100}
         gutterSize={8}

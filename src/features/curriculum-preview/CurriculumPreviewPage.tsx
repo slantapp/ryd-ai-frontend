@@ -33,6 +33,13 @@ import {
 import type { CodingLesson, CurriculumData, Lesson, Question, CodeExample } from "./types";
 import { isMathematicsPreview } from "./types";
 import {
+  CurriculumV2Preview,
+  isCurriculumV2,
+  extractCurriculumV2Data,
+  type CurriculumV2Data,
+  type PreviewLoadResult,
+} from "./v2";
+import {
   buildSubmitCodeResultLines,
   buildTryCodeResultLines,
   evaluateSubmissionCodeTest,
@@ -104,6 +111,7 @@ export default function CurriculumPreviewPage() {
     isRemotePreview ? "preview" : "upload",
   );
   const [curriculum, setCurriculum] = useState<CurriculumData | null>(null);
+  const [v2Curriculum, setV2Curriculum] = useState<CurriculumV2Data | null>(null);
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [publishStatus, setPublishStatus] = useState<PublishStatus>("idle");
   const [currentLesson, setCurrentLesson] = useState<CodingLesson | null>(null);
@@ -231,6 +239,7 @@ export default function CurriculumPreviewPage() {
   );
 
   const applyCurriculumData = useCallback((data: CurriculumData) => {
+    setV2Curriculum(null);
     setCurriculum(data);
     setPublishStatus("idle");
     setState("preview");
@@ -245,6 +254,14 @@ export default function CurriculumPreviewPage() {
       ),
     );
     if (hasCodeExamples) prefetchMonacoEditor();
+  }, []);
+
+  const applyV2CurriculumData = useCallback((data: CurriculumV2Data) => {
+    setCurriculum(null);
+    setCurrentLesson(null);
+    setV2Curriculum(data);
+    setPublishStatus("idle");
+    setState("preview");
   }, []);
 
   const {
@@ -266,11 +283,15 @@ export default function CurriculumPreviewPage() {
   }, [currentSubtitle]);
 
   const handleCurriculumLoaded = useCallback(
-    (data: CurriculumData, file: File) => {
-      setSourceFile(file);
-      applyCurriculumData(data);
+    (result: PreviewLoadResult) => {
+      setSourceFile(result.file);
+      if (result.version === 2) {
+        applyV2CurriculumData(result.data);
+      } else {
+        applyCurriculumData(result.data);
+      }
     },
-    [applyCurriculumData],
+    [applyCurriculumData, applyV2CurriculumData],
   );
 
   useEffect(() => {
@@ -286,7 +307,14 @@ export default function CurriculumPreviewPage() {
           remotePreviewMeta.data!.curriculumId,
         );
         if (cancelled) return;
-        applyCurriculumData(data);
+        if (isCurriculumV2(data) || isCurriculumV2({ curriculum: data })) {
+          const extracted = extractCurriculumV2Data(
+            isCurriculumV2(data) ? data : { curriculum: data, schema_version: 2 },
+          );
+          applyV2CurriculumData(extracted.data);
+        } else {
+          applyCurriculumData(data);
+        }
         setRemoteLoadStatus("success");
       } catch (error) {
         if (cancelled) return;
@@ -302,7 +330,12 @@ export default function CurriculumPreviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [applyCurriculumData, isRemotePreview, remotePreviewMeta.data]);
+  }, [
+    applyCurriculumData,
+    applyV2CurriculumData,
+    isRemotePreview,
+    remotePreviewMeta.data,
+  ]);
 
   const handlePublishCurriculum = useCallback(async () => {
     if (
@@ -807,6 +840,7 @@ export default function CurriculumPreviewPage() {
     stop();
     setState("upload");
     setCurriculum(null);
+    setV2Curriculum(null);
     setSourceFile(null);
     setPublishStatus("idle");
     setCurrentLesson(null);
@@ -870,10 +904,9 @@ export default function CurriculumPreviewPage() {
 
   if (
     isRemotePreview &&
-    (remoteLoadStatus === "loading" ||
-      remoteLoadStatus === "idle" ||
-      !curriculum ||
-      !currentLesson)
+    (remoteLoadStatus === "loading" || remoteLoadStatus === "idle") &&
+    !curriculum &&
+    !v2Curriculum
   ) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-3 bg-gray-50">
@@ -890,6 +923,19 @@ export default function CurriculumPreviewPage() {
           handoff.data && "name" in handoff.data ? handoff.data.name : undefined
         }
         onCurriculumLoaded={handleCurriculumLoaded}
+      />
+    );
+  }
+
+  if (v2Curriculum) {
+    return (
+      <CurriculumV2Preview
+        curriculum={v2Curriculum}
+        sourceFile={sourceFile}
+        isRemotePreview={isRemotePreview}
+        publishStatus={publishStatus}
+        onPublish={() => void handlePublishCurriculum()}
+        onBackToUpload={isRemotePreview ? undefined : handleBackToUpload}
       />
     );
   }

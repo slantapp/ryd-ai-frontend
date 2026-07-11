@@ -243,6 +243,11 @@ Supported `question.type` values:
     "on_correct": "Perfect!",
     "on_wrong": "Close — check the variable name."
   },
+  "retry": {
+    "max": 2,
+    "hint": "Start with let, then the name message.",
+    "on_exhausted": "continue"
+  },
   "advance": "on_answer"
 }
 ```
@@ -333,13 +338,19 @@ Set `"next": null` on the final beat of a course.
 
 ### Question beat speech (detailed)
 
+Student preview simulates **retry** (default `max: 2` wrong attempts via `defaults.question_retry` or per-beat `retry`):
+
+| Outcome | Speech | Advance |
+|---------|--------|---------|
+| Correct | `on_correct` → `explanation` | Next beat |
+| Wrong, retries left | `on_wrong` → `retry.hint` | Stay on beat; clear MC/TF selection |
+| Wrong, retries exhausted | `on_wrong` → `explanation` | Next beat |
+
 **Multiple choice / true-false:**
 
 1. `avatar.on_ask` (or `question.question` if `on_ask` omitted)
 2. Learner answers
-3. `avatar.on_correct` or `avatar.on_wrong` (or defaults)
-4. `question.explanation` spoken after feedback
-5. Advance to next beat
+3. Follow the retry table above
 
 **Code test / formula test:**
 
@@ -350,8 +361,38 @@ Set `"next": null` on the final beat of a course.
 5. `avatar.handoff` (or default: “Now it's your turn…”)
 6. `question.question` spoken
 7. Learner submits answer
-8. Feedback speech (`on_correct` / `on_wrong` + `explanation`)
-9. Advance to next beat
+8. Same retry table (code/formula keep the learner's input for another try)
+
+### Optional student-flow fields
+
+```json
+{
+  "type": "display",
+  "speak_body": false,
+  "body": "Long on-screen text…",
+  "avatar": { "text": "Short spoken summary only." }
+}
+```
+
+```json
+{
+  "type": "question",
+  "retry": {
+    "max": 2,
+    "hint": "Look at the quotes around the text.",
+    "on_exhausted": "continue"
+  }
+}
+```
+
+```json
+{
+  "type": "pause",
+  "keep_previous": true
+}
+```
+
+`keep_previous` (default true after demos) keeps the previous code/formula example visible during the pause.
 
 ### What the learner experiences (example lesson)
 

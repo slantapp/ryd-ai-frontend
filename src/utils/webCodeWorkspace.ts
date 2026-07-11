@@ -1,5 +1,6 @@
 import type { CodeTestCriteria, CodeTestResult } from "./codeTestValidation";
 import { matchExpectedCode } from "./codeTestValidation";
+import { prepareHtmlForPreview } from "./prepareHtmlForPreview";
 
 export type WebCodeSources = {
   html: string;
@@ -81,10 +82,10 @@ export function buildWebPreviewDocument(sources: WebCodeSources): string {
         `<script>\n${javascript}\n</script>\n</body>`,
       );
     }
-    return document;
+    return prepareHtmlForPreview(document);
   }
 
-  return `<!DOCTYPE html>
+  return prepareHtmlForPreview(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -105,7 +106,7 @@ ${html}
 ${javascript}
 </script>
 </body>
-</html>`;
+</html>`);
 }
 
 export function combineWebCodeForValidation(sources: WebCodeSources): string {
@@ -130,7 +131,9 @@ export function evaluateWebCodeTest(
     const normalizedCode = normalizeCodeForMatch(sources.html);
     passed = normalizedCode.includes(normalizedExpected);
     testResults.push({
-      test: `HTML contains: ${criteria.expectedHTML}`,
+      test: passed
+        ? "HTML contains the expected markup"
+        : "HTML does not contain the expected markup",
       passed,
       actual: sources.html.trim() || "(empty)",
       expected: criteria.expectedHTML,
@@ -140,7 +143,9 @@ export function evaluateWebCodeTest(
     const normalizedCode = normalizeCodeForMatch(sources.css);
     passed = normalizedCode.includes(normalizedExpected);
     testResults.push({
-      test: `CSS contains: ${criteria.expectedCSS}`,
+      test: passed
+        ? "CSS contains the expected rules"
+        : "CSS does not contain the expected rules",
       passed,
       actual: sources.css.trim() || "(empty)",
       expected: criteria.expectedCSS,
@@ -150,7 +155,9 @@ export function evaluateWebCodeTest(
     const needle = criteria.expectedJS.toLowerCase();
     passed = haystack.includes(needle);
     testResults.push({
-      test: `JavaScript includes: ${criteria.expectedJS}`,
+      test: passed
+        ? "JavaScript includes the required code"
+        : "JavaScript does not include the required code",
       passed,
       actual: sources.javascript.trim() || "(empty)",
       expected: criteria.expectedJS,
@@ -159,7 +166,9 @@ export function evaluateWebCodeTest(
     const combined = combineWebCodeForValidation(sources);
     passed = matchExpectedCode(combined, criteria.expectedCode);
     testResults.push({
-      test: "Code matches the required pattern",
+      test: passed
+        ? "Your code matches the expected solution"
+        : "Your code does not match the expected solution",
       passed,
       actual: combined.trim() || "(empty)",
       expected: criteria.expectedCode,

@@ -807,11 +807,11 @@ function CodingExerciseInner() {
 
                     {/* Question Explanation */}
                     {currentQuestion.explanation && (
-                      <div className="mt-6 rounded-r-lg border-l-4 border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-3 shadow-sm backdrop-blur-sm sm:mt-8 sm:p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5">
+                      <div className="mt-6 min-w-0 max-w-full overflow-hidden rounded-r-lg border-l-4 border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-3 shadow-sm backdrop-blur-sm sm:mt-8 sm:p-4">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div className="mt-0.5 shrink-0">
                             <svg
-                              className="w-5 h-5 text-primary"
+                              className="h-5 w-5 text-primary"
                               fill="none"
                               viewBox="0 0 24 24"
                               stroke="currentColor"
@@ -824,11 +824,11 @@ function CodingExerciseInner() {
                               />
                             </svg>
                           </div>
-                          <div className="flex-1">
-                            <strong className="text-primary font-semibold block mb-1">
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <strong className="mb-1 block font-semibold text-primary">
                               Hint:
                             </strong>
-                            <p className="text-gray-700 text-sm leading-relaxed">
+                            <p className="min-w-0 max-w-full text-sm leading-relaxed text-gray-700 wrap-anywhere">
                               {currentQuestion.explanation}
                             </p>
                           </div>

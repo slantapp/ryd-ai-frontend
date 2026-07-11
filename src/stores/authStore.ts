@@ -4,6 +4,7 @@ import { persist } from "zustand/middleware";
 import axiosInstance from "@/lib/axios";
 import type { LoginPayload } from "@/utils/loginCode";
 import { useCoursesStore } from "@/stores/coursesStore";
+import { useLocationDefaultsStore } from "@/stores/locationDefaultsStore";
 
 /**
  * Parent profile from `/parent/auth/login/ai` (and similar) — stored without
@@ -30,15 +31,16 @@ export interface AuthUser {
 export interface AiRegisterPayload {
   email: string;
   password: string;
+  /** How the parent heard about RYD (sent as `survey` on register). */
+  survey?: string;
+  /** Optional agent / partner referral code. */
+  referralCode?: string;
+}
+
+export type ProfileUpdatePayload = {
   firstName: string;
   lastName: string;
-  phone: string;
-  country: string;
-  state: string;
-  timezone: string;
-  /** Optional — how the parent heard about RYD (sent as `survey` on register). */
-  survey?: string;
-}
+};
 
 /** Never persist these on `user` (API sometimes echoes password hash). */
 const USER_OMIT_KEYS = new Set(["password", "token", "accessToken"]);
@@ -70,8 +72,14 @@ function extractSession(res: { data?: unknown }) {
   }
 
   // Legacy / alternate shape: { accessToken?, token?, user: {...}, expiresAt? }
-  if (inner.user && typeof inner.user === "object" && !Array.isArray(inner.user)) {
-    const accessToken = (inner.accessToken ?? inner.token) as string | undefined;
+  if (
+    inner.user &&
+    typeof inner.user === "object" &&
+    !Array.isArray(inner.user)
+  ) {
+    const accessToken = (inner.accessToken ?? inner.token) as
+      | string
+      | undefined;
     if (!accessToken) {
       throw new Error("Invalid login response: missing token");
     }
@@ -107,6 +115,8 @@ interface AuthState {
     password1: string;
     password2: string;
   }) => Promise<void>;
+  /** Post-payment: set parent first/last name. */
+  updateProfile: (payload: ProfileUpdatePayload) => Promise<void>;
   logout: () => void;
 }
 
@@ -131,10 +141,13 @@ export const useAuthStore = create<AuthState>()(
         });
       },
       register: async (payload) => {
-        const { survey, ...rest } = payload;
         const body = {
-          ...rest,
-          ...(survey?.trim() ? { survey: survey.trim() } : {}),
+          email: payload.email.trim(),
+          password: payload.password,
+          ...(payload.survey?.trim() ? { survey: payload.survey.trim() } : {}),
+          ...(payload.referralCode?.trim()
+            ? { referralCode: payload.referralCode.trim() }
+            : {}),
         };
         const res = await axiosInstance.post("/parent/auth/register/ai", body);
         const { accessToken, user, expiresAt } = extractSession(res);
@@ -154,7 +167,10 @@ export const useAuthStore = create<AuthState>()(
             parentId,
             timestamp: decoded.timestamp,
           });
-        } else if (decoded.parentToken && typeof decoded.parentToken === "string") {
+        } else if (
+          decoded.parentToken &&
+          typeof decoded.parentToken === "string"
+        ) {
           res = await axiosInstance.post("/parent/auth/login/parent", {
             parentToken: decoded.parentToken,
             parentId,
@@ -183,8 +199,48 @@ export const useAuthStore = create<AuthState>()(
         const root = res.data as Record<string, unknown> | undefined;
         if (root && typeof root === "object" && root.status === false) {
           const msg = root.message;
-          throw new Error(typeof msg === "string" ? msg : "Password update failed");
+          throw new Error(
+            typeof msg === "string" ? msg : "Password update failed",
+          );
         }
+      },
+      updateProfile: async ({ firstName, lastName }) => {
+        const res = await axiosInstance.put("/parent/auth/profile-update", {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+        });
+        const root = res.data as Record<string, unknown> | undefined;
+        if (root && typeof root === "object" && root.status === false) {
+          const msg = root.message;
+          throw new Error(
+            typeof msg === "string" ? msg : "Profile update failed",
+          );
+        }
+
+        const inner =
+          root &&
+          typeof root === "object" &&
+          root.data &&
+          typeof root.data === "object"
+            ? (root.data as Record<string, unknown>)
+            : null;
+        const nextNames = {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+        };
+
+        set((state) => {
+          const base =
+            inner && !Array.isArray(inner)
+              ? { ...(state.user ?? {}), ...sanitizeUser(inner) }
+              : { ...(state.user ?? {}) };
+          return {
+            user: {
+              ...base,
+              ...nextNames,
+            },
+          };
+        });
       },
       logout: () => {
         set({
@@ -196,10 +252,11 @@ export const useAuthStore = create<AuthState>()(
         // Avoid leaking the previous user's in-memory progress/wishlist into the next session.
         // Persisted course data remains stored under the previous user's scoped key.
         useCoursesStore.getState().reset();
+        useLocationDefaultsStore.getState().reset();
       },
     }),
     {
       name: "ryd-ai-platform-auth",
-    }
-  )
+    },
+  ),
 );

@@ -4,12 +4,14 @@ import SideNav from "./SideNav";
 import TopNav from "./TopNav";
 import { cn } from "@/lib/utils";
 import SubscriptionGateFlow from "@/components/subscription/SubscriptionGateFlow";
+import ProfileCompletionGate from "@/components/subscription/ProfileCompletionGate";
 import SubscriptionCheckoutReturnDialog, {
   type CheckoutReturnVariant,
 } from "@/components/subscription/SubscriptionCheckoutReturnDialog";
 import { useAuthStore } from "@/stores/authStore";
 import { useCoursesStore } from "@/stores/coursesStore";
-import { PUBLIC_PATHS } from "@/utils/routePaths";
+import { useLocationDefaultsStore } from "@/stores/locationDefaultsStore";
+import { PUBLIC_PATHS, PRIVATE_PATHS } from "@/utils/routePaths";
 import { useQueryClient } from "@tanstack/react-query";
 import { subscriptionKeys, useSubscriptionStatus } from "@/hooks/useSubscription";
 import {
@@ -28,6 +30,12 @@ interface DashboardProps {
   children?: ReactNode;
 }
 
+function isParentProfileIncomplete(
+  user: { firstName?: string; lastName?: string } | null,
+): boolean {
+  return !user?.firstName?.trim() || !user?.lastName?.trim();
+}
+
 const DashboardLayout = ({ children }: DashboardProps) => {
   const [checkoutReturn, setCheckoutReturn] = useState<CheckoutReturnVariant | null>(
     null,
@@ -38,11 +46,17 @@ const DashboardLayout = ({ children }: DashboardProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const logout = useAuthStore((s) => s.logout);
+  const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
+  const ensureLocationResolved = useLocationDefaultsStore((s) => s.ensureResolved);
 
   const subscriptionStatus = useSubscriptionStatus();
 
   const subscribed = subscriptionStatus.data?.data?.subscribed === true;
+  const profileIncomplete = isParentProfileIncomplete(user);
+  const isDemoSneakPeek =
+    location.pathname === PRIVATE_PATHS.DEMO_SNEAK_PEEK ||
+    location.pathname.startsWith(`${PRIVATE_PATHS.DEMO_SNEAK_PEEK}/`);
 
   useEffect(() => {
     if (devSkipSubscriptionGate) {
@@ -52,21 +66,48 @@ const DashboardLayout = ({ children }: DashboardProps) => {
     }
     if (!subscriptionStatus.isFetched || !subscriptionStatus.isSuccess) return;
     if (subscribed !== true) return;
+    if (profileIncomplete) return;
     void useCoursesStore.getState().fetchVisibleCurriculums();
     void useCoursesStore.getState().fetchAllCourseProgress();
-  }, [subscribed, subscriptionStatus.isFetched, subscriptionStatus.isSuccess]);
+  }, [
+    profileIncomplete,
+    subscribed,
+    subscriptionStatus.isFetched,
+    subscriptionStatus.isSuccess,
+  ]);
 
   const showSubscriptionGate =
     !devSkipSubscriptionGate &&
+    !isDemoSneakPeek &&
     subscriptionStatus.isFetched &&
     subscriptionStatus.isSuccess &&
     subscribed === false;
 
+  /** Prefetch geo defaults while the subscription gate is open (for checkout payload). */
+  useEffect(() => {
+    if (!showSubscriptionGate) return;
+    void ensureLocationResolved();
+  }, [ensureLocationResolved, showSubscriptionGate]);
+
+  const showProfileCompletionGate =
+    !devSkipSubscriptionGate &&
+    !isDemoSneakPeek &&
+    subscriptionStatus.isFetched &&
+    subscriptionStatus.isSuccess &&
+    subscribed === true &&
+    profileIncomplete &&
+    checkoutReturn === null;
+
   const blockForStatusLoadingOrError =
     !devSkipSubscriptionGate &&
+    !isDemoSneakPeek &&
     (subscriptionStatus.isLoading || subscriptionStatus.isError);
 
-  const blockDashboardAccess = showSubscriptionGate || blockForStatusLoadingOrError;
+  const blockDashboardAccess =
+    !isDemoSneakPeek &&
+    (showSubscriptionGate ||
+      showProfileCompletionGate ||
+      blockForStatusLoadingOrError);
 
   /** Only one Radix Dialog should be open; gate + loading dialog steal clicks from stacked modals. */
   const checkoutReturnBlocking = checkoutReturn !== null;
@@ -74,12 +115,20 @@ const DashboardLayout = ({ children }: DashboardProps) => {
     showSubscriptionGate && !checkoutReturnBlocking;
   const subscriptionStatusBlockModalOpen =
     blockForStatusLoadingOrError && !checkoutReturnBlocking;
+  const profileCompletionModalOpen =
+    showProfileCompletionGate && !checkoutReturnBlocking;
 
   const handleSubscriptionComplete = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: subscriptionKeys.status() });
   }, [queryClient]);
 
+  const handleProfileComplete = useCallback(() => {
+    void useCoursesStore.getState().fetchVisibleCurriculums();
+    void useCoursesStore.getState().fetchAllCourseProgress();
+  }, []);
+
   const handleSignOutFromGate = useCallback(() => {
+    useLocationDefaultsStore.getState().reset();
     logout();
     navigate(PUBLIC_PATHS.LOGIN, { replace: true });
   }, [logout, navigate]);
@@ -87,13 +136,15 @@ const DashboardLayout = ({ children }: DashboardProps) => {
   const subscriptionReturn = useMemo(() => {
     const sp = new URLSearchParams(location.search);
     const flag = sp.get("subscription");
-    return { flag };
+    const sneakPeek = sp.get("sneakPeek");
+    return { flag, sneakPeek };
   }, [location.search]);
 
   const clearCheckoutQueryParams = useCallback(() => {
     const sp = new URLSearchParams(location.search);
     sp.delete("subscription");
     sp.delete("session_id");
+    sp.delete("sneakPeek");
     const next = sp.toString();
     navigate(
       { pathname: location.pathname, search: next ? `?${next}` : "" },
@@ -116,6 +167,17 @@ const DashboardLayout = ({ children }: DashboardProps) => {
       setCheckoutReturn("cancelled");
     }
   }, [queryClient, subscriptionReturn.flag]);
+
+  /** After sneak peek, reopen the gate on the plan picker. */
+  useEffect(() => {
+    if (subscriptionReturn.sneakPeek !== "done") return;
+    if (subscribed) {
+      clearCheckoutQueryParams();
+      return;
+    }
+    setSubscribeViewBump((n) => n + 1);
+    clearCheckoutQueryParams();
+  }, [clearCheckoutQueryParams, subscribed, subscriptionReturn.sneakPeek]);
 
   useEffect(() => {
     if (checkoutReturn !== "success" || subscribed) return;
@@ -217,6 +279,12 @@ const DashboardLayout = ({ children }: DashboardProps) => {
         onSubscriptionComplete={handleSubscriptionComplete}
         onSignOut={handleSignOutFromGate}
         subscribeViewBump={subscribeViewBump}
+      />
+
+      <ProfileCompletionGate
+        open={profileCompletionModalOpen}
+        onComplete={handleProfileComplete}
+        onSignOut={handleSignOutFromGate}
       />
 
       <SubscriptionCheckoutReturnDialog

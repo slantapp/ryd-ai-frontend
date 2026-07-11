@@ -53,14 +53,14 @@ export default function MathFormulaBoard({
       </div>
 
       {example.description && !compact && (
-        <p className="mt-3 text-sm leading-relaxed text-gray-600">
+        <p className="mt-3 min-w-0 text-sm leading-relaxed text-gray-600 wrap-anywhere">
           {example.description}
         </p>
       )}
       {example.explanation && !liveFormula && (
         <p
           className={cn(
-            "leading-relaxed text-gray-700",
+            "min-w-0 leading-relaxed text-gray-700 wrap-anywhere",
             compact ? "mt-2 text-xs sm:text-sm" : "mt-3 text-sm sm:text-base",
           )}
         >

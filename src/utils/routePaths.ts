@@ -17,6 +17,8 @@ export const PRIVATE_PATHS = {
   DASHBOARD: "/dashboard",
   COURSES: "/courses",
   COURSE_QUIZ: "/courses/:exercise",
+  /** Free sneak-peek lesson for unsubscribed users (uses bundled demo curriculum). */
+  DEMO_SNEAK_PEEK: "/demo/sneak-peek",
   WISHLISTS: "/wishlists",
   QUIZ_ATTEMPTS: "/quiz-attempts",
   ANALYTICS: "analytics",

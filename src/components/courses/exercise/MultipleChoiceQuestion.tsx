@@ -1,5 +1,6 @@
 import type { Question } from "../../../data/curriculumData";
 import { CheckCircle2 } from "lucide-react";
+import MathText from "@/components/courses/math/MathText";
 
 interface MultipleChoiceQuestionProps {
   question: Question;
@@ -34,7 +35,7 @@ export default function MultipleChoiceQuestion({
                 : "hover:scale-[1.01] sm:hover:scale-[1.02]"
             } ${
               isSelected
-                ? "border-primary bg-gradient-to-r from-primary via-primary/90 to-primary/80 text-white shadow-lg shadow-primary/40"
+                ? "border-primary bg-linear-to-r from-primary via-primary/90 to-primary/80 text-white shadow-lg shadow-primary/40"
                 : "border-primary/20 bg-white/80 text-gray-700 shadow-sm backdrop-blur-sm hover:border-primary/50 hover:bg-primary/5 hover:shadow-md"
             }`}
           >
@@ -44,7 +45,7 @@ export default function MultipleChoiceQuestion({
                   isSelected ? "text-white" : "text-gray-800"
                 }`}
               >
-                {option}
+                <MathText>{option}</MathText>
               </span>
               {isSelected ? (
                 <CheckCircle2

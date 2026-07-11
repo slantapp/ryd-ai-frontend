@@ -11,9 +11,17 @@ import {
 import type { CurriculumData } from "../types";
 import { sampleCurriculumJSON, sampleMathCurriculumJSON } from "../templates";
 import curriculumJsonGuide from "../../../../docs/CURRICULUM_JSON_GUIDE.md?raw";
+import curriculumV2Guide from "../../../../docs/CURRICULUM_V2_GUIDE.md?raw";
+import {
+  extractCurriculumV2Data,
+  isCurriculumV2,
+  sampleV2CurriculumJSON,
+  validateCurriculumV2,
+  type PreviewLoadResult,
+} from "../v2";
 
 interface FileUploaderProps {
-  onCurriculumLoaded: (curriculum: CurriculumData, file: File) => void;
+  onCurriculumLoaded: (result: PreviewLoadResult) => void;
   handoffName?: string;
 }
 
@@ -324,9 +332,9 @@ export function FileUploader({
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isValid, setIsValid] = useState(false);
-  const [parsedCurriculum, setParsedCurriculum] = useState<CurriculumData | null>(null);
+  const [parsedResult, setParsedResult] = useState<PreviewLoadResult | null>(null);
+  const [schemaBadge, setSchemaBadge] = useState<"v1" | "v2" | null>(null);
 
   const downloadFile = useCallback(
     (content: string, filename: string, mimeType: string) => {
@@ -367,12 +375,28 @@ export function FileUploader({
     );
   }, [downloadFile]);
 
+  const handleDownloadV2Template = useCallback(() => {
+    downloadFile(
+      sampleV2CurriculumJSON,
+      "flow-curriculum-v2-template.json",
+      "application/json",
+    );
+  }, [downloadFile]);
+
+  const handleDownloadV2Guide = useCallback(() => {
+    downloadFile(
+      curriculumV2Guide,
+      "CURRICULUM_V2_GUIDE.md",
+      "text/markdown;charset=utf-8",
+    );
+  }, [downloadFile]);
+
   const processFile = useCallback((file: File) => {
     setError(null);
     setValidationErrors([]);
     setIsValid(false);
-    setSelectedFile(null);
-    setParsedCurriculum(null);
+    setParsedResult(null);
+    setSchemaBadge(null);
 
     if (!file.name.endsWith(".json")) {
       setError("Please upload a JSON file");
@@ -380,7 +404,6 @@ export function FileUploader({
     }
 
     setFileName(file.name);
-    setSelectedFile(file);
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -388,13 +411,30 @@ export function FileUploader({
         const content = e.target?.result as string;
         const data = JSON.parse(content);
 
+        if (isCurriculumV2(data)) {
+          const validation = validateCurriculumV2(data);
+          if (!validation.valid) {
+            setValidationErrors(validation.errors);
+            return;
+          }
+          const { data: curriculumData, slug } = extractCurriculumV2Data(data);
+          setIsValid(true);
+          setSchemaBadge("v2");
+          setParsedResult({
+            version: 2,
+            data: curriculumData,
+            file,
+            slug,
+          });
+          return;
+        }
+
         const validation = validateCurriculum(data);
         if (!validation.valid) {
           setValidationErrors(validation.errors);
           return;
         }
 
-        // Extract curriculum data
         let curriculumData: CurriculumData;
         if ("curriculum" in data) {
           curriculumData = data.curriculum as CurriculumData;
@@ -403,7 +443,8 @@ export function FileUploader({
         }
 
         setIsValid(true);
-        setParsedCurriculum(curriculumData);
+        setSchemaBadge("v1");
+        setParsedResult({ version: 1, data: curriculumData, file });
       } catch (err) {
         console.error(err);
         setError("Invalid JSON format. Please check your file.");
@@ -438,26 +479,33 @@ export function FileUploader({
   );
 
   const handleSubmit = () => {
-    if (!parsedCurriculum || !selectedFile) return;
-    onCurriculumLoaded(parsedCurriculum, selectedFile);
+    if (!parsedResult) return;
+    onCurriculumLoaded(parsedResult);
   };
 
   const handleReset = () => {
     setError(null);
     setValidationErrors([]);
     setFileName(null);
-    setSelectedFile(null);
     setIsValid(false);
-    setParsedCurriculum(null);
+    setParsedResult(null);
+    setSchemaBadge(null);
   };
+
+  const parsedTitle = parsedResult?.data.title ?? null;
+  const parsedDescription = parsedResult?.data.description ?? null;
+  const moduleCount = parsedResult?.data.modules.length ?? 0;
+  const lessonCount =
+    parsedResult?.data.modules.reduce((acc, m) => acc + m.lessons.length, 0) ??
+    0;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-primary/10 via-white to-primary/5 p-6">
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-3xl">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900">Curriculum Preview</h1>
           <p className="mt-2 text-gray-600">
-            Upload your curriculum JSON file to preview how it will look and function
+            Upload a v1 or flow-based v2 curriculum JSON to preview the student experience
           </p>
           {handoffName && (
             <p className="mt-2 text-sm font-medium text-primary">
@@ -497,22 +545,27 @@ export function FileUploader({
               <div>
                 <p className="text-lg font-semibold text-green-800">File validated!</p>
                 <p className="text-sm text-gray-600">{fileName}</p>
+                {schemaBadge && (
+                  <span
+                    className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                      schemaBadge === "v2"
+                        ? "bg-teal-100 text-teal-800"
+                        : "bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    {schemaBadge === "v2" ? "Flow curriculum (v2)" : "Classic curriculum (v1)"}
+                  </span>
+                )}
               </div>
-              {parsedCurriculum && (
+              {parsedTitle && (
                 <div className="mt-4 rounded-lg bg-white p-4 text-left shadow-sm">
-                  <h3 className="font-semibold text-gray-900">{parsedCurriculum.title}</h3>
+                  <h3 className="font-semibold text-gray-900">{parsedTitle}</h3>
                   <p className="mt-1 text-sm text-gray-500 line-clamp-2">
-                    {parsedCurriculum.description}
+                    {parsedDescription}
                   </p>
                   <div className="mt-3 flex gap-4 text-sm text-gray-600">
-                    <span>{parsedCurriculum.modules.length} modules</span>
-                    <span>
-                      {parsedCurriculum.modules.reduce(
-                        (acc, m) => acc + m.lessons.length,
-                        0
-                      )}{" "}
-                      lessons
-                    </span>
+                    <span>{moduleCount} modules</span>
+                    <span>{lessonCount} lessons</span>
                   </div>
                 </div>
               )}
@@ -599,16 +652,46 @@ export function FileUploader({
           )}
         </div>
 
-        <div className="mt-8 grid gap-4 lg:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-xl border-2 border-teal-200 bg-linear-to-br from-teal-50 to-cyan-50 p-6 sm:col-span-2 lg:col-span-3">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <SparklesIcon />
+              <h3 className="font-semibold text-teal-900">New: Flow curriculum (v2)</h3>
+              <span className="rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                Recommended
+              </span>
+            </div>
+            <p className="mb-4 text-sm text-teal-900/80">
+              Beat-based lessons that feel like a real class — hooks, demos, mid-lesson
+              checks, pauses, and recaps. Best for the kid-friendly preview player.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={handleDownloadV2Template}
+                className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-teal-700"
+              >
+                <Download className="h-4 w-4" />
+                Download v2 template
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadV2Guide}
+                className="inline-flex items-center gap-2 rounded-lg border-2 border-teal-600 bg-white px-4 py-2.5 text-sm font-semibold text-teal-700 transition-all hover:bg-teal-50"
+              >
+                <Download className="h-4 w-4" />
+                Download v2 guide
+              </button>
+            </div>
+          </div>
+
           <div className="rounded-xl border border-primary/20 bg-linear-to-br from-primary/10 to-primary/5 p-6">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-gray-800">Coding template</h3>
+                <h3 className="font-semibold text-gray-800">Coding template (v1)</h3>
               </div>
               <p className="mb-4 text-sm text-gray-600">
-                Starter for coding courses: optional duration, level, and
-                rating, lesson code examples, multiple choice, true/false, and
-                code tests. Set category to coding.
+                Classic coding courses with body, avatar_script, and questions.
               </p>
               <button
                 type="button"
@@ -623,12 +706,10 @@ export function FileUploader({
           <div className="rounded-xl border border-primary/20 bg-linear-to-br from-primary/10 to-primary/5 p-6">
             <div className="mb-2 flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-gray-800">Math template</h3>
+              <h3 className="font-semibold text-gray-800">Math template (v1)</h3>
             </div>
             <p className="mb-4 text-sm text-gray-600">
-              Starter for mathematics: optional duration, level, and rating,
-              formula examples, multiple choice, true/false, and formula tests.
-              Set category to mathematics.
+              Classic mathematics courses with formula examples and formula tests.
             </p>
             <button
               type="button"
@@ -643,11 +724,10 @@ export function FileUploader({
           <div className="rounded-xl border border-primary/20 bg-linear-to-br from-primary/10 to-primary/5 p-6">
             <div className="mb-2 flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-gray-800">Writing guide</h3>
+              <h3 className="font-semibold text-gray-800">v1 writing guide</h3>
             </div>
             <p className="mb-4 text-sm text-gray-600">
-              Full guide on JSON structure, validation rules, question types, code
-              tests, categories, and a pre-publish checklist.
+              Field reference for the classic curriculum JSON format.
             </p>
             <button
               type="button"
@@ -657,19 +737,17 @@ export function FileUploader({
               <Download className="h-4 w-4" />
               Download Guide
             </button>
-            <ul className="mt-4 grid grid-cols-1 gap-1.5 text-xs text-gray-600">
-              <li className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
-                Field-by-field reference
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
-                Common mistakes &amp; checklist
-              </li>
-            </ul>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function SparklesIcon() {
+  return (
+    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600 text-white">
+      <FileText className="h-4 w-4" />
+    </span>
   );
 }

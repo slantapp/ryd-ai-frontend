@@ -135,7 +135,9 @@ export function evaluateCodeTest(
       passed =
         JSON.stringify(actualArray) === JSON.stringify(criteria.expectedValues);
       testResults.push({
-        test: `Array '${criteria.expectedVariable}' matches expected values`,
+        test: passed
+          ? `Array '${criteria.expectedVariable}' matches expected values`
+          : `Array '${criteria.expectedVariable}' does not match expected values`,
         passed,
         actual: actualArray,
         expected: criteria.expectedValues,
@@ -149,7 +151,9 @@ export function evaluateCodeTest(
       const actualValue = eval(`${code}; ${criteria.expectedVariable}`);
       passed = valuesEqual(actualValue, criteria.expectedValue);
       testResults.push({
-        test: `Variable '${criteria.expectedVariable}' has value '${criteria.expectedValue}'`,
+        test: passed
+          ? `Variable '${criteria.expectedVariable}' has value '${criteria.expectedValue}'`
+          : `Variable '${criteria.expectedVariable}' does not have the expected value`,
         passed,
         actual: actualValue,
         expected: criteria.expectedValue,
@@ -157,7 +161,9 @@ export function evaluateCodeTest(
     } else {
       passed = varExists;
       testResults.push({
-        test: `Variable '${criteria.expectedVariable}' exists`,
+        test: passed
+          ? `Variable '${criteria.expectedVariable}' exists`
+          : `Variable '${criteria.expectedVariable}' was not found`,
         passed,
       });
     }
@@ -166,7 +172,9 @@ export function evaluateCodeTest(
     const normalizedCode = normalizeCodeForMatch(code);
     passed = normalizedCode.includes(normalizedExpected);
     testResults.push({
-      test: `Code contains expected HTML: ${criteria.expectedHTML}`,
+      test: passed
+        ? "Code contains the expected HTML"
+        : "Code does not contain the expected HTML",
       passed,
       actual: code.trim() || "(empty)",
       expected: criteria.expectedHTML,
@@ -176,7 +184,9 @@ export function evaluateCodeTest(
     const normalizedCode = normalizeCodeForMatch(code);
     passed = normalizedCode.includes(normalizedExpected);
     testResults.push({
-      test: `Code contains expected CSS: ${criteria.expectedCSS}`,
+      test: passed
+        ? "Code contains the expected CSS"
+        : "Code does not contain the expected CSS",
       passed,
       actual: code.trim() || "(empty)",
       expected: criteria.expectedCSS,
@@ -186,7 +196,9 @@ export function evaluateCodeTest(
     const needle = normalizeJsCodeForMatch(criteria.expectedJS);
     passed = haystack.includes(needle);
     testResults.push({
-      test: `Code includes required JavaScript: ${criteria.expectedJS}`,
+      test: passed
+        ? "Code includes the required JavaScript"
+        : "Code does not include the required JavaScript",
       passed,
       actual: code.trim() || "(empty)",
       expected: criteria.expectedJS,
@@ -194,7 +206,9 @@ export function evaluateCodeTest(
   } else if (criteria?.expectedCode) {
     passed = matchExpectedCode(code, criteria.expectedCode);
     testResults.push({
-      test: "Code matches the required pattern",
+      test: passed
+        ? "Your code matches the expected solution"
+        : "Your code does not match the expected solution",
       passed,
       actual: code.trim() || "(empty)",
       expected: criteria.expectedCode,
@@ -205,7 +219,7 @@ export function evaluateCodeTest(
     ) as boolean;
     if (!funcExists) {
       testResults.push({
-        test: `Function '${criteria.expectedFunction}' exists`,
+        test: `Function '${criteria.expectedFunction}' was not found`,
         passed: false,
       });
     } else if (criteria.testCases?.length) {
@@ -254,13 +268,38 @@ export function evaluateCodeTest(
 }
 
 export function formatCodeTestResults(testResults: CodeTestResult[]): string[] {
-  return testResults.map((r) =>
-    r.passed
-      ? `✅ PASS: ${r.test}`
-      : `❌ FAIL: ${r.test}${
-          r.actual !== undefined
-            ? ` (got: ${JSON.stringify(r.actual)}, expected: ${JSON.stringify(r.expected)})`
-            : ""
-        }`,
-  );
+  return testResults.map((r) => {
+    if (r.passed) {
+      return `✅ PASS: ${r.test}`;
+    }
+
+    // Avoid dumping huge HTML solutions into the console on failure.
+    const actual =
+      r.actual !== undefined ? truncateForConsole(String(serializeValue(r.actual))) : undefined;
+    const expected =
+      r.expected !== undefined
+        ? truncateForConsole(String(serializeValue(r.expected)))
+        : undefined;
+    const detail =
+      actual !== undefined
+        ? ` (got: ${actual}${expected !== undefined ? `, expected: ${expected}` : ""})`
+        : "";
+
+    return `❌ FAIL: ${r.test}${detail}`;
+  });
+}
+
+function serializeValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function truncateForConsole(value: string, max = 160): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= max) return normalized;
+  return `${normalized.slice(0, max - 1)}…`;
 }

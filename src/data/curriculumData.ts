@@ -241,6 +241,19 @@ export function getFirstLesson(
   return null;
 }
 
+import puppyHtmlWebAppCurriculum from "./puppy-html-web-app-curriculum.json";
+
+/** Bundled sneak-peek demo (not from the visible-curricula API). */
+export const DEMO_COURSE_SLUG = "puppy-html-web-app";
+
+export function getDemoCurriculum(): Curriculum {
+  return puppyHtmlWebAppCurriculum as Curriculum;
+}
+
+export function isDemoCourseSlug(slug: string | null | undefined): boolean {
+  return slug === DEMO_COURSE_SLUG;
+}
+
 /** Curricula loaded from `/parent/curriculum/visible`. */
 let remoteCurricula: Curriculum[] = [];
 
@@ -253,8 +266,11 @@ export function getAllCurricula(): Curriculum[] {
   return remoteCurricula;
 }
 
-// Helper function to get curriculum by slug
+// Helper function to get curriculum by slug (includes bundled demo for sneak peek)
 export function getCurriculumBySlug(slug: string): Curriculum | null {
+  if (isDemoCourseSlug(slug)) {
+    return getDemoCurriculum();
+  }
   return remoteCurricula.find((curriculum) => curriculum.slug === slug) || null;
 }
 

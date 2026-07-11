@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,8 @@ import InstructorContent from "@/components/settings/InstructorContent";
 import { trackAiTutorSubscribeIntent } from "@/api/tracking";
 import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, PlayCircle } from "lucide-react";
+import { PRIVATE_PATHS } from "@/utils/routePaths";
 
 type GateView = "instructors" | "subscribe";
 
@@ -45,6 +47,7 @@ const SubscriptionGateFlow = ({
   onSignOut,
   subscribeViewBump = 0,
 }: SubscriptionGateFlowProps) => {
+  const navigate = useNavigate();
   const [view, setView] = useState<GateView>("instructors");
   const [hasPreviewedInstructor, setHasPreviewedInstructor] = useState(true);
   const [speechEnabled, setSpeechEnabled] = useState(true);
@@ -58,6 +61,11 @@ const SubscriptionGateFlow = ({
     if (!parentToken) return;
     void trackAiTutorSubscribeIntent(parentToken).catch(() => undefined);
   }, [parentToken]);
+
+  const handleSneakPeek = useCallback(() => {
+    setSpeechEnabled(false);
+    navigate(PRIVATE_PATHS.DEMO_SNEAK_PEEK);
+  }, [navigate]);
 
   useEffect(() => {
     if (!open) {
@@ -94,8 +102,8 @@ const SubscriptionGateFlow = ({
                 Meet your AI instructors
               </DialogTitle>
               <DialogDescription className="font-inter text-sm text-gray-600">
-                Hover or tap an instructor to hear a quick intro to the
-                platform. When you are ready, continue to choose a plan.
+                Hover or tap an instructor to hear a quick intro. Try a free
+                sneak-peek lesson, or continue to choose a plan.
               </DialogDescription>
             </DialogHeader>
 
@@ -110,39 +118,58 @@ const SubscriptionGateFlow = ({
 
             <div
               className={cn(
-                "flex shrink-0 flex-col gap-2 border-t border-gray-100 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4",
+                "flex shrink-0 flex-col gap-2 border-t border-gray-100 bg-white px-4 py-3 sm:px-6 sm:py-4",
                 "pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
               )}
             >
               <Button
                 type="button"
-                variant="ghost"
-                size="sm"
-                className="font-inter text-gray-600 sm:order-1"
-                onClick={onSignOut}
+                variant="outline"
+                className="w-full gap-2 rounded-xl font-solway sm:hidden"
+                onClick={handleSneakPeek}
               >
-                Sign out
+                <PlayCircle className="size-4 shrink-0" aria-hidden />
+                Try a free sneak peek
               </Button>
-              <div className="order-first flex w-full flex-col gap-1.5 sm:order-2 sm:w-auto sm:items-end">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <Button
                   type="button"
-                  className="w-full rounded-xl bg-[#DDB5D2] font-solway text-primary hover:bg-[#DDA5D2] sm:w-auto"
-                  disabled={!hasPreviewedInstructor}
-                  onClick={() => {
-                    trackSubscribeIntent();
-                    setSpeechEnabled(false);
-                    // Give InstructorContent a tick to synchronously stop speech before unmount.
-                    setTimeout(() => setView("subscribe"), 0);
-                  }}
+                  variant="ghost"
+                  size="sm"
+                  className="font-inter text-gray-600 sm:order-1"
+                  onClick={onSignOut}
                 >
-                  Proceed to subscribe
+                  Sign out
                 </Button>
-                {!hasPreviewedInstructor && (
-                  <p className="text-center font-inter text-xs text-gray-500 sm:text-right">
-                    Preview an instructor first (hover or tap).
-                  </p>
-                )}
+                <div className="order-first flex w-full flex-col gap-1.5 sm:order-2 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="hidden gap-2 rounded-xl font-solway sm:inline-flex"
+                    onClick={handleSneakPeek}
+                  >
+                    <PlayCircle className="size-4 shrink-0" aria-hidden />
+                    Try a free sneak peek
+                  </Button>
+                  <Button
+                    type="button"
+                    className="w-full rounded-xl bg-[#DDB5D2] font-solway text-primary hover:bg-[#DDA5D2] sm:w-auto"
+                    disabled={!hasPreviewedInstructor}
+                    onClick={() => {
+                      trackSubscribeIntent();
+                      setSpeechEnabled(false);
+                      setTimeout(() => setView("subscribe"), 0);
+                    }}
+                  >
+                    Proceed to subscribe
+                  </Button>
+                </div>
               </div>
+              {!hasPreviewedInstructor && (
+                <p className="text-center font-inter text-xs text-gray-500 sm:text-right">
+                  Preview an instructor first (hover or tap).
+                </p>
+              )}
             </div>
           </>
         ) : (
@@ -154,7 +181,7 @@ const SubscriptionGateFlow = ({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-gray-100 px-4 py-3 sm:px-6 sm:py-4">
               <Button
                 type="button"
                 variant="ghost"
@@ -167,6 +194,16 @@ const SubscriptionGateFlow = ({
               >
                 <ChevronLeft className="size-4" aria-hidden />
                 Back to instructors
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ml-auto gap-1.5 rounded-xl font-solway"
+                onClick={handleSneakPeek}
+              >
+                <PlayCircle className="size-4 shrink-0" aria-hidden />
+                Sneak peek
               </Button>
             </div>
 

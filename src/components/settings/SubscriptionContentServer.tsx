@@ -32,6 +32,7 @@ import {
   useSubscriptionStatus,
   useUpgradeSubscription,
 } from "@/hooks/useSubscription";
+import { useLocationDefaultsStore } from "@/stores/locationDefaultsStore";
 
 type SubscriptionContentServerProps = {
   /** When true, hides settings chrome and notifies parent after successful subscription. */
@@ -456,12 +457,15 @@ export default function SubscriptionContentServer({
       const successUrl = `${origin}${PRIVATE_PATHS.DASHBOARD}?subscription=success&session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${origin}${PRIVATE_PATHS.DASHBOARD}?subscription=cancelled`;
 
-
       try {
+        const location = await useLocationDefaultsStore
+          .getState()
+          .ensureResolved();
         const res = await checkoutMutation.mutateAsync({
           planKey,
           successUrl,
           cancelUrl,
+          country: location.country || undefined,
         });
         const url = res.data?.checkoutUrl ?? res.data?.url;
         if (!res.status || !url) {
@@ -814,16 +818,36 @@ export default function SubscriptionContentServer({
               };
               const Icon = meta.icon;
               const features = (p.features ?? []).slice(0, gateMode ? 6 : 8);
+              const isPopular = p.popular ?? meta.popular;
+              const tagline =
+                p.tagline?.trim() ||
+                meta.taglineFallback ||
+                (p.durationLabel?.trim()
+                  ? p.durationLabel
+                  : p.durationMonths
+                    ? `${p.durationMonths} month${p.durationMonths === 1 ? "" : "s"} access`
+                    : "");
+              const periodSuffix =
+                p.periodSuffix?.trim() || meta.periodSuffixFallback;
+              const hasReferralDiscount =
+                p.referralDiscountApplied === true &&
+                Boolean(p.discountedPriceLabel?.trim()) &&
+                (p.discountAmount ?? 0) > 0;
+              const displayPrice = hasReferralDiscount
+                ? p.discountedPriceLabel!
+                : p.discountedPriceLabel?.trim() || p.priceLabel;
+              const originalPrice =
+                p.originalPriceLabel?.trim() || p.priceLabel;
               return (
                 <Card
                   key={p.key}
                   className={cn(
                     "relative min-w-0 overflow-hidden rounded-2xl border-0 shadow-none transition hover:shadow-md",
                     meta.borderAccent,
-                    meta.popular && !gateMode && "lg:scale-[1.02] lg:shadow-lg"
+                    isPopular && !gateMode && "lg:scale-[1.02] lg:shadow-lg"
                   )}
                 >
-                  {meta.popular && (
+                  {isPopular && (
                     <div
                       className={cn(
                         "absolute z-10",
@@ -854,39 +878,62 @@ export default function SubscriptionContentServer({
                     <h3 className="font-solway text-base font-bold text-gray-900 sm:text-lg">
                       {p.name || meta.nameFallback}
                     </h3>
-                    {(meta.taglineFallback || p.durationMonths) && (
+                    {tagline ? (
                       <p
                         className={cn(
                           "mt-1 font-inter text-gray-600",
                           gateMode ? "text-xs leading-snug sm:text-sm" : "text-sm"
                         )}
                       >
-                        {meta.taglineFallback ||
-                          (p.durationMonths
-                            ? `${p.durationMonths} month${p.durationMonths === 1 ? "" : "s"} access`
-                            : "")}
+                        {tagline}
                       </p>
-                    )}
+                    ) : null}
 
-                    <div className="mt-3 flex flex-wrap items-baseline gap-x-1 gap-y-0.5 sm:mt-4">
-                      <span
-                        className={cn(
-                          "font-solway font-bold tracking-tight text-gray-900",
-                          gateMode ? "text-2xl sm:text-3xl" : "text-3xl"
-                        )}
-                      >
-                        {p.priceLabel}
-                      </span>
-                      {meta.periodSuffixFallback && (
+                    <div className="mt-3 space-y-1.5 sm:mt-4">
+                      {hasReferralDiscount ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-inter text-sm text-gray-500 line-through">
+                            {originalPrice}
+                          </span>
+                          {p.discountLabel ? (
+                            <Badge
+                              variant="secondary"
+                              className="bg-emerald-100 font-inter text-[10px] font-semibold uppercase tracking-wide text-emerald-800 hover:bg-emerald-100"
+                            >
+                              Save {p.discountLabel}
+                              {p.referralDiscountType === "percentage" &&
+                              p.referralDiscountValue != null
+                                ? ` (${p.referralDiscountValue}%)`
+                                : ""}
+                            </Badge>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
                         <span
                           className={cn(
-                            "font-inter text-gray-600",
-                            gateMode ? "text-xs sm:text-sm" : "text-sm"
+                            "font-solway font-bold tracking-tight text-gray-900",
+                            gateMode ? "text-2xl sm:text-3xl" : "text-3xl"
                           )}
                         >
-                          {meta.periodSuffixFallback}
+                          {displayPrice}
                         </span>
-                      )}
+                        {periodSuffix ? (
+                          <span
+                            className={cn(
+                              "font-inter text-gray-600",
+                              gateMode ? "text-xs sm:text-sm" : "text-sm"
+                            )}
+                          >
+                            {periodSuffix}
+                          </span>
+                        ) : null}
+                      </div>
+                      {hasReferralDiscount && p.referralCode ? (
+                        <p className="font-inter text-xs text-emerald-700">
+                          Referral code {p.referralCode} applied
+                        </p>
+                      ) : null}
                     </div>
 
                     {features.length > 0 && (
@@ -923,7 +970,7 @@ export default function SubscriptionContentServer({
                         gateMode ? "mt-4 sm:mt-5" : "mt-6",
                         planButton.disabled && planButton.action === "none"
                           ? "bg-gray-200 text-gray-600 hover:bg-gray-200"
-                          : meta.popular
+                          : isPopular
                             ? "bg-[#0063F7] hover:bg-[#0056d9]"
                             : "bg-primary hover:bg-primary/90",
                       )}

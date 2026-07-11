@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
   getAllCurricula,
+  isDemoCourseSlug,
   setRemoteCurricula,
   type Curriculum,
 } from "../data/curriculumData";
@@ -311,6 +312,7 @@ export const useCoursesStore = create<CoursesState>()(
         }));
       },
       hydrateCourseProgressFromApi: async (slug: string) => {
+        if (isDemoCourseSlug(slug)) return;
         try {
           const res = await fetchCourseProgressRequest(slug);
           if (!res.status || !res.data) return;
@@ -384,8 +386,10 @@ export const useCoursesStore = create<CoursesState>()(
         });
         if (options?.immediate) {
           clearPersistTimer(slug);
-          void flushProgressToApi(slug, get, set);
-        } else {
+          if (!isDemoCourseSlug(slug)) {
+            void flushProgressToApi(slug, get, set);
+          }
+        } else if (!isDemoCourseSlug(slug)) {
           scheduleFlush(slug, get, set);
         }
       },

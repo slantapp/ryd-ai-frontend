@@ -94,10 +94,11 @@ export function PasswordStep({ formData, setFormData, onBack, step }: Props) {
     setFieldErrors({});
     setLoading(true);
     try {
-      const { password, ...rest } = formData;
       await register({
-        ...rest,
-        password,
+        email: formData.email.trim(),
+        password: formData.password,
+        survey: formData.survey?.trim() || undefined,
+        referralCode: formData.referralCode?.trim() || undefined,
       });
       toast.success("Account created — welcome!");
       navigate(PRIVATE_PATHS.DASHBOARD, { replace: true });
@@ -121,9 +122,8 @@ export function PasswordStep({ formData, setFormData, onBack, step }: Props) {
         {[1, 2].map((n) => (
           <div
             key={n}
-            className={`h-2 w-10 rounded-full transition-colors ${
-              n <= step ? "bg-primary" : "bg-[#E8E8EC]"
-            }`}
+            className={`h-2 w-10 rounded-full transition-colors ${n <= step ? "bg-primary" : "bg-[#E8E8EC]"
+              }`}
           />
         ))}
       </div>
@@ -184,7 +184,7 @@ export function PasswordStep({ formData, setFormData, onBack, step }: Props) {
             className={cn(
               inputClass,
               fieldErrors.confirmPassword &&
-                "border-destructive ring-1 ring-destructive/25"
+              "border-destructive ring-1 ring-destructive/25"
             )}
           />
           {fieldErrors.confirmPassword ? (

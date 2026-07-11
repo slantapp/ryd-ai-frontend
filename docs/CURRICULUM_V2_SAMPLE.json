@@ -24,6 +24,10 @@
       },
       "advance": {
         "pause_min_seconds": 2
+      },
+      "question_retry": {
+        "max": 2,
+        "on_exhausted": "continue"
       }
     },
     "modules": [
@@ -53,6 +57,7 @@
                 "phase": "teach",
                 "title": "What you'll learn",
                 "body": "In this course you will:\n\n- Understand what programming is\n- Write your first lines of JavaScript\n- Use variables to store information\n- Solve small coding challenges with help from your instructor",
+                "speak_body": false,
                 "avatar": {
                   "text": "We'll take it step by step. I'll explain ideas, show you examples, ask quick questions, and then let you practise. No rush — learning is a journey!",
                   "timing": "with_display"
@@ -81,7 +86,8 @@
                   "text": "Take a moment to look at the code. Notice the quotes around the message — that's how we tell JavaScript it's text."
                 },
                 "advance": "manual",
-                "min_seconds": 2
+                "min_seconds": 2,
+                "keep_previous": true
               },
               {
                 "id": "micro_check_1",
@@ -105,6 +111,11 @@
                   "on_correct": "Exactly! You're here to learn and grow.",
                   "on_wrong": "Think about it — we're building skills, not just having fun!"
                 },
+                "retry": {
+                  "max": 2,
+                  "hint": "Look at the lesson goal — this course is about learning new skills.",
+                  "on_exhausted": "continue"
+                },
                 "advance": "on_answer"
               },
               {
@@ -121,7 +132,12 @@
                 "avatar": {
                   "on_ask": "One more — true or false?",
                   "on_correct": "Yes! Fun and learning go together.",
-                  "on_wrong": "Actually, learning can definitely be fun — especially with practice!"
+                  "on_wrong": "Hmm — think about how practice feels when you're curious."
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Learning works best when it feels enjoyable — true or false?",
+                  "on_exhausted": "continue"
                 },
                 "advance": "on_answer"
               },

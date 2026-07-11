@@ -10,11 +10,25 @@ export type SubscriptionPlan = {
   id: number;
   key: string; // "monthly" | "annual" | ...
   name: string;
+  tagline?: string;
+  durationLabel?: string;
   durationMonths: number;
+  periodSuffix?: string;
+  popular?: boolean;
+  features?: string[];
   billingCurrency: string;
   priceLabel: string;
   amountNgn?: number;
-  features?: string[];
+  /** Whether a referral discount is applied to this plan. */
+  referralDiscountApplied?: boolean;
+  referralCode?: string | null;
+  referralDiscountType?: "percentage" | "fixed" | string;
+  referralDiscountValue?: number;
+  originalPriceLabel?: string;
+  discountAmount?: number;
+  discountedAmount?: number;
+  discountLabel?: string;
+  discountedPriceLabel?: string;
 };
 
 export type PlansResponse = {
@@ -27,6 +41,7 @@ export type CheckoutRequest = {
   planKey: string;
   successUrl: string;
   cancelUrl: string;
+  country?: string;
 };
 
 export type CheckoutResponse = {
@@ -77,7 +92,7 @@ export type SubscriptionHistoryItem = {
 
 export async function fetchSubscriptionPlans() {
   const res = await axiosInstance.get<ApiEnvelope<PlansResponse>>(
-    "/parent/subscription/plans"
+    "/parent/subscription/plans",
   );
   return res.data;
 }
@@ -85,21 +100,21 @@ export async function fetchSubscriptionPlans() {
 export async function createCheckoutSession(payload: CheckoutRequest) {
   const res = await axiosInstance.post<ApiEnvelope<CheckoutResponse>>(
     "/parent/subscription/checkout",
-    payload
+    payload,
   );
   return res.data;
 }
 
 export async function fetchSubscriptionStatus() {
   const res = await axiosInstance.get<ApiEnvelope<SubscriptionStatusResponse>>(
-    "/parent/subscription/status"
+    "/parent/subscription/status",
   );
   return res.data;
 }
 
 export async function fetchSubscriptionHistory() {
   const res = await axiosInstance.get<ApiEnvelope<SubscriptionHistoryItem[]>>(
-    "/parent/subscription/history"
+    "/parent/subscription/history",
   );
   return res.data;
 }
@@ -133,4 +148,3 @@ export async function upgradeSubscription(payload: UpgradeSubscriptionRequest) {
   );
   return res.data;
 }
-

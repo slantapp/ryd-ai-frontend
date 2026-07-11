@@ -1,5 +1,8 @@
 import * as React from "react";
 import { toast } from "react-toastify";
+import type { AxiosError } from "axios";
+import { Eye, EyeOff } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,27 +14,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Link } from "react-router-dom";
-import { PUBLIC_PATHS } from "@/utils/routePaths";
-import type { AiRegisterPayload } from "@/stores/authStore";
-import { cn } from "@/lib/utils";
 import { HEAR_ABOUT_US_OPTIONS } from "@/data/signupReferralSources";
+import { cn } from "@/lib/utils";
+import type { AiRegisterPayload } from "@/stores/authStore";
+import { useAuthStore } from "@/stores/authStore";
+import { PRIVATE_PATHS, PUBLIC_PATHS } from "@/utils/routePaths";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 8;
 
 export type SignUpFormData = Omit<AiRegisterPayload, "password"> & {
   password: string;
 };
 
-export type PersonalInfoFieldErrors = Partial<
-  Record<"email" | "survey" | "terms", string>
+export type SignUpFieldErrors = Partial<
+  Record<"email" | "survey" | "password" | "confirmPassword" | "terms", string>
 >;
 
-function validatePersonalInfo(
+function validateSignUp(
   formData: SignUpFormData,
-  termsAccepted: boolean
-): PersonalInfoFieldErrors {
-  const errors: PersonalInfoFieldErrors = {};
+  confirmPassword: string,
+  termsAccepted: boolean,
+): SignUpFieldErrors {
+  const errors: SignUpFieldErrors = {};
 
   const email = formData.email.trim();
   if (!email) {
@@ -44,6 +49,19 @@ function validatePersonalInfo(
     errors.survey = "Please tell us how you heard about us.";
   }
 
+  const password = formData.password;
+  if (!password.trim()) {
+    errors.password = "Password is required.";
+  } else if (password.length < MIN_PASSWORD_LENGTH) {
+    errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+  }
+
+  if (!confirmPassword.trim()) {
+    errors.confirmPassword = "Please confirm your password.";
+  } else if (password !== confirmPassword) {
+    errors.confirmPassword = "Passwords must match.";
+  }
+
   if (!termsAccepted) {
     errors.terms = "You must agree to the terms to continue.";
   }
@@ -54,8 +72,6 @@ function validatePersonalInfo(
 type Props = {
   formData: SignUpFormData;
   setFormData: React.Dispatch<React.SetStateAction<SignUpFormData>>;
-  onNext: () => void;
-  step: number;
   /** When true (from `?ref=`), referral code is prefilled and not editable. */
   referralCodeLocked?: boolean;
 };
@@ -74,14 +90,17 @@ function RequiredMark() {
 export function PersonalInfoStep({
   formData,
   setFormData,
-  onNext,
-  step,
   referralCodeLocked = false,
 }: Props) {
-  const [fieldErrors, setFieldErrors] = React.useState<PersonalInfoFieldErrors>({});
+  const navigate = useNavigate();
+  const register = useAuthStore((s) => s.register);
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [showPw, setShowPw] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [fieldErrors, setFieldErrors] = React.useState<SignUpFieldErrors>({});
   const [termsAccepted, setTermsAccepted] = React.useState(false);
 
-  const clearFieldError = React.useCallback((key: keyof PersonalInfoFieldErrors) => {
+  const clearFieldError = React.useCallback((key: keyof SignUpFieldErrors) => {
     setFieldErrors((prev) => {
       if (!prev[key]) return prev;
       const next = { ...prev };
@@ -90,9 +109,9 @@ export function PersonalInfoStep({
     });
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errors = validatePersonalInfo(formData, termsAccepted);
+    const errors = validateSignUp(formData, confirmPassword, termsAccepted);
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -100,10 +119,12 @@ export function PersonalInfoStep({
       toast.error(
         typeof first === "string"
           ? first
-          : "Please fill in all required fields correctly."
+          : "Please fill in all required fields correctly.",
       );
-      const order: (keyof PersonalInfoFieldErrors)[] = [
+      const order: (keyof SignUpFieldErrors)[] = [
         "email",
+        "password",
+        "confirmPassword",
         "survey",
         "terms",
       ];
@@ -112,6 +133,8 @@ export function PersonalInfoStep({
         const idMap: Record<string, string> = {
           email: "su-email",
           survey: "su-hear",
+          password: "su-pw",
+          confirmPassword: "su-pw2",
           terms: "su-terms",
         };
         const elId = idMap[firstKey];
@@ -128,23 +151,32 @@ export function PersonalInfoStep({
     }
 
     setFieldErrors({});
-    onNext();
+    setLoading(true);
+    try {
+      await register({
+        email: formData.email.trim(),
+        password: formData.password,
+        survey: formData.survey?.trim() || undefined,
+        referralCode: formData.referralCode?.trim() || undefined,
+      });
+      toast.success("Account created — welcome!");
+      navigate(PRIVATE_PATHS.DASHBOARD, { replace: true });
+    } catch (err) {
+      const ax = err as AxiosError<{ message?: string }>;
+      const msg =
+        ax.response?.data?.message ||
+        (err instanceof Error ? err.message : "Registration failed");
+      toast.error(typeof msg === "string" ? msg : "Registration failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <AuthShell
       title="Create account"
-      subtitle="Step 1 of 2 — enter your email and how you found us."
+      subtitle="Enter your details to get started with RYD Learning."
     >
-      <div className="mb-6 flex justify-center gap-2">
-        {[1, 2].map((n) => (
-          <div
-            key={n}
-            className={`h-2 w-10 rounded-full transition-colors ${n <= step ? "bg-primary" : "bg-[#E8E8EC]"
-              }`}
-          />
-        ))}
-      </div>
       <form className="space-y-4" onSubmit={handleSubmit} noValidate>
         <div className="space-y-2">
           <Label htmlFor="su-email" className="font-inter text-[#0A090B]">
@@ -164,12 +196,81 @@ export function PersonalInfoStep({
             aria-invalid={Boolean(fieldErrors.email)}
             className={cn(
               inputClass,
-              fieldErrors.email && "border-destructive ring-1 ring-destructive/25"
+              fieldErrors.email && "border-destructive ring-1 ring-destructive/25",
             )}
           />
           {fieldErrors.email ? (
             <p className="font-inter text-xs text-destructive" role="alert">
               {fieldErrors.email}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="su-pw" className="font-inter text-[#0A090B]">
+            Password
+            <RequiredMark />
+          </Label>
+          <div className="relative">
+            <Input
+              id="su-pw"
+              type={showPw ? "text" : "password"}
+              autoComplete="new-password"
+              placeholder="At least 8 characters"
+              value={formData.password}
+              onChange={(e) => {
+                clearFieldError("password");
+                setFormData((p) => ({ ...p, password: e.target.value }));
+              }}
+              aria-invalid={Boolean(fieldErrors.password)}
+              className={cn(
+                inputClass,
+                "pr-11",
+                fieldErrors.password &&
+                "border-destructive ring-1 ring-destructive/25",
+              )}
+            />
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4F4D55]"
+              onClick={() => setShowPw((v) => !v)}
+              aria-label={showPw ? "Hide password" : "Show password"}
+            >
+              {showPw ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+            </button>
+          </div>
+          {fieldErrors.password ? (
+            <p className="font-inter text-xs text-destructive" role="alert">
+              {fieldErrors.password}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="su-pw2" className="font-inter text-[#0A090B]">
+            Confirm password
+            <RequiredMark />
+          </Label>
+          <Input
+            id="su-pw2"
+            type={showPw ? "text" : "password"}
+            autoComplete="new-password"
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => {
+              clearFieldError("confirmPassword");
+              setConfirmPassword(e.target.value);
+            }}
+            aria-invalid={Boolean(fieldErrors.confirmPassword)}
+            className={cn(
+              inputClass,
+              fieldErrors.confirmPassword &&
+              "border-destructive ring-1 ring-destructive/25",
+            )}
+          />
+          {fieldErrors.confirmPassword ? (
+            <p className="font-inter text-xs text-destructive" role="alert">
+              {fieldErrors.confirmPassword}
             </p>
           ) : null}
         </div>
@@ -191,7 +292,8 @@ export function PersonalInfoStep({
               aria-invalid={Boolean(fieldErrors.survey)}
               className={cn(
                 inputClass,
-                fieldErrors.survey && "border-destructive ring-1 ring-destructive/25"
+                fieldErrors.survey &&
+                "border-destructive ring-1 ring-destructive/25",
               )}
             >
               <SelectValue placeholder="Select an option" />
@@ -248,7 +350,7 @@ export function PersonalInfoStep({
               aria-invalid={Boolean(fieldErrors.terms)}
               className={cn(
                 "mt-1 size-4 shrink-0 rounded border-[#E8E8EC] accent-primary",
-                fieldErrors.terms && "border-destructive ring-1 ring-destructive/25"
+                fieldErrors.terms && "border-destructive ring-1 ring-destructive/25",
               )}
             />
             <label
@@ -265,11 +367,13 @@ export function PersonalInfoStep({
             </p>
           ) : null}
         </div>
+
         <Button
           type="submit"
+          disabled={loading}
           className="h-12 w-full rounded-xl font-solway text-base font-semibold"
         >
-          Continue
+          {loading ? "Creating…" : "Create account"}
         </Button>
         <p className="text-center font-inter text-sm text-[#4F4D55]">
           Already have an account?{" "}

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PersonalInfoStep, type SignUpFormData } from "./PersonalInfoStep";
-import { PasswordStep } from "./PasswordStep";
 import { useAuthStore } from "@/stores/authStore";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 
@@ -25,7 +24,6 @@ export default function SignUpPage() {
     ...initialValues,
     referralCode: refFromUrl,
   }));
-  const [step, setStep] = useState<1 | 2>(1);
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -42,24 +40,11 @@ export default function SignUpPage() {
     );
   }, [refFromUrl]);
 
-  if (step === 1) {
-    return (
-      <PersonalInfoStep
-        formData={formData}
-        setFormData={setFormData}
-        step={1}
-        referralCodeLocked={referralCodeLocked}
-        onNext={() => setStep(2)}
-      />
-    );
-  }
-
   return (
-    <PasswordStep
+    <PersonalInfoStep
       formData={formData}
       setFormData={setFormData}
-      step={2}
-      onBack={() => setStep(1)}
+      referralCodeLocked={referralCodeLocked}
     />
   );
 }

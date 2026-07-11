@@ -140,9 +140,8 @@ export function PersonalInfoStep({
         {[1, 2].map((n) => (
           <div
             key={n}
-            className={`h-2 w-10 rounded-full transition-colors ${
-              n <= step ? "bg-primary" : "bg-[#E8E8EC]"
-            }`}
+            className={`h-2 w-10 rounded-full transition-colors ${n <= step ? "bg-primary" : "bg-[#E8E8EC]"
+              }`}
           />
         ))}
       </div>
@@ -222,7 +221,7 @@ export function PersonalInfoStep({
           <Input
             id="su-referral"
             autoComplete="off"
-            placeholder="AGENT1"
+            placeholder="KDIW134"
             value={formData.referralCode ?? ""}
             onChange={(e) =>
               setFormData((p) => ({ ...p, referralCode: e.target.value }))

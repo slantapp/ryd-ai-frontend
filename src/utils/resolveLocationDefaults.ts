@@ -6,6 +6,11 @@ export type LocationDefaults = {
   timezone: string;
 };
 
+export type ResolveLocationOptions = {
+  /** Abort geo lookup after this many ms (default 1800). */
+  timeoutMs?: number;
+};
+
 /** Browser-only fallback when geo-IP is unavailable. */
 export function inferLocationDefaults(): LocationDefaults {
   const timezone =
@@ -23,11 +28,14 @@ export function inferLocationDefaults(): LocationDefaults {
  * Resolve country / state / timezone via ipapi.co, falling back to browser defaults.
  * Uses plain axios (not the API instance) so the request is not sent to VITE_API_URL.
  */
-export async function resolveLocationDefaults(): Promise<LocationDefaults> {
+export async function resolveLocationDefaults(
+  options?: ResolveLocationOptions,
+): Promise<LocationDefaults> {
   const fallback = inferLocationDefaults();
+  const timeoutMs = options?.timeoutMs ?? 1800;
   try {
     const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), 1800);
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs);
     const response = await axios.get<{
       country_name?: string;
       region?: string;

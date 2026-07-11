@@ -460,12 +460,12 @@ export default function SubscriptionContentServer({
       try {
         const location = await useLocationDefaultsStore
           .getState()
-          .ensureResolved();
+          .ensureCountryForCheckout();
         const res = await checkoutMutation.mutateAsync({
           planKey,
           successUrl,
           cancelUrl,
-          country: location.country || undefined,
+          country: location.country?.trim() || undefined,
         });
         const url = res.data?.checkoutUrl ?? res.data?.url;
         if (!res.status || !url) {

@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import Split from "react-split";
 import NarratorAvatar from "narrator-avatar";
-import { Volume2, RotateCcw, Mic, Play } from "lucide-react";
+import { Volume2, Mic, Play } from "lucide-react";
 import {
   type Question,
   type Lesson,
@@ -25,6 +25,7 @@ import {
   MultipleChoiceQuestion,
   TrueFalseQuestion,
   FullscreenModal,
+  LessonNavControls,
 } from "./exercise";
 import MathAnswerWorkspace from "./math/MathAnswerWorkspace";
 import MathText from "./math/MathText";
@@ -52,6 +53,13 @@ import { prefetchMonacoEditor } from "./exercise/MonacoEditorLazy";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
+import {
+  buildLessonNavSnapshot,
+  estimateSpeechFallbackMs,
+  resolveLessonPhase,
+  type LessonPhase,
+  type PrimaryNavKind,
+} from "@/utils/lessonNavigation";
 
 function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
   return (
@@ -168,6 +176,11 @@ function CourseDetailInner({
   const afterSpeechRef = useRef<(() => void) | null>(null);
   const pendingTypingStartRef = useRef<(() => void) | null>(null);
   const courseCompletedNotifiedRef = useRef(false);
+  const introUnlockTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  /** Lesson id waiting for intro unlock (speech end or fallback). */
+  const pendingIntroUnlockLessonIdRef = useRef<string | null>(null);
 
   // ============================================================================
   // STATE
@@ -180,11 +193,9 @@ function CourseDetailInner({
   const [lessonStarted, setLessonStarted] = useState(false);
   const [isLessonCodeDemoActive, setIsLessonCodeDemoActive] = useState(false);
 
-  // UI control state
-  const [canStartQuestions, setCanStartQuestions] = useState(false);
-  const [canNextLesson, setCanNextLesson] = useState(false);
-  const [canPreviousLesson, setCanPreviousLesson] = useState(false);
-  const [canPrevious, setCanPrevious] = useState(false); // Can go to previous question OR previous lesson
+  // Progress-driven nav: phase + introReady (not speech-gated button flags)
+  const [lessonPhase, setLessonPhase] = useState<LessonPhase>("intro");
+  const [introReady, setIntroReady] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Answer state
@@ -261,6 +272,80 @@ function CourseDetailInner({
   );
   const isLgUp = useMediaQueryMinLg();
   useAvatarAudioRecovery(avatarRef, isSpeaking);
+
+  const clearIntroUnlockTimeout = useCallback(() => {
+    if (introUnlockTimeoutRef.current) {
+      clearTimeout(introUnlockTimeoutRef.current);
+      introUnlockTimeoutRef.current = null;
+    }
+  }, []);
+
+  const markIntroReady = useCallback(
+    (lesson?: Lesson | null) => {
+      clearIntroUnlockTimeout();
+      pendingIntroUnlockLessonIdRef.current = null;
+      setIntroReady(true);
+      const target = lesson ?? currentLesson;
+      if (target && !(target.questions?.length > 0)) {
+        setLessonPhase("complete");
+        setCompletedLessonIds((prev) => {
+          const next = new Set(prev);
+          next.add(target.id);
+          return next;
+        });
+      }
+      if (target && exercise) {
+        updateCourseProgress(exercise, {
+          currentLessonId: target.id,
+          lessonIndex: curriculum
+            ? getLessonIndexInCurriculum(target, curriculum)
+            : undefined,
+          questionIndex: 0,
+          lessonStarted: true,
+          canStartQuestions: true,
+          lastUpdated: Date.now(),
+        });
+      }
+    },
+    [
+      clearIntroUnlockTimeout,
+      currentLesson,
+      exercise,
+      curriculum,
+      updateCourseProgress,
+    ],
+  );
+
+  const scheduleIntroUnlockFallback = useCallback(
+    (lesson: Lesson, textLength: number) => {
+      clearIntroUnlockTimeout();
+      pendingIntroUnlockLessonIdRef.current = lesson.id;
+      introUnlockTimeoutRef.current = setTimeout(() => {
+        if (pendingIntroUnlockLessonIdRef.current !== lesson.id) return;
+        markIntroReady(lesson);
+      }, estimateSpeechFallbackMs(textLength));
+    },
+    [clearIntroUnlockTimeout, markIntroReady],
+  );
+
+  const enterLessonIntro = useCallback((lesson: Lesson) => {
+    setCurrentLesson(lesson);
+    setCurrentQuestion(null);
+    setCurrentQuestionIndex(0);
+    setLessonPhase("intro");
+    setIntroReady(false);
+    setIsLessonCodeDemoActive(false);
+  }, []);
+
+  const restoreCompletedLesson = useCallback((lesson: Lesson) => {
+    const questionCount = lesson.questions?.length ?? 0;
+    setCurrentLesson(lesson);
+    setCurrentQuestion(null);
+    setCurrentQuestionIndex(questionCount);
+    setLessonPhase("complete");
+    setIntroReady(true);
+    setIsLessonCodeDemoActive(false);
+  }, []);
 
   useEffect(() => {
     setRunLanguage(normalizedCodePanelLanguage);
@@ -428,6 +513,8 @@ function CourseDetailInner({
       setIsLessonCodeDemoActive(false);
       afterSpeechRef.current = null;
       pendingTypingStartRef.current = null;
+      clearIntroUnlockTimeout();
+      pendingIntroUnlockLessonIdRef.current = null;
 
       isManuallyStopped.current = true;
       stopAvatarSpeech(getAvatar());
@@ -444,7 +531,7 @@ function CourseDetailInner({
       pendingSpeechQueueRef.current = [];
       setShowMobileAudioUnlock(false);
     }
-  }, [getAvatar, stopSubtitles]);
+  }, [getAvatar, stopSubtitles, clearIntroUnlockTimeout]);
 
   // Subtitle comes from NarratorAvatar's onSubtitle callback (real-time spoken word)
   const handleSubtitle = useCallback((text: string) => {
@@ -464,28 +551,28 @@ function CourseDetailInner({
   }, []);
 
   const speakLessonCodeOutro = useCallback(
-    (hasQuestions: boolean, hasNextLesson: boolean) => {
+    (hasQuestions: boolean, hasNextLesson: boolean, lesson?: Lesson | null) => {
       setIsLessonCodeDemoActive(false);
       resetCodeState();
 
       if (hasQuestions) {
-        speak(
-          "Great! Now let's test your understanding with some questions. Click 'Start Questions' when you're ready.",
-          { type: "enable_start_questions" },
-        );
+        const text =
+          "Great! Now let's test your understanding with some questions. Click 'Start Questions' when you're ready.";
+        if (lesson) scheduleIntroUnlockFallback(lesson, text.length);
+        speak(text, { type: "enable_start_questions" });
       } else if (hasNextLesson) {
-        speak(
-          "You've completed this lesson! Click 'Next Lesson' to continue.",
-          { type: "enable_next_lesson" },
-        );
+        const text =
+          "You've completed this lesson! Click 'Next Lesson' to continue.";
+        if (lesson) scheduleIntroUnlockFallback(lesson, text.length);
+        speak(text, { type: "enable_next_lesson" });
       } else {
-        speak(
-          "Congratulations! You've completed all lessons in this module.",
-          { type: "show_completion" },
-        );
+        const text =
+          "Congratulations! You've completed all lessons in this module.";
+        if (lesson) scheduleIntroUnlockFallback(lesson, text.length);
+        speak(text, { type: "show_completion" });
       }
     },
-    [speak, resetCodeState],
+    [speak, resetCodeState, scheduleIntroUnlockFallback],
   );
 
   const runCodeExampleTyping = useCallback(
@@ -541,20 +628,22 @@ function CourseDetailInner({
     (example: CodeExample, lesson: Lesson) => {
       stopCodeTyping();
       setIsLessonCodeDemoActive(true);
-      setCanStartQuestions(false);
+      setIntroReady(false);
       resetCodeState();
 
       const hasQuestions = (lesson.questions?.length ?? 0) > 0;
-      const hasNextLesson = !!lesson.next_lesson_id;
+      const hasNextLesson = curriculum
+        ? !!getNextLessonInOrder(lesson, curriculum)
+        : !!lesson.next_lesson_id;
       const isWeb = isWebWorkspaceLanguage(example.language);
 
       const proceedAfterExample = () => {
         if (example.explanation) {
           speak(example.explanation);
           afterSpeechRef.current = () =>
-            speakLessonCodeOutro(hasQuestions, hasNextLesson);
+            speakLessonCodeOutro(hasQuestions, hasNextLesson, lesson);
         } else {
-          speakLessonCodeOutro(hasQuestions, hasNextLesson);
+          speakLessonCodeOutro(hasQuestions, hasNextLesson, lesson);
         }
       };
 
@@ -579,6 +668,7 @@ function CourseDetailInner({
       });
     },
     [
+      curriculum,
       resetCodeState,
       runCodeExampleTyping,
       runLessonExampleCode,
@@ -705,13 +795,29 @@ function CourseDetailInner({
         }, 500);
         break;
       case "enable_start_questions":
-        setCanStartQuestions(true);
+        markIntroReady(currentLesson);
         break;
       case "enable_next_lesson":
-        setCanNextLesson(true);
+        markIntroReady(currentLesson);
+        setLessonPhase("complete");
+        if (currentLesson) {
+          setCompletedLessonIds((prev) => {
+            const next = new Set(prev);
+            next.add(currentLesson.id);
+            return next;
+          });
+        }
         break;
       case "show_completion":
-        // Just shows completion message, no further action needed
+        markIntroReady(currentLesson);
+        setLessonPhase("complete");
+        if (currentLesson) {
+          setCompletedLessonIds((prev) => {
+            const next = new Set(prev);
+            next.add(currentLesson.id);
+            return next;
+          });
+        }
         break;
       case "ask_question":
         // Just speak the question (used after code example for non-code questions)
@@ -742,7 +848,10 @@ function CourseDetailInner({
         } else {
           speakLessonCodeOutro(
             (action.lesson.questions?.length ?? 0) > 0,
-            !!action.lesson.next_lesson_id,
+            curriculum
+              ? !!getNextLessonInOrder(action.lesson, curriculum)
+              : !!action.lesson.next_lesson_id,
+            action.lesson,
           );
         }
         break;
@@ -753,7 +862,11 @@ function CourseDetailInner({
         break;
       }
       case "lesson_code_outro":
-        speakLessonCodeOutro(action.hasQuestions, action.hasNextLesson);
+        speakLessonCodeOutro(
+          action.hasQuestions,
+          action.hasNextLesson,
+          currentLesson,
+        );
         break;
       default:
         break;
@@ -768,6 +881,9 @@ function CourseDetailInner({
     playLessonCodeExample,
     speakLessonCodeOutro,
     resetCodeState,
+    markIntroReady,
+    currentLesson,
+    curriculum,
   ]);
 
   const handleSpeechEnd = useCallback(() => {
@@ -821,6 +937,7 @@ function CourseDetailInner({
       const nextQuestion = currentLesson.questions[nextIndex];
       setCurrentQuestion(nextQuestion);
       setCurrentQuestionIndex(nextIndex);
+      setLessonPhase("questions");
       setSelectedAnswer(null);
       setIsAnswerSubmitted(false);
       setStudentAnswer("");
@@ -835,12 +952,6 @@ function CourseDetailInner({
         canStartQuestions: false,
       });
 
-      // Keep Previous enabled when advancing questions on a non-first lesson
-      const hasPrevLesson = curriculum ? !!getPreviousLessonInOrder(currentLesson, curriculum) : false;
-      setCanPreviousLesson(hasPrevLesson);
-      // Enable Previous button - we can always go back since nextIndex > 0
-      setCanPrevious(true);
-
       // Teach worked example first, then ask the question
       if (
         nextQuestion.type === "code_test" &&
@@ -851,8 +962,10 @@ function CourseDetailInner({
         speak(nextQuestion.question);
       }
     } else {
-      // All questions completed - enable next lesson
+      // All questions completed
       setCurrentQuestion(null);
+      setLessonPhase("complete");
+      setIntroReady(true);
 
       // Mark this lesson as completed
       setCompletedLessonIds((prev) => {
@@ -884,30 +997,21 @@ function CourseDetailInner({
         ? getModuleInfoForLesson(currentLesson.id, curriculum)
         : null;
       const isLastLessonInModule = moduleInfo?.isLastLessonInModule ?? false;
+      const hasNext = curriculum
+        ? !!getNextLessonInOrder(currentLesson, curriculum)
+        : !!currentLesson.next_lesson_id;
 
       let completionMessage = "";
       if (isLastLessonInModule) {
-        // Module completion: lesson summary + module totals
         completionMessage = `Congratulations! You've completed this module. ${lessonSummary}${lessonScore}`;
         if (newModuleTotal > 0) {
           completionMessage += ` Across all lessons in this module, you answered ${newModuleCorrect} out of ${newModuleTotal} questions correctly.`;
         }
-        if (currentLesson.next_lesson_id) {
+        if (hasNext) {
           completionMessage += " Click 'Next Lesson' to continue.";
         }
       } else {
-        // Lesson completion (more lessons in module): lesson summary + prompt
         completionMessage = `Great job! ${lessonSummary}${lessonScore} Click 'Next Lesson' to continue.`;
-      }
-
-      // Enable Next/Previous lesson buttons (Next blocked by isSpeaking until speech completes)
-      if (curriculum) {
-        if (getNextLessonInOrder(currentLesson, curriculum)) {
-          setCanNextLesson(true);
-        }
-        if (getPreviousLessonInOrder(currentLesson, curriculum)) {
-          setCanPreviousLesson(true);
-        }
       }
 
       // Persist "lesson completed" state so returning users see completion screen, not first lesson
@@ -921,11 +1025,10 @@ function CourseDetailInner({
 
       // Delay speech to allow React to re-render and mount the correct avatar
       setTimeout(() => {
-        if (currentLesson.next_lesson_id) {
-          speak(completionMessage, { type: "enable_next_lesson" });
-        } else {
-          speak(completionMessage, { type: "show_completion" });
-        }
+        speak(
+          completionMessage,
+          hasNext ? { type: "enable_next_lesson" } : { type: "show_completion" },
+        );
 
         // Fallback: ensure isSpeaking is reset after a reasonable timeout
         // in case the speech system fails to trigger onSpeechEnd
@@ -946,6 +1049,7 @@ function CourseDetailInner({
     speak,
     stopCodeTyping,
     typeCourseDetail,
+    resetCodeState,
   ]);
   useEffect(() => {
     moveToNextQuestionRef.current = moveToNextQuestion;
@@ -956,7 +1060,7 @@ function CourseDetailInner({
   // ============================================================================
 
   const speakLessonContent = useCallback(
-    (lesson: Lesson, onComplete?: () => void) => {
+    (lesson: Lesson) => {
       const parts: string[] = [];
       const intro = `Welcome! In this lesson, you will be learning about ${lesson.title}.`;
       parts.push(intro);
@@ -966,10 +1070,13 @@ function CourseDetailInner({
 
       const introText = parts.join(" ");
       const hasQuestions = (lesson.questions?.length ?? 0) > 0;
+      const hasNext = curriculum
+        ? !!getNextLessonInOrder(lesson, curriculum)
+        : !!lesson.next_lesson_id;
 
       if (lesson.code_example) {
         setIsLessonCodeDemoActive(false);
-        setCanStartQuestions(false);
+        setIntroReady(false);
         if (introText) {
           speak(introText, { type: "start_lesson_code_demo", lesson });
         } else {
@@ -981,7 +1088,7 @@ function CourseDetailInner({
       if (introText) {
         const action: PendingAction = hasQuestions
           ? { type: "enable_start_questions" }
-          : lesson.next_lesson_id
+          : hasNext
             ? { type: "enable_next_lesson" }
             : { type: "show_completion" };
 
@@ -989,7 +1096,7 @@ function CourseDetailInner({
         if (hasQuestions) {
           finalText +=
             " Great! Now let's test your understanding with some questions. Click 'Start Questions' when you're ready.";
-        } else if (lesson.next_lesson_id) {
+        } else if (hasNext) {
           finalText +=
             " You've completed this lesson! Click 'Next Lesson' to continue.";
         } else {
@@ -997,12 +1104,19 @@ function CourseDetailInner({
             " Congratulations! You've completed all lessons in this module.";
         }
 
+        scheduleIntroUnlockFallback(lesson, finalText.length);
         speak(finalText, action);
       } else {
-        onComplete?.();
+        markIntroReady(lesson);
       }
     },
-    [playLessonCodeExample, speak],
+    [
+      curriculum,
+      markIntroReady,
+      playLessonCodeExample,
+      scheduleIntroUnlockFallback,
+      speak,
+    ],
   );
 
   const handleStartLesson = useCallback(() => {
@@ -1011,11 +1125,7 @@ function CourseDetailInner({
     const firstLesson = getFirstLesson(curriculum);
     if (!firstLesson) return;
 
-    setCurrentLesson(firstLesson);
-    setCurrentQuestion(null);
-    setCurrentQuestionIndex(0);
-    setCanStartQuestions(false);
-    setCanNextLesson(false);
+    enterLessonIntro(firstLesson);
     setLessonStarted(true);
 
     // Reset answer tracking for new lesson and module (starting fresh)
@@ -1026,26 +1136,24 @@ function CourseDetailInner({
 
     persistCoursePosition({
       lessonId: firstLesson.id,
-      lessonIndex: curriculum ? getLessonIndexInCurriculum(firstLesson, curriculum) : undefined,
+      lessonIndex: getLessonIndexInCurriculum(firstLesson, curriculum),
       questionIndex: 0,
       lessonStarted: true,
       canStartQuestions: false,
     });
 
-    speakLessonContent(firstLesson, () => {
-      if (firstLesson.questions?.length) {
-        setCanStartQuestions(true);
-      }
-      // First lesson has no previous, but check for next
-      if (getNextLessonInOrder(firstLesson, curriculum)) {
-        setCanNextLesson(true);
-      }
-    });
-  }, [curriculum, persistCoursePosition, speakLessonContent]);
+    speakLessonContent(firstLesson);
+  }, [
+    curriculum,
+    enterLessonIntro,
+    persistCoursePosition,
+    speakLessonContent,
+  ]);
 
   const handleRestartCourse = useCallback(() => {
     if (!exercise || !curriculum) return;
     stopSpeaking();
+    clearIntroUnlockTimeout();
     updateCourseProgress(
       exercise,
       {
@@ -1065,77 +1173,80 @@ function CourseDetailInner({
     setCurrentQuestion(null);
     setCurrentQuestionIndex(0);
     setLessonStarted(false);
-    setCanStartQuestions(false);
-    setCanNextLesson(false);
-    setCanPreviousLesson(false);
-    setCanPrevious(false);
+    setLessonPhase("intro");
+    setIntroReady(false);
     resetCodeState();
     setCorrectAnswersCount(0);
     setTotalQuestionsAnswered(0);
     setModuleCorrectCount(0);
     setModuleTotalAnswered(0);
     setCompletedLessonIds(new Set());
-  }, [exercise, curriculum, updateCourseProgress, stopSpeaking]);
+  }, [
+    exercise,
+    curriculum,
+    updateCourseProgress,
+    stopSpeaking,
+    clearIntroUnlockTimeout,
+    resetCodeState,
+  ]);
 
   const handlePreviousLesson = useCallback(() => {
     if (!currentLesson || !curriculum) return;
 
     stopSpeaking();
+    clearIntroUnlockTimeout();
 
-    // Resolve previous lesson by position in curriculum
     const prevLesson = getPreviousLessonInOrder(currentLesson, curriculum);
     if (!prevLesson) return;
 
-    // Determine if we're moving to a different module
     const currentModIndex = getModuleIndexForLesson(currentLesson, curriculum);
     const prevModIndex = getModuleIndexForLesson(prevLesson, curriculum);
-    const movingToNewModule = currentModIndex !== -1 && prevModIndex !== -1 && currentModIndex !== prevModIndex;
+    const movingToNewModule =
+      currentModIndex !== -1 &&
+      prevModIndex !== -1 &&
+      currentModIndex !== prevModIndex;
 
-    setCurrentLesson(prevLesson);
-    setCurrentQuestion(null);
-    setCurrentQuestionIndex(0);
-    setCanStartQuestions(false);
-    setCanNextLesson(false);
-    setCanPreviousLesson(false);
-    setCanPrevious(false);
-    resetCodeState();
-    setIsLessonCodeDemoActive(false);
-
-    // Reset answer tracking for new lesson
     setCorrectAnswersCount(0);
     setTotalQuestionsAnswered(0);
     if (movingToNewModule) {
       setModuleCorrectCount(0);
       setModuleTotalAnswered(0);
     }
+    resetCodeState();
 
+    // Completed lessons stay completed — restore completion, don't force a redo.
+    if (completedLessonIds.has(prevLesson.id)) {
+      restoreCompletedLesson(prevLesson);
+      persistCoursePosition({
+        lessonId: prevLesson.id,
+        lessonIndex: getLessonIndexInCurriculum(prevLesson, curriculum),
+        questionIndex: prevLesson.questions?.length ?? 0,
+        lessonStarted: true,
+        canStartQuestions: false,
+      });
+      return;
+    }
+
+    enterLessonIntro(prevLesson);
     persistCoursePosition({
       lessonId: prevLesson.id,
-      lessonIndex: curriculum ? getLessonIndexInCurriculum(prevLesson, curriculum) : undefined,
+      lessonIndex: getLessonIndexInCurriculum(prevLesson, curriculum),
       questionIndex: 0,
       lessonStarted: true,
       canStartQuestions: false,
     });
-
-    speakLessonContent(prevLesson, () => {
-      if (prevLesson.questions?.length) {
-        setCanStartQuestions(true);
-      }
-      // Enable previous lesson/question button if there's a lesson before this one
-      const hasPrevLesson = !!getPreviousLessonInOrder(prevLesson, curriculum);
-      setCanPreviousLesson(hasPrevLesson);
-      setCanPrevious(hasPrevLesson); // At lesson start (no questions yet), can only go to prev lesson
-      // Enable next lesson button if there's a lesson after this one
-      if (getNextLessonInOrder(prevLesson, curriculum)) {
-        setCanNextLesson(true);
-      }
-    });
+    speakLessonContent(prevLesson);
   }, [
     currentLesson,
     curriculum,
+    completedLessonIds,
     persistCoursePosition,
     speakLessonContent,
     stopSpeaking,
+    clearIntroUnlockTimeout,
+    restoreCompletedLesson,
+    enterLessonIntro,
+    resetCodeState,
   ]);
 
   const handlePreviousQuestion = useCallback(() => {
@@ -1149,6 +1260,7 @@ function CourseDetailInner({
 
     setCurrentQuestion(prevQuestion);
     setCurrentQuestionIndex(prevIndex);
+    setLessonPhase("questions");
     setSelectedAnswer(null);
     setIsAnswerSubmitted(false);
     setStudentAnswer("");
@@ -1157,21 +1269,15 @@ function CourseDetailInner({
 
     persistCoursePosition({
       lessonId: currentLesson.id,
-      lessonIndex: curriculum ? getLessonIndexInCurriculum(currentLesson, curriculum) : undefined,
+      lessonIndex: curriculum
+        ? getLessonIndexInCurriculum(currentLesson, curriculum)
+        : undefined,
       questionIndex: prevIndex,
       lessonStarted: true,
       canStartQuestions: false,
     });
 
-    // Update canPrevious based on whether there's still a previous question or lesson
-    const hasPrevQuestion = prevIndex > 0;
-    const hasPrevLesson = curriculum ? !!getPreviousLessonInOrder(currentLesson, curriculum) : false;
-    setCanPrevious(hasPrevQuestion || hasPrevLesson);
-
-    if (
-      prevQuestion.type === "code_test" &&
-      prevQuestion.code_example
-    ) {
+    if (prevQuestion.type === "code_test" && prevQuestion.code_example) {
       typeCourseDetail(prevQuestion.code_example, prevQuestion);
     } else {
       speak(prevQuestion.question);
@@ -1185,60 +1291,135 @@ function CourseDetailInner({
     stopSpeaking,
     stopCodeTyping,
     typeCourseDetail,
+    resetCodeState,
+  ]);
+
+  const handleBackToLessonIntro = useCallback(() => {
+    if (!currentLesson) return;
+    stopSpeaking();
+    stopCodeTyping();
+    setCurrentQuestion(null);
+    setCurrentQuestionIndex(0);
+    setLessonPhase("intro");
+    setIntroReady(true);
+    setIsLessonCodeDemoActive(false);
+    resetCodeState();
+    persistCoursePosition({
+      lessonId: currentLesson.id,
+      lessonIndex: curriculum
+        ? getLessonIndexInCurriculum(currentLesson, curriculum)
+        : undefined,
+      questionIndex: 0,
+      lessonStarted: true,
+      canStartQuestions: true,
+    });
+  }, [
+    currentLesson,
+    curriculum,
+    persistCoursePosition,
+    resetCodeState,
+    stopCodeTyping,
+    stopSpeaking,
+  ]);
+
+  const handleReviewLastQuestion = useCallback(() => {
+    if (!currentLesson?.questions?.length) return;
+    stopSpeaking();
+    stopCodeTyping();
+    const lastIndex = currentLesson.questions.length - 1;
+    const question = currentLesson.questions[lastIndex];
+    setCurrentQuestion(question);
+    setCurrentQuestionIndex(lastIndex);
+    setLessonPhase("questions");
+    setSelectedAnswer(null);
+    setIsAnswerSubmitted(false);
+    setStudentAnswer("");
+    setLastAnswerCorrect(null);
+    resetCodeState();
+    persistCoursePosition({
+      lessonId: currentLesson.id,
+      lessonIndex: curriculum
+        ? getLessonIndexInCurriculum(currentLesson, curriculum)
+        : undefined,
+      questionIndex: lastIndex,
+      lessonStarted: true,
+      canStartQuestions: false,
+    });
+    if (question.type === "code_test" && question.code_example) {
+      typeCourseDetail(question.code_example, question);
+    } else {
+      speak(question.question);
+    }
+  }, [
+    currentLesson,
+    curriculum,
+    persistCoursePosition,
+    resetCodeState,
+    speak,
+    stopCodeTyping,
+    stopSpeaking,
+    typeCourseDetail,
   ]);
 
   const handlePrevious = useCallback(() => {
-    if (!canPrevious || isSpeaking) return;
+    if (isSpeaking || !currentLesson) return;
 
-    if (currentQuestion && currentQuestionIndex > 0) {
+    if (lessonPhase === "questions" && currentQuestionIndex > 0) {
       handlePreviousQuestion();
-    } else if (canPreviousLesson) {
-      handlePreviousLesson();
+      return;
     }
+    if (lessonPhase === "questions" && currentQuestionIndex === 0) {
+      handleBackToLessonIntro();
+      return;
+    }
+    if (lessonPhase === "complete" && (currentLesson.questions?.length ?? 0) > 0) {
+      handleReviewLastQuestion();
+      return;
+    }
+    handlePreviousLesson();
   }, [
-    canPrevious,
     isSpeaking,
-    currentQuestion,
+    currentLesson,
+    lessonPhase,
     currentQuestionIndex,
-    canPreviousLesson,
     handlePreviousQuestion,
+    handleBackToLessonIntro,
+    handleReviewLastQuestion,
     handlePreviousLesson,
   ]);
 
   const handleStartQuestions = useCallback(() => {
-    if (!canStartQuestions || !currentLesson?.questions?.length) return;
+    if (!introReady || lessonPhase !== "intro" || !currentLesson?.questions?.length)
+      return;
 
     stopSpeaking();
     stopCodeTyping();
+    clearIntroUnlockTimeout();
     setIsLessonCodeDemoActive(false);
-    setCanStartQuestions(false);
+    setIntroReady(false);
 
     const question = currentLesson.questions[0];
     setCurrentQuestion(question);
     setCurrentQuestionIndex(0);
+    setLessonPhase("questions");
     setSelectedAnswer(null);
     setIsAnswerSubmitted(false);
     setStudentAnswer("");
     setLastAnswerCorrect(null);
     resetCodeState();
 
-    // Reset answer tracking when starting questions
     setCorrectAnswersCount(0);
     setTotalQuestionsAnswered(0);
 
     persistCoursePosition({
       lessonId: currentLesson.id,
-      lessonIndex: curriculum ? getLessonIndexInCurriculum(currentLesson, curriculum) : undefined,
+      lessonIndex: curriculum
+        ? getLessonIndexInCurriculum(currentLesson, curriculum)
+        : undefined,
       questionIndex: 0,
       lessonStarted: true,
       canStartQuestions: false,
     });
-
-    // Enable Previous whenever we have a previous lesson (regardless of completion)
-    // At question index 0, we can only go to previous lesson
-    const hasPrevLesson = curriculum ? !!getPreviousLessonInOrder(currentLesson, curriculum) : false;
-    setCanPreviousLesson(hasPrevLesson);
-    setCanPrevious(hasPrevLesson); // At first question, can only go to prev lesson
 
     if (question.type === "code_test" && question.code_example) {
       typeCourseDetail(question.code_example, question);
@@ -1246,7 +1427,8 @@ function CourseDetailInner({
       speak(question.question);
     }
   }, [
-    canStartQuestions,
+    introReady,
+    lessonPhase,
     currentLesson,
     curriculum,
     persistCoursePosition,
@@ -1254,35 +1436,34 @@ function CourseDetailInner({
     stopSpeaking,
     stopCodeTyping,
     typeCourseDetail,
+    clearIntroUnlockTimeout,
+    resetCodeState,
   ]);
 
   const handleNextLesson = useCallback(() => {
-    if (!canNextLesson || !currentLesson || !curriculum) return;
+    if (!currentLesson || !curriculum) return;
+    const lessonComplete =
+      lessonPhase === "complete" ||
+      completedLessonIds.has(currentLesson.id) ||
+      ((currentLesson.questions?.length ?? 0) === 0 && introReady);
+    if (!lessonComplete) return;
 
-    stopSpeaking();
-    setCanNextLesson(false);
-
-    // Resolve next lesson by position in curriculum (not by ID) so we don't jump to wrong module
-    // when lesson IDs are reused across modules (e.g. css_lesson_01 in each module).
     const nextLesson = getNextLessonInOrder(currentLesson, curriculum);
     if (!nextLesson) return;
 
-    // Reset module stats when moving to a new module (different module index)
+    stopSpeaking();
+    clearIntroUnlockTimeout();
+
     const currentModIndex = getModuleIndexForLesson(currentLesson, curriculum);
     const nextModIndex = getModuleIndexForLesson(nextLesson, curriculum);
-    const movingToNewModule = currentModIndex !== -1 && nextModIndex !== -1 && currentModIndex !== nextModIndex;
+    const movingToNewModule =
+      currentModIndex !== -1 &&
+      nextModIndex !== -1 &&
+      currentModIndex !== nextModIndex;
 
-    setCurrentLesson(nextLesson);
-    setCurrentQuestion(null);
-    setCurrentQuestionIndex(0);
-    setCanStartQuestions(false);
-    setCanNextLesson(false);
-    setCanPreviousLesson(false);
-    setCanPrevious(false);
+    enterLessonIntro(nextLesson);
     resetCodeState();
-    setIsLessonCodeDemoActive(false);
 
-    // Reset answer tracking for new lesson
     setCorrectAnswersCount(0);
     setTotalQuestionsAnswered(0);
     if (movingToNewModule) {
@@ -1292,33 +1473,39 @@ function CourseDetailInner({
 
     persistCoursePosition({
       lessonId: nextLesson.id,
-      lessonIndex: curriculum ? getLessonIndexInCurriculum(nextLesson, curriculum) : undefined,
+      lessonIndex: getLessonIndexInCurriculum(nextLesson, curriculum),
       questionIndex: 0,
       lessonStarted: true,
       canStartQuestions: false,
     });
 
-    speakLessonContent(nextLesson, () => {
-      if (nextLesson.questions?.length) {
-        setCanStartQuestions(true);
-      }
-      // Enable previous lesson/question button if there's a lesson before this one
-      const hasPrevLesson = !!getPreviousLessonInOrder(nextLesson, curriculum);
-      setCanPreviousLesson(hasPrevLesson);
-      setCanPrevious(hasPrevLesson); // At lesson start (no questions yet), can only go to prev lesson
-      // Enable next lesson button if there's a lesson after this one
-      if (getNextLessonInOrder(nextLesson, curriculum)) {
-        setCanNextLesson(true);
-      }
-    });
+    speakLessonContent(nextLesson);
   }, [
-    canNextLesson,
     currentLesson,
     curriculum,
+    lessonPhase,
+    completedLessonIds,
+    introReady,
     persistCoursePosition,
     speakLessonContent,
     stopSpeaking,
+    clearIntroUnlockTimeout,
+    enterLessonIntro,
+    resetCodeState,
   ]);
+
+  const handlePrimaryNav = useCallback(
+    (kind: PrimaryNavKind) => {
+      if (kind === "start_questions") {
+        handleStartQuestions();
+        return;
+      }
+      if (kind === "next_lesson" || kind === "next_module") {
+        handleNextLesson();
+      }
+    },
+    [handleStartQuestions, handleNextLesson],
+  );
 
   // ============================================================================
   // ANSWER HANDLERS
@@ -1513,60 +1700,61 @@ function CourseDetailInner({
       const stored = useCoursesStore.getState().getCourseProgress(slug);
       if (!stored) return;
 
-      // Initialize completedLessonIds from server data
-      if (stored.completedLessons?.length) {
-        setCompletedLessonIds(new Set(stored.completedLessons));
+      const completed = new Set(stored.completedLessons ?? []);
+      if (completed.size) {
+        setCompletedLessonIds(completed);
       }
 
       const saved: CourseProgress = {
         lessonId: stored.currentLessonId ?? null,
-        lessonIndex: typeof stored.lessonIndex === "number" ? stored.lessonIndex : undefined,
-        questionIndex: typeof stored.questionIndex === "number" ? stored.questionIndex : 0,
+        lessonIndex:
+          typeof stored.lessonIndex === "number" ? stored.lessonIndex : undefined,
+        questionIndex:
+          typeof stored.questionIndex === "number" ? stored.questionIndex : 0,
         lessonStarted: stored.lessonStarted ?? false,
         canStartQuestions: stored.canStartQuestions ?? false,
-        lastUpdated: typeof stored.lastUpdated === "number" ? stored.lastUpdated : 0,
+        lastUpdated:
+          typeof stored.lastUpdated === "number" ? stored.lastUpdated : 0,
       };
-      // Prefer lessonIndex (position in curriculum) so we restore the correct lesson when IDs repeat across modules
+
       const lesson =
-        typeof saved?.lessonIndex === "number"
+        typeof saved.lessonIndex === "number"
           ? getLessonByIndex(saved.lessonIndex, curriculum)
-          : saved?.lessonId
+          : saved.lessonId
             ? findLessonById(saved.lessonId, curriculum)
             : null;
-      if (lesson && saved) {
-        setCurrentLesson(lesson);
-        setCurrentQuestionIndex(saved.questionIndex ?? 0);
-        setLessonStarted(saved.lessonStarted ?? false);
-        setCanStartQuestions(saved.canStartQuestions ?? false);
+      if (!lesson || !saved.lessonStarted) return;
 
-        const questionCount = lesson.questions?.length ?? 0;
-        const allQuestionsDone = questionCount > 0 && (saved.questionIndex ?? 0) >= questionCount;
+      const questionCount = lesson.questions?.length ?? 0;
+      const questionIndex = saved.questionIndex ?? 0;
+      const allQuestionsDone =
+        questionCount > 0 && questionIndex >= questionCount;
+      const lessonComplete =
+        completed.has(lesson.id) || allQuestionsDone;
 
-        const hasPrevLesson = !!getPreviousLessonInOrder(lesson, curriculum);
-        const questionIndex = saved.questionIndex ?? 0;
+      setCurrentLesson(lesson);
+      setLessonStarted(true);
 
-        if (allQuestionsDone) {
-          // Restore "lesson completed" state: no current question, enable Next/Previous Lesson
-          setCurrentQuestion(null);
-          if (getNextLessonInOrder(lesson, curriculum)) {
-            setCanNextLesson(true);
-          }
-          setCanPreviousLesson(hasPrevLesson);
-          setCanPrevious(hasPrevLesson); // No current question, can only go to prev lesson
-        } else if (
-          questionIndex >= 0 &&
-          lesson.questions?.[questionIndex]
-        ) {
-          setCurrentQuestion(lesson.questions[questionIndex]);
-          // Enable Previous when restoring to lesson mid-flow
-          setCanPreviousLesson(hasPrevLesson);
-          // Can go to previous question if not on first question, or to previous lesson
-          setCanPrevious(questionIndex > 0 || hasPrevLesson);
-        } else {
-          // Restored at start of lesson (no current question yet) - enable Previous if applicable
-          setCanPreviousLesson(hasPrevLesson);
-          setCanPrevious(hasPrevLesson);
-        }
+      if (lessonComplete) {
+        setCurrentQuestion(null);
+        setCurrentQuestionIndex(questionCount);
+        setLessonPhase("complete");
+        setIntroReady(true);
+        setCompletedLessonIds((prev) => {
+          const next = new Set(prev);
+          next.add(lesson.id);
+          return next;
+        });
+      } else if (lesson.questions?.[questionIndex]) {
+        setCurrentQuestion(lesson.questions[questionIndex]);
+        setCurrentQuestionIndex(questionIndex);
+        setLessonPhase("questions");
+        setIntroReady(false);
+      } else {
+        setCurrentQuestion(null);
+        setCurrentQuestionIndex(0);
+        setLessonPhase("intro");
+        setIntroReady(saved.canStartQuestions ?? false);
       }
     })();
 
@@ -1575,22 +1763,47 @@ function CourseDetailInner({
     };
   }, [curriculum, exercise]);
 
-  // Keep Previous/Next lesson buttons in sync whenever we're on a lesson.
-  // Previous: enabled whenever there's a previous question OR previous lesson.
-  // Next: enabled by enable_next_lesson or when lesson has no questions.
+  // Keep phase aligned with question/completion state.
   useEffect(() => {
-    if (!currentLesson || !curriculum || !lessonStarted) return;
-    const hasPrevLesson = !!getPreviousLessonInOrder(currentLesson, curriculum);
-    const hasPrevQuestion = currentQuestionIndex > 0;
-    // Previous is only disabled when on the first question of the first lesson
-    setCanPreviousLesson(hasPrevLesson);
-    setCanPrevious(hasPrevQuestion || hasPrevLesson);
-    // canNextLesson is set by handleSpeechEnd (enable_next_lesson) or moveToNextQuestion (completion)
-    // so we only update it when lesson has no questions - otherwise user must complete first
-    if (!currentLesson.questions?.length && getNextLessonInOrder(currentLesson, curriculum)) {
-      setCanNextLesson(true);
-    }
-  }, [currentLesson, curriculum, lessonStarted, currentQuestionIndex]);
+    if (!currentLesson || !lessonStarted) return;
+    const nextPhase = resolveLessonPhase({
+      lesson: currentLesson,
+      questionIndex: currentQuestionIndex,
+      hasCurrentQuestion: !!currentQuestion,
+      introReady,
+      completedLessonIds,
+    });
+    setLessonPhase((prev) => (prev === nextPhase ? prev : nextPhase));
+  }, [
+    currentLesson,
+    currentQuestion,
+    currentQuestionIndex,
+    introReady,
+    completedLessonIds,
+    lessonStarted,
+  ]);
+
+  const lessonNav = useMemo(() => {
+    if (!currentLesson || !curriculum || !lessonStarted) return null;
+    return buildLessonNavSnapshot({
+      lesson: currentLesson,
+      curriculum,
+      phase: lessonPhase,
+      introReady,
+      questionIndex: currentQuestionIndex,
+      isSpeaking,
+      completedLessonIds,
+    });
+  }, [
+    currentLesson,
+    curriculum,
+    lessonStarted,
+    lessonPhase,
+    introReady,
+    currentQuestionIndex,
+    isSpeaking,
+    completedLessonIds,
+  ]);
 
   // Avatar remounts only when the course, layout, or code-test mode changes (desktop swaps avatar
   // instances between the lesson view and the code-test view). A lesson code demo does NOT remount the
@@ -1712,64 +1925,14 @@ function CourseDetailInner({
 
   const lessonChromePanel = (
     <div className="shrink-0 relative z-10">
-      {lessonStarted && (
-        <div className="mb-4 rounded-2xl border border-primary/10 bg-white/60 p-3 shadow-sm backdrop-blur sm:p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
-                Lesson Controls
-              </p>
-              <p className="text-xs text-gray-500 sm:text-sm">
-                Navigate through lessons and modules.
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={handlePrevious}
-              disabled={!canPrevious || isSpeaking}
-              className={`rounded-xl px-2 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm ${canPrevious && !isSpeaking
-                ? "bg-red-500 text-white shadow hover:bg-red-600"
-                : "cursor-not-allowed bg-gray-200 text-gray-500"
-                }`}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={handleStartQuestions}
-              disabled={!canStartQuestions || isSpeaking}
-              className={`rounded-xl px-2 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm ${canStartQuestions && !isSpeaking
-                ? "bg-primary text-white shadow hover:bg-primary/90"
-                : "cursor-not-allowed bg-gray-200 text-gray-500"
-                }`}
-            >
-              Start
-            </button>
-            <button
-              type="button"
-              onClick={handleNextLesson}
-              disabled={!canNextLesson || isSpeaking}
-              className={`rounded-xl px-2 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm ${canNextLesson && !isSpeaking
-                ? "bg-green-500 text-white shadow hover:bg-green-600"
-                : "cursor-not-allowed bg-gray-200 text-gray-500"
-                }`}
-            >
-              Next
-            </button>
-          </div>
-          {isCourseCompleted && (
-            <button
-              type="button"
-              onClick={handleRestartCourse}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold bg-amber-500 text-white shadow transition-colors hover:bg-amber-600"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Restart course
-            </button>
-          )}
-        </div>
+      {lessonStarted && lessonNav && (
+        <LessonNavControls
+          nav={lessonNav}
+          onPrevious={handlePrevious}
+          onPrimary={handlePrimaryNav}
+          showRestart={isCourseCompleted}
+          onRestart={handleRestartCourse}
+        />
       )}
 
       {currentQuestion?.type === "code_test" && (

@@ -11,6 +11,7 @@ export const PUBLIC_PATHS = {
   SIGN_UP: "/auth/sign-up",
   FORGOT_PASSWORD: "/auth/forgot-password",
   RESET_PASSWORD: "/auth/reset-password",
+  TERMS: "/legal/terms",
 };
 
 export const PRIVATE_PATHS = {

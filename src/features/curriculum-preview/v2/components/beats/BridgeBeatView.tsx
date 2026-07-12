@@ -8,12 +8,15 @@ export function BridgeBeatView({
   onNextLesson,
   onFinish,
   canContinue,
+  fullWidthCta = false,
 }: {
   beat: BridgeBeat;
   isCourseEnd: boolean;
   onNextLesson: () => void;
   onFinish?: () => void;
   canContinue: boolean;
+  /** Full-width CTA on small screens (kids / sneak-peek stage). */
+  fullWidthCta?: boolean;
 }) {
   return (
     <Panel label={isCourseEnd ? "Finished" : "Next up"}>
@@ -27,9 +30,14 @@ export function BridgeBeatView({
             : "Let's keep going.")}
       </p>
       {canContinue && (
-        <div className="mt-5">
+        <div className={fullWidthCta ? "mt-5 sm:mt-5" : "mt-5"}>
           <ContinueButton
             label={isCourseEnd ? "Finish" : "Next lesson"}
+            className={
+              fullWidthCta
+                ? "h-12 w-full text-base sm:h-auto sm:w-auto sm:text-sm"
+                : undefined
+            }
             onClick={() => {
               if (isCourseEnd) onFinish?.();
               else onNextLesson();

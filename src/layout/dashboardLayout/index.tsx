@@ -208,17 +208,37 @@ const DashboardLayout = ({ children }: DashboardProps) => {
     setSubscribeViewBump((n) => n + 1);
   }, []);
 
+  useEffect(() => {
+    if (isDemoSneakPeek) closeMobileNav();
+  }, [isDemoSneakPeek, closeMobileNav]);
+
   return (
     <div className="flex h-screen flex-col items-stretch gap-4 overflow-hidden bg-white bg-[url('/images/auth-bg.png')] bg-cover bg-center bg-no-repeat">
-      <TopNav onOpenMobileNav={() => setMobileNavOpen(true)} />
-      <div className="relative md:mt-24 mt-20 flex h-full min-h-0 w-full gap-4 overflow-hidden rounded-t-2xl px-3 pb-6 transition-all duration-300 ease-in-out sm:px-4 sm:pb-4">
+      <TopNav
+        onOpenMobileNav={
+          isDemoSneakPeek ? undefined : () => setMobileNavOpen(true)
+        }
+        hideMobileMenu={isDemoSneakPeek}
+      />
+      <div
+        className={cn(
+          "relative flex h-full min-h-0 w-full gap-4 overflow-hidden rounded-t-2xl transition-all duration-300 ease-in-out md:mt-24 mt-20",
+          isDemoSneakPeek
+            ? "px-2 pb-2 sm:px-3 sm:pb-3"
+            : "px-3 pb-6 sm:px-4 sm:pb-4",
+        )}
+      >
         <SideNav
-          mobileNavOpen={mobileNavOpen}
+          mobileNavOpen={mobileNavOpen && !isDemoSneakPeek}
           onMobileNavClose={closeMobileNav}
+          locked={isDemoSneakPeek}
         />
         <div
           className={cn(
-            "min-h-0 w-full min-w-0 flex-1 overflow-y-auto rounded-[20px] bg-white p-3 shadow-lg scrollbar-hide sm:p-4 lg:ml-76",
+            "min-h-0 w-full min-w-0 flex-1 rounded-[20px] bg-white p-3 shadow-lg sm:p-4 lg:ml-76",
+            isDemoSneakPeek
+              ? "flex flex-col overflow-hidden p-2 sm:p-3"
+              : "overflow-y-auto scrollbar-hide",
             mobileNavOpen && "max-lg:overflow-hidden",
           )}
           inert={blockDashboardAccess ? true : undefined}

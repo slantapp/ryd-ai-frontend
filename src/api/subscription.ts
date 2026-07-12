@@ -14,10 +14,17 @@ export type SubscriptionPlan = {
   durationLabel?: string;
   durationMonths: number;
   periodSuffix?: string;
+  /** Tailwind gradient classes from API, e.g. "from-[#E8E0FF] to-[#F3ECFE]" */
+  accent?: string;
+  borderAccent?: string;
+  /** Lucide icon name from API, e.g. "Zap" | "ShieldCheck" */
+  icon?: string;
   popular?: boolean;
   features?: string[];
   billingCurrency: string;
   priceLabel: string;
+  /** USD list / charge amount from plans API. */
+  amountUsd?: number;
   amountNgn?: number;
   /** Whether a referral discount is applied to this plan. */
   referralDiscountApplied?: boolean;

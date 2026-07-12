@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sparkles } from "lucide-react";
-import CourseDetails from "@/components/courses/CourseDetails";
+import { BookOpen, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,26 +9,69 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { usePreviewAvatar } from "@/features/curriculum-preview/components/PreviewAvatar";
+import { LessonPlayer } from "@/features/curriculum-preview/v2/components/LessonPlayer";
+import {
+  findLessonV2ById,
+  getFirstLessonV2,
+  getNextLessonV2,
+} from "@/features/curriculum-preview/v2/navigation";
+import type { LessonV2 } from "@/features/curriculum-preview/v2/types";
+import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
 import {
   DEMO_COURSE_SLUG,
-  getDemoCurriculum,
+  getDemoCurriculumV2,
 } from "@/data/curriculumData";
+import { cn } from "@/lib/utils";
 import { useCoursesStore } from "@/stores/coursesStore";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 
 /**
- * Free sneak-peek lesson for unsubscribed users.
- * Uses the real CourseDetails learning environment with a bundled demo curriculum.
+ * Free sneak-peek: kid-first v2 flow stage (board-dominant + avatar + one CTA).
+ * Follows docs/KIDS_STUDENT_ENVIRONMENT_BRIEF.md — not the v1 CourseDetails runner.
  */
 export default function DemoSneakPeekPage() {
   const navigate = useNavigate();
   const updateCourseProgress = useCoursesStore((s) => s.updateCourseProgress);
   const [showSubscribePrompt, setShowSubscribePrompt] = useState(false);
+  const [showLessonsMenu, setShowLessonsMenu] = useState(false);
   const completionFiredRef = useRef(false);
 
-  const demoTitle = getDemoCurriculum().curriculum.title;
+  const curriculumV2 = useMemo(() => getDemoCurriculumV2(), []);
+  const curriculum = curriculumV2.curriculum;
+  const demoTitle = curriculum.title;
 
-  // Fresh demo each visit (local progress only — not synced to API).
+  const [currentLesson, setCurrentLesson] = useState<LessonV2 | null>(() =>
+    getFirstLessonV2(curriculum),
+  );
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [lessonKey, setLessonKey] = useState(0);
+
+  const {
+    AvatarComponent,
+    speak,
+    stop,
+    scheduleAfterSpeech,
+    clearScheduledAfterSpeech,
+    isSpeaking,
+    currentSubtitle,
+    showMobileAudioUnlock,
+    unlockMobileAudio,
+  } = usePreviewAvatar();
+
+  const allLessons = useMemo(
+    () => curriculum.modules.flatMap((m) => m.lessons),
+    [curriculum.modules],
+  );
+
+  const lessonOrdinal = useMemo(() => {
+    if (!currentLesson) return 1;
+    const idx = allLessons.findIndex((l) => l.id === currentLesson.id);
+    return idx >= 0 ? idx + 1 : 1;
+  }, [allLessons, currentLesson]);
+
   useEffect(() => {
     completionFiredRef.current = false;
     updateCourseProgress(
@@ -49,69 +91,225 @@ export default function DemoSneakPeekPage() {
     );
   }, [updateCourseProgress]);
 
-  const goToSubscribe = useCallback(() => {
-    navigate(`${PRIVATE_PATHS.DASHBOARD}?sneakPeek=done`, { replace: true });
-  }, [navigate]);
+  useEffect(() => {
+    prefetchMonacoEditor();
+  }, []);
 
-  const handleCourseCompleted = useCallback(() => {
+  const goToSubscribe = useCallback(() => {
+    stop();
+    navigate(`${PRIVATE_PATHS.DASHBOARD}?sneakPeek=done`, { replace: true });
+  }, [navigate, stop]);
+
+  const fireCourseCompleted = useCallback(() => {
     if (completionFiredRef.current) return;
     completionFiredRef.current = true;
     setShowSubscribePrompt(true);
   }, []);
 
+  const selectLesson = useCallback(
+    (lesson: LessonV2) => {
+      stop();
+      clearScheduledAfterSpeech();
+      setCurrentLesson(lesson);
+      setLessonKey((k) => k + 1);
+      setShowLessonsMenu(false);
+    },
+    [clearScheduledAfterSpeech, stop],
+  );
+
+  const handleLessonComplete = useCallback((lessonId: string) => {
+    setCompletedLessons((prev) => {
+      const next = new Set(prev);
+      next.add(lessonId);
+      return next;
+    });
+  }, []);
+
+  const handleNextLesson = useCallback(
+    (preferredNextId?: string | null) => {
+      if (!currentLesson) return;
+
+      let next: LessonV2 | null = null;
+      if (preferredNextId) {
+        next = findLessonV2ById(curriculum, preferredNextId);
+      }
+      if (!next && preferredNextId !== null) {
+        next = getNextLessonV2(curriculum, currentLesson);
+      }
+
+      if (next) {
+        selectLesson(next);
+        return;
+      }
+
+      // Bridge with next: null → sneak peek finished
+      fireCourseCompleted();
+    },
+    [curriculum, currentLesson, fireCourseCompleted, selectLesson],
+  );
+
+  if (!currentLesson) {
+    return (
+      <div className="flex min-h-[20rem] items-center justify-center p-6">
+        <p className="font-inter text-sm text-gray-500">
+          Demo lesson could not be loaded.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-[calc(100dvh-9.5rem)] min-h-[32rem] flex-col gap-3 sm:h-[calc(100dvh-10rem)]">
-      <div className="flex shrink-0 flex-col gap-2 rounded-2xl border border-primary/15 bg-linear-to-r from-primary/10 via-primary/5 to-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-        <div className="min-w-0">
+    <div className="flex h-full min-h-0 flex-col gap-2 pb-[env(safe-area-inset-bottom)]">
+      {/* Compact sneak-peek chrome — not a dashboard */}
+      <div className="flex shrink-0 flex-col gap-2 rounded-2xl border border-primary/15 bg-linear-to-r from-primary/10 via-white to-white px-3 py-2.5 min-[480px]:flex-row min-[480px]:items-center sm:px-4">
+        <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wide text-primary">
             <Sparkles className="size-3.5 shrink-0" aria-hidden />
             Free sneak peek
           </p>
-          <h1 className="font-solway text-base font-bold text-gray-900 sm:text-lg">
+          <h1 className="truncate font-solway text-base font-bold text-gray-900 sm:text-lg">
             {demoTitle}
           </h1>
-          <p className="mt-0.5 font-inter text-xs text-gray-600 sm:text-sm">
-            Try a real lesson with your AI instructor — then unlock the full
-            library with a plan.
+          <p className="truncate font-inter text-xs text-gray-600">
+            Lesson {lessonOrdinal} of {allLessons.length}
+            {currentLesson.goal ? (
+              <span className="hidden sm:inline">{` · ${currentLesson.goal}`}</span>
+            ) : null}
           </p>
+          {currentLesson.goal ? (
+            <p className="mt-0.5 line-clamp-2 font-inter text-xs text-gray-600 sm:hidden">
+              {currentLesson.goal}
+            </p>
+          ) : null}
         </div>
-        <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex shrink-0 items-center gap-2 min-[480px]:justify-end">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="font-inter"
-            onClick={goToSubscribe}
+            className="min-h-9 flex-1 gap-1.5 rounded-xl font-inter min-[480px]:flex-none"
+            onClick={() => setShowLessonsMenu(true)}
           >
-            Back to subscribe
+            <BookOpen className="size-3.5" aria-hidden />
+            Lessons
           </Button>
           <Button
             type="button"
             size="sm"
-            className="rounded-xl bg-[#DDB5D2] font-solway text-primary hover:bg-[#DDA5D2]"
+            className="min-h-9 flex-1 rounded-xl bg-[#DDB5D2] font-solway font-semibold text-primary hover:bg-[#DDA5D2] min-[480px]:flex-none"
             onClick={goToSubscribe}
           >
-            Choose a plan
+            Plans
           </Button>
         </div>
       </div>
 
-      <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-        <CourseDetails
-          slugOverride={DEMO_COURSE_SLUG}
-          onCourseCompleted={handleCourseCompleted}
+      {/* Kids stage: board-first learning space */}
+      <div
+        className={cn(
+          "relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm",
+        )}
+      >
+        <LessonPlayer
+          key={`${currentLesson.id}-${lessonKey}`}
+          curriculum={curriculum}
+          lesson={currentLesson}
+          lessonOrdinal={lessonOrdinal}
+          lessonTotal={allLessons.length}
+          speak={speak}
+          stop={stop}
+          scheduleAfterSpeech={scheduleAfterSpeech}
+          clearScheduledAfterSpeech={clearScheduledAfterSpeech}
+          isSpeaking={isSpeaking}
+          currentSubtitle={currentSubtitle}
+          avatarSlot={
+            <AvatarComponent className="h-full w-full" showUnlockOverlay={false} />
+          }
+          onLessonComplete={handleLessonComplete}
+          onNextLesson={handleNextLesson}
+          hideFlowChrome
+          kidsStage
+          showMobileAudioUnlock={showMobileAudioUnlock}
+          onMobileAudioUnlock={unlockMobileAudio}
         />
       </div>
+
+      {/* Lessons menu — only on demand (brief: outline not always open) */}
+      <Dialog open={showLessonsMenu} onOpenChange={setShowLessonsMenu}>
+        <DialogContent className="max-h-[min(90dvh,36rem)] max-w-md overflow-y-auto rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-solway text-lg">Lessons</DialogTitle>
+            <DialogDescription className="font-inter text-sm text-gray-600">
+              Pick a lesson you already unlocked. Finish each adventure in order.
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="space-y-2">
+            {allLessons.map((lesson, index) => {
+              const done = completedLessons.has(lesson.id);
+              const unlocked =
+                index === 0 ||
+                completedLessons.has(allLessons[index - 1]?.id ?? "");
+              const active = lesson.id === currentLesson.id;
+              return (
+                <li key={lesson.id}>
+                  <button
+                    type="button"
+                    disabled={!unlocked}
+                    onClick={() => unlocked && selectLesson(lesson)}
+                    className={cn(
+                      "flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition",
+                      active
+                        ? "border-primary bg-primary/10"
+                        : "border-gray-100 bg-white",
+                      unlocked
+                        ? "hover:border-primary/40"
+                        : "cursor-not-allowed opacity-50",
+                    )}
+                  >
+                    <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 font-solway text-xs font-bold text-primary">
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-solway text-sm font-semibold text-gray-900">
+                        {lesson.title}
+                      </span>
+                      {lesson.goal ? (
+                        <span className="mt-0.5 block font-inter text-xs text-gray-500">
+                          {lesson.goal}
+                        </span>
+                      ) : null}
+                      {done ? (
+                        <span className="mt-1 inline-block font-inter text-[0.65rem] font-semibold uppercase tracking-wide text-emerald-700">
+                          Done
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full gap-2 font-inter"
+            onClick={() => setShowLessonsMenu(false)}
+          >
+            <X className="size-4" aria-hidden />
+            Close
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showSubscribePrompt} onOpenChange={setShowSubscribePrompt}>
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-solway text-xl">
-              Nice work — ready for more?
+              You finished the puppy app!
             </DialogTitle>
             <DialogDescription className="font-inter text-sm text-gray-600">
-              You just finished the sneak peek. Subscribe to unlock every course,
-              keep progress, and keep learning with your AI instructor.
+              That was a real lesson with your AI instructor. Subscribe to unlock
+              every course and keep learning.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -121,11 +319,11 @@ export default function DemoSneakPeekPage() {
               className="font-inter"
               onClick={() => setShowSubscribePrompt(false)}
             >
-              Keep exploring
+              Keep looking around
             </Button>
             <Button
               type="button"
-              className="rounded-xl bg-[#DDB5D2] font-solway text-primary hover:bg-[#DDA5D2]"
+              className="rounded-xl bg-[#DDB5D2] font-solway font-semibold text-primary hover:bg-[#DDA5D2]"
               onClick={goToSubscribe}
             >
               View subscription plans

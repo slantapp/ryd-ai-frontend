@@ -46,6 +46,8 @@ speak/display → demo → pause → question → recap → bridge
 
 Avatar narrates titles, body text, demos, questions, and recap points. Advance modes: `auto` | `manual` | `on_answer`.
 
+On `code_test` practice handoff, optional `code_example.starterCode` seeds the editor (skeleton with comments) instead of wiping it blank.
+
 ## Docs
 
 - [`docs/CURRICULUM_V2_GUIDE.md`](../../../../docs/CURRICULUM_V2_GUIDE.md)

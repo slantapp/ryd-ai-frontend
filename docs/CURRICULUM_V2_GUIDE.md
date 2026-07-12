@@ -454,7 +454,7 @@ If omitted, the runtime uses phrases from `curriculum.defaults.avatar`.
 
 ### Question object
 
-The `question` field uses the same shape as v1 questions (`type`, `question`, `options`, `answer`, `testCriteria`, `code_example`, `formula_example`, `explanation`).
+The `question` field uses the same shape as v1 questions (`type`, `question`, `options`, `answer`, `testCriteria`, `code_example`, `formula_example`, `explanation`). For `code_test`, prefer `code_example.starterCode` so practice starts from a guided skeleton.
 
 ---
 
@@ -464,12 +464,27 @@ The `question` field uses the same shape as v1 questions (`type`, `question`, `o
 
 | Field         | Required | Description |
 |---------------|----------|-------------|
-| `code`        | Yes      | Source code to type |
+| `code`        | Yes      | Source code to type during the instructor demo |
 | `language`    | Yes      | e.g. `javascript`, `html`, `python` |
 | `description` | No       | Spoken before typing starts |
 | `explanation` | No       | Spoken after typing completes |
 | `autoRun`     | No       | Run code after typing (default: false) |
 | `typingSpeed` | No       | Milliseconds per character (default: 30–60) |
+| `starterCode` | No       | Seeded into the editor on student practice handoff (after the demo). Prefer a skeleton with comments — not the full solution. If omitted, the editor starts empty. |
+
+Example practice handoff with a skeleton:
+
+```json
+"code_example": {
+  "code": "let message = 'Hello World';\nconsole.log(message);",
+  "language": "javascript",
+  "description": "Watch this example.",
+  "explanation": "We use let, a name, and quotes for text.",
+  "starterCode": "// Create a variable called message\n// Set it to 'Hello World'\n\n"
+}
+```
+
+The preview player and student stage both apply `starterCode` when the avatar hands off to the learner.
 
 ### `formula_example` fields
 
@@ -519,7 +534,7 @@ Set global phrases once under `curriculum.defaults.avatar`:
   "avatar": {
     "intro_template": "Welcome! In this lesson, you will be learning about {{lesson_title}}.",
     "continue_prompt": "Click Continue when you're ready.",
-    "handoff_to_practice": "Now it's your turn! I've cleared the example. Try solving the problem yourself.",
+    "handoff_to_practice": "Now it's your turn! Use the starter in the editor and finish the challenge.",
     "correct_feedback": "That's correct! Well done.",
     "incorrect_feedback": "Not quite — let's look at that again."
   }

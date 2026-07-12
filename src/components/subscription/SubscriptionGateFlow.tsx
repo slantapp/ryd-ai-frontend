@@ -18,6 +18,14 @@ import { PRIVATE_PATHS } from "@/utils/routePaths";
 
 type GateView = "instructors" | "subscribe";
 
+/** High-visibility free-trial CTA — must read clearly next to softer subscribe actions. */
+const sneakPeekButtonClass = cn(
+  "gap-2 rounded-xl border-2 border-primary bg-primary font-solway text-sm font-bold tracking-wide text-white shadow-md shadow-primary/30",
+  "hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/40",
+  "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+  "active:scale-[0.98]",
+);
+
 const shellDialogContentClass = cn(
   "flex min-h-0 min-w-0 flex-col gap-0 overflow-hidden border-0 p-0 shadow-xl",
   "top-[max(0.5rem,env(safe-area-inset-top,0px))] max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-0.75rem)] w-[calc(100vw-1rem)] max-w-4xl translate-y-0 rounded-xl",
@@ -124,11 +132,10 @@ const SubscriptionGateFlow = ({
             >
               <Button
                 type="button"
-                variant="outline"
-                className="w-full gap-2 rounded-xl font-solway sm:hidden"
+                className={cn(sneakPeekButtonClass, "h-12 w-full text-base sm:hidden")}
                 onClick={handleSneakPeek}
               >
-                <PlayCircle className="size-4 shrink-0" aria-hidden />
+                <PlayCircle className="size-5 shrink-0 fill-white/20" aria-hidden />
                 Try a free sneak peek
               </Button>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -144,16 +151,18 @@ const SubscriptionGateFlow = ({
                 <div className="order-first flex w-full flex-col gap-1.5 sm:order-2 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
                   <Button
                     type="button"
-                    variant="outline"
-                    className="hidden gap-2 rounded-xl font-solway sm:inline-flex"
+                    className={cn(
+                      sneakPeekButtonClass,
+                      "hidden h-11 px-5 text-base sm:inline-flex",
+                    )}
                     onClick={handleSneakPeek}
                   >
-                    <PlayCircle className="size-4 shrink-0" aria-hidden />
+                    <PlayCircle className="size-5 shrink-0 fill-white/20" aria-hidden />
                     Try a free sneak peek
                   </Button>
                   <Button
                     type="button"
-                    className="w-full rounded-xl bg-[#DDB5D2] font-solway text-primary hover:bg-[#DDA5D2] sm:w-auto"
+                    className="h-11 w-full rounded-xl bg-[#DDB5D2] font-solway font-semibold text-primary hover:bg-[#DDA5D2] sm:w-auto"
                     disabled={!hasPreviewedInstructor}
                     onClick={() => {
                       trackSubscribeIntent();
@@ -197,13 +206,14 @@ const SubscriptionGateFlow = ({
               </Button>
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="ml-auto gap-1.5 rounded-xl font-solway"
+                className={cn(
+                  sneakPeekButtonClass,
+                  "ml-auto h-10 px-4 text-sm sm:px-5",
+                )}
                 onClick={handleSneakPeek}
               >
-                <PlayCircle className="size-4 shrink-0" aria-hidden />
-                Sneak peek
+                <PlayCircle className="size-4 shrink-0 fill-white/20" aria-hidden />
+                Free sneak peek
               </Button>
             </div>
 

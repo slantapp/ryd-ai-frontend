@@ -57,6 +57,10 @@ function validateCodeExampleField(
     errors.push(`${label}: code_example 'autoRun' must be a boolean`);
   }
 
+  if (ex.starterCode !== undefined && typeof ex.starterCode !== "string") {
+    errors.push(`${label}: code_example 'starterCode' must be a string`);
+  }
+
   if (
     ex.typingSpeed !== undefined &&
     (typeof ex.typingSpeed !== "number" || !Number.isFinite(ex.typingSpeed))

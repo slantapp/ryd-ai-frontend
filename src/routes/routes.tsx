@@ -8,6 +8,7 @@ import {
   SignInPage,
   SignUpPage,
 } from "@/pages/auth";
+import TermsOfServicePage from "@/pages/legal/TermsOfService";
 import { PRIVATE_PATHS, PUBLIC_PATHS } from "../utils/routePaths";
 import { Navigate } from "react-router-dom";
 import {
@@ -46,6 +47,7 @@ const {
   SIGN_UP,
   FORGOT_PASSWORD,
   RESET_PASSWORD,
+  TERMS,
 } = PUBLIC_PATHS;
 
 export const PUBLIC_ROUTES: AppRoute[] = [
@@ -72,6 +74,10 @@ export const PUBLIC_ROUTES: AppRoute[] = [
   {
     path: RESET_PASSWORD,
     element: <ResetPasswordPage />,
+  },
+  {
+    path: TERMS,
+    element: <TermsOfServicePage />,
   },
   {
     path: SELECT_PROFILE,

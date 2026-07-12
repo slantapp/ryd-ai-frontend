@@ -14,6 +14,11 @@ export interface CodeExample {
   explanation?: string;
   autoRun?: boolean;
   typingSpeed?: number;
+  /**
+   * Seeded into the editor on student practice handoff (after the worked example).
+   * Prefer a skeleton with comments — not the full solution.
+   */
+  starterCode?: string;
 }
 
 export interface Question {
@@ -242,12 +247,14 @@ export function getFirstLesson(
 }
 
 import puppyHtmlWebAppCurriculum from "./puppy-html-web-app-curriculum.json";
+import type { CurriculumV2 } from "@/features/curriculum-preview/v2/types";
 
 /** Bundled sneak-peek demo (not from the visible-curricula API). */
 export const DEMO_COURSE_SLUG = "puppy-html-web-app";
 
-export function getDemoCurriculum(): Curriculum {
-  return puppyHtmlWebAppCurriculum as Curriculum;
+/** Schema v2 flow curriculum used by the free sneak-peek lesson player. */
+export function getDemoCurriculumV2(): CurriculumV2 {
+  return puppyHtmlWebAppCurriculum as CurriculumV2;
 }
 
 export function isDemoCourseSlug(slug: string | null | undefined): boolean {
@@ -266,10 +273,10 @@ export function getAllCurricula(): Curriculum[] {
   return remoteCurricula;
 }
 
-// Helper function to get curriculum by slug (includes bundled demo for sneak peek)
+// Helper function to get curriculum by slug (bundled demo is v2 — use getDemoCurriculumV2)
 export function getCurriculumBySlug(slug: string): Curriculum | null {
   if (isDemoCourseSlug(slug)) {
-    return getDemoCurriculum();
+    return null;
   }
   return remoteCurricula.find((curriculum) => curriculum.slug === slug) || null;
 }

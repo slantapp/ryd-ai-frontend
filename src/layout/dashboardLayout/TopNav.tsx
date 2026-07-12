@@ -19,9 +19,11 @@ import SignOutModal from "@/components/shared/SignOutModal";
 
 interface TopNavProps {
   onOpenMobileNav?: () => void;
+  /** Hide the mobile hamburger (e.g. sneak peek). */
+  hideMobileMenu?: boolean;
 }
 
-const TopNav = ({ onOpenMobileNav }: TopNavProps) => {
+const TopNav = ({ onOpenMobileNav, hideMobileMenu = false }: TopNavProps) => {
   const userDetails = useAuthStore((state) => state.user);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [open, setOpen] = useState(false);
@@ -33,16 +35,18 @@ const TopNav = ({ onOpenMobileNav }: TopNavProps) => {
     <div className="fixed left-3 right-3 top-3 z-[60] flex rounded-[20px] bg-white px-2 py-2 shadow-xs transition-all duration-300 ease-in-out sm:left-4 sm:right-4 sm:top-4 sm:px-4">
       <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0 lg:hidden"
-            onClick={() => onOpenMobileNav?.()}
-            aria-label="Open menu"
-          >
-            <Menu className="size-5" strokeWidth={2} />
-          </Button>
+          {!hideMobileMenu ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 lg:hidden"
+              onClick={() => onOpenMobileNav?.()}
+              aria-label="Open menu"
+            >
+              <Menu className="size-5" strokeWidth={2} />
+            </Button>
+          ) : null}
           <img
             src="/images/logo.svg"
             alt="RYD Learning"

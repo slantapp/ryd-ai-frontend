@@ -158,7 +158,14 @@ export function usePreviewAvatar() {
   }, [stop]);
 
   const AvatarComponent = useCallback(
-    ({ className }: { className?: string }) => (
+    ({
+      className,
+      showUnlockOverlay = true,
+    }: {
+      className?: string;
+      /** When false, parent shows its own unlock CTA (e.g. kids stage mobile). */
+      showUnlockOverlay?: boolean;
+    }) => (
       <div className={`relative ${className || ""}`}>
         <NarratorAvatar
           ref={avatarRef}
@@ -170,7 +177,7 @@ export function usePreviewAvatar() {
           onSubtitle={handleSubtitle}
           className="h-full w-full"
         />
-        {showMobileAudioUnlock && (
+        {showUnlockOverlay && showMobileAudioUnlock && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-xl">
             <button
               type="button"
@@ -206,5 +213,7 @@ export function usePreviewAvatar() {
     currentSubtitle,
     selectedInstructor,
     setSelectedInstructor,
+    showMobileAudioUnlock,
+    unlockMobileAudio: handleMobileAudioUnlock,
   };
 }

@@ -33,6 +33,7 @@ import {
   useUpgradeSubscription,
 } from "@/hooks/useSubscription";
 import { useLocationDefaultsStore } from "@/stores/locationDefaultsStore";
+import { getPlanDisplayPricing } from "@/utils/planPricing";
 
 type SubscriptionContentServerProps = {
   /** When true, hides settings chrome and notifies parent after successful subscription. */
@@ -356,6 +357,15 @@ export default function SubscriptionContentServer({
     return out;
   }, [plansQuery.data?.data]);
 
+  const referralOffer = useMemo(() => {
+    const discounted = plans.find((p) => p.referralDiscountApplied === true);
+    if (!discounted) return null;
+    return {
+      code: discounted.referralCode?.trim() || null,
+      applied: true,
+    };
+  }, [plans]);
+
   const currentPlan = useMemo(
     () => plans.find((p) => p.key === primaryPlanKey) ?? null,
     [plans, primaryPlanKey],
@@ -551,6 +561,16 @@ export default function SubscriptionContentServer({
               ? "Complete your subscription to unlock the dashboard."
               : "Your access is determined by your server subscription status."}
           </p>
+          {referralOffer?.applied ? (
+            <p className="mt-2 inline-flex flex-wrap items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 font-inter text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200/80 sm:text-sm">
+              <span>Referral discount applied to your plans</span>
+              {referralOffer.code ? (
+                <Badge className="bg-emerald-600 font-inter text-[10px] font-bold uppercase tracking-wide text-white hover:bg-emerald-600">
+                  {referralOffer.code}
+                </Badge>
+              ) : null}
+            </p>
+          ) : null}
         </div>
 
         {!gateMode && (
@@ -829,21 +849,15 @@ export default function SubscriptionContentServer({
                     : "");
               const periodSuffix =
                 p.periodSuffix?.trim() || meta.periodSuffixFallback;
-              const hasReferralDiscount =
-                p.referralDiscountApplied === true &&
-                Boolean(p.discountedPriceLabel?.trim()) &&
-                (p.discountAmount ?? 0) > 0;
-              const displayPrice = hasReferralDiscount
-                ? p.discountedPriceLabel!
-                : p.discountedPriceLabel?.trim() || p.priceLabel;
-              const originalPrice =
-                p.originalPriceLabel?.trim() || p.priceLabel;
+              const pricing = getPlanDisplayPricing(p);
+              const accentClass = p.accent?.trim() || meta.accent;
+              const borderClass = p.borderAccent?.trim() || meta.borderAccent;
               return (
                 <Card
                   key={p.key}
                   className={cn(
                     "relative min-w-0 overflow-hidden rounded-2xl border-0 shadow-none transition hover:shadow-md",
-                    meta.borderAccent,
+                    borderClass,
                     isPopular && !gateMode && "lg:scale-[1.02] lg:shadow-lg"
                   )}
                 >
@@ -864,7 +878,7 @@ export default function SubscriptionContentServer({
                     className={cn(
                       "flex h-full min-w-0 flex-col",
                       gateMode ? "p-4 sm:p-5" : "p-5 sm:p-6",
-                      `bg-linear-to-br ${meta.accent}`
+                      `bg-linear-to-br ${accentClass}`
                     )}
                   >
                     <div
@@ -890,33 +904,35 @@ export default function SubscriptionContentServer({
                     ) : null}
 
                     <div className="mt-3 space-y-1.5 sm:mt-4">
-                      {hasReferralDiscount ? (
+                      {pricing.referralDiscountApplied ? (
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-inter text-sm text-gray-500 line-through">
-                            {originalPrice}
+                            {pricing.originalPrice}
                           </span>
-                          {p.discountLabel ? (
-                            <Badge
-                              variant="secondary"
-                              className="bg-emerald-100 font-inter text-[10px] font-semibold uppercase tracking-wide text-emerald-800 hover:bg-emerald-100"
-                            >
-                              Save {p.discountLabel}
-                              {p.referralDiscountType === "percentage" &&
-                              p.referralDiscountValue != null
-                                ? ` (${p.referralDiscountValue}%)`
-                                : ""}
-                            </Badge>
-                          ) : null}
+                          <Badge
+                            variant="secondary"
+                            className="bg-emerald-100 font-inter text-[10px] font-semibold uppercase tracking-wide text-emerald-800 hover:bg-emerald-100"
+                          >
+                            {pricing.saveLabel
+                              ? `Save ${pricing.saveLabel}`
+                              : "Referral deal"}
+                            {p.referralDiscountType === "percentage" &&
+                            p.referralDiscountValue != null &&
+                            !pricing.saveLabel?.includes("%")
+                              ? ` (${p.referralDiscountValue}%)`
+                              : ""}
+                          </Badge>
                         </div>
                       ) : null}
                       <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
                         <span
                           className={cn(
                             "font-solway font-bold tracking-tight text-gray-900",
-                            gateMode ? "text-2xl sm:text-3xl" : "text-3xl"
+                            gateMode ? "text-2xl sm:text-3xl" : "text-3xl",
+                            pricing.referralDiscountApplied && "text-emerald-800",
                           )}
                         >
-                          {displayPrice}
+                          {pricing.displayPrice}
                         </span>
                         {periodSuffix ? (
                           <span
@@ -929,9 +945,13 @@ export default function SubscriptionContentServer({
                           </span>
                         ) : null}
                       </div>
-                      {hasReferralDiscount && p.referralCode ? (
-                        <p className="font-inter text-xs text-emerald-700">
-                          Referral code {p.referralCode} applied
+                      {pricing.referralDiscountApplied && pricing.referralCode ? (
+                        <p className="font-inter text-xs font-medium text-emerald-700">
+                          Referral code {pricing.referralCode} applied
+                        </p>
+                      ) : pricing.referralDiscountApplied ? (
+                        <p className="font-inter text-xs font-medium text-emerald-700">
+                          Special referral pricing
                         </p>
                       ) : null}
                     </div>

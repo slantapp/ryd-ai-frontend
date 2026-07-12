@@ -15,9 +15,9 @@
     "defaults": {
       "avatar": {
         "intro_template": "Welcome! In this lesson, you will be learning about {{lesson_title}}.",
-        "continue_prompt": "Click Continue when you're ready.",
+        "continue_prompt": "Tap Continue when you're ready to keep going.",
         "start_questions_prompt": "Great! When you're ready, click Start Questions.",
-        "handoff_to_practice": "Now it's your turn! I've cleared the example. Try solving the problem yourself.",
+        "handoff_to_practice": "Now it's your turn! Use the starter in the editor and finish the challenge.",
         "lesson_complete_template": "In this lesson, you learned about {{lesson_title}}.",
         "correct_feedback": "That's correct! Well done.",
         "incorrect_feedback": "Not quite — let's look at that again."
@@ -223,7 +223,8 @@
                     "description": "Here's one way to do it — pay attention to let, the name, and the quotes.",
                     "explanation": "We use let to declare, pick a name, and assign a string value in quotes.",
                     "autoRun": false,
-                    "typingSpeed": 60
+                    "typingSpeed": 60,
+                    "starterCode": "// Create a variable called message\n// Set it to 'Hello World'\n// Then print it with console.log\n\n"
                   },
                   "testCriteria": {
                     "expectedCode": "let message"
@@ -231,7 +232,7 @@
                 },
                 "avatar": {
                   "before_demo": "I'll walk through an example first, then it's your turn.",
-                  "handoff": "Now it's your turn! I've cleared the example. Try solving the problem yourself."
+                  "handoff": "Now it's your turn! I left you a starter with comments — fill in the code."
                 },
                 "advance": "on_answer"
               },

@@ -18,6 +18,7 @@ import { HEAR_ABOUT_US_OPTIONS } from "@/data/signupReferralSources";
 import { cn } from "@/lib/utils";
 import type { AiRegisterPayload } from "@/stores/authStore";
 import { useAuthStore } from "@/stores/authStore";
+import { isEmailAlreadyRegisteredError, getErrorMessage } from "@/utils/authErrors";
 import { PRIVATE_PATHS, PUBLIC_PATHS } from "@/utils/routePaths";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -162,11 +163,20 @@ export function PersonalInfoStep({
       toast.success("Account created — welcome!");
       navigate(PRIVATE_PATHS.DASHBOARD, { replace: true });
     } catch (err) {
-      const ax = err as AxiosError<{ message?: string }>;
-      const msg =
-        ax.response?.data?.message ||
-        (err instanceof Error ? err.message : "Registration failed");
-      toast.error(typeof msg === "string" ? msg : "Registration failed");
+      const ax = err as AxiosError<{ message?: string; status?: boolean }>;
+      const errorMessage = getErrorMessage(err, "Registration failed");
+      toast.error(errorMessage);
+
+      if (
+        isEmailAlreadyRegisteredError(ax.response?.status, errorMessage)
+      ) {
+        navigate(PUBLIC_PATHS.LOGIN, {
+          replace: true,
+          state: {
+            email: formData.email.trim(),
+          },
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -357,7 +367,17 @@ export function PersonalInfoStep({
               htmlFor="su-terms"
               className="font-inter text-xs leading-relaxed text-[#4F4D55]"
             >
-              I agree to the terms and privacy policy for the AI LMS.
+              I agree to the{" "}
+              <Link
+                to={PUBLIC_PATHS.TERMS}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-primary hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Terms of Service & Privacy Policy
+              </Link>
+              .
               <RequiredMark />
             </label>
           </div>

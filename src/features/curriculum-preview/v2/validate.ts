@@ -39,6 +39,12 @@ function validateCodeExample(
   if (!ex.language || typeof ex.language !== "string") {
     errors.push(`${label}: code_example requires a 'language' string`);
   }
+  if (
+    ex.starterCode !== undefined &&
+    typeof ex.starterCode !== "string"
+  ) {
+    errors.push(`${label}: code_example.starterCode must be a string when provided`);
+  }
 }
 
 function validateFormulaExample(

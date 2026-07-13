@@ -1050,24 +1050,48 @@ export function LessonPlayer({
         {avatarSlot &&
           (kidsStage ? (
             <>
-              {/* Mobile / tablet: keep avatar mounted off-screen so TTS can init (not display:none). */}
-              {!isLgUp && (
+              {/*
+                One mount only: remounting on breakpoint switches breaks ready state
+                and makes the unlock CTA flaky. Off-screen on mobile (opacity, not display:none).
+              */}
+              <div
+                className={
+                  isLgUp
+                    ? "mx-0 flex w-52 shrink-0 flex-col items-center xl:w-60"
+                    : "pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
+                }
+                aria-hidden={!isLgUp}
+              >
                 <div
-                  className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
-                  aria-hidden
+                  className={
+                    isLgUp
+                      ? "aspect-square w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner"
+                      : "h-full w-full"
+                  }
                 >
                   {avatarSlot}
                 </div>
-              )}
+                {isLgUp ? (
+                  isSpeaking && currentSubtitle ? (
+                    <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
+                      {currentSubtitle}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-center text-xs text-gray-400">
+                      Your instructor
+                    </p>
+                  )
+                ) : null}
+              </div>
 
-              {/* Mobile / tablet chrome: mic + subtitle + voice unlock tap */}
+              {/* Mobile / tablet chrome: unlock CTA, loading, or mic + subtitle */}
               {!isLgUp && (
                 <div className="flex w-full shrink-0 flex-col gap-2">
                   {showMobileAudioUnlock ? (
                     <div className="rounded-xl border border-primary/20 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
                       <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
-                        Your phone needs one tap to allow instructor voice. This
-                        is normal on Safari and Chrome mobile.
+                        Your phone needs one tap to start the lesson with voice.
+                        This is normal on Safari and Chrome mobile.
                       </p>
                       <button
                         type="button"
@@ -1075,7 +1099,7 @@ export function LessonPlayer({
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
                       >
                         <Volume2 className="h-5 w-5 shrink-0" aria-hidden />
-                        <span>Tap to start voice</span>
+                        <span>Tap to start lesson</span>
                       </button>
                     </div>
                   ) : (
@@ -1121,24 +1145,6 @@ export function LessonPlayer({
                         </p>
                       )}
                     </div>
-                  )}
-                </div>
-              )}
-
-              {/* Desktop: full avatar */}
-              {isLgUp && (
-                <div className="mx-0 flex w-52 shrink-0 flex-col items-center xl:w-60">
-                  <div className="aspect-square w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
-                    {avatarSlot}
-                  </div>
-                  {isSpeaking && currentSubtitle ? (
-                    <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
-                      {currentSubtitle}
-                    </p>
-                  ) : (
-                    <p className="mt-2 text-center text-xs text-gray-400">
-                      Your instructor
-                    </p>
                   )}
                 </div>
               )}

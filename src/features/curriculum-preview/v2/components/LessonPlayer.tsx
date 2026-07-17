@@ -639,12 +639,11 @@ export function LessonPlayer({
       setShowCelebration(correct);
 
       if (correct) {
+        // Solved it — they understood the task, so don't re-explain it.
         const feedback =
           beat.avatar?.on_correct ?? defaults.correct_feedback;
-        speakThen(feedback, () => {
-          speakSequence([q.explanation, "Let's keep going!"], () => {
-            setTimeout(() => advanceRef.current(), 600);
-          });
+        speakSequence([feedback, "Let's keep going!"], () => {
+          setTimeout(() => advanceRef.current(), 600);
         });
         return;
       }
@@ -667,8 +666,13 @@ export function LessonPlayer({
         return;
       }
 
+      // Wrong with retries left: re-explain the task, then hand back for another try.
+      const reAskInstruction =
+        q.type === "code_test" || q.type === "formula_test"
+          ? beat.avatar?.on_ask ?? q.question
+          : undefined;
       speakThen(feedback, () => {
-        speakThen(retry.hint, () => {
+        speakSequence([reAskInstruction, retry.hint], () => {
           setIsAnswerSubmitted(false);
           setShowCelebration(false);
           if (clearSelection) setSelectedAnswer(null);
@@ -972,10 +976,10 @@ export function LessonPlayer({
 
   const continueRow =
     canContinue &&
-    beat &&
-    beat.type !== "bridge" &&
-    beat.advance === "manual" &&
-    !isSpeaking ? (
+      beat &&
+      beat.type !== "bridge" &&
+      beat.advance === "manual" &&
+      !isSpeaking ? (
       <div
         className={cn(
           "flex shrink-0 border-t border-gray-200 bg-white",
@@ -1031,19 +1035,27 @@ export function LessonPlayer({
   })();
 
   const fillWorkspace = showCodePanel || showFormulaPanel;
+  /**
+   * Kids stage + workspace: on lg+ the instruction card becomes a full-height
+   * side rail beside the board instead of a cramped strip above it.
+   */
+  const sideBySide = kidsStage && fillWorkspace;
 
   const instructionCard = (
     <div
       className={cn(
         "rounded-2xl border border-gray-100 bg-white shadow-sm",
         kidsStage ? "p-2.5 sm:p-3 md:p-4" : "p-3 sm:p-4",
+        sideBySide && "lg:min-h-full",
       )}
     >
       <div
         className={cn(
           "flex flex-col gap-3",
           kidsStage
-            ? "sm:gap-3 lg:flex-row lg:items-stretch lg:gap-4"
+            ? sideBySide
+              ? "sm:gap-3"
+              : "sm:gap-3 lg:flex-row lg:items-stretch lg:gap-4"
             : "gap-4 lg:flex-row lg:items-stretch",
         )}
       >
@@ -1057,7 +1069,9 @@ export function LessonPlayer({
               <div
                 className={
                   isLgUp
-                    ? "mx-0 flex w-52 shrink-0 flex-col items-center xl:w-60"
+                    ? sideBySide
+                      ? "mx-auto flex w-36 shrink-0 flex-col items-center xl:w-44"
+                      : "mx-0 flex w-52 shrink-0 flex-col items-center xl:w-60"
                     : "pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
                 }
                 aria-hidden={!isLgUp}
@@ -1257,7 +1271,9 @@ export function LessonPlayer({
           className={cn(
             "flex w-full shrink-0 flex-col gap-2.5",
             kidsStage
-              ? "grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 lg:flex lg:w-48 lg:grid-cols-none xl:w-56"
+              ? sideBySide
+                ? "grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 lg:grid-cols-1"
+                : "grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 lg:flex lg:w-48 lg:grid-cols-none xl:w-56"
               : "lg:w-52 xl:w-56",
           )}
         >
@@ -1347,13 +1363,17 @@ export function LessonPlayer({
             "mx-auto flex w-full max-w-7xl flex-col",
             kidsStage ? "gap-2 sm:gap-3" : "gap-3",
             fillWorkspace ? "h-full min-h-0" : "min-h-full",
+            sideBySide && "lg:flex-row lg:items-stretch",
           )}
         >
           <div
             className={
               fillWorkspace
                 ? kidsStage
-                  ? "max-h-[min(36%,12.5rem)] shrink-0 overflow-y-auto sm:max-h-[min(38%,15rem)] md:max-h-[40%] lg:max-h-[36%]"
+                  ? cn(
+                    "max-h-[min(45%,17rem)] shrink-0 overflow-y-auto sm:max-h-[min(48%,20rem)] md:max-h-[50%]",
+                    "lg:h-full lg:max-h-none lg:w-80 xl:w-96",
+                  )
                   : "max-h-[42%] shrink-0 overflow-y-auto"
                 : undefined
             }
@@ -1362,7 +1382,7 @@ export function LessonPlayer({
           </div>
 
           {showCodePanel && (
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
               <div
                 className={cn(
                   "min-h-0 flex-1 overflow-hidden",
@@ -1379,7 +1399,7 @@ export function LessonPlayer({
               className={cn(
                 "overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm",
                 kidsStage ? "p-3 sm:p-4" : "p-4",
-                fillWorkspace ? "min-h-0 flex-1 overflow-y-auto" : "",
+                fillWorkspace ? "min-h-0 min-w-0 flex-1 overflow-y-auto" : "",
               )}
             >
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">

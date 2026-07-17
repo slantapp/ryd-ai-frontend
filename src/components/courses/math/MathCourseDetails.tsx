@@ -237,23 +237,6 @@ function MathCourseDetailsInner() {
     setLastAnswerCorrect(null);
   }, []);
 
-  const restoreCompletedLesson = useCallback((lesson: Lesson) => {
-    const questionCount = lesson.questions?.length ?? 0;
-    setCurrentLesson(lesson);
-    setCurrentQuestion(null);
-    setCurrentQuestionIndex(questionCount);
-    setLessonPhase("complete");
-    setIntroReady(true);
-    setIsFormulaTyping(false);
-    if (lesson.formula_example) {
-      setActiveFormulaExample(lesson.formula_example);
-      setDisplayedFormula(lesson.formula_example.formula);
-    } else {
-      setActiveFormulaExample(null);
-      setDisplayedFormula("");
-    }
-  }, []);
-
   const getAvatar = useCallback(() => avatarRef.current, []);
 
   const speakImmediate = useCallback(
@@ -855,19 +838,7 @@ function MathCourseDetailsInner() {
       setModuleTotalAnswered(0);
     }
 
-    // Completed lessons stay completed — restore completion, don't force a redo.
-    if (completedLessonIds.has(prevLesson.id)) {
-      restoreCompletedLesson(prevLesson);
-      persistCoursePosition({
-        lessonId: prevLesson.id,
-        lessonIndex: getLessonIndexInCurriculum(prevLesson, curriculum),
-        questionIndex: prevLesson.questions?.length ?? 0,
-        lessonStarted: true,
-        canStartQuestions: false,
-      });
-      return;
-    }
-
+    // Re-teach even if already completed — keep completion status for nav.
     enterLessonIntro(prevLesson);
     persistCoursePosition({
       lessonId: prevLesson.id,
@@ -879,12 +850,10 @@ function MathCourseDetailsInner() {
     speakLessonContent(prevLesson);
   }, [
     clearIntroUnlockTimeout,
-    completedLessonIds,
     currentLesson,
     curriculum,
     enterLessonIntro,
     persistCoursePosition,
-    restoreCompletedLesson,
     speakLessonContent,
     stopSpeaking,
   ]);
@@ -922,10 +891,8 @@ function MathCourseDetailsInner() {
     if (!currentLesson) return;
     stopSpeaking();
     stopFormulaTyping();
-    setCurrentQuestion(null);
-    setCurrentQuestionIndex(0);
-    setLessonPhase("intro");
-    setIntroReady(true);
+    clearIntroUnlockTimeout();
+    enterLessonIntro(currentLesson);
     persistCoursePosition({
       lessonId: currentLesson.id,
       lessonIndex: curriculum
@@ -933,9 +900,20 @@ function MathCourseDetailsInner() {
         : undefined,
       questionIndex: 0,
       lessonStarted: true,
-      canStartQuestions: true,
+      canStartQuestions: false,
     });
-  }, [currentLesson, curriculum, persistCoursePosition, stopFormulaTyping, stopSpeaking]);
+    // Replay avatar teaching the same way as the first pass.
+    speakLessonContent(currentLesson);
+  }, [
+    clearIntroUnlockTimeout,
+    currentLesson,
+    curriculum,
+    enterLessonIntro,
+    persistCoursePosition,
+    speakLessonContent,
+    stopFormulaTyping,
+    stopSpeaking,
+  ]);
 
   const handleReviewLastQuestion = useCallback(() => {
     if (!currentLesson?.questions?.length) return;

@@ -26,6 +26,10 @@ export type SubscriptionPlan = {
   /** USD list / charge amount from plans API. */
   amountUsd?: number;
   amountNgn?: number;
+  /** Show the comparison price crossed out beside the current price. */
+  showSlashPrice?: boolean;
+  compareAtPriceLabel?: string | null;
+  compareAtAmount?: number | null;
   /** Whether a referral discount is applied to this plan. */
   referralDiscountApplied?: boolean;
   referralCode?: string | null;

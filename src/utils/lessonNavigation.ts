@@ -51,11 +51,19 @@ export function resolveLessonPhase(args: {
   introReady: boolean;
   completedLessonIds: Set<string>;
 }): LessonPhase {
-  const { lesson, questionIndex, hasCurrentQuestion, completedLessonIds } =
-    args;
+  const {
+    lesson,
+    questionIndex,
+    hasCurrentQuestion,
+    introReady,
+    completedLessonIds,
+  } = args;
   // Reviewing a completed lesson's questions keeps the questions phase.
   if (hasCurrentQuestion) return "questions";
   if (isLessonMarkedComplete(lesson, completedLessonIds, questionIndex)) {
+    // Allow intentional intro replay (Back to lesson / previous completed)
+    // until teaching finishes and unlocks again.
+    if (!introReady) return "intro";
     return "complete";
   }
   const questionCount = lesson.questions?.length ?? 0;

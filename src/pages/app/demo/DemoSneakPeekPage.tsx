@@ -39,7 +39,6 @@ export default function DemoSneakPeekPage() {
 
   const curriculumV2 = useMemo(() => getDemoCurriculumV2(), []);
   const curriculum = curriculumV2.curriculum;
-  const demoTitle = curriculum.title;
 
   const [currentLesson, setCurrentLesson] = useState<LessonV2 | null>(() =>
     getFirstLessonV2(curriculum),
@@ -159,35 +158,19 @@ export default function DemoSneakPeekPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 pb-[env(safe-area-inset-bottom)]">
-      {/* Compact sneak-peek chrome — not a dashboard */}
-      <div className="flex shrink-0 flex-col gap-2 rounded-2xl border border-primary/15 bg-linear-to-r from-primary/10 via-white to-white px-3 py-2.5 min-[480px]:flex-row min-[480px]:items-center sm:px-4">
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wide text-primary">
-            <Sparkles className="size-3.5 shrink-0" aria-hidden />
-            Free sneak peek
-          </p>
-          <h1 className="truncate font-solway text-base font-bold text-gray-900 sm:text-lg">
-            {demoTitle}
-          </h1>
-          <p className="truncate font-inter text-xs text-gray-600">
-            Lesson {lessonOrdinal} of {allLessons.length}
-            {currentLesson.goal ? (
-              <span className="hidden sm:inline">{` · ${currentLesson.goal}`}</span>
-            ) : null}
-          </p>
-          {currentLesson.goal ? (
-            <p className="mt-0.5 line-clamp-2 font-inter text-xs text-gray-600 sm:hidden">
-              {currentLesson.goal}
-            </p>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-2 min-[480px]:justify-end">
+    <div className="flex h-full min-h-0 flex-col gap-1.5 pb-[env(safe-area-inset-bottom)]">
+      {/* Slim toolbar: no title block, just badge + actions (max stage height) */}
+      <div className="flex shrink-0 items-center justify-between gap-2 px-0.5">
+        <p className="flex min-w-0 items-center gap-1.5 truncate text-[0.65rem] font-semibold uppercase tracking-wide text-primary">
+          <Sparkles className="size-3.5 shrink-0" aria-hidden />
+          <span className="truncate">Free sneak peek</span>
+        </p>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="min-h-9 flex-1 gap-1.5 rounded-xl font-inter min-[480px]:flex-none"
+            className="min-h-8 gap-1.5 rounded-xl font-inter"
             onClick={() => setShowLessonsMenu(true)}
           >
             <BookOpen className="size-3.5" aria-hidden />
@@ -196,7 +179,7 @@ export default function DemoSneakPeekPage() {
           <Button
             type="button"
             size="sm"
-            className="min-h-9 flex-1 rounded-xl bg-[#DDB5D2] font-solway font-semibold text-primary hover:bg-[#DDA5D2] min-[480px]:flex-none"
+            className="min-h-8 rounded-xl bg-[#DDB5D2] font-solway font-semibold text-primary hover:bg-[#DDA5D2]"
             onClick={goToSubscribe}
           >
             Plans

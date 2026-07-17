@@ -18,6 +18,7 @@ export type PlanDisplayPricing = {
   referralDiscountApplied: boolean;
   displayPrice: string;
   originalPrice: string;
+  showOriginalPrice: boolean;
   saveLabel: string | null;
   referralCode: string | null;
 };
@@ -30,8 +31,17 @@ export function getPlanDisplayPricing(
   plan: SubscriptionPlan,
 ): PlanDisplayPricing {
   const referralDiscountApplied = plan.referralDiscountApplied === true;
-  const originalPrice =
+  const compareAtPrice =
+    plan.compareAtPriceLabel?.trim() ||
+    (plan.compareAtAmount != null
+      ? formatPlanMoney(plan.compareAtAmount, plan.billingCurrency || "USD")
+      : "");
+  const referralOriginalPrice =
     plan.originalPriceLabel?.trim() || plan.priceLabel.trim();
+  const originalPrice =
+    plan.showSlashPrice === true && compareAtPrice
+      ? compareAtPrice
+      : referralOriginalPrice;
   const discountedLabel =
     plan.discountedPriceLabel?.trim() ||
     (plan.discountedAmount != null
@@ -63,6 +73,9 @@ export function getPlanDisplayPricing(
     referralDiscountApplied,
     displayPrice,
     originalPrice,
+    showOriginalPrice:
+      (plan.showSlashPrice === true && Boolean(compareAtPrice)) ||
+      referralDiscountApplied,
     saveLabel,
     referralCode: plan.referralCode?.trim() || null,
   };

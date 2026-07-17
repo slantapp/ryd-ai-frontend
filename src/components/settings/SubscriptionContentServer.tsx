@@ -904,27 +904,7 @@ export default function SubscriptionContentServer({
                     ) : null}
 
                     <div className="mt-3 space-y-1.5 sm:mt-4">
-                      {pricing.referralDiscountApplied ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-inter text-sm text-gray-500 line-through">
-                            {pricing.originalPrice}
-                          </span>
-                          <Badge
-                            variant="secondary"
-                            className="bg-emerald-100 font-inter text-[10px] font-semibold uppercase tracking-wide text-emerald-800 hover:bg-emerald-100"
-                          >
-                            {pricing.saveLabel
-                              ? `Save ${pricing.saveLabel}`
-                              : "Referral deal"}
-                            {p.referralDiscountType === "percentage" &&
-                            p.referralDiscountValue != null &&
-                            !pricing.saveLabel?.includes("%")
-                              ? ` (${p.referralDiscountValue}%)`
-                              : ""}
-                          </Badge>
-                        </div>
-                      ) : null}
-                      <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                         <span
                           className={cn(
                             "font-solway font-bold tracking-tight text-gray-900",
@@ -934,6 +914,16 @@ export default function SubscriptionContentServer({
                         >
                           {pricing.displayPrice}
                         </span>
+                        {pricing.showOriginalPrice ? (
+                          <span
+                            className={cn(
+                              "font-inter font-medium text-gray-400 line-through",
+                              gateMode ? "text-sm sm:text-base" : "text-base"
+                            )}
+                          >
+                            {pricing.originalPrice}
+                          </span>
+                        ) : null}
                         {periodSuffix ? (
                           <span
                             className={cn(
@@ -943,6 +933,21 @@ export default function SubscriptionContentServer({
                           >
                             {periodSuffix}
                           </span>
+                        ) : null}
+                        {pricing.referralDiscountApplied ? (
+                          <Badge
+                            variant="secondary"
+                            className="bg-emerald-100 font-inter text-[10px] font-semibold uppercase tracking-wide text-emerald-800 hover:bg-emerald-100"
+                          >
+                            {pricing.saveLabel
+                              ? `Save ${pricing.saveLabel}`
+                              : "Referral deal"}
+                            {p.referralDiscountType === "percentage" &&
+                              p.referralDiscountValue != null &&
+                              !pricing.saveLabel?.includes("%")
+                              ? ` (${p.referralDiscountValue}%)`
+                              : ""}
+                          </Badge>
                         ) : null}
                       </div>
                       {pricing.referralDiscountApplied && pricing.referralCode ? (

@@ -337,16 +337,6 @@ function CourseDetailInner({
     setIsLessonCodeDemoActive(false);
   }, []);
 
-  const restoreCompletedLesson = useCallback((lesson: Lesson) => {
-    const questionCount = lesson.questions?.length ?? 0;
-    setCurrentLesson(lesson);
-    setCurrentQuestion(null);
-    setCurrentQuestionIndex(questionCount);
-    setLessonPhase("complete");
-    setIntroReady(true);
-    setIsLessonCodeDemoActive(false);
-  }, []);
-
   useEffect(() => {
     setRunLanguage(normalizedCodePanelLanguage);
   }, [normalizedCodePanelLanguage]);
@@ -1214,19 +1204,7 @@ function CourseDetailInner({
     }
     resetCodeState();
 
-    // Completed lessons stay completed — restore completion, don't force a redo.
-    if (completedLessonIds.has(prevLesson.id)) {
-      restoreCompletedLesson(prevLesson);
-      persistCoursePosition({
-        lessonId: prevLesson.id,
-        lessonIndex: getLessonIndexInCurriculum(prevLesson, curriculum),
-        questionIndex: prevLesson.questions?.length ?? 0,
-        lessonStarted: true,
-        canStartQuestions: false,
-      });
-      return;
-    }
-
+    // Re-teach even if already completed — keep completion status for nav.
     enterLessonIntro(prevLesson);
     persistCoursePosition({
       lessonId: prevLesson.id,
@@ -1239,12 +1217,10 @@ function CourseDetailInner({
   }, [
     currentLesson,
     curriculum,
-    completedLessonIds,
     persistCoursePosition,
     speakLessonContent,
     stopSpeaking,
     clearIntroUnlockTimeout,
-    restoreCompletedLesson,
     enterLessonIntro,
     resetCodeState,
   ]);
@@ -1298,11 +1274,12 @@ function CourseDetailInner({
     if (!currentLesson) return;
     stopSpeaking();
     stopCodeTyping();
-    setCurrentQuestion(null);
-    setCurrentQuestionIndex(0);
-    setLessonPhase("intro");
-    setIntroReady(true);
-    setIsLessonCodeDemoActive(false);
+    clearIntroUnlockTimeout();
+    enterLessonIntro(currentLesson);
+    setSelectedAnswer(null);
+    setIsAnswerSubmitted(false);
+    setStudentAnswer("");
+    setLastAnswerCorrect(null);
     resetCodeState();
     persistCoursePosition({
       lessonId: currentLesson.id,
@@ -1311,13 +1288,18 @@ function CourseDetailInner({
         : undefined,
       questionIndex: 0,
       lessonStarted: true,
-      canStartQuestions: true,
+      canStartQuestions: false,
     });
+    // Replay avatar teaching the same way as the first pass.
+    speakLessonContent(currentLesson);
   }, [
+    clearIntroUnlockTimeout,
     currentLesson,
     curriculum,
+    enterLessonIntro,
     persistCoursePosition,
     resetCodeState,
+    speakLessonContent,
     stopCodeTyping,
     stopSpeaking,
   ]);

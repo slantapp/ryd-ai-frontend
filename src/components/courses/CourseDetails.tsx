@@ -939,7 +939,7 @@ function CourseDetailInner({
         lessonIndex: curriculum ? getLessonIndexInCurriculum(currentLesson, curriculum) : undefined,
         questionIndex: nextIndex,
         lessonStarted: true,
-        canStartQuestions: false,
+        canStartQuestions: true,
       });
 
       // Teach worked example first, then ask the question
@@ -1010,7 +1010,7 @@ function CourseDetailInner({
         lessonIndex: curriculum ? getLessonIndexInCurriculum(currentLesson, curriculum) : undefined,
         questionIndex: totalQuestions,
         lessonStarted: true,
-        canStartQuestions: false,
+        canStartQuestions: true,
       });
 
       // Delay speech to allow React to re-render and mount the correct avatar
@@ -1250,7 +1250,7 @@ function CourseDetailInner({
         : undefined,
       questionIndex: prevIndex,
       lessonStarted: true,
-      canStartQuestions: false,
+      canStartQuestions: true,
     });
 
     if (prevQuestion.type === "code_test" && prevQuestion.code_example) {
@@ -1325,7 +1325,7 @@ function CourseDetailInner({
         : undefined,
       questionIndex: lastIndex,
       lessonStarted: true,
-      canStartQuestions: false,
+      canStartQuestions: true,
     });
     if (question.type === "code_test" && question.code_example) {
       typeCourseDetail(question.code_example, question);
@@ -1400,7 +1400,7 @@ function CourseDetailInner({
         : undefined,
       questionIndex: 0,
       lessonStarted: true,
-      canStartQuestions: false,
+      canStartQuestions: true,
     });
 
     if (question.type === "code_test" && question.code_example) {
@@ -1714,10 +1714,10 @@ function CourseDetailInner({
       const lessonComplete =
         completed.has(lesson.id) || allQuestionsDone;
 
-      setCurrentLesson(lesson);
       setLessonStarted(true);
 
       if (lessonComplete) {
+        setCurrentLesson(lesson);
         setCurrentQuestion(null);
         setCurrentQuestionIndex(questionCount);
         setLessonPhase("complete");
@@ -1727,22 +1727,30 @@ function CourseDetailInner({
           next.add(lesson.id);
           return next;
         });
+      } else if (!saved.canStartQuestions) {
+        // Intro not finished — re-teach currentLessonId instead of jumping to questions.
+        enterLessonIntro(lesson);
+        speakLessonContent(lesson);
       } else if (lesson.questions?.[questionIndex]) {
+        setCurrentLesson(lesson);
         setCurrentQuestion(lesson.questions[questionIndex]);
         setCurrentQuestionIndex(questionIndex);
         setLessonPhase("questions");
-        setIntroReady(false);
+        setIntroReady(true);
       } else {
+        setCurrentLesson(lesson);
         setCurrentQuestion(null);
         setCurrentQuestionIndex(0);
         setLessonPhase("intro");
-        setIntroReady(saved.canStartQuestions ?? false);
+        setIntroReady(true);
       }
     })();
 
     return () => {
       cancelled = true;
     };
+    // Restore once when curriculum is available; helpers are read from the latest render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curriculum, exercise]);
 
   // Keep phase aligned with question/completion state.

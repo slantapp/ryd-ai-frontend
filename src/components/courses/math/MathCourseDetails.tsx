@@ -513,7 +513,7 @@ function MathCourseDetailsInner() {
           : undefined,
         questionIndex: nextIndex,
         lessonStarted: true,
-        canStartQuestions: false,
+        canStartQuestions: true,
       });
       beginQuestion(nextQuestion);
       return;
@@ -574,7 +574,7 @@ function MathCourseDetailsInner() {
         : undefined,
       questionIndex: totalQuestions,
       lessonStarted: true,
-      canStartQuestions: false,
+      canStartQuestions: true,
     });
 
     setTimeout(() => {
@@ -874,7 +874,7 @@ function MathCourseDetailsInner() {
         : undefined,
       questionIndex: prevIndex,
       lessonStarted: true,
-      canStartQuestions: false,
+      canStartQuestions: true,
     });
     beginQuestion(prevQuestion);
   }, [
@@ -931,7 +931,7 @@ function MathCourseDetailsInner() {
         : undefined,
       questionIndex: lastIndex,
       lessonStarted: true,
-      canStartQuestions: false,
+      canStartQuestions: true,
     });
     beginQuestion(question);
   }, [
@@ -993,7 +993,7 @@ function MathCourseDetailsInner() {
         : undefined,
       questionIndex: 0,
       lessonStarted: true,
-      canStartQuestions: false,
+      canStartQuestions: true,
     });
 
     beginQuestion(question);
@@ -1178,22 +1178,32 @@ function MathCourseDetailsInner() {
           next.add(lesson.id);
           return next;
         });
+      } else if (!saved.canStartQuestions) {
+        // Intro not finished — re-teach currentLessonId instead of jumping to questions.
+        enterLessonIntro(lesson);
+        if (lesson.formula_example) {
+          setActiveFormulaExample(lesson.formula_example);
+          setDisplayedFormula(lesson.formula_example.formula);
+        }
+        speakLessonContent(lesson);
       } else if (lesson.questions?.[questionIndex]) {
         setCurrentQuestion(lesson.questions[questionIndex]);
         setCurrentQuestionIndex(questionIndex);
         setLessonPhase("questions");
-        setIntroReady(false);
+        setIntroReady(true);
       } else {
         setCurrentQuestion(null);
         setCurrentQuestionIndex(0);
         setLessonPhase("intro");
-        setIntroReady(saved.canStartQuestions ?? false);
+        setIntroReady(true);
       }
     })();
 
     return () => {
       cancelled = true;
     };
+    // Restore once when curriculum is available; helpers are read from the latest render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curriculum, exercise]);
 
   // Keep phase aligned with question/completion state.

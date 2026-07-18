@@ -222,7 +222,7 @@ const DashboardLayout = ({ children }: DashboardProps) => {
       />
       <div
         className={cn(
-          "relative flex h-full min-h-0 w-full gap-4 overflow-hidden rounded-t-2xl transition-all duration-300 ease-in-out md:mt-24 mt-20",
+          "relative mx-auto flex h-full min-h-0 w-full max-w-[1440px] gap-4 overflow-hidden rounded-t-2xl transition-all duration-300 ease-in-out md:mt-24 mt-20",
           isDemoSneakPeek
             ? "px-2 pb-2 sm:px-3 sm:pb-3"
             : "px-3 pb-6 sm:px-4 sm:pb-4",

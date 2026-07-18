@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState } from "react";
-import { Minimize2, Maximize2, Terminal, Eye } from "lucide-react";
+import { Minimize2, Maximize2, Terminal, Eye, Palette } from "lucide-react";
 import { prepareHtmlForPreview } from "@/utils/prepareHtmlForPreview";
 
 interface TestResultsProps {
@@ -7,6 +7,8 @@ interface TestResultsProps {
   code?: string; // The code being tested
   onToggleFullscreen: () => void;
   isFullscreen: boolean;
+  /** Existing DOM target used by the in-browser Python Turtle runtime. */
+  turtleTargetId?: string;
 }
 
 // Helper function to detect if code contains HTML
@@ -62,25 +64,28 @@ export default function TestResults({
   code = "",
   onToggleFullscreen,
   isFullscreen,
+  turtleTargetId,
 }: TestResultsProps) {
   const [activeTab, setActiveTab] = useState<"console" | "preview">("console");
 
   const isHTML = useMemo(() => isHTMLCode(code), [code]);
+  const hasTurtlePreview = Boolean(turtleTargetId);
+  const hasVisualPreview = isHTML || hasTurtlePreview;
 
   const htmlContent = useMemo(() => {
     if (!isHTML || !code.trim()) return "";
     return wrapHTML(code);
   }, [code, isHTML]);
 
-  // Prefer preview when HTML is present so learners see rendered output (images, etc.).
+  // Prefer visual output when HTML or Turtle code is present.
   useEffect(() => {
-    if (isHTML && htmlContent) {
+    if ((isHTML && htmlContent) || hasTurtlePreview) {
       setActiveTab("preview");
     }
-  }, [isHTML, htmlContent]);
+  }, [hasTurtlePreview, htmlContent, isHTML]);
 
   useEffect(() => {
-    if (!isHTML) return;
+    if (!hasVisualPreview) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "1") {
@@ -94,7 +99,7 @@ export default function TestResults({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isHTML]);
+  }, [hasVisualPreview]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-md border border-gray-200 bg-black text-white">
@@ -121,7 +126,7 @@ export default function TestResults({
           </div>
           <div
             className={`h-full overflow-auto bg-gray-950 p-3 font-mono text-xs sm:p-4 sm:text-sm ${
-              activeTab !== "console" && isHTML ? "hidden lg:block" : ""
+              activeTab !== "console" && hasVisualPreview ? "hidden lg:block" : ""
             }`}
           >
             {results.length > 0 ? (
@@ -160,28 +165,38 @@ export default function TestResults({
                       ? "border-b-2 border-blue-500 bg-gray-800 text-white"
                       : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-300"
                   }`}
-                  title="Preview (Ctrl/Cmd + 2)"
+                  title={`${hasTurtlePreview ? "Turtle canvas" : "Preview"} (Ctrl/Cmd + 2)`}
                 >
-                  <Eye size={16} />
-                  <span>Preview</span>
+                  {hasTurtlePreview ? <Palette size={16} /> : <Eye size={16} />}
+                  <span>{hasTurtlePreview ? "Turtle Canvas" : "Preview"}</span>
                 </button>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onToggleFullscreen}
-              className="mr-2 rounded p-2 transition-colors hover:bg-gray-800"
-              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            >
-              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-            </button>
+            {!hasTurtlePreview && (
+              <button
+                type="button"
+                onClick={onToggleFullscreen}
+                className="mr-2 rounded p-2 transition-colors hover:bg-gray-800"
+                title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              >
+                {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+            )}
           </div>
           <div
             className={`h-full border-t border-gray-700 bg-white ${
-              activeTab !== "preview" && isHTML ? "hidden lg:block" : ""
+              activeTab !== "preview" && hasVisualPreview ? "hidden lg:block" : ""
             }`}
           >
-            {htmlContent ? (
+            {hasTurtlePreview && turtleTargetId ? (
+              <div className="flex h-full min-h-64 items-center justify-center overflow-auto bg-white p-2">
+                <div
+                  id={turtleTargetId}
+                  className="min-h-64 w-full overflow-hidden rounded-md bg-white [&>canvas]:mx-auto [&>canvas]:max-w-full [&>svg]:mx-auto [&>svg]:max-w-full"
+                  aria-label="Python Turtle drawing canvas"
+                />
+              </div>
+            ) : htmlContent ? (
               <iframe
                 key={htmlContent.slice(0, 64)}
                 srcDoc={htmlContent}

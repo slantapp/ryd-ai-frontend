@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { CheckCircle2, Lightbulb, ListTodo, Mic, Volume2, XCircle } from "lucide-react";
 import Split from "react-split";
 import MathText from "@/components/courses/math/MathText";
@@ -15,6 +23,7 @@ import {
   submissionHasContent,
 } from "@/utils/codeTestRunner";
 import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
+import { isTurtlePythonCode } from "@/utils/codeExecution/turtle";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
 import {
   defaultWebEditorTab,
@@ -127,6 +136,7 @@ export function LessonPlayer({
   const [fullscreen, setFullscreen] = useState<"editor" | "results" | null>(null);
   const [runLanguage, setRunLanguage] = useState("javascript");
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+  const turtleTargetId = `ryd-turtle-${useId().replace(/:/g, "")}`;
 
   const typed = useTypedText();
   const beatStartedRef = useRef<string | null>(null);
@@ -471,6 +481,7 @@ export function LessonPlayer({
                 language: lang,
               },
               undefined,
+              { turtleTargetId },
             );
             setResults(out.length ? out : ["✓ Code ran successfully."]);
           } finally {
@@ -722,7 +733,11 @@ export function LessonPlayer({
     setIsExecuting(true);
     setResults(["⏳ Checking your code..."]);
     try {
-      const runOutput = await runSubmissionCodeOutput(submission, q.testCriteria);
+      const runOutput = await runSubmissionCodeOutput(
+        submission,
+        q.testCriteria,
+        { turtleTargetId },
+      );
       const { passed, testResults } = evaluateSubmissionCodeTest(
         submission,
         q.testCriteria,
@@ -783,6 +798,23 @@ export function LessonPlayer({
     return "javascript";
   }, [beat, pauseReviewingCode, previousBeat]);
 
+  const authoredCode =
+    beat?.type === "code_demo"
+      ? beat.code_example.code
+      : beat?.type === "question"
+        ? beat.question.code_example?.code
+        : pauseReviewingCode && previousBeat?.type === "code_demo"
+          ? previousBeat.code_example.code
+          : pauseReviewingCode && previousBeat?.type === "question"
+            ? previousBeat.question.code_example?.code
+            : undefined;
+  const activeTurtleTargetId = isTurtlePythonCode(
+    code || authoredCode || "",
+    codeLang,
+  )
+    ? turtleTargetId
+    : undefined;
+
   useEffect(() => {
     setRunLanguage(codeLang);
   }, [codeLang]);
@@ -836,12 +868,13 @@ export function LessonPlayer({
       const out = await runSubmissionCodeOutput(
         submission,
         beat?.type === "question" ? beat.question.testCriteria : undefined,
+        { turtleTargetId },
       );
       setResults(out.length ? out : ["✓ Code ran successfully."]);
     } finally {
       setIsExecuting(false);
     }
-  }, [beat, demoMode, getCodeSubmission, isExecuting, useWeb]);
+  }, [beat, demoMode, getCodeSubmission, isExecuting, turtleTargetId, useWeb]);
 
   const editorLocked = demoMode === "demo" || pauseReviewingCode;
 
@@ -961,6 +994,7 @@ export function LessonPlayer({
           <TestResults
             results={results}
             code={code}
+            turtleTargetId={activeTurtleTargetId}
             onToggleFullscreen={() =>
               setFullscreen(fullscreen === "results" ? null : "results")
             }

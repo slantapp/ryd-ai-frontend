@@ -1,0 +1,157 @@
+{
+  "slug": "python-turtle-first-shapes-v2",
+  "schema_version": 2,
+  "curriculum": {
+    "title": "Python Turtle: First Shapes",
+    "description": "A short visual Python lesson for testing Turtle graphics in the Curriculum v2 learning environment.",
+    "language": "en",
+    "category": "coding",
+    "age": 9,
+    "class": "Primary 4",
+    "grade": 4,
+    "duration": "20 minutes",
+    "level": "Beginner",
+    "rating": 4.8,
+    "defaults": {
+      "avatar": {
+        "continue_prompt": "Tap Continue when you're ready.",
+        "handoff_to_practice": "Now it is your turn. Complete the square and run your code to see it on the Turtle canvas.",
+        "correct_feedback": "Excellent! You made a square with Python Turtle.",
+        "incorrect_feedback": "Not quite. Let us check the loop and turning angle again."
+      },
+      "advance": {
+        "pause_min_seconds": 2
+      },
+      "question_retry": {
+        "max": 2,
+        "hint": "A square repeats four times. Move forward, then turn left by 90 degrees.",
+        "on_exhausted": "continue"
+      }
+    },
+    "modules": [
+      {
+        "id": "module_01",
+        "title": "Drawing with Turtle",
+        "unlock": null,
+        "lessons": [
+          {
+            "id": "module_01__lesson_01",
+            "title": "Draw Your First Square",
+            "goal": "Use a Python loop to draw a four-sided square.",
+            "estimated_minutes": 15,
+            "flow": [
+              {
+                "id": "welcome",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Today Python will become our digital pencil. We will tell a turtle how to move and turn."
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "square_idea",
+                "type": "display",
+                "phase": "teach",
+                "title": "How a square works",
+                "body": "A square has **4 equal sides** and **4 right-angle turns**.\n\nOur turtle will repeat two commands:\n\n1. Move forward\n2. Turn left 90 degrees",
+                "speak_body": false,
+                "avatar": {
+                  "text": "Instead of writing the same commands four times, we can use a loop. The loop repeats one move and one turn for every side.",
+                  "timing": "with_display"
+                },
+                "advance": "manual"
+              },
+              {
+                "id": "square_demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "import turtle\n\npen = turtle.Turtle()\npen.color(\"purple\")\npen.pensize(4)\npen.speed(0)\n\nfor side in range(4):\n    pen.forward(120)\n    pen.left(90)\n\nprint(\"Square complete!\")",
+                  "language": "python",
+                  "description": "Watch me import Turtle, create a purple pen, and repeat the square instructions four times.",
+                  "explanation": "range(4) makes the loop run four times. Each time, the turtle moves 120 steps and turns left 90 degrees.",
+                  "autoRun": true,
+                  "typingSpeed": 25,
+                  "starterCode": "import turtle\n\npen = turtle.Turtle()\npen.color(\"blue\")\npen.pensize(4)\npen.speed(0)\n\n# Repeat the move and turn commands four times\nfor side in range(4):\n    pen.forward(120)\n    pen.left(90)"
+                },
+                "advance": "manual"
+              },
+              {
+                "id": "look_at_drawing",
+                "type": "pause",
+                "phase": "teach",
+                "avatar": {
+                  "text": "Look at the Turtle canvas. Four equal moves and four 90-degree turns made a complete square."
+                },
+                "advance": "manual",
+                "min_seconds": 2,
+                "keep_previous": true
+              },
+              {
+                "id": "square_practice",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "draw_square_code_test",
+                  "type": "code_test",
+                  "question": "Complete and run the Python Turtle program so it draws a square using a loop that repeats four times.",
+                  "explanation": "A square needs four repetitions, with a 90-degree turn after every side.",
+                  "code_example": {
+                    "code": "import turtle\n\npen = turtle.Turtle()\npen.speed(0)\n\n# This example draws a triangle\nfor side in range(3):\n    pen.forward(100)\n    pen.left(120)",
+                    "language": "python",
+                    "description": "First, see how a loop can draw a triangle by repeating three times.",
+                    "explanation": "The same pattern works for a square, but a square needs four repeats and 90-degree turns.",
+                    "typingSpeed": 25,
+                    "starterCode": "import turtle\n\npen = turtle.Turtle()\npen.color(\"blue\")\npen.pensize(4)\npen.speed(0)\n\n# Draw a square: complete the loop body\nfor side in range(4):\n    pen.forward(120)\n    # Add the correct left turn here\n"
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:for\\s+\\w+\\s+in\\s+range\\s*\\(\\s*4\\s*\\)[\\s\\S]*left\\s*\\(\\s*90\\s*\\)"
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Before you try, I will show you the same loop pattern with a triangle.",
+                  "handoff": "Now complete the missing turn in the square starter code, then select Test Code.",
+                  "on_ask": "Use range four, move forward, and turn left 90 degrees to complete the square.",
+                  "on_correct": "Fantastic! Your loop drew all four sides of the square.",
+                  "on_wrong": "The turtle did not receive the complete square pattern yet."
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Inside the loop, add pen dot left with an angle of 90 degrees.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "Import turtle to use the drawing tools",
+                  "Create a Turtle object to act as the pen",
+                  "Use range(4) to repeat once for every side",
+                  "Turn 90 degrees at every corner of a square"
+                ],
+                "avatar": {
+                  "text": "You used Python as a visual drawing tool and used a loop to avoid repeating code. Great work!"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "finish",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "You have finished the Turtle test lesson."
+                },
+                "next": null,
+                "advance": "manual"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

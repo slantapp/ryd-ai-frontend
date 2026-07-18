@@ -7,6 +7,10 @@ import {
 import { executeStudentCode, formatRunOutput } from "./runStudentCode";
 import { normalizeRunLanguage } from "./codeExecution/languages";
 import {
+  executeTurtleCode,
+  isTurtlePythonCode,
+} from "./codeExecution/turtle";
+import {
   evaluateWebCodeTest,
   hasWebCodeContent,
   isWebWorkspaceLanguage,
@@ -50,10 +54,22 @@ export function evaluateSubmissionCodeTest(
 export async function runSubmissionCodeOutput(
   submission: CodeTestSubmission,
   criteria: CodeTestCriteria | undefined,
+  options?: { turtleTargetId?: string },
 ): Promise<string[]> {
   const language = normalizeRunLanguage(submission.language);
   if (resolveUseWebWorkspace(language, criteria)) {
     return [];
+  }
+
+  if (isTurtlePythonCode(submission.code, language)) {
+    if (!options?.turtleTargetId) {
+      return ["Error: The Turtle canvas is not available."];
+    }
+    const result = await executeTurtleCode(
+      submission.code,
+      options.turtleTargetId,
+    );
+    return formatRunOutput(result, "✓ Turtle drawing complete.");
   }
 
   const result = await executeStudentCode(submission.code, language);

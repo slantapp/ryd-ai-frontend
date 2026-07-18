@@ -120,7 +120,8 @@ const SideNav = ({
         className={cn(
           "fixed z-70 flex w-[min(280px,calc(100vw-1rem))] max-w-[280px] flex-col gap-4 rounded-r-2xl bg-white p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] shadow-md transition-[transform,filter,opacity] duration-300 ease-out will-change-transform lg:z-50",
           "left-0 top-0 bottom-0 min-h-0",
-          "lg:top-24 lg:bottom-4 lg:left-4 lg:min-h-0 lg:translate-x-0 lg:rounded-xl lg:px-4 lg:py-4 lg:pt-4 lg:pb-4 lg:pointer-events-auto",
+          // Align with the centered 1440px shell on ultra-wide screens
+          "lg:top-24 lg:bottom-4 lg:left-[max(1rem,calc((100vw-1440px)/2+1rem))] lg:min-h-0 lg:translate-x-0 lg:rounded-xl lg:px-4 lg:py-4 lg:pt-4 lg:pb-4 lg:pointer-events-auto",
           mobileNavOpen && !locked
             ? "translate-x-0 pointer-events-auto"
             : "-translate-x-[calc(100%+8px)] pointer-events-none lg:translate-x-0 lg:pointer-events-auto",

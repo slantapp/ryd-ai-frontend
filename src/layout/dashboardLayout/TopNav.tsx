@@ -32,7 +32,7 @@ const TopNav = ({ onOpenMobileNav, hideMobileMenu = false }: TopNavProps) => {
   const profileImage = parsedUser?.logo || "https://i.pravatar.cc/150?img=3c";
 
   return (
-    <div className="fixed left-3 right-3 top-3 z-[60] flex rounded-[20px] bg-white px-2 py-2 shadow-xs transition-all duration-300 ease-in-out sm:left-4 sm:right-4 sm:top-4 sm:px-4">
+    <div className="fixed left-3 right-3 top-3 z-[60] mx-auto flex max-w-[calc(1440px-2rem)] rounded-[20px] bg-white px-2 py-2 shadow-xs transition-all duration-300 ease-in-out sm:left-4 sm:right-4 sm:top-4 sm:px-4">
       <div className="flex w-full items-center justify-between gap-2 sm:gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-3">
           {!hideMobileMenu ? (

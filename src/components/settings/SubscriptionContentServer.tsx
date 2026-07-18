@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "react-toastify";
-import { Check, Loader2, ShieldCheck, Zap } from "lucide-react";
+import { Check, Loader2, ShieldCheck, TicketPercent, Zap } from "lucide-react";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 import type { SubscriptionPlan } from "@/api/subscription";
 import {
@@ -24,6 +31,7 @@ import {
   needsSubscribeAgain,
 } from "@/utils/subscriptionStatus";
 import {
+  useApplyReferralCode,
   useCancelSubscription,
   useCreateCheckoutSession,
   useResumeSubscription,
@@ -305,6 +313,7 @@ export default function SubscriptionContentServer({
   const [upgradeFlowPlanKey, setUpgradeFlowPlanKey] = useState<string | null>(
     null,
   );
+  const [referralCode, setReferralCode] = useState("");
   const plansQuery = useSubscriptionPlans();
   const statusQuery = useSubscriptionStatus();
   const historyQuery = useSubscriptionHistory();
@@ -312,6 +321,7 @@ export default function SubscriptionContentServer({
   const cancelMutation = useCancelSubscription();
   const resumeMutation = useResumeSubscription();
   const upgradeMutation = useUpgradeSubscription();
+  const applyReferralCodeMutation = useApplyReferralCode();
 
   const statusData = statusQuery.data?.data;
   const subscribed = statusData?.subscribed === true;
@@ -549,6 +559,33 @@ export default function SubscriptionContentServer({
     [confirmResumeSubscription, performUpgrade, startCheckout],
   );
 
+  const handleApplyReferralCode = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const code = referralCode.trim();
+      if (!code || applyReferralCodeMutation.isPending) return;
+
+      applyReferralCodeMutation.mutate(
+        { referralCode: code },
+        {
+          onSuccess: (envelope) => {
+            setReferralCode("");
+            toast.success(
+              envelope.message?.trim() ||
+                "Referral code applied. Plan prices have been updated.",
+            );
+          },
+          onError: (err: unknown) => {
+            toast.error(
+              getAxiosishErrorMessage(err) || "Could not apply referral code.",
+            );
+          },
+        },
+      );
+    },
+    [applyReferralCodeMutation, referralCode],
+  );
+
   return (
     <div className={cn("space-y-4 sm:space-y-6", gateMode && "sm:space-y-5")}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -607,6 +644,56 @@ export default function SubscriptionContentServer({
           </div>
         )}
       </div>
+
+      {gateMode && !referralOffer?.applied && (
+        <Card className="rounded-2xl border border-primary/15 bg-primary/5 shadow-none">
+          <CardContent className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:p-4">
+            <div className="flex min-w-0 flex-1 items-start gap-2.5">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-primary shadow-sm">
+                <TicketPercent className="size-4" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <p className="font-solway text-sm font-semibold text-gray-900">
+                  Have a referral code?
+                </p>
+                <p className="mt-0.5 font-inter text-xs leading-relaxed text-gray-600">
+                  Apply it before choosing a plan to see your updated pricing.
+                </p>
+              </div>
+            </div>
+            <form
+              className="flex w-full gap-2 sm:w-auto"
+              onSubmit={handleApplyReferralCode}
+            >
+              <Input
+                value={referralCode}
+                onChange={(event) => setReferralCode(event.target.value)}
+                placeholder="Enter referral code"
+                aria-label="Referral code"
+                autoComplete="off"
+                disabled={applyReferralCodeMutation.isPending}
+                className="h-10 min-w-0 flex-1 bg-white font-inter uppercase sm:w-48"
+              />
+              <Button
+                type="submit"
+                className="h-10 shrink-0 rounded-xl font-solway font-semibold"
+                disabled={
+                  !referralCode.trim() || applyReferralCodeMutation.isPending
+                }
+              >
+                {applyReferralCodeMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Applying…
+                  </>
+                ) : (
+                  "Apply"
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {!gateMode && (
         <Card className="rounded-2xl border-none shadow-none">

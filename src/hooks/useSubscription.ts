@@ -1,4 +1,5 @@
 import {
+  applyReferralCode,
   cancelSubscription,
   createCheckoutSession,
   fetchSubscriptionHistory,
@@ -7,6 +8,7 @@ import {
   resumeSubscription,
   upgradeSubscription,
   type CheckoutRequest,
+  type ApplyReferralCodeRequest,
   type UpgradeSubscriptionRequest,
 } from "@/api/subscription";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,6 +25,19 @@ export function useSubscriptionPlans() {
     queryKey: subscriptionKeys.plans(),
     queryFn: fetchSubscriptionPlans,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useApplyReferralCode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ApplyReferralCodeRequest) =>
+      applyReferralCode(payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: subscriptionKeys.plans(),
+      });
+    },
   });
 }
 

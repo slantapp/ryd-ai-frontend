@@ -48,6 +48,21 @@ export type PlansResponse = {
   other?: SubscriptionPlan[];
 };
 
+export type ApplyReferralCodeRequest = {
+  referralCode: string;
+};
+
+export async function applyReferralCode(payload: ApplyReferralCodeRequest) {
+  const res = await axiosInstance.post<ApiEnvelope<unknown>>(
+    "/parent/referral/code",
+    payload,
+  );
+  if (!res.data.status) {
+    throw new Error(res.data.message || "Could not apply referral code.");
+  }
+  return res.data;
+}
+
 export type CheckoutRequest = {
   planKey: string;
   successUrl: string;

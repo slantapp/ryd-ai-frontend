@@ -28,7 +28,10 @@ import {
   listCategoriesWithCounts,
   getCategoryMeta,
   isAgeClassFilterableCategory,
+  isLevelFilterableCategory,
+  COURSE_LEVEL_FILTER_OPTIONS,
   type CourseCategoryId,
+  type CourseLevelFilter,
 } from "@/data/courseCategories";
 import {
   buildSchoolClassFilterOptions,
@@ -51,6 +54,9 @@ const CoursesPage = () => {
     "all" | "6" | "8" | "10" | "12" | "14" | "16"
   >("all");
   const [classFilter, setClassFilter] = useState<string>("all");
+  const [levelFilter, setLevelFilter] = useState<"all" | CourseLevelFilter>(
+    "all",
+  );
   const [selectedCategoryId, setSelectedCategoryId] =
     useState<CourseCategoryId | null>(null);
   const {
@@ -73,6 +79,9 @@ const CoursesPage = () => {
   const showAgeClassFilters =
     selectedCategoryId !== null &&
     isAgeClassFilterableCategory(selectedCategoryId);
+  const showLevelFilter =
+    selectedCategoryId !== null &&
+    isLevelFilterableCategory(selectedCategoryId);
 
   const classFilterOptions = useMemo(
     () =>
@@ -115,12 +124,18 @@ const CoursesPage = () => {
       );
     }
 
+    if (showLevelFilter && levelFilter !== "all") {
+      result = result.filter((c) => (c.level ?? "Beginner") === levelFilter);
+    }
+
     return result;
   }, [
     activeTab,
     ageFilter,
     classFilter,
+    levelFilter,
     showAgeClassFilters,
+    showLevelFilter,
     getAllCourses,
     getOngoingCourses,
     getCompletedCourses,
@@ -147,6 +162,11 @@ const CoursesPage = () => {
     setAgeFilter("all");
     setClassFilter("all");
   }, [showAgeClassFilters]);
+
+  useEffect(() => {
+    if (showLevelFilter) return;
+    setLevelFilter("all");
+  }, [showLevelFilter]);
 
   useEffect(() => {
     if (
@@ -178,11 +198,13 @@ const CoursesPage = () => {
     : null;
 
   const hasActiveFilters =
-    showAgeClassFilters && (ageFilter !== "all" || classFilter !== "all");
+    (showAgeClassFilters && (ageFilter !== "all" || classFilter !== "all")) ||
+    (showLevelFilter && levelFilter !== "all");
 
   const resetFilters = () => {
     setAgeFilter("all");
     setClassFilter("all");
+    setLevelFilter("all");
   };
 
   return (
@@ -265,6 +287,47 @@ const CoursesPage = () => {
                         {classFilterOptions.map(({ key, label }) => (
                           <SelectItem key={key} value={key}>
                             {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {hasActiveFilters && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-10 shrink-0 font-inter shadow-none"
+                    onClick={resetFilters}
+                  >
+                    Reset filters
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {showLevelFilter && (
+              <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <div className="flex items-center justify-between gap-2 sm:justify-end">
+                  <label className="font-inter text-xs font-medium text-gray-600">
+                    Level
+                  </label>
+                  <div className="min-w-[min(100%,11rem)] sm:min-w-[12rem]">
+                    <Select
+                      value={levelFilter}
+                      onValueChange={(v) =>
+                        setLevelFilter(v as "all" | CourseLevelFilter)
+                      }
+                    >
+                      <SelectTrigger className="h-10 shadow-none">
+                        <SelectValue placeholder="All levels" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All levels</SelectItem>
+                        {COURSE_LEVEL_FILTER_OPTIONS.map((level) => (
+                          <SelectItem key={level} value={level}>
+                            {level}
                           </SelectItem>
                         ))}
                       </SelectContent>

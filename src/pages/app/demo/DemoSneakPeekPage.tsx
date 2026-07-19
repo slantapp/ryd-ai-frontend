@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Sparkles, X } from "lucide-react";
+import { BookOpen, Lock, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,6 +25,9 @@ import {
 import { cn } from "@/lib/utils";
 import { useCoursesStore } from "@/stores/coursesStore";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
+
+/** Free sneak peek stops after this many lessons — then subscribe to continue. */
+const FREE_LESSON_LIMIT = 1;
 
 /**
  * Free sneak-peek: kid-first v2 flow stage (board-dominant + avatar + one CTA).
@@ -71,6 +74,8 @@ export default function DemoSneakPeekPage() {
     return idx >= 0 ? idx + 1 : 1;
   }, [allLessons, currentLesson]);
 
+  const isFreeLesson = lessonOrdinal <= FREE_LESSON_LIMIT;
+
   useEffect(() => {
     completionFiredRef.current = false;
     updateCourseProgress(
@@ -99,11 +104,16 @@ export default function DemoSneakPeekPage() {
     navigate(`${PRIVATE_PATHS.DASHBOARD}?sneakPeek=done`, { replace: true });
   }, [navigate, stop]);
 
-  const fireCourseCompleted = useCallback(() => {
-    if (completionFiredRef.current) return;
+  const openSubscribePrompt = useCallback(() => {
+    if (completionFiredRef.current) {
+      setShowSubscribePrompt(true);
+      return;
+    }
     completionFiredRef.current = true;
+    stop();
+    clearScheduledAfterSpeech();
     setShowSubscribePrompt(true);
-  }, []);
+  }, [clearScheduledAfterSpeech, stop]);
 
   const selectLesson = useCallback(
     (lesson: LessonV2) => {
@@ -128,6 +138,12 @@ export default function DemoSneakPeekPage() {
     (preferredNextId?: string | null) => {
       if (!currentLesson) return;
 
+      // Cliffhanger: after the free lesson, stop and ask them to subscribe.
+      if (lessonOrdinal <= FREE_LESSON_LIMIT) {
+        openSubscribePrompt();
+        return;
+      }
+
       let next: LessonV2 | null = null;
       if (preferredNextId) {
         next = findLessonV2ById(curriculum, preferredNextId);
@@ -141,10 +157,15 @@ export default function DemoSneakPeekPage() {
         return;
       }
 
-      // Bridge with next: null → sneak peek finished
-      fireCourseCompleted();
+      openSubscribePrompt();
     },
-    [curriculum, currentLesson, fireCourseCompleted, selectLesson],
+    [
+      curriculum,
+      currentLesson,
+      lessonOrdinal,
+      openSubscribePrompt,
+      selectLesson,
+    ],
   );
 
   if (!currentLesson) {
@@ -163,7 +184,7 @@ export default function DemoSneakPeekPage() {
       <div className="flex shrink-0 items-center justify-between gap-2 px-0.5">
         <p className="flex min-w-0 items-center gap-1.5 truncate text-[0.65rem] font-semibold uppercase tracking-wide text-primary">
           <Sparkles className="size-3.5 shrink-0" aria-hidden />
-          <span className="truncate">Free sneak peek</span>
+          <span className="truncate">Free sneak peek · Lesson {lessonOrdinal}</span>
         </p>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <Button
@@ -212,6 +233,7 @@ export default function DemoSneakPeekPage() {
           onNextLesson={handleNextLesson}
           hideFlowChrome
           kidsStage
+          subscribeGateAfterLesson={isFreeLesson}
           showMobileAudioUnlock={showMobileAudioUnlock}
           onMobileAudioUnlock={unlockMobileAudio}
         />
@@ -223,22 +245,28 @@ export default function DemoSneakPeekPage() {
           <DialogHeader>
             <DialogTitle className="font-solway text-lg">Lessons</DialogTitle>
             <DialogDescription className="font-inter text-sm text-gray-600">
-              Pick a lesson you already unlocked. Finish each adventure in order.
+              Lesson 1 is free. Subscribe to unlock the puppy photo adventure and
+              the rest of the course.
             </DialogDescription>
           </DialogHeader>
           <ul className="space-y-2">
             {allLessons.map((lesson, index) => {
               const done = completedLessons.has(lesson.id);
-              const unlocked =
-                index === 0 ||
-                completedLessons.has(allLessons[index - 1]?.id ?? "");
+              const unlocked = index < FREE_LESSON_LIMIT;
               const active = lesson.id === currentLesson.id;
               return (
                 <li key={lesson.id}>
                   <button
                     type="button"
                     disabled={!unlocked}
-                    onClick={() => unlocked && selectLesson(lesson)}
+                    onClick={() => {
+                      if (unlocked) {
+                        selectLesson(lesson);
+                        return;
+                      }
+                      setShowLessonsMenu(false);
+                      openSubscribePrompt();
+                    }}
                     className={cn(
                       "flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition",
                       active
@@ -246,11 +274,15 @@ export default function DemoSneakPeekPage() {
                         : "border-gray-100 bg-white",
                       unlocked
                         ? "hover:border-primary/40"
-                        : "cursor-not-allowed opacity-50",
+                        : "opacity-80",
                     )}
                   >
                     <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 font-solway text-xs font-bold text-primary">
-                      {index + 1}
+                      {unlocked ? (
+                        index + 1
+                      ) : (
+                        <Lock className="size-3.5" aria-hidden />
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-solway text-sm font-semibold text-gray-900">
@@ -265,7 +297,15 @@ export default function DemoSneakPeekPage() {
                         <span className="mt-1 inline-block font-inter text-[0.65rem] font-semibold uppercase tracking-wide text-emerald-700">
                           Done
                         </span>
-                      ) : null}
+                      ) : !unlocked ? (
+                        <span className="mt-1 inline-block font-inter text-[0.65rem] font-semibold uppercase tracking-wide text-primary">
+                          Subscribe to unlock
+                        </span>
+                      ) : (
+                        <span className="mt-1 inline-block font-inter text-[0.65rem] font-semibold uppercase tracking-wide text-amber-700">
+                          Free peek
+                        </span>
+                      )}
                     </span>
                   </button>
                 </li>
@@ -284,15 +324,20 @@ export default function DemoSneakPeekPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showSubscribePrompt} onOpenChange={setShowSubscribePrompt}>
+      <Dialog
+        open={showSubscribePrompt}
+        onOpenChange={setShowSubscribePrompt}
+      >
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-solway text-xl">
-              You finished the puppy app!
+              Your starter page is ready — want the puppy photo next?
             </DialogTitle>
             <DialogDescription className="font-inter text-sm text-gray-600">
-              That was a real lesson with your AI instructor. Subscribe to unlock
-              every course and keep learning.
+              You finished the first lesson. The next adventure adds a real puppy
+              photo with the <span className="font-semibold">img</span> tag, then
+              CSS polish. Subscribe to unlock the rest of this course and every
+              other course with your AI instructor.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -302,14 +347,14 @@ export default function DemoSneakPeekPage() {
               className="font-inter"
               onClick={() => setShowSubscribePrompt(false)}
             >
-              Keep looking around
+              Replay this lesson
             </Button>
             <Button
               type="button"
               className="rounded-xl bg-[#DDB5D2] font-solway font-semibold text-primary hover:bg-[#DDA5D2]"
               onClick={goToSubscribe}
             >
-              View subscription plans
+              Subscribe to continue
             </Button>
           </div>
         </DialogContent>

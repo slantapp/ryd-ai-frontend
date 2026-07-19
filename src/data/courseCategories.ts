@@ -72,7 +72,7 @@ export const COURSE_SLUG_TO_CATEGORY: Partial<
   "python-beginner": "coding",
   "python-intermediate": "coding",
   "python-advance": "coding",
-  "css_flex_grid_lessons": "coding",
+  css_flex_grid_lessons: "coding",
   "grade-9-basic-skills-review": "mathematics",
 };
 
@@ -86,10 +86,29 @@ export const FILTERABLE_COURSE_CATEGORIES: CourseCategoryId[] = [
   "english",
 ];
 
+/** Difficulty level filters (Beginner / Intermediate / Advanced) for coding. */
+export const LEVEL_FILTERABLE_COURSE_CATEGORIES: CourseCategoryId[] = [
+  "coding",
+];
+
+export type CourseLevelFilter = "Beginner" | "Intermediate" | "Advanced";
+
+export const COURSE_LEVEL_FILTER_OPTIONS: CourseLevelFilter[] = [
+  "Beginner",
+  "Intermediate",
+  "Advanced",
+];
+
 export function isAgeClassFilterableCategory(
   categoryId: CourseCategoryId,
 ): boolean {
   return FILTERABLE_COURSE_CATEGORIES.includes(categoryId);
+}
+
+export function isLevelFilterableCategory(
+  categoryId: CourseCategoryId,
+): boolean {
+  return LEVEL_FILTERABLE_COURSE_CATEGORIES.includes(categoryId);
 }
 
 export function getCategoryMeta(id: CourseCategoryId): CourseCategory {
@@ -99,7 +118,7 @@ export function getCategoryMeta(id: CourseCategoryId): CourseCategory {
 
 /** Categories that appear in the folder view, in display order, with course counts. */
 export function listCategoriesWithCounts(
-  courses: { categoryId: CourseCategoryId }[]
+  courses: { categoryId: CourseCategoryId }[],
 ): { category: CourseCategory; count: number }[] {
   const counts = new Map<CourseCategoryId, number>();
   for (const c of courses) {

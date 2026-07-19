@@ -46,7 +46,7 @@
                 "type": "speak",
                 "phase": "hook",
                 "avatar": {
-                  "text": "Hey friend! Want to build a web page for cute puppies? Today we start with the page skeleton — HTML."
+                  "text": "Hey friend! Want to build a web page for cute puppies? Today we start with the page skeleton HTML."
                 },
                 "advance": "auto"
               },
@@ -143,7 +143,7 @@
                   "id": "l1_q_code",
                   "type": "code_test",
                   "question": "Finish the starter Puppy Picture App page: put the title, h1 heading, and one p line where the comments say.",
-                  "explanation": "You made a real HTML page! Title in the head, heading and paragraph in the body.",
+                  "explanation": "A complete starter page needs a title in the head, plus an h1 heading and a p paragraph in the body.",
                   "code_example": {
                     "code": "<!DOCTYPE html>\n<html>\n  <head>\n    <title>Puppy App</title>\n  </head>\n  <body>\n    <h1>Puppy Picture App</h1>\n    <p>A puppy page is coming soon.</p>\n  </body>\n</html>",
                     "language": "html",
@@ -159,7 +159,9 @@
                 },
                 "avatar": {
                   "before_demo": "I will show the starter page one more time, then you build it.",
-                  "handoff": "Now it is your turn! I left you a page skeleton — fill in the title, h1, and p where the comments say."
+                  "handoff": "Now it is your turn! I left you a page skeleton — fill in the title, h1, and p where the comments say.",
+                  "on_correct": "Perfect! You made a real HTML page — title in the head, heading and paragraph in the body.",
+                  "on_wrong": "Not quite yet — check that the title, h1, and p match the pattern we practised."
                 },
                 "retry": {
                   "max": 2,
@@ -176,10 +178,10 @@
                   "HTML is the skeleton of a web page",
                   "h1 makes the big heading",
                   "p adds a paragraph line",
-                  "You built a starter Puppy Picture App page"
+                  "A starter page needs title, h1, and p in the right places"
                 ],
                 "avatar": {
-                  "text": "You did it! You built a real starter page. Next we add the puppy photo."
+                  "text": "Great practice on the starter page. Coming up next: a real puppy photo on your page."
                 },
                 "advance": "auto"
               },
@@ -188,7 +190,7 @@
                 "type": "bridge",
                 "phase": "reflect",
                 "avatar": {
-                  "text": "Next adventure: put a puppy photo on the page with an img tag!"
+                  "text": "Cliffhanger time! Your page has words — the next lesson adds a puppy photo with the img tag. Subscribe to unlock it and keep building."
                 },
                 "next": "module_01__lesson_02",
                 "advance": "manual"
@@ -332,7 +334,7 @@
                   "id": "l2_q_code",
                   "type": "code_test",
                   "question": "Finish the page — keep the heading and add the puppy img with src and alt where the comment says.",
-                  "explanation": "You put a real photo on a web page. That is how websites show pictures!",
+                  "explanation": "To show a photo, keep the h1 and add an img tag with the puppy src link and descriptive alt text.",
                   "code_example": {
                     "code": "<!DOCTYPE html>\n<html>\n  <head>\n    <title>Puppy App</title>\n  </head>\n  <body>\n    <h1>Puppy Picture App</h1>\n    <img src=\"https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg\" alt=\"Two happy puppies sitting in grass\">\n  </body>\n</html>",
                     "language": "html",
@@ -348,7 +350,9 @@
                 },
                 "avatar": {
                   "before_demo": "One more look at the photo page, then you build it.",
-                  "handoff": "Your turn! The page skeleton is ready — add the img with src and alt where the comment says."
+                  "handoff": "Your turn! The page skeleton is ready — add the img with src and alt where the comment says.",
+                  "on_correct": "Fantastic! You put a real photo on the page — that is how websites show pictures.",
+                  "on_wrong": "Not quite — keep the h1, then add img with the puppy src and alt from the demo."
                 },
                 "retry": {
                   "max": 2,
@@ -365,10 +369,10 @@
                   "img shows a picture",
                   "src is the photo's web link",
                   "alt describes the picture",
-                  "You added a puppy photo to the page"
+                  "A photo page needs img with src and alt under the heading"
                 ],
                 "avatar": {
-                  "text": "Fantastic! Your page has puppies on it. Next we dress it up with CSS."
+                  "text": "Nice work practicing the puppy photo. Next we dress the page up with CSS."
                 },
                 "advance": "auto"
               },
@@ -521,7 +525,7 @@
                   "id": "l3_q_code",
                   "type": "code_test",
                   "question": "Finish the polished Puppy Picture App — fill in the CSS and the body content where the comments say.",
-                  "explanation": "You finished the Puppy Picture App! HTML structure plus CSS polish — that is a real mini web app.",
+                  "explanation": "The polished app needs a style block for centred text and image sizing, plus h1, p, and img in the body.",
                   "code_example": {
                     "code": "<!DOCTYPE html>\n<html>\n  <head>\n    <title>Puppy App</title>\n    <style>\n      body {\n        font-family: Arial, sans-serif;\n        text-align: center;\n        background-color: #f6fbff;\n      }\n\n      img {\n        width: 320px;\n        max-width: 100%;\n        border-radius: 8px;\n      }\n    </style>\n  </head>\n  <body>\n    <h1>Puppy Picture App</h1>\n    <p>Say hello to two happy puppies.</p>\n    <img src=\"https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg\" alt=\"Two happy puppies sitting in grass\">\n  </body>\n</html>",
                     "language": "html",
@@ -537,7 +541,9 @@
                 },
                 "avatar": {
                   "before_demo": "I will show the finished app once more, then you build it.",
-                  "handoff": "Your turn! Use the skeleton — fill the CSS rules and the body where the comments tell you."
+                  "handoff": "Your turn! Use the skeleton — fill the CSS rules and the body where the comments tell you.",
+                  "on_correct": "You finished the Puppy Picture App! HTML structure plus CSS polish — that is a real mini web app.",
+                  "on_wrong": "Not quite — fill the CSS rules and add h1, p, and the puppy img where the comments say."
                 },
                 "retry": {
                   "max": 2,
@@ -554,10 +560,10 @@
                   "style holds CSS rules",
                   "text-align can centre the page",
                   "CSS can resize and round the photo",
-                  "You finished a polished Puppy Picture App"
+                  "A polished app combines HTML structure with CSS style rules"
                 ],
                 "avatar": {
-                  "text": "You built a whole mini web app — skeleton, photo, and polish. That is something to celebrate!"
+                  "text": "That wraps our sneak peek — skeleton, photo, and polish. Keep practicing these ideas!"
                 },
                 "advance": "auto"
               },

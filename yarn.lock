@@ -3128,10 +3128,10 @@ nanoid@^3.3.11:
   resolved "https://registry.npmjs.org/nanoid/-/nanoid-3.3.11.tgz"
   integrity sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==
 
-narrator-avatar@^1.1.5:
-  version "1.1.5"
-  resolved "https://registry.npmjs.org/narrator-avatar/-/narrator-avatar-1.1.5.tgz"
-  integrity sha512-GRsf8sYtYx0be02MNWnL1PWTsdbYKn1mh6BT884dWcI1MVZW40b93d1vTVBGPUJ3pIO3N9d8mgT4y3uE18gtBQ==
+narrator-avatar@^1.1.7:
+  version "1.1.7"
+  resolved "https://registry.npmjs.org/narrator-avatar/-/narrator-avatar-1.1.7.tgz"
+  integrity sha512-CwYa5l9eeLq9bNmnN0MtIwIlu3d7WhmqARF/HWdZ7Gl4RpClC7N1NblY97K/xp1TpVl36GaEB5KnyBi404w+EQ==
   dependencies:
     "@met4citizen/talkinghead" "^1.7.0"
     three "^0.183.0"

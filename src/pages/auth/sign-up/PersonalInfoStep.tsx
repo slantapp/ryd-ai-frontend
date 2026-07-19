@@ -185,7 +185,7 @@ export function PersonalInfoStep({
   return (
     <AuthShell
       title="Create account"
-      subtitle="Enter your details to get started with RYD Learning."
+      subtitle="Sign up free and try a real AI lesson right away — no subscription needed to start your sneak peek."
     >
       <form className="space-y-4" onSubmit={handleSubmit} noValidate>
         <div className="space-y-2">

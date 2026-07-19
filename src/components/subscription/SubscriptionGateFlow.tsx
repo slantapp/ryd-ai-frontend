@@ -18,11 +18,13 @@ import { PRIVATE_PATHS } from "@/utils/routePaths";
 
 type GateView = "instructors" | "subscribe";
 
-/** High-visibility free-trial CTA — must read clearly next to softer subscribe actions. */
+/** High-visibility free-trial CTA — brand book face for a clear font-family change. */
 const sneakPeekButtonClass = cn(
-  "gap-2 rounded-xl border-2 border-primary bg-primary font-solway text-sm font-bold tracking-wide text-white shadow-md shadow-primary/30",
-  "hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/40",
-  "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+  "gap-2 rounded-xl border-2 border-[#1D4ED8] bg-[#2563EB] text-white shadow-md shadow-blue-600/35",
+  // Important: Button base uses font-medium; force SansSerifBookFLF (not Solway/Mulish).
+  "!font-sans-serifbookflf !text-sm !font-bold !tracking-wide",
+  "hover:border-[#1E40AF] hover:bg-[#1D4ED8] hover:shadow-lg hover:shadow-blue-600/45",
+  "focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-2",
   "active:scale-[0.98]",
 );
 
@@ -132,11 +134,13 @@ const SubscriptionGateFlow = ({
             >
               <Button
                 type="button"
-                className={cn(sneakPeekButtonClass, "h-12 w-full text-base sm:hidden")}
+                className={cn(sneakPeekButtonClass, "h-12 w-full sm:hidden")}
                 onClick={handleSneakPeek}
               >
-                <PlayCircle className="size-5 shrink-0 fill-white/20" aria-hidden />
-                Try a free sneak peek
+                <PlayCircle className="size-5 shrink-0 fill-white/25" aria-hidden />
+                <span className="font-sans-serifbookflf text-sm font-bold tracking-wide">
+                  Try a free sneak peek
+                </span>
               </Button>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <Button
@@ -153,12 +157,14 @@ const SubscriptionGateFlow = ({
                     type="button"
                     className={cn(
                       sneakPeekButtonClass,
-                      "hidden h-11 px-5 text-base sm:inline-flex",
+                      "hidden h-11 px-5 sm:inline-flex",
                     )}
                     onClick={handleSneakPeek}
                   >
-                    <PlayCircle className="size-5 shrink-0 fill-white/20" aria-hidden />
-                    Try a free sneak peek
+                    <PlayCircle className="size-5 shrink-0 fill-white/25" aria-hidden />
+                    <span className="font-sans-serifbookflf text-sm font-bold tracking-wide">
+                      Try a free sneak peek
+                    </span>
                   </Button>
                   <Button
                     type="button"
@@ -208,12 +214,14 @@ const SubscriptionGateFlow = ({
                 type="button"
                 className={cn(
                   sneakPeekButtonClass,
-                  "ml-auto h-10 px-4 text-sm sm:px-5",
+                  "ml-auto h-10 px-4 sm:h-11 sm:px-5",
                 )}
                 onClick={handleSneakPeek}
               >
-                <PlayCircle className="size-4 shrink-0 fill-white/20" aria-hidden />
-                Free sneak peek
+                <PlayCircle className="size-4 shrink-0 fill-white/25" aria-hidden />
+                <span className="font-sans-serifbookflf text-sm font-bold tracking-wide">
+                  Free sneak peek
+                </span>
               </Button>
             </div>
 

@@ -34,7 +34,10 @@ import {
 } from "@/utils/webCodeWorkspace";
 import { pauseMinSeconds, resolveAvatarDefaults } from "../defaults";
 import { useTypedText } from "../hooks/useTypedText";
-import { resolveQuestionRetry } from "../studentFlow";
+import {
+  resolveExhaustedWrongTeachingLines,
+  resolveQuestionRetry,
+} from "../studentFlow";
 import { stripMarkdownForSpeech } from "../speechText";
 import type {
   Beat,
@@ -95,6 +98,11 @@ interface LessonPlayerProps {
    */
   showMobileAudioUnlock?: boolean;
   onMobileAudioUnlock?: () => void;
+  /**
+   * Sneak-peek cliffhanger: after this lesson, the bridge CTA opens the
+   * subscribe flow instead of advancing (parent still handles onNextLesson).
+   */
+  subscribeGateAfterLesson?: boolean;
 }
 
 export function LessonPlayer({
@@ -115,6 +123,7 @@ export function LessonPlayer({
   kidsStage = false,
   showMobileAudioUnlock = false,
   onMobileAudioUnlock,
+  subscribeGateAfterLesson = false,
 }: LessonPlayerProps) {
   const isLgUp = useMediaQueryMinLg();
   const defaults = useMemo(() => resolveAvatarDefaults(curriculum), [curriculum]);
@@ -133,6 +142,11 @@ export function LessonPlayer({
   const [showCelebration, setShowCelebration] = useState(false);
   /** Wrong attempts used on the current question beat (student retry simulation). */
   const [wrongAttempts, setWrongAttempts] = useState(0);
+  /**
+   * True when any question in this lesson exhausted retries without a correct
+   * answer — used so recap/bridge speech does not celebrate a failed attempt.
+   */
+  const missedPracticeRef = useRef(false);
   const [fullscreen, setFullscreen] = useState<"editor" | "results" | null>(null);
   const [runLanguage, setRunLanguage] = useState("javascript");
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
@@ -304,6 +318,7 @@ export function LessonPlayer({
     setCompletedBeatIds(new Set());
     setCanContinue(false);
     setPauseSecondsLeft(0);
+    missedPracticeRef.current = false;
     resetInteractive();
     beatStartedRef.current = null;
     goalSpokenRef.current = false;
@@ -394,25 +409,46 @@ export function LessonPlayer({
         const pointLines = beat.points.map(
           (point, i) => `Point ${i + 1}: ${stripMarkdownForSpeech(point)}.`,
         );
+        const missed = missedPracticeRef.current;
+        const recapLead = missed
+          ? "Let's review what this lesson covered."
+          : (beat.avatar?.text ?? "Let's recap what you learned.");
+        const spokenPoints = missed
+          ? pointLines.filter(
+              (line) =>
+                !/\byou (made|built|did|put|finished|added)\b/i.test(line),
+            )
+          : pointLines;
         speakSequence(
           [
             goalLine,
-            beat.avatar?.text ?? "Let's recap what you learned.",
+            recapLead,
             "Here are the key takeaways.",
-            ...pointLines,
+            ...(spokenPoints.length > 0 ? spokenPoints : pointLines),
           ],
           () => finishAutoOrManual(beat),
         );
         break;
       }
       case "bridge": {
+        const missed = missedPracticeRef.current;
+        const gated = subscribeGateAfterLesson && !!beat.next;
+        const endLine = gated
+          ? "When you're ready, tap Subscribe to continue to unlock the next adventure."
+          : beat.next
+            ? "When you're ready, tap Next lesson to keep going."
+            : missed
+              ? "You've reached the end of this sneak peek. Keep practicing — subscribe to unlock more courses."
+              : "You've reached the end of this course. Amazing work!";
         speakSequence(
           [
             goalLine,
-            beat.avatar?.text,
-            beat.next
-              ? "When you're ready, tap Next lesson to keep going."
-              : "You've reached the end of this course. Amazing work!",
+            missed && !gated
+              ? beat.next
+                ? "Nice effort — we'll keep building on these ideas in the next lesson."
+                : beat.avatar?.text
+              : beat.avatar?.text,
+            endLine,
           ],
           () => enableManualContinue(),
         );
@@ -666,9 +702,12 @@ export function LessonPlayer({
         beat.avatar?.on_wrong ?? defaults.incorrect_feedback;
 
       if (exhausted) {
+        // Do not speak success-phrased question.explanation after a failed attempt.
+        missedPracticeRef.current = true;
+        const teachingLines = resolveExhaustedWrongTeachingLines(q);
         speakThen(feedback, () => {
           speakSequence(
-            [q.explanation, "Let's move on and keep learning."],
+            [...teachingLines, "Let's move on and keep learning."],
             () => {
               setTimeout(() => advanceRef.current(), 600);
             },
@@ -1261,6 +1300,7 @@ export function LessonPlayer({
                   <BridgeBeatView
                     beat={beat as BridgeBeat}
                     isCourseEnd={!beat.next}
+                    subscribeGate={subscribeGateAfterLesson && !!beat.next}
                     canContinue={canContinue && !isSpeaking}
                     fullWidthCta={kidsStage}
                     onNextLesson={() => {

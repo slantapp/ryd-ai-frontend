@@ -990,51 +990,58 @@ export default function SubscriptionContentServer({
                       </p>
                     ) : null}
 
-                    <div className="mt-3 space-y-1.5 sm:mt-4">
-                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <span
-                          className={cn(
-                            "font-solway font-bold tracking-tight text-gray-900",
-                            gateMode ? "text-2xl sm:text-3xl" : "text-3xl",
-                            pricing.referralDiscountApplied && "text-emerald-800",
-                          )}
-                        >
-                          {pricing.displayPrice}
-                        </span>
+                    <div className="mt-3 space-y-2 sm:mt-4">
+                      {pricing.showOriginalPrice ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-md bg-rose-100 px-2 py-0.5 font-inter font-bold uppercase tracking-wide text-rose-700 ring-1 ring-rose-200",
+                              gateMode ? "text-[0.65rem] sm:text-xs" : "text-xs",
+                            )}
+                          >
+                            {pricing.saveLabel
+                              ? `Save ${pricing.saveLabel}`
+                              : "Special price"}
+                          </span>
+                          {pricing.referralDiscountApplied ? (
+                            <span className="font-inter text-[0.65rem] font-semibold uppercase tracking-wide text-emerald-700 sm:text-xs">
+                              Referral deal
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <div className="flex flex-wrap items-end gap-x-2.5 gap-y-1">
                         {pricing.showOriginalPrice ? (
                           <span
                             className={cn(
-                              "font-inter font-medium text-gray-400 line-through",
-                              gateMode ? "text-sm sm:text-base" : "text-base"
+                              "font-solway font-bold tracking-tight text-rose-600/90 line-through decoration-rose-500 decoration-2",
+                              gateMode
+                                ? "text-lg sm:text-xl"
+                                : "text-xl sm:text-2xl",
                             )}
+                            aria-label={`Was ${pricing.originalPrice}`}
                           >
                             {pricing.originalPrice}
                           </span>
                         ) : null}
+                        <span
+                          className={cn(
+                            "font-solway font-bold tracking-tight text-gray-900",
+                            gateMode ? "text-2xl sm:text-3xl" : "text-3xl",
+                            pricing.showOriginalPrice && "text-emerald-700",
+                          )}
+                        >
+                          {pricing.displayPrice}
+                        </span>
                         {periodSuffix ? (
                           <span
                             className={cn(
-                              "font-inter text-gray-600",
-                              gateMode ? "text-xs sm:text-sm" : "text-sm"
+                              "mb-0.5 font-inter font-medium text-gray-600",
+                              gateMode ? "text-xs sm:text-sm" : "text-sm",
                             )}
                           >
                             {periodSuffix}
                           </span>
-                        ) : null}
-                        {pricing.referralDiscountApplied ? (
-                          <Badge
-                            variant="secondary"
-                            className="bg-emerald-100 font-inter text-[10px] font-semibold uppercase tracking-wide text-emerald-800 hover:bg-emerald-100"
-                          >
-                            {pricing.saveLabel
-                              ? `Save ${pricing.saveLabel}`
-                              : "Referral deal"}
-                            {p.referralDiscountType === "percentage" &&
-                              p.referralDiscountValue != null &&
-                              !pricing.saveLabel?.includes("%")
-                              ? ` (${p.referralDiscountValue}%)`
-                              : ""}
-                          </Badge>
                         ) : null}
                       </div>
                       {pricing.referralDiscountApplied && pricing.referralCode ? (

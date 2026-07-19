@@ -68,6 +68,22 @@ export function getPlanDisplayPricing(
   ) {
     saveLabel = `${plan.referralDiscountValue}%`;
   }
+  // Slash / compare-at savings when no referral save label yet
+  if (
+    !saveLabel &&
+    plan.showSlashPrice === true &&
+    plan.compareAtAmount != null
+  ) {
+    const saleAmount =
+      plan.discountedAmount ??
+      (typeof plan.amountUsd === "number" ? plan.amountUsd : null);
+    if (saleAmount != null && plan.compareAtAmount > saleAmount) {
+      saveLabel = formatPlanMoney(
+        plan.compareAtAmount - saleAmount,
+        plan.billingCurrency || "USD",
+      );
+    }
+  }
 
   return {
     referralDiscountApplied,

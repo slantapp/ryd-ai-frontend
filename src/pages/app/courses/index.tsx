@@ -177,14 +177,18 @@ const CoursesPage = () => {
     }
   }, [classFilter, classFilterOptions]);
 
+  const hasActiveFilters =
+    (showAgeClassFilters && (ageFilter !== "all" || classFilter !== "all")) ||
+    (showLevelFilter && levelFilter !== "all");
+
   useEffect(() => {
-    if (
-      selectedCategoryId &&
-      !categoryFolders.some((f) => f.category.id === selectedCategoryId)
-    ) {
+    if (!selectedCategoryId) return;
+    // Keep the category open when filters simply match nothing — show empty state.
+    if (hasActiveFilters) return;
+    if (!categoryFolders.some((f) => f.category.id === selectedCategoryId)) {
       setSelectedCategoryId(null);
     }
-  }, [categoryFolders, selectedCategoryId]);
+  }, [categoryFolders, hasActiveFilters, selectedCategoryId]);
 
   const tabTriggerClass = cn(
     "shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-all sm:px-4 sm:py-2 sm:text-sm md:px-6",
@@ -196,10 +200,6 @@ const CoursesPage = () => {
   const activeCategoryMeta = selectedCategoryId
     ? getCategoryMeta(selectedCategoryId)
     : null;
-
-  const hasActiveFilters =
-    (showAgeClassFilters && (ageFilter !== "all" || classFilter !== "all")) ||
-    (showLevelFilter && levelFilter !== "all");
 
   const resetFilters = () => {
     setAgeFilter("all");
@@ -416,17 +416,36 @@ const CoursesPage = () => {
                 {coursesInCategory.length === 0 ? (
                   <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-12 text-center">
                     <BookOpen className="mb-3 size-12 text-gray-300" />
-                    <p className="font-inter text-sm text-gray-600">
-                      No courses in this category for the current filter.
+                    <h4 className="font-solway text-base font-semibold text-gray-800">
+                      No courses found
+                    </h4>
+                    <p className="mt-1 max-w-sm font-inter text-sm text-gray-600">
+                      {hasActiveFilters
+                        ? "Nothing matches your current filters. Try another level, age, or class — or clear the filters."
+                        : "No courses in this category yet."}
                     </p>
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="mt-2 font-inter"
-                      onClick={() => setSelectedCategoryId(null)}
-                    >
-                      Pick another category
-                    </Button>
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                      {hasActiveFilters ? (
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          className="font-inter"
+                          onClick={resetFilters}
+                        >
+                          Reset filters
+                        </Button>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant={hasActiveFilters ? "outline" : "link"}
+                        size="sm"
+                        className="font-inter"
+                        onClick={() => setSelectedCategoryId(null)}
+                      >
+                        Pick another category
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6">

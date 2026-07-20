@@ -30,8 +30,8 @@ import { PRIVATE_PATHS } from "@/utils/routePaths";
 const FREE_LESSON_LIMIT = 1;
 
 /**
- * Free sneak-peek: kid-first v2 flow stage (board-dominant + avatar + one CTA).
- * Follows docs/KIDS_STUDENT_ENVIRONMENT_BRIEF.md — not the v1 CourseDetails runner.
+ * Free sneak-peek: same shell as CourseDetails (avatar left / board right),
+ * driven by the v2 curriculum beat flow.
  */
 export default function DemoSneakPeekPage() {
   const navigate = useNavigate();
@@ -179,10 +179,9 @@ export default function DemoSneakPeekPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-1.5 pb-[env(safe-area-inset-bottom)]">
-      {/* Slim toolbar: no title block, just badge + actions (max stage height) */}
-      <div className="flex shrink-0 items-center justify-between gap-2 px-0.5">
-        <p className="flex min-w-0 items-center gap-1.5 truncate text-[0.65rem] font-semibold uppercase tracking-wide text-primary">
+    <div className="flex h-full min-h-0 flex-col gap-2 pb-[env(safe-area-inset-bottom)]">
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <p className="flex min-w-0 items-center gap-1.5 truncate font-inter text-xs font-semibold uppercase tracking-wide text-primary sm:text-sm">
           <Sparkles className="size-3.5 shrink-0" aria-hidden />
           <span className="truncate">Free sneak peek · Lesson {lessonOrdinal}</span>
         </p>
@@ -208,12 +207,7 @@ export default function DemoSneakPeekPage() {
         </div>
       </div>
 
-      {/* Kids stage: board-first learning space */}
-      <div
-        className={cn(
-          "relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm",
-        )}
-      >
+      <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[20px] bg-white shadow-lg">
         <LessonPlayer
           key={`${currentLesson.id}-${lessonKey}`}
           curriculum={curriculum}
@@ -232,7 +226,7 @@ export default function DemoSneakPeekPage() {
           onLessonComplete={handleLessonComplete}
           onNextLesson={handleNextLesson}
           hideFlowChrome
-          kidsStage
+          classicLayout
           subscribeGateAfterLesson={isFreeLesson}
           showMobileAudioUnlock={showMobileAudioUnlock}
           onMobileAudioUnlock={unlockMobileAudio}

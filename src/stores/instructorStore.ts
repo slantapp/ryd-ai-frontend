@@ -32,7 +32,7 @@ export const INSTRUCTORS: Record<InstructorType, InstructorConfig> = {
   },
 };
 
-interface InstructorState { 
+interface InstructorState {
   selectedInstructor: InstructorType;
   setSelectedInstructor: (instructor: InstructorType) => void;
   getInstructorConfig: () => InstructorConfig;
@@ -52,6 +52,6 @@ export const useInstructorStore = create<InstructorState>()(
     }),
     {
       name: "ryd-learning-instructor", // localStorage key
-    }
-  )
+    },
+  ),
 );

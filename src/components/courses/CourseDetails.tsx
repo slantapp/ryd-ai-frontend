@@ -129,10 +129,10 @@ type PendingAction =
   | { type: "start_lesson_code_demo"; lesson: Lesson }
   | { type: "start_code_example_typing" }
   | {
-      type: "lesson_code_outro";
-      hasQuestions: boolean;
-      hasNextLesson: boolean;
-    };
+    type: "lesson_code_outro";
+    hasQuestions: boolean;
+    hasNextLesson: boolean;
+  };
 
 // ============================================================================
 // MAIN COMPONENT
@@ -1579,9 +1579,9 @@ function CourseDetailInner({
       const runOutput = useWebWorkspace
         ? []
         : await runSubmissionCodeOutput(
-            submission,
-            currentQuestion.testCriteria,
-          );
+          submission,
+          currentQuestion.testCriteria,
+        );
       const { passed, testResults } = evaluateSubmissionCodeTest(
         submission,
         currentQuestion.testCriteria,
@@ -1619,9 +1619,9 @@ function CourseDetailInner({
       const runOutput = useWebWorkspace
         ? []
         : await runSubmissionCodeOutput(
-            submission,
-            currentQuestion.testCriteria,
-          );
+          submission,
+          currentQuestion.testCriteria,
+        );
       const { passed, testResults } = evaluateSubmissionCodeTest(
         submission,
         currentQuestion.testCriteria,
@@ -2126,15 +2126,15 @@ function CourseDetailInner({
                       canTest={
                         isLessonCodeDemoActive
                           ? submissionHasContent(
-                              getCodeSubmission(),
-                              undefined,
-                            ) && !isExecutingCode
+                            getCodeSubmission(),
+                            undefined,
+                          ) && !isExecutingCode
                           : submissionHasContent(
-                              getCodeSubmission(),
-                              activeTestCriteria,
-                            ) &&
-                            !isAnswerSubmitted &&
-                            !isExecutingCode
+                            getCodeSubmission(),
+                            activeTestCriteria,
+                          ) &&
+                          !isAnswerSubmitted &&
+                          !isExecutingCode
                       }
                       canSubmit={
                         !isLessonCodeDemoActive &&
@@ -2192,13 +2192,13 @@ function CourseDetailInner({
                         canTest={
                           isLessonCodeDemoActive
                             ? submissionHasContent(
-                                getCodeSubmission(),
-                                undefined,
-                              ) && !isExecutingCode
+                              getCodeSubmission(),
+                              undefined,
+                            ) && !isExecutingCode
                             : submissionHasContent(
-                                getCodeSubmission(),
-                                activeTestCriteria,
-                              ) &&
+                              getCodeSubmission(),
+                              activeTestCriteria,
+                            ) &&
                             !isAnswerSubmitted &&
                             !isExecutingCode
                         }
@@ -2315,36 +2315,36 @@ function CourseDetailInner({
                             isAnswerSubmitted &&
                             (currentQuestion.type === "multiple_choice" ||
                               currentQuestion.type === "true_false") && (
-                            <div className="mt-8 min-w-0 max-w-full overflow-hidden rounded-r-lg border-l-4 border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-4 shadow-sm backdrop-blur-sm">
-                              <div className="flex min-w-0 items-start gap-3">
-                                <div className="mt-0.5 shrink-0">
-                                  <svg
-                                    className="h-5 w-5 text-primary"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                  </svg>
-                                </div>
-                                <div className="min-w-0 flex-1 overflow-hidden">
-                                  <strong className="mb-1 block font-semibold text-primary">
-                                    Hint:
-                                  </strong>
-                                  <div className="min-w-0 max-w-full text-sm leading-relaxed text-gray-700 wrap-anywhere">
-                                    <MathText>
-                                      {currentQuestion.explanation}
-                                    </MathText>
+                              <div className="mt-8 min-w-0 max-w-full overflow-hidden rounded-r-lg border-l-4 border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-4 shadow-sm backdrop-blur-sm">
+                                <div className="flex min-w-0 items-start gap-3">
+                                  <div className="mt-0.5 shrink-0">
+                                    <svg
+                                      className="h-5 w-5 text-primary"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                      />
+                                    </svg>
+                                  </div>
+                                  <div className="min-w-0 flex-1 overflow-hidden">
+                                    <strong className="mb-1 block font-semibold text-primary">
+                                      Hint:
+                                    </strong>
+                                    <div className="min-w-0 max-w-full text-sm leading-relaxed text-gray-700 wrap-anywhere">
+                                      <MathText>
+                                        {currentQuestion.explanation}
+                                      </MathText>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          )}
+                            )}
                         </>
                       )}
                     </>

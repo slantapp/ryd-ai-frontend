@@ -247,10 +247,23 @@ export function getFirstLesson(
 }
 
 import puppyHtmlWebAppCurriculum from "./puppy-html-web-app-curriculum.json";
-import type { CurriculumV2 } from "@/features/curriculum-preview/v2/types";
+import type {
+  CurriculumV2,
+  CurriculumV2Data,
+} from "@/features/curriculum-preview/v2/types";
 
 /** Bundled sneak-peek demo (not from the visible-curricula API). */
 export const DEMO_COURSE_SLUG = "puppy-html-web-app";
+
+/**
+ * API / store entry may be classic v1 or flow v2. Keep `curriculum` loosely typed
+ * so visible-curricula payloads are not forced through the v1 Lesson shape.
+ */
+export type CurriculumEntry = {
+  slug: string;
+  schema_version?: number;
+  curriculum: Curriculum["curriculum"] | CurriculumV2Data | Record<string, unknown>;
+};
 
 /** Schema v2 flow curriculum used by the free sneak-peek lesson player. */
 export function getDemoCurriculumV2(): CurriculumV2 {
@@ -262,15 +275,23 @@ export function isDemoCourseSlug(slug: string | null | undefined): boolean {
 }
 
 /** Curricula loaded from `/parent/curriculum/visible`. */
-let remoteCurricula: Curriculum[] = [];
+let remoteCurricula: CurriculumEntry[] = [];
 
-export function setRemoteCurricula(curricula: Curriculum[]): void {
+export function setRemoteCurricula(curricula: CurriculumEntry[]): void {
   remoteCurricula = curricula;
 }
 
 /** Visible curriculums from the API only (no bundled local JSON). */
 export function getAllCurricula(): Curriculum[] {
-  return remoteCurricula;
+  return remoteCurricula as Curriculum[];
+}
+
+/** Raw entry by slug — includes bundled demo v2 and API v1/v2 payloads. */
+export function getCurriculumEntryBySlug(slug: string): CurriculumEntry | null {
+  if (isDemoCourseSlug(slug)) {
+    return getDemoCurriculumV2();
+  }
+  return remoteCurricula.find((curriculum) => curriculum.slug === slug) || null;
 }
 
 // Helper function to get curriculum by slug (bundled demo is v2 — use getDemoCurriculumV2)
@@ -278,7 +299,8 @@ export function getCurriculumBySlug(slug: string): Curriculum | null {
   if (isDemoCourseSlug(slug)) {
     return null;
   }
-  return remoteCurricula.find((curriculum) => curriculum.slug === slug) || null;
+  const entry = remoteCurricula.find((curriculum) => curriculum.slug === slug);
+  return (entry as Curriculum | undefined) || null;
 }
 
 // Helper to find the module containing a lesson and whether it's the last lesson in that module

@@ -93,8 +93,13 @@ interface LessonPlayerProps {
    */
   kidsStage?: boolean;
   /**
+   * Match the real CourseDetails learning shell (left avatar / right board)
+   * while keeping the v2 beat flow. Prefer this for sneak peek.
+   */
+  classicLayout?: boolean;
+  /**
    * Mobile WebKit: first speak after avatar ready must run inside a tap.
-   * Shown in kids stage when avatar is off-screen.
+   * Shown when the 3D avatar is off-screen on small viewports.
    */
   showMobileAudioUnlock?: boolean;
   onMobileAudioUnlock?: () => void;
@@ -121,6 +126,7 @@ export function LessonPlayer({
   onNextLesson,
   hideFlowChrome = false,
   kidsStage = false,
+  classicLayout = false,
   showMobileAudioUnlock = false,
   onMobileAudioUnlock,
   subscribeGateAfterLesson = false,
@@ -1056,7 +1062,7 @@ export function LessonPlayer({
       <div
         className={cn(
           "flex shrink-0 border-t border-gray-200 bg-white",
-          kidsStage
+          kidsStage || classicLayout
             ? "justify-stretch px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:justify-end sm:px-4"
             : "justify-end px-4 py-3 sm:px-5",
         )}
@@ -1064,7 +1070,11 @@ export function LessonPlayer({
         <ContinueButton
           label={continueLabel}
           onClick={() => advance()}
-          className={kidsStage ? "h-12 w-full text-base sm:h-auto sm:w-auto sm:text-sm" : undefined}
+          className={
+            kidsStage || classicLayout
+              ? "h-12 w-full text-base sm:h-auto sm:w-auto sm:text-sm"
+              : undefined
+          }
         />
       </div>
     ) : null;
@@ -1403,6 +1413,449 @@ export function LessonPlayer({
       </div>
     </div>
   );
+
+  const beatBoard = (
+    <div className="space-y-3">
+      {showCodePanel || showFormulaPanel ? (
+        <DemoIntro
+          title={demoIntroTitle}
+          description={demoIntroDescription}
+        />
+      ) : (
+        <>
+          {beat?.type === "speak" && (
+            <SpeakBeatView beat={beat as SpeakBeat} />
+          )}
+          {beat?.type === "display" && (
+            <DisplayBeatView beat={beat as DisplayBeat} />
+          )}
+          {beat?.type === "media" && (
+            <MediaBeatView beat={beat as MediaBeat} />
+          )}
+          {beat?.type === "pause" && (
+            <PauseBeatView beat={beat} secondsLeft={pauseSecondsLeft} />
+          )}
+          {beat?.type === "recap" && (
+            <RecapBeatView beat={beat as RecapBeat} />
+          )}
+          {beat?.type === "bridge" && (
+            <BridgeBeatView
+              beat={beat as BridgeBeat}
+              isCourseEnd={!beat.next}
+              subscribeGate={subscribeGateAfterLesson && !!beat.next}
+              canContinue={canContinue && !isSpeaking}
+              fullWidthCta={classicLayout || kidsStage}
+              onNextLesson={() => {
+                markBeatDone(beat.id);
+                onLessonComplete(lesson.id);
+                onNextLesson(beat.next);
+              }}
+              onFinish={() => {
+                markBeatDone(beat.id);
+                onLessonComplete(lesson.id);
+              }}
+            />
+          )}
+          {beat?.type === "question" && (
+            <QuestionPanel
+              beat={beat}
+              selectedAnswer={selectedAnswer}
+              onSelectAnswer={setSelectedAnswer}
+              isSubmitted={isAnswerSubmitted}
+              onSubmitMcTf={handleSubmitMcTf}
+              isSpeaking={isSpeaking}
+              showCelebration={showCelebration}
+              wrongAttempts={wrongAttempts}
+              retryMax={questionRetry?.max ?? 0}
+              retryHint={questionRetry?.hint}
+            />
+          )}
+        </>
+      )}
+      {beat?.type === "pause" &&
+        (showCodePanel || showFormulaPanel) &&
+        pauseSecondsLeft > 0 && (
+          <p className="text-sm font-medium text-primary">
+            Continue in {pauseSecondsLeft}s…
+          </p>
+        )}
+    </div>
+  );
+
+  if (classicLayout) {
+    const phaseLabel =
+      beat?.phase === "practice"
+        ? "Practice"
+        : beat?.phase === "assess"
+          ? "Check understanding"
+          : beat?.phase === "reflect"
+            ? "Wrap-up"
+            : "Lesson in progress";
+
+    const canGoPreviousBeat = beatIndex > 0 && !isSpeaking;
+    const canPrimaryContinue =
+      !!canContinue &&
+      !!beat &&
+      beat.type !== "bridge" &&
+      beat.advance === "manual" &&
+      !isSpeaking;
+
+    // Match CourseDetails: free the left column for the prompt while the learner answers a code test.
+    const isCodeTestQuestionActive =
+      beat?.type === "question" &&
+      beat.question.type === "code_test" &&
+      demoMode === "practice";
+
+    const classicChrome = (
+      <div className="relative z-10 shrink-0">
+        <div className="mb-4 shrink-0 rounded-2xl border border-primary/10 bg-white/60 p-3 shadow-sm backdrop-blur sm:p-4">
+          <div className="mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
+              Lesson controls
+            </p>
+            <p className="mt-0.5 text-sm font-medium text-gray-800">
+              Lesson {lessonOrdinal} of {lessonTotal}
+              {lesson.title ? ` · ${lesson.title}` : ""}
+            </p>
+            <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+              {isSpeaking
+                ? "Wait for the instructor to finish speaking."
+                : canPrimaryContinue
+                  ? "Ready when you are — continue to the next step."
+                  : beat?.type === "question"
+                    ? "Answer the question to continue."
+                    : "Listen to your instructor."}
+            </p>
+          </div>
+
+          <div className="flex gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => goToBeat(beatIndex - 1)}
+              disabled={!canGoPreviousBeat}
+              className={cn(
+                "min-w-0 flex-1 rounded-xl px-2 py-2.5 text-xs font-semibold transition-colors sm:px-3 sm:text-sm",
+                canGoPreviousBeat
+                  ? "bg-red-500 text-white shadow hover:bg-red-600"
+                  : "cursor-not-allowed bg-gray-200 text-gray-500",
+              )}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => advance()}
+              disabled={!canPrimaryContinue}
+              className={cn(
+                "min-w-0 flex-[1.4] rounded-xl px-2 py-2.5 text-xs font-semibold transition-colors sm:px-3 sm:text-sm",
+                canPrimaryContinue
+                  ? "bg-green-500 text-white shadow hover:bg-green-600"
+                  : "cursor-not-allowed bg-gray-200 text-gray-500",
+              )}
+            >
+              {continueLabel}
+            </button>
+          </div>
+        </div>
+
+        {isCodeTestQuestionActive ? (
+          <div className="min-w-0">
+            <h2 className="mb-2 text-base font-bold leading-snug text-gray-900 sm:text-lg lg:text-xl">
+              {beat.question.question}
+            </h2>
+          </div>
+        ) : null}
+
+        {isCodeTestQuestionActive ? (
+          <div className="my-4 hidden min-h-[100px] items-center justify-center lg:flex lg:my-6">
+            <div className="relative flex items-center justify-center">
+              {isSpeaking ? (
+                <>
+                  <div className="absolute h-16 w-16 animate-ping rounded-full bg-primary/20" />
+                  <div
+                    className="absolute h-14 w-14 animate-ping rounded-full bg-primary/30"
+                    style={{ animationDelay: "0.2s" }}
+                  />
+                  <div
+                    className="absolute h-12 w-12 animate-ping rounded-full bg-primary/40"
+                    style={{ animationDelay: "0.4s" }}
+                  />
+                </>
+              ) : null}
+              <div
+                className={cn(
+                  "relative rounded-full border-2 bg-white/90 p-3 shadow-lg backdrop-blur-sm transition-all duration-300",
+                  isSpeaking
+                    ? "scale-110 border-primary shadow-primary/50"
+                    : "scale-100 border-primary/30",
+                )}
+              >
+                <Volume2
+                  className={cn(
+                    "h-6 w-6 text-primary",
+                    isSpeaking && "animate-pulse",
+                  )}
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+
+    const classicLessonBoard = (
+      <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-y-auto border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-6 lg:border-l-2">
+        <div className="pointer-events-none absolute inset-0 opacity-5">
+          <div className="absolute top-20 right-10 h-32 w-32 rounded-full bg-primary blur-3xl" />
+          <div className="absolute bottom-20 left-10 h-40 w-40 rounded-full bg-primary/60 blur-3xl" />
+        </div>
+
+        <div className="relative z-10 space-y-6">
+          <div className="mb-2">
+            <div className="mb-2 flex items-center gap-2">
+              <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+              <span className="text-sm font-medium uppercase tracking-wide text-primary/70">
+                {phaseLabel}
+              </span>
+            </div>
+            <h2 className="mb-3 text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">
+              {lesson.title}
+            </h2>
+            <div className="h-1 w-24 rounded-full bg-linear-to-r from-primary via-primary/80 to-primary/60" />
+          </div>
+
+          {/*
+            Subtitle stage is for teaching beats only. Questions / bridge must
+            show their UI immediately (like CourseDetails), even while the
+            avatar is still speaking the prompt.
+          */}
+          {isSpeaking &&
+          currentSubtitle &&
+          beat?.type !== "question" &&
+          beat?.type !== "bridge" &&
+          beat?.type !== "recap" ? (
+            <div className="flex min-h-[200px] flex-1 items-center justify-center sm:min-h-[260px] lg:min-h-[300px]">
+              <div className="mx-auto max-w-2xl px-4 sm:px-6">
+                <div className="mb-6 flex items-center justify-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <div
+                      className="h-2 w-2 animate-bounce rounded-full bg-primary"
+                      style={{ animationDelay: "0ms" }}
+                    />
+                    <div
+                      className="h-2 w-2 animate-bounce rounded-full bg-primary"
+                      style={{ animationDelay: "150ms" }}
+                    />
+                    <div
+                      className="h-2 w-2 animate-bounce rounded-full bg-primary"
+                      style={{ animationDelay: "300ms" }}
+                    />
+                  </div>
+                  <span className="text-sm font-medium text-primary/70">
+                    Your instructor is speaking...
+                  </span>
+                </div>
+                <div className="rounded-2xl border-2 border-primary/20 bg-white/80 p-5 shadow-xl backdrop-blur-md sm:p-8">
+                  <p className="text-center text-lg font-medium leading-relaxed text-gray-800 sm:text-2xl md:text-3xl">
+                    {currentSubtitle}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            beatBoard
+          )}
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="relative h-full overflow-hidden bg-white">
+        {!hideFlowChrome ? (
+          <V2SkipPanel
+            lesson={lesson}
+            activeBeatId={beat?.id ?? null}
+            onJump={(target) => goToBeat(target.index)}
+          />
+        ) : null}
+
+        <Split
+          className="flex h-full min-h-0"
+          sizes={isLgUp ? [35, 65] : [0, 100]}
+          minSize={isLgUp ? 200 : 0}
+          gutterSize={isLgUp ? 8 : 0}
+          gutterStyle={(dimension, gutterSize) =>
+            dimension === "width" && gutterSize > 0
+              ? {
+                  width: `${gutterSize}px`,
+                  cursor: "col-resize",
+                  pointerEvents: "auto",
+                }
+              : { width: "0px", pointerEvents: "none" }
+          }
+        >
+          <div
+            className={cn(
+              "relative flex min-h-0 flex-col overflow-y-auto scrollbar-hide",
+              isLgUp ? "pr-4" : "min-w-0 overflow-hidden",
+            )}
+          >
+            {isLgUp ? (
+              <>
+                {classicChrome}
+                {avatarSlot && !isCodeTestQuestionActive ? (
+                  <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                    <div className="flex h-full min-h-0 min-w-0 w-full items-center justify-start">
+                      {avatarSlot}
+                    </div>
+                  </div>
+                ) : avatarSlot && isCodeTestQuestionActive ? (
+                  <div
+                    className="pointer-events-none invisible absolute inset-0"
+                    aria-hidden
+                  >
+                    {avatarSlot}
+                  </div>
+                ) : null}
+              </>
+            ) : avatarSlot ? (
+              <div
+                className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
+                aria-hidden
+              >
+                {avatarSlot}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            {!isLgUp && (
+              <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
+                <div className="flex items-center gap-3 px-3 py-2">
+                  <div className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
+                    {isSpeaking ? (
+                      <>
+                        <span className="absolute inline-flex size-[120%] animate-ping rounded-full bg-primary/30" />
+                        <span className="absolute inline-flex size-full rounded-full bg-primary/20" />
+                      </>
+                    ) : null}
+                    <div
+                      className={cn(
+                        "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md transition-all duration-300 sm:size-10",
+                        isSpeaking
+                          ? "scale-105 border-primary shadow-lg shadow-primary/25"
+                          : "border-primary/25",
+                      )}
+                    >
+                      <Mic
+                        className={cn(
+                          "size-[1.15rem] text-primary sm:size-5",
+                          isSpeaking && "animate-pulse",
+                        )}
+                        aria-hidden
+                      />
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/80">
+                      Instructor audio
+                    </p>
+                    <p className="truncate text-xs text-gray-600 sm:text-sm">
+                      {isSpeaking
+                        ? currentSubtitle || "Speaking…"
+                        : "Ready when you are"}
+                    </p>
+                  </div>
+                </div>
+                {showMobileAudioUnlock ? (
+                  <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
+                    <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
+                      Your phone needs one tap to start the lesson with voice.
+                      This is normal on Safari and Chrome mobile.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={onMobileAudioUnlock}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
+                    >
+                      <Volume2 className="h-5 w-5 shrink-0" aria-hidden />
+                      <span>Tap to start lesson</span>
+                    </button>
+                  </div>
+                ) : null}
+                <div className="px-3 pb-3">{classicChrome}</div>
+              </div>
+            )}
+
+            <div
+              className={cn(
+                "flex min-h-0 flex-1 flex-col",
+                fillWorkspace
+                  ? "overflow-hidden"
+                  : "overflow-y-auto scrollbar-hide",
+              )}
+            >
+              {showCodePanel ? (
+                <div className="flex h-full min-h-0 w-full flex-1 flex-col">
+                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                    {codeWorkspace}
+                  </div>
+                </div>
+              ) : showFormulaPanel ? (
+                <div className="min-h-0 flex-1 overflow-y-auto border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-6 lg:border-l-2">
+                  <div className="overflow-hidden rounded-xl border border-primary/20 bg-white/60 p-4 shadow-sm backdrop-blur-sm">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
+                      Formula board
+                    </p>
+                    <div className="min-h-[120px] rounded-lg bg-primary/5 p-3 font-mono text-base text-gray-900">
+                      <MathText displayMode forceMath>
+                        {formulaBoardText}
+                      </MathText>
+                    </div>
+                    {beat?.type === "question" && demoMode === "practice" && (
+                      <div className="mt-3 space-y-2.5">
+                        <input
+                          type="text"
+                          value={formulaAnswer}
+                          onChange={(e) => setFormulaAnswer(e.target.value)}
+                          disabled={isAnswerSubmitted}
+                          placeholder="Type your answer…"
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium outline-none focus:border-primary"
+                        />
+                        {!isAnswerSubmitted && (
+                          <ContinueButton
+                            label="Check answer"
+                            onClick={handleSubmitFormula}
+                            disabled={!formulaAnswer.trim() || isSpeaking}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                classicLessonBoard
+              )}
+            </div>
+          </div>
+        </Split>
+
+        {fullscreen && showCodePanel && !useWeb && (
+          <FullscreenModal
+            type={fullscreen}
+            code={code}
+            results={results}
+            language={runLanguage}
+            onClose={() => setFullscreen(null)}
+            onCodeChange={(value) => {
+              if (editorLocked) return;
+              setCode(value);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#f4f6f8]">

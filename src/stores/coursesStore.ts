@@ -6,6 +6,7 @@ import {
   isDemoCourseSlug,
   setRemoteCurricula,
   type Curriculum,
+  type CurriculumEntry,
 } from "../data/curriculumData";
 import { type CourseCategoryId } from "../data/courseCategories";
 import type { CourseProgressRecord } from "@/api/courseProgress";
@@ -285,7 +286,7 @@ export const useCoursesStore = create<CoursesState>()(
             set({ curriculaFetched: true, curriculaLoading: false });
             return;
           }
-          setRemoteCurricula(res.data);
+          setRemoteCurricula(res.data as CurriculumEntry[]);
           set((state) => ({
             curriculaRevision: state.curriculaRevision + 1,
             curriculaFetched: true,

@@ -1118,6 +1118,13 @@ export function LessonPlayer({
   })();
 
   const fillWorkspace = showCodePanel || showFormulaPanel;
+  const isCodeTestPractice =
+    beat?.type === "question" &&
+    beat.question.type === "code_test" &&
+    demoMode === "practice";
+  /** Code-test practice: keep the prompt visible and stack the avatar under it. */
+  const showAvatarBelowQuestion =
+    isCodeTestPractice && fillWorkspace;
   /**
    * Kids stage + workspace: on lg+ the instruction card becomes a full-height
    * side rail beside the board instead of a cramped strip above it.
@@ -1135,14 +1142,17 @@ export function LessonPlayer({
       <div
         className={cn(
           "flex flex-col gap-3",
-          kidsStage
-            ? sideBySide
-              ? "sm:gap-3"
-              : "sm:gap-3 lg:flex-row lg:items-stretch lg:gap-4"
-            : "gap-4 lg:flex-row lg:items-stretch",
+          showAvatarBelowQuestion
+            ? "gap-3"
+            : kidsStage
+              ? sideBySide
+                ? "sm:gap-3"
+                : "sm:gap-3 lg:flex-row lg:items-stretch lg:gap-4"
+              : "gap-4 lg:flex-row lg:items-stretch",
         )}
       >
         {avatarSlot &&
+          !showAvatarBelowQuestion &&
           (kidsStage ? (
             <>
               {/*
@@ -1349,12 +1359,31 @@ export function LessonPlayer({
                 </p>
               )}
           </div>
+
+          {showAvatarBelowQuestion && avatarSlot ? (
+            <div className="mx-auto flex w-full max-w-[220px] shrink-0 flex-col items-center sm:max-w-[260px]">
+              <div className="aspect-square w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
+                {avatarSlot}
+              </div>
+              {isSpeaking && currentSubtitle ? (
+                <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
+                  {currentSubtitle}
+                </p>
+              ) : (
+                <p className="mt-2 text-center text-xs text-gray-400">
+                  Your instructor
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
 
         <div
           className={cn(
             "flex w-full shrink-0 flex-col gap-2.5",
-            kidsStage
+            showAvatarBelowQuestion
+              ? "hidden"
+              : kidsStage
               ? sideBySide
                 ? "grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 lg:grid-cols-1"
                 : "grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 lg:flex lg:w-48 lg:grid-cols-none xl:w-56"
@@ -1500,14 +1529,11 @@ export function LessonPlayer({
       beat.advance === "manual" &&
       !isSpeaking;
 
-    // Match CourseDetails: free the left column for the prompt while the learner answers a code test.
-    const isCodeTestQuestionActive =
-      beat?.type === "question" &&
-      beat.question.type === "code_test" &&
-      demoMode === "practice";
+    // Match CourseDetails: show the prompt above the avatar while the learner answers a code test.
+    const isCodeTestQuestionActive = isCodeTestPractice;
 
     const classicChrome = (
-      <div className="relative z-10 shrink-0">
+      <div className="relative z-10 w-full min-w-0 shrink-0">
         <div className="mb-4 shrink-0 rounded-2xl border border-primary/10 bg-white/60 p-3 shadow-sm backdrop-blur sm:p-4">
           <div className="mb-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
@@ -1563,41 +1589,13 @@ export function LessonPlayer({
             <h2 className="mb-2 text-base font-bold leading-snug text-gray-900 sm:text-lg lg:text-xl">
               {beat.question.question}
             </h2>
-          </div>
-        ) : null}
-
-        {isCodeTestQuestionActive ? (
-          <div className="my-4 hidden min-h-[100px] items-center justify-center lg:flex lg:my-6">
-            <div className="relative flex items-center justify-center">
-              {isSpeaking ? (
-                <>
-                  <div className="absolute h-16 w-16 animate-ping rounded-full bg-primary/20" />
-                  <div
-                    className="absolute h-14 w-14 animate-ping rounded-full bg-primary/30"
-                    style={{ animationDelay: "0.2s" }}
-                  />
-                  <div
-                    className="absolute h-12 w-12 animate-ping rounded-full bg-primary/40"
-                    style={{ animationDelay: "0.4s" }}
-                  />
-                </>
-              ) : null}
-              <div
-                className={cn(
-                  "relative rounded-full border-2 bg-white/90 p-3 shadow-lg backdrop-blur-sm transition-all duration-300",
-                  isSpeaking
-                    ? "scale-110 border-primary shadow-primary/50"
-                    : "scale-100 border-primary/30",
-                )}
-              >
-                <Volume2
-                  className={cn(
-                    "h-6 w-6 text-primary",
-                    isSpeaking && "animate-pulse",
-                  )}
-                />
+            {avatarSlot ? (
+              <div className="mt-3 flex justify-center lg:mt-4 lg:justify-start">
+                <div className="aspect-square h-36 w-36 max-w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner sm:h-44 sm:w-44 lg:h-auto lg:min-h-48 lg:w-full">
+                  {avatarSlot}
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -1696,29 +1694,22 @@ export function LessonPlayer({
         >
           <div
             className={cn(
-              "relative flex min-h-0 flex-col overflow-y-auto scrollbar-hide",
-              isLgUp ? "pr-4" : "min-w-0 overflow-hidden",
+              "relative box-border flex min-h-0 flex-col overflow-y-auto scrollbar-hide",
+              isLgUp ? "px-5 py-4 sm:px-6 sm:py-5" : "min-w-0 overflow-hidden",
             )}
           >
             {isLgUp ? (
               <>
                 {classicChrome}
                 {avatarSlot && !isCodeTestQuestionActive ? (
-                  <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                    <div className="flex h-full min-h-0 min-w-0 w-full items-center justify-start">
+                  <div className="mt-2 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden sm:mt-4">
+                    <div className="flex h-full min-h-0 min-w-0 w-full items-center justify-center sm:justify-start">
                       {avatarSlot}
                     </div>
                   </div>
-                ) : avatarSlot && isCodeTestQuestionActive ? (
-                  <div
-                    className="pointer-events-none invisible absolute inset-0"
-                    aria-hidden
-                  >
-                    {avatarSlot}
-                  </div>
                 ) : null}
               </>
-            ) : avatarSlot ? (
+            ) : avatarSlot && !isCodeTestQuestionActive ? (
               <div
                 className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
                 aria-hidden
@@ -1731,7 +1722,7 @@ export function LessonPlayer({
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {!isLgUp && (
               <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
-                <div className="flex items-center gap-3 px-3 py-2">
+                <div className="flex items-center gap-3 px-4 py-2 sm:px-5">
                   <div className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
                     {isSpeaking ? (
                       <>
@@ -1768,7 +1759,7 @@ export function LessonPlayer({
                   </div>
                 </div>
                 {showMobileAudioUnlock ? (
-                  <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
+                  <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-4 py-3 sm:px-5">
                     <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
                       Your phone needs one tap to start the lesson with voice.
                       This is normal on Safari and Chrome mobile.
@@ -1783,7 +1774,7 @@ export function LessonPlayer({
                     </button>
                   </div>
                 ) : null}
-                <div className="px-3 pb-3">{classicChrome}</div>
+                <div className="px-4 pb-4 sm:px-5">{classicChrome}</div>
               </div>
             )}
 

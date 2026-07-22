@@ -246,14 +246,14 @@ export function getFirstLesson(
   return null;
 }
 
-import puppyHtmlWebAppCurriculum from "./puppy-html-web-app-curriculum.json";
+import jokeMachineSneakPeekCurriculum from "./joke-machine-sneak-peek-curriculum.json";
 import type {
   CurriculumV2,
   CurriculumV2Data,
 } from "@/features/curriculum-preview/v2/types";
 
 /** Bundled sneak-peek demo (not from the visible-curricula API). */
-export const DEMO_COURSE_SLUG = "puppy-html-web-app";
+export const DEMO_COURSE_SLUG = "sneak-peek-joke-machine-html";
 
 /**
  * API / store entry may be classic v1 or flow v2. Keep `curriculum` loosely typed
@@ -267,7 +267,7 @@ export type CurriculumEntry = {
 
 /** Schema v2 flow curriculum used by the free sneak-peek lesson player. */
 export function getDemoCurriculumV2(): CurriculumV2 {
-  return puppyHtmlWebAppCurriculum as CurriculumV2;
+  return jokeMachineSneakPeekCurriculum as CurriculumV2;
 }
 
 export function isDemoCourseSlug(slug: string | null | undefined): boolean {

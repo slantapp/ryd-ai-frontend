@@ -179,7 +179,7 @@ export default function DemoSneakPeekPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 pb-[env(safe-area-inset-bottom)]">
+    <div className="flex h-full min-h-0 flex-col gap-2 px-1 pb-[env(safe-area-inset-bottom)] sm:px-2">
       <div className="flex shrink-0 items-center justify-between gap-2">
         <p className="flex min-w-0 items-center gap-1.5 truncate font-inter text-xs font-semibold uppercase tracking-wide text-primary sm:text-sm">
           <Sparkles className="size-3.5 shrink-0" aria-hidden />
@@ -239,8 +239,8 @@ export default function DemoSneakPeekPage() {
           <DialogHeader>
             <DialogTitle className="font-solway text-lg">Lessons</DialogTitle>
             <DialogDescription className="font-inter text-sm text-gray-600">
-              Lesson 1 is free. Subscribe to unlock the puppy photo adventure and
-              the rest of the course.
+              This sneak peek covers the p and h1 tags. Subscribe to unlock the
+              button lesson and keep building with your AI instructor.
             </DialogDescription>
           </DialogHeader>
           <ul className="space-y-2">
@@ -325,13 +325,14 @@ export default function DemoSneakPeekPage() {
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-solway text-xl">
-              Your starter page is ready — want the puppy photo next?
+              Ready to add your button?
             </DialogTitle>
             <DialogDescription className="font-inter text-sm text-gray-600">
-              You finished the first lesson. The next adventure adds a real puppy
-              photo with the <span className="font-semibold">img</span> tag, then
-              CSS polish. Subscribe to unlock the rest of this course and every
-              other course with your AI instructor.
+              You wrote real code with <span className="font-semibold">p</span> and{" "}
+              <span className="font-semibold">h1</span> tags. Subscribe to unlock
+              the next step — building a clickable{" "}
+              <span className="font-semibold">button</span> — and the rest of
+              every course with your AI instructor.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">

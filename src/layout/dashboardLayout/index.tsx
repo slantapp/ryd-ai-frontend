@@ -235,10 +235,10 @@ const DashboardLayout = ({ children }: DashboardProps) => {
         />
         <div
           className={cn(
-            "min-h-0 w-full min-w-0 flex-1 rounded-[20px] bg-white p-3 shadow-lg sm:p-4 lg:ml-76",
+            "min-h-0 w-full min-w-0 flex-1 rounded-[20px] bg-white shadow-lg",
             isDemoSneakPeek
-              ? "flex flex-col overflow-hidden p-2 sm:p-3"
-              : "overflow-y-auto scrollbar-hide",
+              ? "flex flex-col overflow-hidden p-2 sm:p-3 lg:ml-76"
+              : "overflow-y-auto scrollbar-hide p-3 sm:p-4 lg:ml-76",
             mobileNavOpen && "max-lg:overflow-hidden",
           )}
           inert={blockDashboardAccess ? true : undefined}

@@ -22,7 +22,7 @@ export function V2SkipPanel({
   if (items.length === 0) return null;
 
   return (
-    <div className="shrink-0 border-b border-gray-200 bg-gray-50/80 px-4 py-2 sm:px-5">
+    <div className="shrink-0 border-b border-gray-200 bg-gray-50/80 py-2 sm:px-5">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

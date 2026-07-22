@@ -1,0 +1,304 @@
+{
+  "slug": "sneak-peek-joke-machine-html",
+  "schema_version": 2,
+  "curriculum": {
+    "title": "Code Your First Web Page: The Joke Machine",
+    "description": "A short sneak peek for beginners of any age. Learn how tags work, then write your first lines of code with p and h1 tags on a playful Joke Machine page. Subscribe to continue and add a button.",
+    "language": "en",
+    "category": "coding",
+    "age": 7,
+    "class": "Beginner, all ages",
+    "grade": 3,
+    "duration": "1 session",
+    "level": "Beginner",
+    "rating": 5,
+    "defaults": {
+      "avatar": {
+        "intro_template": "Welcome! Today we are building a Joke Machine — {{lesson_title}}.",
+        "continue_prompt": "Tap Continue when you're ready.",
+        "start_questions_prompt": "Ready? Tap Start Questions.",
+        "handoff_to_practice": "Your turn! I cleared the example — go write it yourself.",
+        "lesson_complete_template": "You did it! You finished {{lesson_title}}.",
+        "correct_feedback": "Yes! Nailed it.",
+        "incorrect_feedback": "Not quite — take another look and try once more."
+      },
+      "advance": {
+        "pause_min_seconds": 2
+      },
+      "question_retry": {
+        "max": 2,
+        "on_exhausted": "continue"
+      }
+    },
+    "modules": [
+      {
+        "id": "module_01",
+        "title": "Code Your First Web Page",
+        "unlock": null,
+        "lessons": [
+          {
+            "id": "module_01__lesson_01",
+            "title": "Build a Joke Machine",
+            "goal": "Understand what a tag is and the pattern behind every tag, then write your first lines of code: a p tag, an h1 tag, and a button tag, building a Joke Machine page one piece at a time.",
+            "estimated_minutes": 14,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Ready to write your very first line of code? Today you're building something fun: a Joke Machine. By the end of this lesson, you'll have a real web page that sets up a joke and reveals the answer."
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "concept_tag",
+                "type": "display",
+                "phase": "teach",
+                "title": "What is a tag?",
+                "body": "A tag is a small instruction for the browser.\n\nThe browser is the app that shows a web page. It reads tags to know what pieces to build.\n\nA tag can tell the browser:\n\n- Make a heading\n- Make a paragraph\n- Make a button\n\nTags aren't shown as regular words on the page. They're instructions the browser reads behind the scenes.",
+                "speak_body": false,
+                "avatar": {
+                  "text": "A tag is a small instruction for the browser. It tells the browser what to build on the page — a heading, a paragraph, a button. Tags work behind the scenes; they aren't shown as regular words.",
+                  "timing": "with_display"
+                },
+                "advance": "manual"
+              },
+              {
+                "id": "concept_pattern",
+                "type": "display",
+                "phase": "teach",
+                "title": "Every tag follows ONE pattern",
+                "body": "Here's the pattern almost every tag uses:\n\n**Opening tag → Content → Closing tag**\n\nWritten out, it looks like this:\n\n`<tagname>` your content here `</tagname>`",
+                "speak_body": false,
+                "avatar": {
+                  "text": "Almost every tag works the same way: an opening tag, then your content, then a closing tag which is same as an opening tag but with a slash. Learn that one pattern, and you can write tons of tags.",
+                  "timing": "with_display"
+                },
+                "advance": "manual"
+              },
+              {
+                "id": "check_pattern_tf",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "q2_pattern_tf",
+                  "type": "true_false",
+                  "question": "A closing tag looks almost the same as an opening tag, just with a slash added .",
+                  "answer": true,
+                  "explanation": "True — the closing tag repeats the tag name, but adds a slash to show it's ending."
+                },
+                "avatar": {
+                  "on_ask": "Let's test your understanding. True or false?",
+                  "on_correct": "Yes! Same tag name, just with a slash added.",
+                  "on_wrong": "Look at the pattern again — the closing tag reuses the tag name and adds a slash."
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Compare the opening tag and closing tag in the pattern — what's different?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "transition_start_writing",
+                "type": "speak",
+                "phase": "teach",
+                "avatar": {
+                  "text": "You've got the pattern down. Now let's actually use it — time to write your very first line of code."
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "p_explain",
+                "type": "display",
+                "phase": "teach",
+                "title": "Step 1: Write a p tag",
+                "body": "The `p` tag makes a paragraph — a regular line or two of text on a page.\n\nOpening tag: `<p>`\nContent: your sentence\nClosing tag: `</p>`\n\nExample: `<p>Why did the robot go on a diet?</p>`",
+                "speak_body": false,
+                "avatar": {
+                  "text": "First up: the p tag. It creates a paragraph, a regular line of text. Opening p tag, your sentence, closing p tag. That's the whole pattern.",
+                  "timing": "with_display"
+                },
+                "advance": "manual"
+              },
+              {
+                "id": "check_p_mc",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "q3_p_mc",
+                  "type": "multiple_choice",
+                  "question": "Which tag creates a regular paragraph of text?",
+                  "options": ["p", "h1", "button", "style"],
+                  "answer": "p",
+                  "explanation": "Right — p is short for paragraph."
+                },
+                "avatar": {
+                  "on_ask": "",
+                  "on_correct": "Yes, the p tag.",
+                  "on_wrong": "Remember, p is short for paragraph."
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Think of the word 'paragraph' — which letter does it start with?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "p_demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "<p>Why did the robot go on a diet?</p>",
+                  "language": "html",
+                  "description": "Watch a p tag come together.",
+                  "explanation": "Opening p tag starts it — notice it's wrapped in angle brackets. The sentence - Why did the robot go on a diet? - in the middle is the content. Then closing p tag ends it — same angle brackets, but with a slash right before the p, letting the browser know this tag is closing.",
+                  "autoRun": true,
+                  "typingSpeed": 45
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "practice_p",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "q5_write_p",
+                  "type": "code_test",
+                  "question": "Write your first line of code. Write a p tag with any sentence you like in between the p tag.",
+                  "explanation": "That's it — you just wrote your first line of code. Opening p tag starts it, your words are the content, closing p tag ends it.",
+                  "code_example": {
+                    "code": "<p>Why did the robot go on a diet?</p>",
+                    "language": "html",
+                    "description": "",
+                    "explanation": "Match this pattern: opening p tag, your sentence, closing p tag.",
+                    "autoRun": false,
+                    "typingSpeed": 45,
+                    "starterCode": "<!-- Write a p tag with any sentence you like below -->\n"
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:<p>[\\s\\S]+</p>"
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Here's the code again written for p tag.",
+                  "handoff": "Now write your own — any sentence you like, inside a p tag."
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Start with an opening p tag, type your sentence, then a closing p tag.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "p_canonical_transition",
+                "type": "speak",
+                "phase": "teach",
+                "avatar": {
+                  "text": "Nice work! For the rest of this lesson, we'll use this exact line Why did the robot go on a diet? as the p tag so everything lines up as we build:  You can always use your own words when you build pages on your own."
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "h1_explain",
+                "type": "display",
+                "phase": "teach",
+                "title": "Step 2: Write an h1 tag",
+                "body": "You already know the pattern, so this one is easy.\n\nThe `h1` tag makes the biggest heading on the page — great for a title.\n\nOpening tag: `<h1>`\nContent: your title\nClosing tag: `</h1>`\n\nExample: `<h1>Joke Machine 3000</h1>`",
+                "speak_body": false,
+                "avatar": {
+                  "text": "You already know the pattern, so this one is easy.\n\nSame pattern, new tag. The h1 tag makes the biggest heading on the page — perfect for a title. Let's give your Joke Machine a name.",
+                  "timing": "with_display"
+                },
+                "advance": "manual"
+              },
+              {
+                "id": "check_h1_tf",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "q6_h1_tf",
+                  "type": "true_false",
+                  "question": "The h1 tag makes the biggest heading on a page.",
+                  "answer": true,
+                  "explanation": "True — h1 is used for the biggest, most important heading."
+                },
+                "avatar": {
+                  "on_ask": "True or false",
+                  "on_correct": "Yes! h1 is the big one.",
+                  "on_wrong": "h1 does make the biggest heading — that's what makes it different from p."
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Think of h1 as the title of the page.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "h1_demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "<h1>Joke Machine 3000</h1>",
+                  "language": "html",
+                  "description": "Watch the h1 tag build a title.",
+                  "explanation": "Opening h1 tag starts it, the title Joke Machine 3000 is the content, closing h1 tag ends it.",
+                  "autoRun": true,
+                  "typingSpeed": 45
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "practice_h1",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "q8_write_h1",
+                  "type": "code_test",
+                  "question": "Give your Joke Machine a name. Add an h1 tag on line 2 just above the p tag.",
+                  "explanation": "Great — your machine has a name now, and your page has two tags working together.",
+                  "code_example": {
+                    "code": "<h1>Joke Machine 3000</h1>\n<p>Why did the robot go on a diet?</p>",
+                    "language": "html",
+                    "description": "",
+                    "explanation": "The code shown now includes the p tag",
+                    "autoRun": false,
+                    "typingSpeed": 45,
+                    "starterCode": "<!-- Add your h1 here: give your Joke Machine a name -->\n\n<p>Why did the robot go on a diet?</p>"
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:<h1>[\\s\\S]+</h1>[\\s\\S]*<p>[\\s\\S]+</p>"
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Here's the code again.",
+                  "handoff": "Your turn — name your Joke Machine with an h1 tag, right above your p line."
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Start with an opening h1 tag, type a name, then a closing h1 tag.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "sneak_peek_bridge",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "You did it — your Joke Machine has a name and a joke line! Up next, you'll learn how to add a button tag so people can click to reveal the answer. That's the next step in class, and it's waiting for you when you subscribe."
+                },
+                "next": "locked_lesson_02",
+                "advance": "manual"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

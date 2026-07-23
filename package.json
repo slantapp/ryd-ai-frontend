@@ -39,7 +39,7 @@
     "formik": "^2.4.6",
     "katex": "^0.17.0",
     "lucide-react": "^0.544.0",
-    "narrator-avatar": "^1.1.7",
+    "narrator-avatar": "^1.1.8",
     "react": "^19.0.0",
     "react-avatar-editor": "^13.0.2",
     "react-day-picker": "^9.10.0",

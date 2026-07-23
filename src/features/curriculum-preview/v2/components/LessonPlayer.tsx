@@ -17,6 +17,10 @@ import TestResults from "@/components/courses/exercise/TestResults";
 import { MobileCollapsible } from "@/components/courses/exercise/MobileCollapsible";
 import { LessonProgressBar } from "@/components/courses/exercise/LessonProgressBar";
 import { PageLoadWaitBanner } from "@/components/courses/exercise/PageLoadWaitBanner";
+import {
+  MOBILE_INSTRUCTOR_AUDIO_BUTTON,
+  MOBILE_INSTRUCTOR_AUDIO_HINT,
+} from "@/constants/mobileInstructorAudio";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { PreviewQuestion } from "../../components/PreviewQuestion";
 import {
@@ -111,6 +115,9 @@ interface LessonPlayerProps {
   showMobileAudioUnlock?: boolean;
   onMobileAudioUnlock?: () => void;
   /** True while the 3D instructor avatar is still loading (mobile wait banner). */
+  /** True while the instructor avatar or speech is delayed (shows patience banner). */
+  isInstructorWaiting?: boolean;
+  /** @deprecated Use isInstructorWaiting */
   isAvatarLoading?: boolean;
   /**
    * Sneak-peek cliffhanger: after this lesson, the bridge CTA opens the
@@ -141,9 +148,11 @@ export function LessonPlayer({
   showMobileAudioUnlock = false,
   onMobileAudioUnlock,
   isAvatarLoading = false,
+  isInstructorWaiting,
   subscribeGateAfterLesson = false,
 }: LessonPlayerProps) {
   const isLgUp = useMediaQueryMinLg();
+  const showInstructorWait = isInstructorWaiting ?? isAvatarLoading;
   const isInstructorActive = isSpeaking && !isPaused;
   const defaults = useMemo(() => resolveAvatarDefaults(curriculum), [curriculum]);
   const [beatIndex, setBeatIndex] = useState(0);
@@ -1207,12 +1216,11 @@ export function LessonPlayer({
               {/* Mobile / tablet chrome: unlock CTA, loading, or mic + subtitle */}
               {!isLgUp && (
                 <div className="flex w-full shrink-0 flex-col gap-2">
-                  <PageLoadWaitBanner isLoading={isAvatarLoading} />
+                  <PageLoadWaitBanner isLoading={showInstructorWait} />
                   {showMobileAudioUnlock ? (
                     <div className="rounded-xl border border-primary/20 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
                       <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
-                        Your phone needs one tap to start the lesson with voice.
-                        This is normal on Safari and Chrome mobile.
+                        {MOBILE_INSTRUCTOR_AUDIO_HINT}
                       </p>
                       <button
                         type="button"
@@ -1220,7 +1228,7 @@ export function LessonPlayer({
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
                       >
                         <Volume2 className="h-5 w-5 shrink-0" aria-hidden />
-                        <span>Tap to start lesson</span>
+                        <span>{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
                       </button>
                     </div>
                   ) : (
@@ -1787,7 +1795,7 @@ export function LessonPlayer({
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {!isLgUp && (
               <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
-                <PageLoadWaitBanner isLoading={isAvatarLoading} />
+                <PageLoadWaitBanner isLoading={showInstructorWait} />
                 <div className="flex items-center gap-3 px-4 py-2 sm:px-5">
                   <div className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
                     {isInstructorActive ? (
@@ -1829,8 +1837,7 @@ export function LessonPlayer({
                 {showMobileAudioUnlock ? (
                   <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-4 py-3 sm:px-5">
                     <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
-                      Your phone needs one tap to start the lesson with voice.
-                      This is normal on Safari and Chrome mobile.
+                      {MOBILE_INSTRUCTOR_AUDIO_HINT}
                     </p>
                     <button
                       type="button"
@@ -1838,7 +1845,7 @@ export function LessonPlayer({
                       className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
                     >
                       <Volume2 className="h-5 w-5 shrink-0" aria-hidden />
-                      <span>Tap to start lesson</span>
+                      <span>{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
                     </button>
                   </div>
                 ) : null}

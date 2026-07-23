@@ -59,7 +59,7 @@ export default function CourseDetailsV2() {
     isPaused,
     togglePause,
     currentSubtitle,
-    isAvatarReady,
+    isInstructorWaiting,
     showMobileAudioUnlock,
     unlockMobileAudio,
   } = usePreviewAvatar({ instructorSource: "global" });
@@ -375,7 +375,7 @@ export default function CourseDetailsV2() {
         classicLayout
         showMobileAudioUnlock={showMobileAudioUnlock}
         onMobileAudioUnlock={unlockMobileAudio}
-        isAvatarLoading={!isAvatarReady}
+        isInstructorWaiting={isInstructorWaiting}
       />
     </div>
   );

@@ -32,7 +32,12 @@ import { useInstructorStore, INSTRUCTORS } from "@/stores/instructorStore";
 import { useCoursesStore } from "@/stores/coursesStore";
 import { cn } from "@/lib/utils";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
+import {
+  MOBILE_INSTRUCTOR_AUDIO_BUTTON,
+  MOBILE_INSTRUCTOR_AUDIO_HINT,
+} from "@/constants/mobileInstructorAudio";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
+import { isInstructorWaitActive } from "@/hooks/isInstructorWaitActive";
 import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
 import {
   buildLessonNavSnapshot,
@@ -116,6 +121,8 @@ function MathCourseDetailsInner() {
   const avatarRef = useRef<NarratorAvatarRef | null>(null);
   const avatarReadyRef = useRef(false);
   const [isAvatarReady, setIsAvatarReady] = useState(false);
+  const [awaitingSpeech, setAwaitingSpeech] = useState(false);
+  const [hasPendingSpeech, setHasPendingSpeech] = useState(false);
   const pendingSpeechQueueRef = useRef<
     Array<{ text: string; action: PendingAction }>
   >([]);
@@ -246,6 +253,21 @@ function MathCourseDetailsInner() {
 
   const getAvatar = useCallback(() => avatarRef.current, []);
 
+  const syncPendingSpeech = useCallback(() => {
+    setHasPendingSpeech(pendingSpeechQueueRef.current.length > 0);
+  }, []);
+
+  const ensureAvatarReady = useCallback(() => {
+    if (avatarReadyRef.current) return true;
+    const avatar = getAvatar() as { isReady?: boolean } | null;
+    if (avatar?.isReady) {
+      avatarReadyRef.current = true;
+      setIsAvatarReady(true);
+      return true;
+    }
+    return false;
+  }, [getAvatar]);
+
   const speakImmediate = useCallback(
     (text: string, action: PendingAction = { type: "none" }) => {
       try {
@@ -255,10 +277,12 @@ function MathCourseDetailsInner() {
           speechStartTimeRef.current = Date.now();
           lastSpeechTextRef.current = text;
           lastSpokenTextRef.current = text;
+          setAwaitingSpeech(true);
           avatar.speakText(text);
         }
       } catch (error) {
         console.warn("Error speaking text:", error);
+        setAwaitingSpeech(false);
       }
     },
     [getAvatar],
@@ -266,19 +290,26 @@ function MathCourseDetailsInner() {
 
   const speak = useCallback(
     (text: string, action: PendingAction = { type: "none" }) => {
-      if (!avatarReadyRef.current) {
+      if (!ensureAvatarReady()) {
         pendingSpeechQueueRef.current.push({ text, action });
+        syncPendingSpeech();
+        setAwaitingSpeech(true);
         return;
       }
       speakImmediate(text, action);
     },
-    [speakImmediate],
+    [ensureAvatarReady, speakImmediate, syncPendingSpeech],
   );
 
   const flushNextQueuedSpeech = useCallback(() => {
     const next = pendingSpeechQueueRef.current.shift();
-    if (next) speakImmediate(next.text, next.action);
-  }, [speakImmediate]);
+    if (!next) {
+      syncPendingSpeech();
+      return;
+    }
+    syncPendingSpeech();
+    speakImmediate(next.text, next.action);
+  }, [speakImmediate, syncPendingSpeech]);
 
   // Instructor pause/resume, persisted so learners can resume after leaving.
   const pauseStorageKey = exercise ? `ryd-lesson-pause:${exercise}` : null;
@@ -381,6 +412,8 @@ function MathCourseDetailsInner() {
     stopFormulaTyping();
     stopSubtitles();
     pendingSpeechQueueRef.current = [];
+    setHasPendingSpeech(false);
+    setAwaitingSpeech(false);
     setShowMobileAudioUnlock(false);
     clearIntroUnlockTimeout();
     pendingIntroUnlockLessonIdRef.current = null;
@@ -1395,9 +1428,15 @@ function MathCourseDetailsInner() {
   useEffect(() => {
     avatarReadyRef.current = false;
     setIsAvatarReady(false);
-    pendingSpeechQueueRef.current = [];
     setShowMobileAudioUnlock(false);
   }, [exercise, isLgUp, selectedInstructor]);
+
+  const isInstructorWaiting = isInstructorWaitActive({
+    isPaused,
+    isAvatarReady,
+    hasPendingSpeech,
+    awaitingSpeech,
+  });
 
   const avatarConfig = {
     cameraView: "mid" as const,
@@ -1624,6 +1663,8 @@ function MathCourseDetailsInner() {
                     isManuallyStopped.current = false;
                     setIsSpeaking(true);
                     setIsShowingSubtitles(true);
+                    setAwaitingSpeech(false);
+                    syncPendingSpeech();
                     setIsPaused(false);
                     pausedLiveRef.current = false;
                     clearPausedState();
@@ -1640,7 +1681,7 @@ function MathCourseDetailsInner() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l-0 border-primary/20 lg:border-l-2">
           {!isLgUp && (
             <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
-              <PageLoadWaitBanner isLoading={!isAvatarReady} />
+              <PageLoadWaitBanner isLoading={isInstructorWaiting} />
               <div className="flex items-center gap-3 px-3 py-2">
                 <InstructorSpeakingIndicator isSpeaking={isSpeaking} />
                 <div className="min-w-0 flex-1">
@@ -1690,7 +1731,7 @@ function MathCourseDetailsInner() {
               {showMobileAudioUnlock && (
                 <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
                   <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
-                    Your phone needs one tap to allow instructor voice. This is normal on Safari and Chrome mobile.
+                    {MOBILE_INSTRUCTOR_AUDIO_HINT}
                   </p>
                   <button
                     type="button"
@@ -1698,7 +1739,9 @@ function MathCourseDetailsInner() {
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
                   >
                     <Volume2 className="size-5 shrink-0" aria-hidden />
-                    <span className="whitespace-nowrap">Tap to start voice</span>
+                    <span className="whitespace-nowrap">
+                      {MOBILE_INSTRUCTOR_AUDIO_BUTTON}
+                    </span>
                   </button>
                 </div>
               )}
@@ -1848,6 +1891,8 @@ function MathCourseDetailsInner() {
                   isManuallyStopped.current = false;
                   setIsSpeaking(true);
                   setIsShowingSubtitles(true);
+                  setAwaitingSpeech(false);
+                  syncPendingSpeech();
                   setIsPaused(false);
                   pausedLiveRef.current = false;
                   clearPausedState();

@@ -61,7 +61,7 @@ export default function DemoSneakPeekPage() {
     isPaused,
     togglePause,
     currentSubtitle,
-    isAvatarReady,
+    isInstructorWaiting,
     showMobileAudioUnlock,
     unlockMobileAudio,
   } = usePreviewAvatar({ instructorSource: "global" });
@@ -235,7 +235,7 @@ export default function DemoSneakPeekPage() {
           subscribeGateAfterLesson={isFreeLesson}
           showMobileAudioUnlock={showMobileAudioUnlock}
           onMobileAudioUnlock={unlockMobileAudio}
-          isAvatarLoading={!isAvatarReady}
+          isInstructorWaiting={isInstructorWaiting}
         />
       </div>
 

@@ -54,7 +54,12 @@ import {
 } from "@/utils/webCodeWorkspace";
 import { prefetchMonacoEditor } from "./exercise/MonacoEditorLazy";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
+import {
+  MOBILE_INSTRUCTOR_AUDIO_BUTTON,
+  MOBILE_INSTRUCTOR_AUDIO_HINT,
+} from "@/constants/mobileInstructorAudio";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
+import { isInstructorWaitActive } from "@/hooks/isInstructorWaitActive";
 import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
 import {
   buildLessonNavSnapshot,
@@ -166,6 +171,8 @@ function CourseDetailInner({
   /** False until NarratorAvatar fires onReady (WebGL + TTS ready). Mobile needs this before speak. */
   const avatarReadyRef = useRef(false);
   const [isAvatarReady, setIsAvatarReady] = useState(false);
+  const [awaitingSpeech, setAwaitingSpeech] = useState(false);
+  const [hasPendingSpeech, setHasPendingSpeech] = useState(false);
   /** Speech requested before avatar was ready; desktop flushes on ready, mobile after tap-to-unlock. */
   const pendingSpeechQueueRef = useRef<
     Array<{ text: string; action: PendingAction }>
@@ -431,6 +438,22 @@ function CourseDetailInner({
 
   const getAvatar = useCallback(() => avatarRef.current, []);
 
+  const syncPendingSpeech = useCallback(() => {
+    setHasPendingSpeech(pendingSpeechQueueRef.current.length > 0);
+  }, []);
+
+  /** If readiness was cleared without remounting, recover from the live avatar ref. */
+  const ensureAvatarReady = useCallback(() => {
+    if (avatarReadyRef.current) return true;
+    const avatar = getAvatar() as { isReady?: boolean } | null;
+    if (avatar?.isReady) {
+      avatarReadyRef.current = true;
+      setIsAvatarReady(true);
+      return true;
+    }
+    return false;
+  }, [getAvatar]);
+
   /** Speak immediately; only call when avatar is ready (or from mobile unlock tap = valid gesture). */
   const speakImmediate = useCallback(
     (text: string, action: PendingAction = { type: "none" }) => {
@@ -442,10 +465,12 @@ function CourseDetailInner({
           lastSpeechTextRef.current = text;
           // Persist for the "Replay" button (lastSpeechTextRef is cleared on speech end).
           lastSpokenTextRef.current = text;
+          setAwaitingSpeech(true);
           avatar.speakText(text);
         }
       } catch (error) {
         console.warn("Error speaking text:", error);
+        setAwaitingSpeech(false);
       }
     },
     [getAvatar]
@@ -454,8 +479,10 @@ function CourseDetailInner({
   const speak = useCallback(
     (text: string, action: PendingAction = { type: "none" }) => {
       try {
-        if (!avatarReadyRef.current) {
+        if (!ensureAvatarReady()) {
           pendingSpeechQueueRef.current.push({ text, action });
+          syncPendingSpeech();
+          setAwaitingSpeech(true);
           return;
         }
         speakImmediate(text, action);
@@ -463,15 +490,19 @@ function CourseDetailInner({
         console.warn("Error speaking text:", error);
       }
     },
-    [speakImmediate]
+    [ensureAvatarReady, speakImmediate, syncPendingSpeech]
   );
 
   const flushNextQueuedSpeech = useCallback(() => {
     const q = pendingSpeechQueueRef.current;
-    if (q.length === 0) return;
+    if (q.length === 0) {
+      syncPendingSpeech();
+      return;
+    }
     const next = q.shift()!;
+    syncPendingSpeech();
     speakImmediate(next.text, next.action);
-  }, [speakImmediate]);
+  }, [speakImmediate, syncPendingSpeech]);
 
   // Persist a paused lesson so learners can resume after leaving/reloading.
   const pauseStorageKey = exercise ? `ryd-lesson-pause:${exercise}` : null;
@@ -585,6 +616,8 @@ function CourseDetailInner({
       stopSubtitles();
 
       pendingSpeechQueueRef.current = [];
+      setHasPendingSpeech(false);
+      setAwaitingSpeech(false);
       setShowMobileAudioUnlock(false);
       setIsLessonCodeDemoActive(false);
       afterSpeechRef.current = null;
@@ -611,6 +644,8 @@ function CourseDetailInner({
       pausedLiveRef.current = false;
       clearPausedState();
       pendingSpeechQueueRef.current = [];
+      setHasPendingSpeech(false);
+      setAwaitingSpeech(false);
       setShowMobileAudioUnlock(false);
     }
   }, [getAvatar, stopSubtitles, clearIntroUnlockTimeout, clearPausedState]);
@@ -851,11 +886,13 @@ function CourseDetailInner({
     setIsSpeaking(true);
     setIsShowingSubtitles(true);
     setCurrentSubtitle("");
+    setAwaitingSpeech(false);
+    syncPendingSpeech();
     // A fresh line is playing — clear any paused state.
     setIsPaused(false);
     pausedLiveRef.current = false;
     clearPausedState();
-  }, [clearPausedState]);
+  }, [clearPausedState, syncPendingSpeech]);
 
   // Ref to hold the moveToNextQuestion function to avoid circular dependency
   const moveToNextQuestionRef = useRef<() => void>(() => { });
@@ -1897,16 +1934,28 @@ function CourseDetailInner({
     completedLessonIds,
   ]);
 
-  // Avatar remounts only when the course, layout, or code-test mode changes (desktop swaps avatar
-  // instances between the lesson view and the code-test view). A lesson code demo does NOT remount the
-  // avatar, so we must not reset readiness for it — otherwise speech after the demo (the explanation)
-  // gets queued and never flushed because onReady never fires again.
+  // Avatar remounts when the course, instructor, or viewport layout changes.
+  // Desktop also swaps avatar instances when entering/leaving code-test layout.
+  // Never clear pendingSpeechQueueRef here — onReady should flush queued lines.
   useEffect(() => {
     avatarReadyRef.current = false;
     setIsAvatarReady(false);
-    pendingSpeechQueueRef.current = [];
     setShowMobileAudioUnlock(false);
-  }, [exercise, isLgUp, isCodeTestQuestionActive, selectedInstructor]);
+  }, [exercise, selectedInstructor, isLgUp]);
+
+  useEffect(() => {
+    if (!isLgUp) return;
+    avatarReadyRef.current = false;
+    setIsAvatarReady(false);
+    setShowMobileAudioUnlock(false);
+  }, [isCodeTestQuestionActive, isLgUp]);
+
+  const isInstructorWaiting = isInstructorWaitActive({
+    isPaused,
+    isAvatarReady,
+    hasPendingSpeech,
+    awaitingSpeech,
+  });
 
   // Sync progress to store when lesson/question changes
   useEffect(() => {
@@ -2174,7 +2223,7 @@ function CourseDetailInner({
           {/* Mobile: Instructor audio header + control buttons at top */}
           {!isLgUp && (
             <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
-              <PageLoadWaitBanner isLoading={!isAvatarReady} />
+              <PageLoadWaitBanner isLoading={isInstructorWaiting} />
               {/* Instructor audio indicator */}
               <div className="flex items-center gap-3 px-3 py-2">
                 <InstructorSpeakingIndicator isSpeaking={isSpeaking} />
@@ -2231,7 +2280,7 @@ function CourseDetailInner({
               {showMobileAudioUnlock && (
                 <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
                   <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
-                    Your phone needs one tap to allow instructor voice. This is normal on Safari and Chrome mobile.
+                    {MOBILE_INSTRUCTOR_AUDIO_HINT}
                   </p>
                   <button
                     type="button"
@@ -2239,7 +2288,9 @@ function CourseDetailInner({
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
                   >
                     <Volume2 className="h-5 w-5 shrink-0" aria-hidden />
-                    <span className="whitespace-nowrap">Tap to start voice</span>
+                    <span className="whitespace-nowrap">
+                      {MOBILE_INSTRUCTOR_AUDIO_BUTTON}
+                    </span>
                   </button>
                 </div>
               )}

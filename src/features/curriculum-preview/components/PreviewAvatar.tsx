@@ -7,6 +7,11 @@ import {
   type InstructorType,
 } from "@/stores/instructorStore";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
+import { isInstructorWaitActive } from "@/hooks/isInstructorWaitActive";
+import {
+  MOBILE_INSTRUCTOR_AUDIO_BUTTON,
+  MOBILE_INSTRUCTOR_AUDIO_HINT,
+} from "@/constants/mobileInstructorAudio";
 
 type NarratorAvatarRef = {
   speakText: (text: string, options?: Record<string, unknown>) => void;
@@ -53,6 +58,8 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   const [isAvatarReady, setIsAvatarReady] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [awaitingSpeech, setAwaitingSpeech] = useState(false);
+  const [hasPendingSpeech, setHasPendingSpeech] = useState(false);
   const [currentSubtitle, setCurrentSubtitle] = useState("");
   const [localInstructor, setLocalInstructor] =
     useState<InstructorType>("woman");
@@ -84,6 +91,10 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     return isMobileViewport() && !mobileAudioUnlockedRef.current;
   }, []);
 
+  const syncPendingSpeech = useCallback(() => {
+    setHasPendingSpeech(pendingSpeechQueueRef.current.length > 0);
+  }, []);
+
   const speakImmediate = useCallback((text: string) => {
     try {
       if (
@@ -91,10 +102,12 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
         text &&
         typeof avatarRef.current.speakText === "function"
       ) {
+        setAwaitingSpeech(true);
         avatarRef.current.speakText(text);
       }
     } catch (error) {
       console.warn("Error speaking text:", error);
+      setAwaitingSpeech(false);
     }
   }, []);
 
@@ -103,6 +116,8 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
       // Not ready yet — queue and wait for onReady.
       if (!avatarReadyRef.current) {
         pendingSpeechQueueRef.current.push(text);
+        syncPendingSpeech();
+        setAwaitingSpeech(true);
         return;
       }
 
@@ -111,13 +126,15 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
       // queue skipped the CTA, then speakImmediate ran outside a gesture and failed.
       if (needsMobileUnlock()) {
         pendingSpeechQueueRef.current.push(text);
+        syncPendingSpeech();
+        setAwaitingSpeech(true);
         setShowMobileAudioUnlock(true);
         return;
       }
 
       speakImmediate(text);
     },
-    [needsMobileUnlock, speakImmediate],
+    [needsMobileUnlock, speakImmediate, syncPendingSpeech],
   );
 
   /** Pause the instructor mid-sentence, or resume from the same point. */
@@ -147,6 +164,8 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     try {
       pendingSpeechQueueRef.current = [];
       afterSpeechRef.current = null;
+      setHasPendingSpeech(false);
+      setAwaitingSpeech(false);
       // Keep mobileAudioUnlockedRef — one tap unlocks the whole session.
       setShowMobileAudioUnlock(false);
       stopAvatarSpeech(avatarRef.current);
@@ -160,10 +179,14 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
 
   const flushNextQueuedSpeech = useCallback(() => {
     const queue = pendingSpeechQueueRef.current;
-    if (queue.length === 0) return;
+    if (queue.length === 0) {
+      syncPendingSpeech();
+      return;
+    }
     const next = queue.shift()!;
+    syncPendingSpeech();
     speakImmediate(next);
-  }, [speakImmediate]);
+  }, [speakImmediate, syncPendingSpeech]);
 
   const handleAvatarReady = useCallback(() => {
     avatarReadyRef.current = true;
@@ -194,6 +217,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   const handleSpeechStart = useCallback(() => {
     setIsSpeaking(true);
     setIsPaused(false);
+    setAwaitingSpeech(false);
   }, []);
 
   const handleSpeechEnd = useCallback(() => {
@@ -220,7 +244,16 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   useEffect(() => {
     avatarReadyRef.current = false;
     setIsAvatarReady(false);
+    setAwaitingSpeech(false);
+    setHasPendingSpeech(false);
   }, [selectedInstructor]);
+
+  const isInstructorWaiting = isInstructorWaitActive({
+    isPaused,
+    isAvatarReady,
+    hasPendingSpeech,
+    awaitingSpeech,
+  });
 
   useEffect(() => {
     return () => {
@@ -250,14 +283,17 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
           className="h-full w-full"
         />
         {showUnlockOverlay && showMobileAudioUnlock && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 backdrop-blur-sm">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl bg-black/50 px-4 backdrop-blur-sm">
+            <p className="max-w-xs text-center text-xs leading-snug text-white/90">
+              {MOBILE_INSTRUCTOR_AUDIO_HINT}
+            </p>
             <button
               type="button"
               onClick={handleMobileAudioUnlock}
               className="flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90"
             >
               <Volume2 className="h-5 w-5" />
-              <span>Tap to start lesson</span>
+              <span>{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
             </button>
           </div>
         )}
@@ -283,6 +319,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     clearScheduledAfterSpeech,
     isReady,
     isAvatarReady,
+    isInstructorWaiting,
     isSpeaking,
     isPaused,
     togglePause,

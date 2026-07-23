@@ -15,7 +15,7 @@ interface PageLoadWaitBannerProps {
 }
 
 const MESSAGES: Record<Exclude<PageLoadWaitPhase, "none">, string> = {
-  initial: "Please wait while we load the page.",
+  initial: "Please wait — your instructor is getting ready.",
   extended:
     "This is taking longer than usual. We are aware and working on it — please wait a few more minutes while the page loads.",
 };

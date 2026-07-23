@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Lock, Sparkles, X } from "lucide-react";
+import { BookOpen, Lock, Play, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,11 +17,14 @@ import {
   getNextLessonV2,
 } from "@/features/curriculum-preview/v2/navigation";
 import type { LessonV2 } from "@/features/curriculum-preview/v2/types";
+import { PageLoadWaitBanner } from "@/components/courses/exercise/PageLoadWaitBanner";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
+import { MOBILE_INSTRUCTOR_AUDIO_BUTTON } from "@/constants/mobileInstructorAudio";
 import {
   DEMO_COURSE_SLUG,
   getDemoCurriculumV2,
 } from "@/data/curriculumData";
+import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { cn } from "@/lib/utils";
 import { useCoursesStore } from "@/stores/coursesStore";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
@@ -49,7 +52,9 @@ export default function DemoSneakPeekPage() {
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(
     () => new Set(),
   );
+  const [lessonStarted, setLessonStarted] = useState(false);
   const [lessonKey, setLessonKey] = useState(0);
+  const isLgUp = useMediaQueryMinLg();
 
   const {
     AvatarComponent,
@@ -78,6 +83,20 @@ export default function DemoSneakPeekPage() {
   }, [allLessons, currentLesson]);
 
   const isFreeLesson = lessonOrdinal <= FREE_LESSON_LIMIT;
+
+  const avatarSlot = (
+    <AvatarComponent className="h-full w-full" showUnlockOverlay={false} />
+  );
+
+  const handleStartLesson = useCallback(() => {
+    if (!currentLesson) return;
+    // Same as paid courses: unlock audio inside the tap that starts teaching.
+    unlockMobileAudio();
+    stop();
+    clearScheduledAfterSpeech();
+    setLessonStarted(true);
+    setLessonKey((k) => k + 1);
+  }, [clearScheduledAfterSpeech, currentLesson, stop, unlockMobileAudio]);
 
   useEffect(() => {
     completionFiredRef.current = false;
@@ -120,13 +139,15 @@ export default function DemoSneakPeekPage() {
 
   const selectLesson = useCallback(
     (lesson: LessonV2) => {
+      unlockMobileAudio();
       stop();
       clearScheduledAfterSpeech();
       setCurrentLesson(lesson);
+      setLessonStarted(true);
       setLessonKey((k) => k + 1);
       setShowLessonsMenu(false);
     },
-    [clearScheduledAfterSpeech, stop],
+    [clearScheduledAfterSpeech, stop, unlockMobileAudio],
   );
 
   const handleLessonComplete = useCallback((lessonId: string) => {
@@ -210,7 +231,66 @@ export default function DemoSneakPeekPage() {
         </div>
       </div>
 
+      <PageLoadWaitBanner isLoading={isInstructorWaiting} />
+
       <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[20px] bg-white shadow-lg">
+        {!lessonStarted ? (
+          <div className="flex h-full min-h-0 flex-col overflow-hidden border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white lg:border-l-2">
+            {isLgUp ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+                <div className="aspect-square h-full max-h-80 w-full max-w-sm overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
+                  {avatarSlot}
+                </div>
+              </div>
+            ) : (
+              <div
+                className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
+                aria-hidden
+              >
+                {avatarSlot}
+              </div>
+            )}
+            <div className="flex min-h-[280px] flex-1 items-center justify-center px-4 py-8 sm:px-6">
+              <div className="mx-auto max-w-md text-center">
+                <div className="relative mb-6 inline-flex items-center justify-center">
+                  <div className="absolute h-20 w-20 animate-ping rounded-full bg-primary/10" />
+                  <div className="absolute h-16 w-16 animate-pulse rounded-full bg-primary/20" />
+                  <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-primary to-primary/80 shadow-lg shadow-primary/30">
+                    <Play
+                      className="size-8 fill-white text-white"
+                      aria-hidden
+                    />
+                  </div>
+                </div>
+                <h2 className="mb-2 font-solway text-2xl font-bold text-gray-800">
+                  Try a free lesson
+                </h2>
+                <p className="mb-2 font-inter text-sm font-medium text-gray-700">
+                  {curriculum.title}
+                </p>
+                <p className="mb-6 font-inter leading-relaxed text-gray-500">
+                  Meet your AI instructor and write real code with{" "}
+                  <span className="font-semibold">p</span> and{" "}
+                  <span className="font-semibold">h1</span> tags — no subscription
+                  needed for this peek.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleStartLesson}
+                  className="group mx-auto flex w-full max-w-xs shrink-0 items-center justify-center gap-3 whitespace-nowrap rounded-full bg-linear-to-r from-primary via-primary to-primary/90 px-10 py-4 font-solway text-base font-bold tracking-tight text-white shadow-lg shadow-primary/35 ring-2 ring-primary/20 transition-all duration-200 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98] sm:max-w-none sm:px-12"
+                >
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
+                    <Play
+                      className="size-5 fill-white text-white"
+                      aria-hidden
+                    />
+                  </span>
+                  <span className="pr-1">{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
         <LessonPlayer
           key={`${currentLesson.id}-${lessonKey}`}
           curriculum={curriculum}
@@ -225,9 +305,7 @@ export default function DemoSneakPeekPage() {
           isPaused={isPaused}
           onTogglePause={togglePause}
           currentSubtitle={currentSubtitle}
-          avatarSlot={
-            <AvatarComponent className="h-full w-full" showUnlockOverlay={false} />
-          }
+          avatarSlot={avatarSlot}
           onLessonComplete={handleLessonComplete}
           onNextLesson={handleNextLesson}
           hideFlowChrome
@@ -236,7 +314,9 @@ export default function DemoSneakPeekPage() {
           showMobileAudioUnlock={showMobileAudioUnlock}
           onMobileAudioUnlock={unlockMobileAudio}
           isInstructorWaiting={isInstructorWaiting}
+          suppressMobileWaitBanner
         />
+        )}
       </div>
 
       {/* Lessons menu — only on demand (brief: outline not always open) */}

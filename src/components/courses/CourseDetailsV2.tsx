@@ -143,6 +143,8 @@ export default function CourseDetailsV2() {
     const lesson = currentLesson ?? getFirstLessonV2(curriculum);
     if (!lesson) return;
 
+    // User gesture unlocks mobile audio before the first speak() call.
+    unlockMobileAudio();
     stop();
     clearScheduledAfterSpeech();
     setCurrentLesson(lesson);
@@ -155,6 +157,7 @@ export default function CourseDetailsV2() {
     currentLesson,
     persistLessonPosition,
     stop,
+    unlockMobileAudio,
   ]);
 
   const selectLesson = useCallback(

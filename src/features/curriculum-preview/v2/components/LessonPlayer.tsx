@@ -1204,9 +1204,9 @@ export function LessonPlayer({
                   {avatarSlot}
                 </div>
                 {isLgUp ? (
-                  isInstructorActive ? (
+                  isInstructorActive && currentSubtitle ? (
                     <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
-                      {currentSubtitle || "…"}
+                      {currentSubtitle}
                     </p>
                   ) : (
                     <p className="mt-2 text-center text-xs text-gray-400">
@@ -1269,9 +1269,9 @@ export function LessonPlayer({
                           />
                         </div>
                       </div>
-                      {isInstructorActive ? (
+                      {isInstructorActive && currentSubtitle ? (
                         <p className="min-w-0 flex-1 line-clamp-3 text-left text-xs text-gray-600 sm:text-sm">
-                          {currentSubtitle || "Speaking…"}
+                          {currentSubtitle}
                         </p>
                       ) : (
                         <p className="min-w-0 flex-1 text-left text-xs text-gray-400">
@@ -1288,9 +1288,9 @@ export function LessonPlayer({
               <div className="aspect-square w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
                 {avatarSlot}
               </div>
-              {isInstructorActive ? (
+              {isInstructorActive && currentSubtitle ? (
                 <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
-                  {currentSubtitle || "…"}
+                  {currentSubtitle}
                 </p>
               ) : (
                 <p className="mt-2 text-center text-xs text-gray-400">
@@ -1392,9 +1392,9 @@ export function LessonPlayer({
               <div className="aspect-square w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
                 {avatarSlot}
               </div>
-              {isInstructorActive ? (
+              {isInstructorActive && currentSubtitle ? (
                 <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
-                  {currentSubtitle || "…"}
+                  {currentSubtitle}
                 </p>
               ) : (
                 <p className="mt-2 text-center text-xs text-gray-400">
@@ -1706,7 +1706,8 @@ export function LessonPlayer({
             show their UI immediately (like CourseDetails), even while the
             avatar is still speaking the prompt.
           */}
-          {isInstructorActive &&
+          {isSpeaking &&
+          currentSubtitle &&
           beat?.type !== "question" &&
           beat?.type !== "bridge" &&
           beat?.type !== "recap" ? (
@@ -1733,7 +1734,7 @@ export function LessonPlayer({
                 </div>
                 <div className="rounded-2xl border-2 border-primary/20 bg-white/80 p-5 shadow-xl backdrop-blur-md sm:p-8">
                   <p className="text-center text-lg font-medium leading-relaxed text-gray-800 sm:text-2xl md:text-3xl">
-                    {currentSubtitle || "…"}
+                    {currentSubtitle}
                   </p>
                 </div>
               </div>
@@ -1833,8 +1834,8 @@ export function LessonPlayer({
                       Instructor audio
                     </p>
                     <p className="truncate text-xs text-gray-600 sm:text-sm">
-                      {isInstructorActive
-                        ? currentSubtitle || "Speaking…"
+                      {isInstructorActive && currentSubtitle
+                        ? currentSubtitle
                         : isPaused
                           ? currentSubtitle || "Paused"
                           : "Ready when you are"}

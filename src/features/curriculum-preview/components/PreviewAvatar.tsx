@@ -127,9 +127,11 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     if (isPaused) {
       avatar.resumeSpeaking?.();
       setIsPaused(false);
+      setIsSpeaking(true);
     } else {
       avatar.pauseSpeaking?.();
       setIsPaused(true);
+      setIsSpeaking(false);
     }
   }, [isPaused]);
 

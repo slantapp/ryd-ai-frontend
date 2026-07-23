@@ -144,6 +144,7 @@ export function LessonPlayer({
   subscribeGateAfterLesson = false,
 }: LessonPlayerProps) {
   const isLgUp = useMediaQueryMinLg();
+  const isInstructorActive = isSpeaking && !isPaused;
   const defaults = useMemo(() => resolveAvatarDefaults(curriculum), [curriculum]);
   const [beatIndex, setBeatIndex] = useState(0);
   const [completedBeatIds, setCompletedBeatIds] = useState<Set<string>>(new Set());
@@ -1191,13 +1192,13 @@ export function LessonPlayer({
                   {avatarSlot}
                 </div>
                 {isLgUp ? (
-                  isSpeaking ? (
+                  isInstructorActive ? (
                     <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
                       {currentSubtitle || "…"}
                     </p>
                   ) : (
                     <p className="mt-2 text-center text-xs text-gray-400">
-                      Your instructor
+                      {isPaused ? "Paused" : "Your instructor"}
                     </p>
                   )
                 ) : null}
@@ -1226,13 +1227,13 @@ export function LessonPlayer({
                     <div className="flex w-full items-center gap-3">
                       <div
                         className="relative flex size-11 shrink-0 items-center justify-center sm:size-12"
-                        aria-hidden={!isSpeaking}
+                        aria-hidden={!isInstructorActive}
                         aria-label={
-                          isSpeaking ? "Instructor is speaking" : undefined
+                          isInstructorActive ? "Instructor is speaking" : undefined
                         }
-                        role={isSpeaking ? "status" : undefined}
+                        role={isInstructorActive ? "status" : undefined}
                       >
-                        {isSpeaking ? (
+                        {isInstructorActive ? (
                           <>
                             <span className="absolute inline-flex size-[130%] animate-ping rounded-full bg-primary/35" />
                             <span className="absolute inline-flex size-full rounded-full bg-primary/20" />
@@ -1241,7 +1242,7 @@ export function LessonPlayer({
                         <div
                           className={cn(
                             "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md transition-all duration-300 sm:size-10",
-                            isSpeaking
+                            isInstructorActive
                               ? "scale-105 border-primary shadow-lg shadow-primary/25"
                               : "border-primary/25",
                           )}
@@ -1249,19 +1250,19 @@ export function LessonPlayer({
                           <Mic
                             className={cn(
                               "size-[1.15rem] text-primary sm:size-5",
-                              isSpeaking && "animate-pulse",
+                              isInstructorActive && "animate-pulse",
                             )}
                             aria-hidden
                           />
                         </div>
                       </div>
-                      {isSpeaking ? (
+                      {isInstructorActive ? (
                         <p className="min-w-0 flex-1 line-clamp-3 text-left text-xs text-gray-600 sm:text-sm">
                           {currentSubtitle || "Speaking…"}
                         </p>
                       ) : (
                         <p className="min-w-0 flex-1 text-left text-xs text-gray-400">
-                          Your instructor
+                          {isPaused ? currentSubtitle || "Paused" : "Your instructor"}
                         </p>
                       )}
                     </div>
@@ -1274,13 +1275,13 @@ export function LessonPlayer({
               <div className="aspect-square w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
                 {avatarSlot}
               </div>
-              {isSpeaking ? (
+              {isInstructorActive ? (
                 <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
                   {currentSubtitle || "…"}
                 </p>
               ) : (
                 <p className="mt-2 text-center text-xs text-gray-400">
-                  Your instructor
+                  {isPaused ? "Paused" : "Your instructor"}
                 </p>
               )}
             </div>
@@ -1378,13 +1379,13 @@ export function LessonPlayer({
               <div className="aspect-square w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
                 {avatarSlot}
               </div>
-              {isSpeaking ? (
+              {isInstructorActive ? (
                 <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
                   {currentSubtitle || "…"}
                 </p>
               ) : (
                 <p className="mt-2 text-center text-xs text-gray-400">
-                  Your instructor
+                  {isPaused ? "Paused" : "Your instructor"}
                 </p>
               )}
             </div>
@@ -1587,9 +1588,11 @@ export function LessonPlayer({
             )}
           </div>
           <p className="mb-2 line-clamp-1 text-[0.7rem] text-gray-500 sm:text-xs">
-            {isSpeaking
+            {isInstructorActive
               ? "Wait for the instructor to finish speaking."
-              : canPrimaryContinue
+              : isPaused
+                ? "Lesson paused — tap Resume when you're ready."
+                : canPrimaryContinue
                 ? "Ready — continue to the next step."
                 : beat?.type === "question"
                   ? "Answer the question to continue."
@@ -1690,7 +1693,7 @@ export function LessonPlayer({
             show their UI immediately (like CourseDetails), even while the
             avatar is still speaking the prompt.
           */}
-          {isSpeaking &&
+          {isInstructorActive &&
           beat?.type !== "question" &&
           beat?.type !== "bridge" &&
           beat?.type !== "recap" ? (
@@ -1787,7 +1790,7 @@ export function LessonPlayer({
                 <PageLoadWaitBanner isLoading={isAvatarLoading} />
                 <div className="flex items-center gap-3 px-4 py-2 sm:px-5">
                   <div className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
-                    {isSpeaking ? (
+                    {isInstructorActive ? (
                       <>
                         <span className="absolute inline-flex size-[120%] animate-ping rounded-full bg-primary/30" />
                         <span className="absolute inline-flex size-full rounded-full bg-primary/20" />
@@ -1796,7 +1799,7 @@ export function LessonPlayer({
                     <div
                       className={cn(
                         "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md transition-all duration-300 sm:size-10",
-                        isSpeaking
+                        isInstructorActive
                           ? "scale-105 border-primary shadow-lg shadow-primary/25"
                           : "border-primary/25",
                       )}
@@ -1804,7 +1807,7 @@ export function LessonPlayer({
                       <Mic
                         className={cn(
                           "size-[1.15rem] text-primary sm:size-5",
-                          isSpeaking && "animate-pulse",
+                          isInstructorActive && "animate-pulse",
                         )}
                         aria-hidden
                       />
@@ -1815,9 +1818,11 @@ export function LessonPlayer({
                       Instructor audio
                     </p>
                     <p className="truncate text-xs text-gray-600 sm:text-sm">
-                      {isSpeaking
+                      {isInstructorActive
                         ? currentSubtitle || "Speaking…"
-                        : "Ready when you are"}
+                        : isPaused
+                          ? currentSubtitle || "Paused"
+                          : "Ready when you are"}
                     </p>
                   </div>
                 </div>

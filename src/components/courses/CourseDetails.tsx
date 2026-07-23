@@ -507,6 +507,7 @@ function CourseDetailInner({
       // Resume
       if (pausedLiveRef.current && typeof avatar?.resumeSpeaking === "function") {
         avatar.resumeSpeaking();
+        setIsSpeaking(true);
       } else if (lastSpokenTextRef.current) {
         // Restored from a previous visit — replay the last line from the start.
         speak(lastSpokenTextRef.current);
@@ -519,6 +520,7 @@ function CourseDetailInner({
       if (typeof avatar?.pauseSpeaking === "function") avatar.pauseSpeaking();
       pausedLiveRef.current = true;
       setIsPaused(true);
+      setIsSpeaking(false);
       persistPausedState(lastSpokenTextRef.current);
     }
   }, [isPaused, getAvatar, speak, persistPausedState, clearPausedState]);
@@ -2183,14 +2185,18 @@ function CourseDetailInner({
                   <p
                     className="truncate text-xs text-gray-600 sm:text-sm"
                     title={
-                      isSpeaking
-                        ? currentSubtitle || "Speaking…"
-                        : "Ready when you are"
+                      isPaused
+                        ? currentSubtitle || "Paused"
+                        : isSpeaking
+                          ? currentSubtitle || "Speaking…"
+                          : "Ready when you are"
                     }
                   >
-                    {isSpeaking
-                      ? currentSubtitle || "Speaking…"
-                      : "Ready when you are"}
+                    {isPaused
+                      ? currentSubtitle || "Paused"
+                      : isSpeaking
+                        ? currentSubtitle || "Speaking…"
+                        : "Ready when you are"}
                   </p>
                 </div>
                 {lessonStarted && (isSpeaking || isPaused) && (

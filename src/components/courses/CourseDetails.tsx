@@ -50,6 +50,7 @@ import {
   type WebCodeSources,
 } from "@/utils/webCodeWorkspace";
 import { prefetchMonacoEditor } from "./exercise/MonacoEditorLazy";
+import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
@@ -400,6 +401,7 @@ function CourseDetailInner({
   ]);
 
   useEffect(() => {
+    prefetchAvatar();
     if (!curriculum) return;
     const hasCodeExamples = curriculum.modules.some((mod) =>
       mod.lessons.some(

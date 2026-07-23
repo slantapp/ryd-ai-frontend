@@ -9,6 +9,7 @@ import {
 import { toast } from "react-toastify";
 import { usePreviewAvatar } from "../../components/PreviewAvatar";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
+import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import type { PublishStatus } from "../../types";
 import {
   findLessonV2ById,
@@ -69,6 +70,7 @@ export function CurriculumV2Preview({
   }, [allLessons, currentLesson]);
 
   useEffect(() => {
+    prefetchAvatar();
     const hasCode = curriculum.modules.some((m) =>
       m.lessons.some((l) =>
         l.flow.some(

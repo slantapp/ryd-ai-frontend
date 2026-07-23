@@ -17,6 +17,7 @@ import {
 } from "@/features/curriculum-preview/v2/detect";
 import type { LessonV2 } from "@/features/curriculum-preview/v2/types";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
+import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import { getCurriculumEntryBySlug } from "@/data/curriculumData";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,7 @@ export default function CourseDetailsV2() {
   );
 
   useEffect(() => {
+    prefetchAvatar();
     prefetchMonacoEditor();
   }, []);
 

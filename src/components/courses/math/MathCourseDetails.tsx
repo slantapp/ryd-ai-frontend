@@ -30,6 +30,7 @@ import { useInstructorStore } from "@/stores/instructorStore";
 import { useCoursesStore } from "@/stores/coursesStore";
 import { cn } from "@/lib/utils";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
+import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
 import {
@@ -1304,6 +1305,10 @@ function MathCourseDetailsInner() {
       stopAvatarSpeech(avatarRef.current);
     };
   }, [clearIntroUnlockTimeout, stopFormulaTyping]);
+
+  useEffect(() => {
+    prefetchAvatar();
+  }, [exercise]);
 
   useEffect(() => {
     avatarReadyRef.current = false;

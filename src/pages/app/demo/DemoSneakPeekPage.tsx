@@ -18,6 +18,7 @@ import {
 } from "@/features/curriculum-preview/v2/navigation";
 import type { LessonV2 } from "@/features/curriculum-preview/v2/types";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
+import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import {
   DEMO_COURSE_SLUG,
   getDemoCurriculumV2,
@@ -96,6 +97,7 @@ export default function DemoSneakPeekPage() {
   }, [updateCourseProgress]);
 
   useEffect(() => {
+    prefetchAvatar();
     prefetchMonacoEditor();
   }, []);
 

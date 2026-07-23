@@ -48,6 +48,7 @@ import {
 } from "@/utils/codeTestRunner";
 import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
+import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import {
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
@@ -275,6 +276,10 @@ export default function CurriculumPreviewPage() {
     selectedInstructor,
     setSelectedInstructor,
   } = usePreviewAvatar();
+
+  useEffect(() => {
+    prefetchAvatar();
+  }, []);
 
   useEffect(() => {
     if (currentSubtitle) {

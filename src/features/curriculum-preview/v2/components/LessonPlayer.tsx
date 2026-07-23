@@ -16,6 +16,7 @@ import WebCodeWorkspace from "@/components/courses/exercise/WebCodeWorkspace";
 import TestResults from "@/components/courses/exercise/TestResults";
 import { MobileCollapsible } from "@/components/courses/exercise/MobileCollapsible";
 import { LessonProgressBar } from "@/components/courses/exercise/LessonProgressBar";
+import { PageLoadWaitBanner } from "@/components/courses/exercise/PageLoadWaitBanner";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { PreviewQuestion } from "../../components/PreviewQuestion";
 import {
@@ -109,6 +110,8 @@ interface LessonPlayerProps {
    */
   showMobileAudioUnlock?: boolean;
   onMobileAudioUnlock?: () => void;
+  /** True while the 3D instructor avatar is still loading (mobile wait banner). */
+  isAvatarLoading?: boolean;
   /**
    * Sneak-peek cliffhanger: after this lesson, the bridge CTA opens the
    * subscribe flow instead of advancing (parent still handles onNextLesson).
@@ -137,6 +140,7 @@ export function LessonPlayer({
   classicLayout = false,
   showMobileAudioUnlock = false,
   onMobileAudioUnlock,
+  isAvatarLoading = false,
   subscribeGateAfterLesson = false,
 }: LessonPlayerProps) {
   const isLgUp = useMediaQueryMinLg();
@@ -1202,6 +1206,7 @@ export function LessonPlayer({
               {/* Mobile / tablet chrome: unlock CTA, loading, or mic + subtitle */}
               {!isLgUp && (
                 <div className="flex w-full shrink-0 flex-col gap-2">
+                  <PageLoadWaitBanner isLoading={isAvatarLoading} />
                   {showMobileAudioUnlock ? (
                     <div className="rounded-xl border border-primary/20 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
                       <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
@@ -1779,6 +1784,7 @@ export function LessonPlayer({
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {!isLgUp && (
               <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
+                <PageLoadWaitBanner isLoading={isAvatarLoading} />
                 <div className="flex items-center gap-3 px-4 py-2 sm:px-5">
                   <div className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
                     {isSpeaking ? (

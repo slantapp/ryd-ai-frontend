@@ -53,6 +53,7 @@ export function CurriculumV2Preview({
     clearScheduledAfterSpeech,
     isSpeaking,
     currentSubtitle,
+    isAvatarReady,
     selectedInstructor,
     setSelectedInstructor,
   } = usePreviewAvatar();
@@ -238,6 +239,7 @@ export function CurriculumV2Preview({
           avatarSlot={<AvatarComponent className="h-full w-full" />}
           onLessonComplete={handleLessonComplete}
           onNextLesson={handleNextLesson}
+          isAvatarLoading={!isAvatarReady}
         />
       </div>
     </div>

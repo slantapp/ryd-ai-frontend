@@ -22,6 +22,7 @@ import {
   TrueFalseQuestion,
   LessonNavControls,
   LessonProgressBar,
+  PageLoadWaitBanner,
 } from "@/components/courses/exercise";
 import MathFormulaBoard from "./MathFormulaBoard";
 import MathAnswerWorkspace from "./MathAnswerWorkspace";
@@ -114,6 +115,7 @@ function MathCourseDetailsInner() {
 
   const avatarRef = useRef<NarratorAvatarRef | null>(null);
   const avatarReadyRef = useRef(false);
+  const [isAvatarReady, setIsAvatarReady] = useState(false);
   const pendingSpeechQueueRef = useRef<
     Array<{ text: string; action: PendingAction }>
   >([]);
@@ -342,6 +344,7 @@ function MathCourseDetailsInner() {
 
   const handleAvatarReady = useCallback(() => {
     avatarReadyRef.current = true;
+    setIsAvatarReady(true);
     if (pendingSpeechQueueRef.current.length === 0) {
       setShowMobileAudioUnlock(false);
       return;
@@ -1389,6 +1392,7 @@ function MathCourseDetailsInner() {
 
   useEffect(() => {
     avatarReadyRef.current = false;
+    setIsAvatarReady(false);
     pendingSpeechQueueRef.current = [];
     setShowMobileAudioUnlock(false);
   }, [exercise, isLgUp, selectedInstructor]);
@@ -1634,6 +1638,7 @@ function MathCourseDetailsInner() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l-0 border-primary/20 lg:border-l-2">
           {!isLgUp && (
             <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
+              <PageLoadWaitBanner isLoading={!isAvatarReady} />
               <div className="flex items-center gap-3 px-3 py-2">
                 <InstructorSpeakingIndicator isSpeaking={isSpeaking} />
                 <div className="min-w-0 flex-1">

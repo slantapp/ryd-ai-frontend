@@ -28,6 +28,7 @@ import {
   LessonNavControls,
   MobileCollapsible,
   LessonProgressBar,
+  PageLoadWaitBanner,
 } from "./exercise";
 import MathAnswerWorkspace from "./math/MathAnswerWorkspace";
 import MathText from "./math/MathText";
@@ -164,6 +165,7 @@ function CourseDetailInner({
   const avatarRef = useRef<NarratorAvatarRef | null>(null);
   /** False until NarratorAvatar fires onReady (WebGL + TTS ready). Mobile needs this before speak. */
   const avatarReadyRef = useRef(false);
+  const [isAvatarReady, setIsAvatarReady] = useState(false);
   /** Speech requested before avatar was ready; desktop flushes on ready, mobile after tap-to-unlock. */
   const pendingSpeechQueueRef = useRef<
     Array<{ text: string; action: PendingAction }>
@@ -540,6 +542,7 @@ function CourseDetailInner({
 
   const handleAvatarReady = useCallback(() => {
     avatarReadyRef.current = true;
+    setIsAvatarReady(true);
     const q = pendingSpeechQueueRef.current;
     if (q.length === 0) {
       setShowMobileAudioUnlock(false);
@@ -1898,6 +1901,7 @@ function CourseDetailInner({
   // gets queued and never flushed because onReady never fires again.
   useEffect(() => {
     avatarReadyRef.current = false;
+    setIsAvatarReady(false);
     pendingSpeechQueueRef.current = [];
     setShowMobileAudioUnlock(false);
   }, [exercise, isLgUp, isCodeTestQuestionActive, selectedInstructor]);
@@ -2168,6 +2172,7 @@ function CourseDetailInner({
           {/* Mobile: Instructor audio header + control buttons at top */}
           {!isLgUp && (
             <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
+              <PageLoadWaitBanner isLoading={!isAvatarReady} />
               {/* Instructor audio indicator */}
               <div className="flex items-center gap-3 px-3 py-2">
                 <InstructorSpeakingIndicator isSpeaking={isSpeaking} />

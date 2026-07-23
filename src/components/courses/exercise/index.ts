@@ -12,3 +12,4 @@ export { default as FullscreenModal } from "./FullscreenModal";
 export { default as LessonNavControls } from "./LessonNavControls";
 export { MobileCollapsible } from "./MobileCollapsible";
 export { LessonProgressBar } from "./LessonProgressBar";
+export { PageLoadWaitBanner } from "./PageLoadWaitBanner";

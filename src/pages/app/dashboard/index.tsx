@@ -3,21 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
-  Braces,
-  Briefcase,
-  Calculator,
-  BookText,
-  Database,
   Heart,
   Loader2,
-  Palette,
   PlayCircle,
-  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CourseCard from "@/components/shared/CourseCard";
 import {
   listCategoriesWithCounts,
+  getCategoryIcon,
   type CourseCategoryId,
 } from "@/data/courseCategories";
 import { getAllCurricula } from "@/data/curriculumData";
@@ -25,15 +19,6 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import { useCoursesStore } from "@/stores/coursesStore";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
-
-const CATEGORY_ICONS: Record<CourseCategoryId, LucideIcon> = {
-  coding: Braces,
-  mathematics: Calculator,
-  english: BookText,
-  design: Palette,
-  data: Database,
-  careers: Briefcase,
-};
 
 function countQuizzesInVisibleCurricula(): number {
   return getAllCurricula().reduce((total, curriculum) => {
@@ -252,7 +237,7 @@ const Dashboard = () => {
               {/* Horizontal scroll on small phones; grid from sm up */}
               <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 md:grid-cols-3 lg:grid-cols-6">
                 {categoryFolders.map(({ category, count }) => {
-                  const Icon = CATEGORY_ICONS[category.id];
+                  const Icon = getCategoryIcon(category.id);
                   return (
                     <button
                       key={category.id}

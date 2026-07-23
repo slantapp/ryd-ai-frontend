@@ -55,14 +55,8 @@ export interface Module {
   lessons: Array<Lesson | CodingLesson>;
 }
 
-/** Category for grouping courses in the library folder view. */
-export type CurriculumCategory =
-  | "coding"
-  | "design"
-  | "data"
-  | "careers"
-  | "mathematics"
-  | "english";
+/** Category label for grouping courses in the library folder view (any non-empty string). */
+export type CurriculumCategory = string;
 
 export type CurriculumLevel = "Beginner" | "Intermediate" | "Advanced";
 

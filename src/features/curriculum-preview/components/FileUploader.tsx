@@ -157,22 +157,12 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
     errors.push("Invalid 'rating' field (optional number from 0 to 5)");
   }
 
-  const validCategories = [
-    "coding",
-    "design",
-    "data",
-    "careers",
-    "mathematics",
-    "english",
-  ];
-  if (
-    !curriculumData.category ||
-    typeof curriculumData.category !== "string" ||
-    !validCategories.includes(curriculumData.category)
-  ) {
-    errors.push(
-      `Missing or invalid 'category' field (must be one of: ${validCategories.join(", ")})`,
-    );
+  const category =
+    typeof curriculumData.category === "string"
+      ? curriculumData.category.trim()
+      : "";
+  if (!category) {
+    errors.push("Missing or invalid 'category' field (must be a non-empty string)");
   }
 
   if (!Array.isArray(curriculumData.modules)) {
@@ -228,7 +218,7 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
       }
 
       if (les.code_example) {
-        if (curriculumData.category === "mathematics") {
+        if (category === "mathematics") {
           errors.push(
             `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: code_example is not supported in mathematics curricula`,
           );
@@ -242,7 +232,7 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
       }
 
       if (les.formula_example) {
-        if (curriculumData.category !== "mathematics") {
+        if (category !== "mathematics") {
           errors.push(
             `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: formula_example is only supported in mathematics curricula`,
           );
@@ -270,7 +260,7 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
         const qType = q.type;
         const label = `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Question ${questionIndex + 1}`;
 
-        if (curriculumData.category === "mathematics" && q.code_example) {
+        if (category === "mathematics" && q.code_example) {
           errors.push(
             `${label}: code_example is not supported in mathematics curricula`,
           );
@@ -281,7 +271,7 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
         }
 
         if (
-          curriculumData.category !== "mathematics" &&
+          category !== "mathematics" &&
           qType === "code_test" &&
           q.code_example
         ) {
@@ -305,7 +295,7 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
         }
 
         if (
-          curriculumData.category === "mathematics" &&
+          category === "mathematics" &&
           qType === "code_test"
         ) {
           errors.push(
@@ -314,7 +304,7 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
         }
 
         if (
-          curriculumData.category !== "mathematics" &&
+          category !== "mathematics" &&
           qType === "formula_test"
         ) {
           errors.push(

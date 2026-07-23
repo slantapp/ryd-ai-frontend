@@ -12,15 +12,6 @@ const BEAT_TYPES = new Set([
 
 const ADVANCE_MODES = new Set(["auto", "manual", "on_answer"]);
 
-const VALID_CATEGORIES = [
-  "coding",
-  "design",
-  "data",
-  "careers",
-  "mathematics",
-  "english",
-];
-
 const VALID_LEVELS = ["Beginner", "Intermediate", "Advanced"];
 
 function validateCodeExample(
@@ -253,9 +244,9 @@ export function validateCurriculumV2(data: unknown): {
   if (
     !curriculumData.category ||
     typeof curriculumData.category !== "string" ||
-    !VALID_CATEGORIES.includes(curriculumData.category)
+    !curriculumData.category.trim()
   ) {
-    errors.push(`Invalid 'category' (must be one of: ${VALID_CATEGORIES.join(", ")})`);
+    errors.push("Missing or invalid 'category' (must be a non-empty string)");
   }
   if (
     curriculumData.level !== undefined &&

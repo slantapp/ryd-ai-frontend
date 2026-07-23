@@ -61,7 +61,7 @@ const TOPIC_IMAGE_POOLS: Array<{
   },
 ];
 
-const CATEGORY_IMAGE_POOLS: Record<CourseCategoryId, string[]> = {
+const CATEGORY_IMAGE_POOLS: Partial<Record<string, string[]>> = {
   coding: [
     "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=200&fit=crop&auto=format",
     "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=200&fit=crop&auto=format",
@@ -113,7 +113,7 @@ export function buildCourseImageSearchQuery(
     .replace(/\s+/g, " ")
     .trim();
 
-  const categoryHint: Record<CourseCategoryId, string> = {
+  const categoryHint: Partial<Record<string, string>> = {
     coding: "programming code",
     mathematics: "mathematics education",
     english: "english language learning",
@@ -122,7 +122,7 @@ export function buildCourseImageSearchQuery(
     careers: "career education",
   };
 
-  return `${cleaned} ${categoryHint[categoryId]}`.trim();
+  return `${cleaned} ${categoryHint[categoryId] ?? categoryId}`.trim();
 }
 
 /** Immediate, title-aware fallback using verified image pools. */

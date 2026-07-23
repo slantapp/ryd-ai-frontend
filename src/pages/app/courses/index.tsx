@@ -12,13 +12,6 @@ import {
 import {
   ChevronLeft,
   BookOpen,
-  Braces,
-  Palette,
-  Database,
-  Briefcase,
-  Calculator,
-  BookText,
-  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCoursesStore } from "@/stores/coursesStore";
@@ -27,6 +20,7 @@ import CourseCategoryFolder from "@/components/courses/CourseCategoryFolder";
 import {
   listCategoriesWithCounts,
   getCategoryMeta,
+  getCategoryIcon,
   isAgeClassFilterableCategory,
   isLevelFilterableCategory,
   COURSE_LEVEL_FILTER_OPTIONS,
@@ -37,15 +31,6 @@ import {
   buildSchoolClassFilterOptions,
   getSchoolClassFilterKey,
 } from "@/utils/schoolClass";
-
-const CATEGORY_ICONS: Record<CourseCategoryId, LucideIcon> = {
-  coding: Braces,
-  mathematics: Calculator,
-  english: BookText,
-  design: Palette,
-  data: Database,
-  careers: Briefcase,
-};
 
 const CoursesPage = () => {
   const [activeTab, setActiveTab] = useState("all");
@@ -382,7 +367,7 @@ const CoursesPage = () => {
                       key={category.id}
                       category={category}
                       count={count}
-                      icon={CATEGORY_ICONS[category.id]}
+                      icon={getCategoryIcon(category.id)}
                       onOpen={() => setSelectedCategoryId(category.id)}
                     />
                   ))}

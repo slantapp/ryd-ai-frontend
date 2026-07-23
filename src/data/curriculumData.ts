@@ -65,14 +65,8 @@ export interface Lesson {
   next_lesson_id: string | null;
 }
 
-/** Category for grouping courses in the library folder view. */
-export type CurriculumCategory =
-  | "coding"
-  | "design"
-  | "data"
-  | "careers"
-  | "mathematics"
-  | "english";
+/** Category label for grouping courses in the library folder view (any non-empty string). */
+export type CurriculumCategory = string;
 
 export interface Curriculum {
   slug: string;

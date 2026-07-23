@@ -58,7 +58,8 @@ function curriculumToCourse(
     level,
     rating,
   } = curriculum.curriculum;
-  const categoryId = (category as CourseCategoryId) || "coding";
+  const categoryId =
+    typeof category === "string" && category.trim() ? category.trim() : "coding";
 
   return {
     title,
@@ -304,7 +305,10 @@ export const useCoursesStore = create<CoursesState>()(
             slug: curriculum.slug,
             title: curriculum.curriculum.title,
             categoryId:
-              (curriculum.curriculum.category as CourseCategoryId) || "coding",
+              typeof curriculum.curriculum.category === "string" &&
+              curriculum.curriculum.category.trim()
+                ? curriculum.curriculum.category.trim()
+                : "coding",
           })),
         );
         set((state) => ({

@@ -4,8 +4,13 @@ import { useRoutes, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import AuthLayout from "@/layout/AuthLayout";
 import DashboardLayout from "@/layout/dashboardLayout";
-import { CurriculumPreviewPage } from "@/features/curriculum-preview";
+import { CurriculumPreviewPage, CurriculumEditPage } from "@/features/curriculum-preview";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
+
+const STANDALONE_ROUTES: Record<string, React.ReactNode> = {
+  [PRIVATE_PATHS.CURRICULUM_PREVIEW]: <CurriculumPreviewPage />,
+  [PRIVATE_PATHS.CURRICULUM_EDIT]: <CurriculumEditPage />,
+};
 
 const PublicRouteWrapper = () => {
   const routes = useRoutes(PUBLIC_ROUTES);
@@ -20,8 +25,8 @@ const Pages = () => {
   const location = useLocation();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
-  if (location.pathname === PRIVATE_PATHS.CURRICULUM_PREVIEW) {
-    return <CurriculumPreviewPage />;
+  if (location.pathname in STANDALONE_ROUTES) {
+    return STANDALONE_ROUTES[location.pathname];
   }
 
   return isLoggedIn ? (

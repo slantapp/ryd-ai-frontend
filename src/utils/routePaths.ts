@@ -27,6 +27,7 @@ export const PRIVATE_PATHS = {
   SUPPORT: "/support",
   SETTINGS: "/settings",
   CURRICULUM_PREVIEW: "/curriculum-preview",
+  CURRICULUM_EDIT: "/curriculum-edit",
   MARKETING_TOOL: "/marketing-tool",
 };
 

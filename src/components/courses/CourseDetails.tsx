@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import Split from "react-split";
 import NarratorAvatar from "narrator-avatar";
-import { Volume2, Mic, Play } from "lucide-react";
+import { Volume2, Mic, Play, Pause, CheckCircle2, XCircle } from "lucide-react";
 import {
   type Question,
   type Lesson,
@@ -26,12 +26,14 @@ import {
   TrueFalseQuestion,
   FullscreenModal,
   LessonNavControls,
+  MobileCollapsible,
+  LessonProgressBar,
 } from "./exercise";
 import MathAnswerWorkspace from "./math/MathAnswerWorkspace";
 import MathText from "./math/MathText";
 import { isCodeTestQuestion, isFormulaTestQuestion } from "@/utils/curriculumQuestion";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
-import { useInstructorStore } from "../../stores/instructorStore";
+import { useInstructorStore, INSTRUCTORS } from "../../stores/instructorStore";
 import { useCoursesStore } from "../../stores/coursesStore";
 import { cn } from "../../lib/utils";
 import {
@@ -50,7 +52,6 @@ import {
   type WebCodeSources,
 } from "@/utils/webCodeWorkspace";
 import { prefetchMonacoEditor } from "./exercise/MonacoEditorLazy";
-import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
@@ -149,8 +150,8 @@ function CourseDetailInner({
   const { exercise: exerciseParam } = useParams<{ exercise: string }>();
   const exercise = slugOverride ?? exerciseParam;
   const location = useLocation();
-  const { getInstructorConfig } = useInstructorStore();
-  const instructorConfig = getInstructorConfig();
+  const selectedInstructor = useInstructorStore((s) => s.selectedInstructor);
+  const instructorConfig = INSTRUCTORS[selectedInstructor];
   const { updateCourseProgress } = useCoursesStore();
   const isCourseCompleted = useCoursesStore((state) =>
     exercise ? state.courseProgress[exercise]?.status === "completed" : false
@@ -173,6 +174,8 @@ function CourseDetailInner({
   const isTypingCodeRef = useRef(false);
   const speechStartTimeRef = useRef<number>(0);
   const lastSpeechTextRef = useRef<string>("");
+  /** Last text spoken by the instructor, kept for the "Replay" control. */
+  const lastSpokenTextRef = useRef<string>("");
   /** Runs after the avatar finishes the current speech chunk (reliable multi-step lesson flow). */
   const afterSpeechRef = useRef<(() => void) | null>(null);
   const pendingTypingStartRef = useRef<(() => void) | null>(null);
@@ -211,6 +214,14 @@ function CourseDetailInner({
 
   // Track correct answers for the current lesson
   const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
+
+  // Overall course completion %, surfaced as a progress bar in the header.
+  const [progressPct, setProgressPct] = useState(0);
+
+  // Instructor pause/resume. `pausedLiveRef` distinguishes an in-session pause
+  // (resume mid-phrase) from one restored from a previous visit (replay line).
+  const [isPaused, setIsPaused] = useState(false);
+  const pausedLiveRef = useRef(false);
   const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState(0);
   // Track correct answers across the current module (for module completion message)
   const [moduleCorrectCount, setModuleCorrectCount] = useState(0);
@@ -401,7 +412,6 @@ function CourseDetailInner({
   ]);
 
   useEffect(() => {
-    prefetchAvatar();
     if (!curriculum) return;
     const hasCodeExamples = curriculum.modules.some((mod) =>
       mod.lessons.some(
@@ -428,6 +438,8 @@ function CourseDetailInner({
           pendingActionRef.current = action;
           speechStartTimeRef.current = Date.now();
           lastSpeechTextRef.current = text;
+          // Persist for the "Replay" button (lastSpeechTextRef is cleared on speech end).
+          lastSpokenTextRef.current = text;
           avatar.speakText(text);
         }
       } catch (error) {
@@ -458,6 +470,73 @@ function CourseDetailInner({
     const next = q.shift()!;
     speakImmediate(next.text, next.action);
   }, [speakImmediate]);
+
+  // Persist a paused lesson so learners can resume after leaving/reloading.
+  const pauseStorageKey = exercise ? `ryd-lesson-pause:${exercise}` : null;
+
+  const persistPausedState = useCallback(
+    (text: string) => {
+      if (!pauseStorageKey) return;
+      try {
+        localStorage.setItem(
+          pauseStorageKey,
+          JSON.stringify({ text, at: Date.now() }),
+        );
+      } catch {
+        // ignore storage errors (private mode, quota)
+      }
+    },
+    [pauseStorageKey],
+  );
+
+  const clearPausedState = useCallback(() => {
+    if (!pauseStorageKey) return;
+    try {
+      localStorage.removeItem(pauseStorageKey);
+    } catch {
+      // ignore
+    }
+  }, [pauseStorageKey]);
+
+  /** Pause the instructor mid-sentence, or resume from where it stopped. */
+  const handleTogglePause = useCallback(() => {
+    const avatar = getAvatar();
+    if (isPaused) {
+      // Resume
+      if (pausedLiveRef.current && typeof avatar?.resumeSpeaking === "function") {
+        avatar.resumeSpeaking();
+      } else if (lastSpokenTextRef.current) {
+        // Restored from a previous visit — replay the last line from the start.
+        speak(lastSpokenTextRef.current);
+      }
+      pausedLiveRef.current = false;
+      setIsPaused(false);
+      clearPausedState();
+    } else {
+      // Pause
+      if (typeof avatar?.pauseSpeaking === "function") avatar.pauseSpeaking();
+      pausedLiveRef.current = true;
+      setIsPaused(true);
+      persistPausedState(lastSpokenTextRef.current);
+    }
+  }, [isPaused, getAvatar, speak, persistPausedState, clearPausedState]);
+
+  // Restore a previously paused lesson on mount so the button offers "Resume".
+  useEffect(() => {
+    if (!pauseStorageKey) return;
+    try {
+      const raw = localStorage.getItem(pauseStorageKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { text?: string };
+      if (saved?.text) {
+        lastSpokenTextRef.current = saved.text;
+        pausedLiveRef.current = false;
+        setIsPaused(true);
+      }
+    } catch {
+      // ignore malformed storage
+    }
+  }, [pauseStorageKey]);
 
   const handleAvatarReady = useCallback(() => {
     avatarReadyRef.current = true;
@@ -512,6 +591,9 @@ function CourseDetailInner({
       stopAvatarSpeech(getAvatar());
       pendingActionRef.current = { type: "none" };
       setIsSpeaking(false);
+      setIsPaused(false);
+      pausedLiveRef.current = false;
+      clearPausedState();
       setTimeout(() => {
         isManuallyStopped.current = false;
       }, 300);
@@ -520,10 +602,13 @@ function CourseDetailInner({
       stopAvatarSpeech(getAvatar());
       pendingActionRef.current = { type: "none" };
       setIsSpeaking(false);
+      setIsPaused(false);
+      pausedLiveRef.current = false;
+      clearPausedState();
       pendingSpeechQueueRef.current = [];
       setShowMobileAudioUnlock(false);
     }
-  }, [getAvatar, stopSubtitles, clearIntroUnlockTimeout]);
+  }, [getAvatar, stopSubtitles, clearIntroUnlockTimeout, clearPausedState]);
 
   // Subtitle comes from NarratorAvatar's onSubtitle callback (real-time spoken word)
   const handleSubtitle = useCallback((text: string) => {
@@ -761,7 +846,11 @@ function CourseDetailInner({
     setIsSpeaking(true);
     setIsShowingSubtitles(true);
     setCurrentSubtitle("");
-  }, []);
+    // A fresh line is playing — clear any paused state.
+    setIsPaused(false);
+    pausedLiveRef.current = false;
+    clearPausedState();
+  }, [clearPausedState]);
 
   // Ref to hold the moveToNextQuestion function to avoid circular dependency
   const moveToNextQuestionRef = useRef<() => void>(() => { });
@@ -769,6 +858,11 @@ function CourseDetailInner({
   // Internal handler that executes the pending action after speech
   const handleSpeechEndInternal = useCallback(() => {
     setIsSpeaking(false);
+
+    // Speech finished — clear paused state.
+    setIsPaused(false);
+    pausedLiveRef.current = false;
+    clearPausedState();
 
     // Stop subtitles when speech ends
     stopSubtitles();
@@ -869,6 +963,7 @@ function CourseDetailInner({
   }, [
     speak,
     stopSubtitles,
+    clearPausedState,
     flushNextQueuedSpeech,
     playLessonCodeExample,
     speakLessonCodeOutro,
@@ -1805,7 +1900,7 @@ function CourseDetailInner({
     avatarReadyRef.current = false;
     pendingSpeechQueueRef.current = [];
     setShowMobileAudioUnlock(false);
-  }, [exercise, isLgUp, isCodeTestQuestionActive]);
+  }, [exercise, isLgUp, isCodeTestQuestionActive, selectedInstructor]);
 
   // Sync progress to store when lesson/question changes
   useEffect(() => {
@@ -1831,6 +1926,8 @@ function CourseDetailInner({
       lessonStarted,
       isCurrentLessonComplete
     );
+
+    setProgressPct(progress);
 
     const isLastLesson = currentIndex === allLessons.length - 1;
 
@@ -1994,12 +2091,42 @@ function CourseDetailInner({
         >
           {isLgUp && (
             <>
+              {lessonStarted && lessonNav && (
+                <div className="mb-3 flex items-center gap-3">
+                  <LessonProgressBar
+                    value={progressPct}
+                    label={lessonNav.positionLabel}
+                    className="flex-1"
+                  />
+                  {(isSpeaking || isPaused) && (
+                    <button
+                      type="button"
+                      onClick={handleTogglePause}
+                      title={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                      aria-label={
+                        isPaused ? "Resume the lesson" : "Pause the lesson"
+                      }
+                      aria-pressed={isPaused}
+                      className="mt-4 flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    >
+                      {isPaused ? (
+                        <Play className="size-3.5" aria-hidden />
+                      ) : (
+                        <Pause className="size-3.5" aria-hidden />
+                      )}
+                      {isPaused ? "Resume" : "Pause"}
+                    </button>
+                  )}
+                </div>
+              )}
+
               {lessonChromePanel}
 
               {!isCodeTestQuestionActive && curriculum && (
                 <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                   <div className="flex justify-start items-center w-full h-full min-h-0 min-w-0">
                     <NarratorAvatar
+                      key={selectedInstructor}
                       ref={avatarRef}
                       {...avatarConfig}
                       onReady={handleAvatarReady}
@@ -2018,6 +2145,7 @@ function CourseDetailInner({
               {isCodeTestQuestionActive && curriculum && (
                 <div className="pointer-events-none invisible absolute inset-0">
                   <NarratorAvatar
+                    key={selectedInstructor}
                     ref={avatarRef}
                     {...avatarConfig}
                     onReady={handleAvatarReady}
@@ -2060,7 +2188,34 @@ function CourseDetailInner({
                       : "Ready when you are"}
                   </p>
                 </div>
+                {lessonStarted && (isSpeaking || isPaused) && (
+                  <button
+                    type="button"
+                    onClick={handleTogglePause}
+                    title={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                    aria-label={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                    aria-pressed={isPaused}
+                    className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  >
+                    {isPaused ? (
+                      <Play className="size-3.5" aria-hidden />
+                    ) : (
+                      <Pause className="size-3.5" aria-hidden />
+                    )}
+                    <span className="hidden min-[360px]:inline">
+                      {isPaused ? "Resume" : "Pause"}
+                    </span>
+                  </button>
+                )}
               </div>
+              {lessonStarted && lessonNav && (
+                <div className="px-3 pb-2">
+                  <LessonProgressBar
+                    value={progressPct}
+                    label={lessonNav.positionLabel}
+                  />
+                </div>
+              )}
               {/* Mobile WebKit: first speech after avatar loads must run inside a tap (see handleAvatarReady). */}
               {showMobileAudioUnlock && (
                 <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
@@ -2077,10 +2232,25 @@ function CourseDetailInner({
                   </button>
                 </div>
               )}
-              {/* Lesson controls / code question info — hidden until lesson starts (start lives in main content) */}
+              {/* Lesson controls / code question info — hidden until lesson starts (start lives in main content).
+                  On mobile we keep the nav visible but collapse the (potentially long) question
+                  prompt by default so the code editor below gets the full remaining height. */}
               {(lessonStarted || isLessonCodeDemoActive || currentQuestion?.type === "code_test") && (
-                <div className="px-3 pb-3">
-                  {lessonChromePanel}
+                <div className="space-y-2 px-3 pb-3">
+                  {lessonStarted && lessonNav && (
+                    <LessonNavControls
+                      nav={lessonNav}
+                      onPrevious={handlePrevious}
+                      onPrimary={handlePrimaryNav}
+                      showRestart={isCourseCompleted}
+                      onRestart={handleRestartCourse}
+                    />
+                  )}
+                  {currentQuestion?.type === "code_test" && (
+                    <MobileCollapsible label="question">
+                      <QuestionInfo question={currentQuestion} />
+                    </MobileCollapsible>
+                  )}
                 </div>
               )}
             </div>
@@ -2215,6 +2385,22 @@ function CourseDetailInner({
                           !isExecutingCode
                         }
                         isRunning={isExecutingCode}
+                        onReset={() =>
+                          setCode(
+                            (isLessonCodeDemoActive
+                              ? currentLesson?.code_example?.code
+                              : currentQuestion?.code_example?.starterCode) ??
+                              "",
+                          )
+                        }
+                        testDisabledReason="Write some code first"
+                        submitDisabledReason={
+                          isSpeaking
+                            ? "Wait for the instructor to finish"
+                            : isAnswerSubmitted
+                              ? "You already submitted this answer"
+                              : "Write some code first"
+                        }
                       />
                       <TestResults
                         results={results}
@@ -2275,6 +2461,7 @@ function CourseDetailInner({
                               selectedAnswer={selectedAnswer as string | null}
                               onSelect={handleMultipleChoiceSelect}
                               disabled={isAnswerSubmitted}
+                              isSubmitted={isAnswerSubmitted}
                             />
                           )}
 
@@ -2284,6 +2471,12 @@ function CourseDetailInner({
                               selectedAnswer={selectedAnswer as boolean | null}
                               onSelect={handleTrueFalseSelect}
                               disabled={isAnswerSubmitted}
+                              isSubmitted={isAnswerSubmitted}
+                              correctAnswer={
+                                typeof currentQuestion.answer === "boolean"
+                                  ? currentQuestion.answer
+                                  : undefined
+                              }
                             />
                           )}
 
@@ -2312,37 +2505,70 @@ function CourseDetailInner({
                               </div>
                             )}
 
-                          {/* Explanation after submit — curriculum "explanation" often contains the full solution */}
-                          {currentQuestion.explanation &&
-                            isAnswerSubmitted &&
+                          {/* Result + explanation after submit — colored by correctness,
+                              announced to screen readers, and always visible even if the
+                              spoken feedback was missed/muted. */}
+                          {isAnswerSubmitted &&
                             (currentQuestion.type === "multiple_choice" ||
                               currentQuestion.type === "true_false") && (
-                              <div className="mt-8 min-w-0 max-w-full overflow-hidden rounded-r-lg border-l-4 border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-4 shadow-sm backdrop-blur-sm">
+                              <div
+                                role="status"
+                                aria-live="polite"
+                                className={cn(
+                                  "mt-8 min-w-0 max-w-full overflow-hidden rounded-r-lg border-l-4 p-4 shadow-sm backdrop-blur-sm",
+                                  lastAnswerCorrect
+                                    ? "border-green-500 bg-linear-to-br from-green-50 via-green-50/60 to-transparent"
+                                    : lastAnswerCorrect === false
+                                      ? "border-red-500 bg-linear-to-br from-red-50 via-red-50/60 to-transparent"
+                                      : "border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent",
+                                )}
+                              >
                                 <div className="flex min-w-0 items-start gap-3">
                                   <div className="mt-0.5 shrink-0">
-                                    <svg
-                                      className="h-5 w-5 text-primary"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                      />
-                                    </svg>
+                                    {lastAnswerCorrect ? (
+                                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                    ) : lastAnswerCorrect === false ? (
+                                      <XCircle className="h-5 w-5 text-red-600" />
+                                    ) : (
+                                      <svg
+                                        className="h-5 w-5 text-primary"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                      </svg>
+                                    )}
                                   </div>
                                   <div className="min-w-0 flex-1 overflow-hidden">
-                                    <strong className="mb-1 block font-semibold text-primary">
-                                      Hint:
+                                    <strong
+                                      className={cn(
+                                        "mb-1 block font-semibold",
+                                        lastAnswerCorrect
+                                          ? "text-green-800"
+                                          : lastAnswerCorrect === false
+                                            ? "text-red-800"
+                                            : "text-primary",
+                                      )}
+                                    >
+                                      {lastAnswerCorrect
+                                        ? "Correct!"
+                                        : lastAnswerCorrect === false
+                                          ? "Not quite"
+                                          : "Hint:"}
                                     </strong>
-                                    <div className="min-w-0 max-w-full text-sm leading-relaxed text-gray-700 wrap-anywhere">
-                                      <MathText>
-                                        {currentQuestion.explanation}
-                                      </MathText>
-                                    </div>
+                                    {currentQuestion.explanation && (
+                                      <div className="min-w-0 max-w-full text-sm leading-relaxed text-gray-700 wrap-anywhere">
+                                        <MathText>
+                                          {currentQuestion.explanation}
+                                        </MathText>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -2366,10 +2592,10 @@ function CourseDetailInner({
                       </div>
 
                       {/* Subtitle Mode - Show when avatar is speaking */}
-                      {isShowingSubtitles && currentSubtitle ? (
+                      {isShowingSubtitles ? (
                         <div className="flex min-h-[200px] flex-1 items-center justify-center sm:min-h-[260px] lg:min-h-[300px]">
                           <div className="max-w-2xl mx-auto px-6">
-                            {/* Subtitle container with animation */}
+                            {/* Subtitle container */}
                             <div className="relative">
                               {/* Speaking indicator */}
                               <div className="flex items-center justify-center gap-2 mb-6">
@@ -2383,18 +2609,10 @@ function CourseDetailInner({
                                 </span>
                               </div>
 
-                              {/* Main subtitle text */}
-                              <div
-                                className="rounded-2xl border-2 border-primary/20 bg-white/80 p-5 shadow-xl backdrop-blur-md transition-all duration-500 ease-out sm:p-8"
-                                key={currentSubtitle}
-                              >
-                                <p
-                                  className="animate-fade-in text-center text-lg font-medium leading-relaxed text-gray-800 sm:text-2xl md:text-3xl"
-                                  style={{
-                                    animation: "fadeIn 0.5s ease-out forwards"
-                                  }}
-                                >
-                                  {currentSubtitle}
+                              {/* Main subtitle text — no key/animation per word update */}
+                              <div className="rounded-2xl border-2 border-primary/20 bg-white/80 p-5 shadow-xl backdrop-blur-md sm:p-8">
+                                <p className="text-center text-lg font-medium leading-relaxed text-gray-800 sm:text-2xl md:text-3xl">
+                                  {currentSubtitle || "…"}
                                 </p>
                               </div>
 
@@ -2525,6 +2743,7 @@ function CourseDetailInner({
               aria-hidden
             >
               <NarratorAvatar
+                key={selectedInstructor}
                 ref={avatarRef}
                 {...avatarConfig}
                 onReady={handleAvatarReady}

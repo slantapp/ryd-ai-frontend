@@ -18,7 +18,6 @@ import {
 } from "@/features/curriculum-preview/v2/navigation";
 import type { LessonV2 } from "@/features/curriculum-preview/v2/types";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
-import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import {
   DEMO_COURSE_SLUG,
   getDemoCurriculumV2,
@@ -59,10 +58,12 @@ export default function DemoSneakPeekPage() {
     scheduleAfterSpeech,
     clearScheduledAfterSpeech,
     isSpeaking,
+    isPaused,
+    togglePause,
     currentSubtitle,
     showMobileAudioUnlock,
     unlockMobileAudio,
-  } = usePreviewAvatar();
+  } = usePreviewAvatar({ instructorSource: "global" });
 
   const allLessons = useMemo(
     () => curriculum.modules.flatMap((m) => m.lessons),
@@ -97,7 +98,6 @@ export default function DemoSneakPeekPage() {
   }, [updateCourseProgress]);
 
   useEffect(() => {
-    prefetchAvatar();
     prefetchMonacoEditor();
   }, []);
 
@@ -221,6 +221,8 @@ export default function DemoSneakPeekPage() {
           scheduleAfterSpeech={scheduleAfterSpeech}
           clearScheduledAfterSpeech={clearScheduledAfterSpeech}
           isSpeaking={isSpeaking}
+          isPaused={isPaused}
+          onTogglePause={togglePause}
           currentSubtitle={currentSubtitle}
           avatarSlot={
             <AvatarComponent className="h-full w-full" showUnlockOverlay={false} />

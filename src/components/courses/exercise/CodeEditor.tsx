@@ -1,4 +1,12 @@
-import { Loader2, Maximize2, Minimize2, Play, Send } from "lucide-react";
+import { useRef } from "react";
+import {
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Play,
+  RotateCcw,
+  Send,
+} from "lucide-react";
 import { MonacoEditorLazy } from "./MonacoEditorLazy";
 import {
   CODE_RUN_LANGUAGES,
@@ -16,12 +24,18 @@ interface CodeEditorProps {
   language?: string;
   /** When provided, shows a language dropdown the user can override. */
   onLanguageChange?: (language: string) => void;
-  /** When provided, shows two buttons: "Try it out" (run only) and "Submit answer" (run and submit). */
+  /** When provided, shows two buttons: "Run" (run only) and "Submit" (run and submit). */
   onTryOut?: () => void;
   /** When using two-button mode, submit button is disabled when false (e.g. when code is empty). */
   canSubmit?: boolean;
   /** Shows a running state and disables action buttons while code executes. */
   isRunning?: boolean;
+  /** When provided, shows a "Reset" button that restores the starter code. */
+  onReset?: () => void;
+  /** Tooltip shown on the run/test button while it is disabled (explains why). */
+  testDisabledReason?: string;
+  /** Tooltip shown on the submit button while it is disabled (explains why). */
+  submitDisabledReason?: string;
 }
 
 /** Map curriculum language strings to Monaco editor language ids. */
@@ -46,6 +60,9 @@ export default function CodeEditor({
   onTryOut,
   canSubmit = true,
   isRunning = false,
+  onReset,
+  testDisabledReason,
+  submitDisabledReason,
 }: CodeEditorProps) {
   const twoButtonMode = typeof onTryOut === "function";
   const monacoLanguage = toMonacoLanguage(language);
@@ -53,6 +70,26 @@ export default function CodeEditor({
   const submitDisabled = !canSubmit || isRunning;
   const selectedLanguage = normalizeRunLanguage(language);
   const showLanguageSelector = typeof onLanguageChange === "function";
+
+  // Keep the latest "primary action" in a ref so the Monaco Ctrl/Cmd+Enter
+  // command (registered once on mount) always calls the current handler and
+  // respects the current disabled state.
+  const primaryActionRef = useRef<() => void>(() => {});
+  primaryActionRef.current = () => {
+    if (isRunning) return;
+    if (twoButtonMode) {
+      if (!submitDisabled) onTestCode();
+    } else if (!testDisabled) {
+      onTestCode();
+    }
+  };
+
+  const runTooltip = testDisabled
+    ? testDisabledReason || (isRunning ? "Running…" : "Write some code first")
+    : "Run your code (Ctrl/Cmd + Enter)";
+  const submitTooltip = submitDisabled
+    ? submitDisabledReason || (isRunning ? "Running…" : "Write some code first")
+    : "Submit your answer (Ctrl/Cmd + Enter)";
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-md border border-gray-200">
@@ -76,46 +113,82 @@ export default function CodeEditor({
               ))}
             </select>
           )}
+          {onReset && (
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={isRunning}
+              title="Reset to starter code"
+              aria-label="Reset to starter code"
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded border border-gray-300 bg-white px-2 text-xs text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
+            >
+              <RotateCcw size={14} />
+              <span className="hidden sm:inline">Reset</span>
+            </button>
+          )}
           {twoButtonMode ? (
             <>
               <button
                 onClick={onTryOut}
                 disabled={testDisabled}
-                className={`flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-white sm:gap-2 sm:px-3 sm:text-sm ${testDisabled
-                  ? "bg-gray-500 cursor-not-allowed"
-                  : "bg-gray-600 hover:bg-gray-700"
-                  }`}
+                title={runTooltip}
+                aria-label={runTooltip}
+                className={`flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-white sm:gap-2 sm:px-3 sm:text-sm ${
+                  testDisabled
+                    ? "bg-gray-500 cursor-not-allowed"
+                    : "bg-gray-600 hover:bg-gray-700"
+                }`}
               >
-                {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                {isRunning ? "Running..." : "Test Code"}
+                {isRunning ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Play size={14} />
+                )}
+                {isRunning ? "Running…" : "Run"}
               </button>
               <button
                 onClick={onTestCode}
                 disabled={submitDisabled}
-                className={`flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-white sm:gap-2 sm:px-3 sm:text-sm ${submitDisabled
-                  ? "bg-gray-500 cursor-not-allowed"
-                  : "bg-primary hover:bg-primary/80"
-                  }`}
+                title={submitTooltip}
+                aria-label={submitTooltip}
+                className={`flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-white sm:gap-2 sm:px-3 sm:text-sm ${
+                  submitDisabled
+                    ? "bg-gray-500 cursor-not-allowed"
+                    : "bg-primary hover:bg-primary/80"
+                }`}
               >
-                {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                {isRunning ? "Running..." : "Submit answer"}
+                {isRunning ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Send size={14} />
+                )}
+                {isRunning ? "Running…" : "Submit"}
               </button>
             </>
           ) : (
             <button
               onClick={onTestCode}
               disabled={testDisabled}
-              className={`flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-white sm:gap-2 sm:px-3 sm:text-sm ${testDisabled
-                ? "bg-gray-500 cursor-not-allowed"
-                : "bg-primary hover:bg-primary/80"
-                }`}
+              title={runTooltip}
+              aria-label={runTooltip}
+              className={`flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs text-white sm:gap-2 sm:px-3 sm:text-sm ${
+                testDisabled
+                  ? "bg-gray-500 cursor-not-allowed"
+                  : "bg-primary hover:bg-primary/80"
+              }`}
             >
-              {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-              {isRunning ? "Running..." : "Run Code"}
+              {isRunning ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Play size={14} />
+              )}
+              {isRunning ? "Running…" : "Run"}
             </button>
           )}
           <button
             onClick={onToggleFullscreen}
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
             className="p-1 rounded hover:bg-gray-200 shrink-0"
           >
             {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
@@ -128,6 +201,12 @@ export default function CodeEditor({
           value={code}
           onChange={(val) => onCodeChange(val || "")}
           height="100%"
+          onMount={(editor, monaco) => {
+            editor.addCommand(
+              monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
+              () => primaryActionRef.current(),
+            );
+          }}
         />
       </div>
     </div>

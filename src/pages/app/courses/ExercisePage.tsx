@@ -25,7 +25,6 @@ import {
 } from "@/utils/codeTestValidation";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
-import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import { cn } from "@/lib/utils";
 
 interface CurriculumLearningRef {
@@ -90,10 +89,6 @@ function CodingExerciseInner() {
   const curriculum = exercise
     ? getCurriculumBySlug(exercise)?.curriculum || null
     : null;
-
-  useEffect(() => {
-    prefetchAvatar();
-  }, [exercise]);
 
   // Initialize audio context when component mounts (required for TTS)
   useEffect(() => {

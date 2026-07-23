@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import Split from "react-split";
 import NarratorAvatar from "narrator-avatar";
-import { Calculator, Mic, Play, Volume2 } from "lucide-react";
+import { Calculator, CheckCircle2, Mic, Pause, Play, Volume2, XCircle } from "lucide-react";
 import {
   type Question,
   type Lesson,
@@ -21,16 +21,16 @@ import {
   MultipleChoiceQuestion,
   TrueFalseQuestion,
   LessonNavControls,
+  LessonProgressBar,
 } from "@/components/courses/exercise";
 import MathFormulaBoard from "./MathFormulaBoard";
 import MathAnswerWorkspace from "./MathAnswerWorkspace";
 import MathText from "./MathText";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
-import { useInstructorStore } from "@/stores/instructorStore";
+import { useInstructorStore, INSTRUCTORS } from "@/stores/instructorStore";
 import { useCoursesStore } from "@/stores/coursesStore";
 import { cn } from "@/lib/utils";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
-import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
 import {
@@ -105,8 +105,8 @@ function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
 function MathCourseDetailsInner() {
   const { exercise } = useParams<{ exercise: string }>();
   const location = useLocation();
-  const { getInstructorConfig } = useInstructorStore();
-  const instructorConfig = getInstructorConfig();
+  const selectedInstructor = useInstructorStore((s) => s.selectedInstructor);
+  const instructorConfig = INSTRUCTORS[selectedInstructor];
   const { updateCourseProgress } = useCoursesStore();
   const isCourseCompleted = useCoursesStore((state) =>
     exercise ? state.courseProgress[exercise]?.status === "completed" : false,
@@ -147,6 +147,10 @@ function MathCourseDetailsInner() {
   );
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
   const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
+  const [progressPct, setProgressPct] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const pausedLiveRef = useRef(false);
+  const lastSpokenTextRef = useRef<string>("");
   const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState(0);
   const [moduleCorrectCount, setModuleCorrectCount] = useState(0);
   const [moduleTotalAnswered, setModuleTotalAnswered] = useState(0);
@@ -248,6 +252,7 @@ function MathCourseDetailsInner() {
           pendingActionRef.current = action;
           speechStartTimeRef.current = Date.now();
           lastSpeechTextRef.current = text;
+          lastSpokenTextRef.current = text;
           avatar.speakText(text);
         }
       } catch (error) {
@@ -272,6 +277,68 @@ function MathCourseDetailsInner() {
     const next = pendingSpeechQueueRef.current.shift();
     if (next) speakImmediate(next.text, next.action);
   }, [speakImmediate]);
+
+  // Instructor pause/resume, persisted so learners can resume after leaving.
+  const pauseStorageKey = exercise ? `ryd-lesson-pause:${exercise}` : null;
+
+  const persistPausedState = useCallback(
+    (text: string) => {
+      if (!pauseStorageKey) return;
+      try {
+        localStorage.setItem(
+          pauseStorageKey,
+          JSON.stringify({ text, at: Date.now() }),
+        );
+      } catch {
+        // ignore storage errors
+      }
+    },
+    [pauseStorageKey],
+  );
+
+  const clearPausedState = useCallback(() => {
+    if (!pauseStorageKey) return;
+    try {
+      localStorage.removeItem(pauseStorageKey);
+    } catch {
+      // ignore
+    }
+  }, [pauseStorageKey]);
+
+  const handleTogglePause = useCallback(() => {
+    const avatar = getAvatar();
+    if (isPaused) {
+      if (pausedLiveRef.current && typeof avatar?.resumeSpeaking === "function") {
+        avatar.resumeSpeaking();
+      } else if (lastSpokenTextRef.current) {
+        speak(lastSpokenTextRef.current);
+      }
+      pausedLiveRef.current = false;
+      setIsPaused(false);
+      clearPausedState();
+    } else {
+      if (typeof avatar?.pauseSpeaking === "function") avatar.pauseSpeaking();
+      pausedLiveRef.current = true;
+      setIsPaused(true);
+      persistPausedState(lastSpokenTextRef.current);
+    }
+  }, [isPaused, getAvatar, speak, persistPausedState, clearPausedState]);
+
+  useEffect(() => {
+    if (!pauseStorageKey) return;
+    try {
+      const raw = localStorage.getItem(pauseStorageKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { text?: string };
+      if (saved?.text) {
+        lastSpokenTextRef.current = saved.text;
+        pausedLiveRef.current = false;
+        setIsPaused(true);
+      }
+    } catch {
+      // ignore malformed storage
+    }
+  }, [pauseStorageKey]);
 
   const handleAvatarReady = useCallback(() => {
     avatarReadyRef.current = true;
@@ -316,10 +383,19 @@ function MathCourseDetailsInner() {
     stopAvatarSpeech(getAvatar());
     pendingActionRef.current = { type: "none" };
     setIsSpeaking(false);
+    setIsPaused(false);
+    pausedLiveRef.current = false;
+    clearPausedState();
     setTimeout(() => {
       isManuallyStopped.current = false;
     }, 300);
-  }, [clearIntroUnlockTimeout, getAvatar, stopFormulaTyping, stopSubtitles]);
+  }, [
+    clearIntroUnlockTimeout,
+    getAvatar,
+    stopFormulaTyping,
+    stopSubtitles,
+    clearPausedState,
+  ]);
 
   const persistCoursePosition = useCallback(
     (progress: Partial<CourseProgress>) => {
@@ -605,6 +681,9 @@ function MathCourseDetailsInner() {
 
   const handleSpeechEndInternal = useCallback(() => {
     setIsSpeaking(false);
+    setIsPaused(false);
+    pausedLiveRef.current = false;
+    clearPausedState();
     stopSubtitles();
     const action = pendingActionRef.current;
     pendingActionRef.current = { type: "none" };
@@ -683,6 +762,7 @@ function MathCourseDetailsInner() {
   }, [
     curriculum,
     currentLesson,
+    clearPausedState,
     flushNextQueuedSpeech,
     markIntroReady,
     playLessonFormulaTyping,
@@ -1266,6 +1346,7 @@ function MathCourseDetailsInner() {
       lessonStarted,
       isCurrentLessonComplete,
     );
+    setProgressPct(progress);
     updateCourseProgress(exercise, {
       progress,
       status: progress >= 100 ? "completed" : "ongoing",
@@ -1307,14 +1388,10 @@ function MathCourseDetailsInner() {
   }, [clearIntroUnlockTimeout, stopFormulaTyping]);
 
   useEffect(() => {
-    prefetchAvatar();
-  }, [exercise]);
-
-  useEffect(() => {
     avatarReadyRef.current = false;
     pendingSpeechQueueRef.current = [];
     setShowMobileAudioUnlock(false);
-  }, [exercise, isLgUp]);
+  }, [exercise, isLgUp, selectedInstructor]);
 
   const avatarConfig = {
     cameraView: "mid" as const,
@@ -1329,14 +1406,41 @@ function MathCourseDetailsInner() {
     accurateLipSync: true,
   };
 
-  const renderQuestionHint = (explanation?: string) => {
-    if (!explanation) return null;
+  const renderQuestionResult = (submitted: boolean, explanation?: string) => {
+    if (!submitted) return null;
+    const correct = lastAnswerCorrect === true;
+    const wrong = lastAnswerCorrect === false;
     return (
-      <div className="mt-6 min-w-0 max-w-full overflow-hidden rounded-r-lg border-l-4 border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-3 shadow-sm backdrop-blur-sm sm:mt-8 sm:p-4">
-        <p className="mb-1 text-sm font-semibold text-primary">Hint</p>
-        <div className="min-w-0 max-w-full text-xs leading-relaxed text-gray-700 wrap-anywhere sm:text-sm">
-          <MathText>{explanation}</MathText>
-        </div>
+      <div
+        role="status"
+        aria-live="polite"
+        className={cn(
+          "mt-6 min-w-0 max-w-full overflow-hidden rounded-r-lg border-l-4 p-3 shadow-sm backdrop-blur-sm sm:mt-8 sm:p-4",
+          correct
+            ? "border-green-500 bg-linear-to-br from-green-50 via-green-50/60 to-transparent"
+            : wrong
+              ? "border-red-500 bg-linear-to-br from-red-50 via-red-50/60 to-transparent"
+              : "border-primary bg-linear-to-br from-primary/10 via-primary/5 to-transparent",
+        )}
+      >
+        <p
+          className={cn(
+            "mb-1 flex items-center gap-1.5 text-sm font-semibold",
+            correct ? "text-green-800" : wrong ? "text-red-800" : "text-primary",
+          )}
+        >
+          {correct ? (
+            <CheckCircle2 className="size-4 shrink-0" />
+          ) : wrong ? (
+            <XCircle className="size-4 shrink-0" />
+          ) : null}
+          {correct ? "Correct!" : wrong ? "Not quite" : "Hint"}
+        </p>
+        {explanation && (
+          <div className="min-w-0 max-w-full text-xs leading-relaxed text-gray-700 wrap-anywhere sm:text-sm">
+            <MathText>{explanation}</MathText>
+          </div>
+        )}
       </div>
     );
   };
@@ -1355,6 +1459,7 @@ function MathCourseDetailsInner() {
             selectedAnswer={selectedAnswer as string | null}
             onSelect={(v) => !isAnswerSubmitted && setSelectedAnswer(v)}
             disabled={isAnswerSubmitted}
+            isSubmitted={isAnswerSubmitted}
           />
           <button
             type="button"
@@ -1371,9 +1476,7 @@ function MathCourseDetailsInner() {
           >
             {isAnswerSubmitted ? "Answer submitted" : "Submit answer"}
           </button>
-          {renderQuestionHint(
-            isAnswerSubmitted ? currentQuestion.explanation : undefined,
-          )}
+          {renderQuestionResult(isAnswerSubmitted, currentQuestion.explanation)}
         </>
       );
     }
@@ -1388,6 +1491,12 @@ function MathCourseDetailsInner() {
             selectedAnswer={selectedAnswer as boolean | null}
             onSelect={(v) => !isAnswerSubmitted && setSelectedAnswer(v)}
             disabled={isAnswerSubmitted}
+            isSubmitted={isAnswerSubmitted}
+            correctAnswer={
+              typeof currentQuestion.answer === "boolean"
+                ? currentQuestion.answer
+                : undefined
+            }
           />
           <button
             type="button"
@@ -1404,9 +1513,7 @@ function MathCourseDetailsInner() {
           >
             {isAnswerSubmitted ? "Answer submitted" : "Submit answer"}
           </button>
-          {renderQuestionHint(
-            isAnswerSubmitted ? currentQuestion.explanation : undefined,
-          )}
+          {renderQuestionResult(isAnswerSubmitted, currentQuestion.explanation)}
         </>
       );
     }
@@ -1462,16 +1569,45 @@ function MathCourseDetailsInner() {
                 </span>
               </div>
               {lessonStarted && lessonNav && (
-                <LessonNavControls
-                  nav={lessonNav}
-                  onPrevious={handlePrevious}
-                  onPrimary={handlePrimaryNav}
-                  showRestart={isCourseCompleted}
-                  onRestart={handleRestartCourse}
-                />
+                <>
+                  <div className="mb-3 flex items-center gap-3">
+                    <LessonProgressBar
+                      value={progressPct}
+                      label={lessonNav.positionLabel}
+                      className="flex-1"
+                    />
+                    {(isSpeaking || isPaused) && (
+                      <button
+                        type="button"
+                        onClick={handleTogglePause}
+                        title={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                        aria-label={
+                          isPaused ? "Resume the lesson" : "Pause the lesson"
+                        }
+                        aria-pressed={isPaused}
+                        className="mt-4 flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      >
+                        {isPaused ? (
+                          <Play className="size-3.5" aria-hidden />
+                        ) : (
+                          <Pause className="size-3.5" aria-hidden />
+                        )}
+                        {isPaused ? "Resume" : "Pause"}
+                      </button>
+                    )}
+                  </div>
+                  <LessonNavControls
+                    nav={lessonNav}
+                    onPrevious={handlePrevious}
+                    onPrimary={handlePrimaryNav}
+                    showRestart={isCourseCompleted}
+                    onRestart={handleRestartCourse}
+                  />
+                </>
               )}
               <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 <NarratorAvatar
+                  key={selectedInstructor}
                   ref={avatarRef}
                   {...avatarConfig}
                   onReady={handleAvatarReady}
@@ -1482,6 +1618,9 @@ function MathCourseDetailsInner() {
                     isManuallyStopped.current = false;
                     setIsSpeaking(true);
                     setIsShowingSubtitles(true);
+                    setIsPaused(false);
+                    pausedLiveRef.current = false;
+                    clearPausedState();
                   }}
                   onSpeechEnd={handleSpeechEnd}
                   onSubtitle={setCurrentSubtitle}
@@ -1517,6 +1656,25 @@ function MathCourseDetailsInner() {
                       : "Ready when you are"}
                   </p>
                 </div>
+                {lessonStarted && (isSpeaking || isPaused) && (
+                  <button
+                    type="button"
+                    onClick={handleTogglePause}
+                    title={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                    aria-label={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                    aria-pressed={isPaused}
+                    className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  >
+                    {isPaused ? (
+                      <Play className="size-3.5" aria-hidden />
+                    ) : (
+                      <Pause className="size-3.5" aria-hidden />
+                    )}
+                    <span className="hidden min-[360px]:inline">
+                      {isPaused ? "Resume" : "Pause"}
+                    </span>
+                  </button>
+                )}
               </div>
               {showMobileAudioUnlock && (
                 <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
@@ -1534,15 +1692,23 @@ function MathCourseDetailsInner() {
                 </div>
               )}
               {lessonStarted && lessonNav && (
-                <div className="px-3 pb-3">
-                  <LessonNavControls
-                    nav={lessonNav}
-                    onPrevious={handlePrevious}
-                    onPrimary={handlePrimaryNav}
-                    showRestart={isCourseCompleted}
-                    onRestart={handleRestartCourse}
-                  />
-                </div>
+                <>
+                  <div className="px-3 pb-2">
+                    <LessonProgressBar
+                      value={progressPct}
+                      label={lessonNav.positionLabel}
+                    />
+                  </div>
+                  <div className="px-3 pb-3">
+                    <LessonNavControls
+                      nav={lessonNav}
+                      onPrevious={handlePrevious}
+                      onPrimary={handlePrimaryNav}
+                      showRestart={isCourseCompleted}
+                      onRestart={handleRestartCourse}
+                    />
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -1580,7 +1746,7 @@ function MathCourseDetailsInner() {
                   <div className="mt-3 h-1 w-16 rounded-full bg-linear-to-r from-primary via-primary/80 to-primary/60 sm:w-20" />
                 </div>
 
-                {isShowingSubtitles && currentSubtitle ? (
+                {isShowingSubtitles ? (
                   <div className="flex min-h-[180px] items-center justify-center sm:min-h-[220px]">
                     <div className="w-full max-w-2xl px-2 sm:px-4">
                       <div className="mb-4 flex items-center justify-center gap-2">
@@ -1595,7 +1761,7 @@ function MathCourseDetailsInner() {
                       </div>
                       <div className="rounded-2xl border-2 border-primary/20 bg-white/90 p-5 text-center shadow-lg sm:p-8">
                         <p className="text-base font-medium leading-relaxed break-words text-gray-800 sm:text-lg lg:text-xl">
-                          {currentSubtitle}
+                          {currentSubtitle || "…"}
                         </p>
                       </div>
                     </div>
@@ -1660,6 +1826,7 @@ function MathCourseDetailsInner() {
               aria-hidden
             >
               <NarratorAvatar
+                key={selectedInstructor}
                 ref={avatarRef}
                 {...avatarConfig}
                 onReady={handleAvatarReady}
@@ -1670,6 +1837,9 @@ function MathCourseDetailsInner() {
                   isManuallyStopped.current = false;
                   setIsSpeaking(true);
                   setIsShowingSubtitles(true);
+                  setIsPaused(false);
+                  pausedLiveRef.current = false;
+                  clearPausedState();
                 }}
                 onSpeechEnd={handleSpeechEnd}
                 onSubtitle={setCurrentSubtitle}

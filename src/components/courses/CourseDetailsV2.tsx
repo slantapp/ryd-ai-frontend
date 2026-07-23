@@ -17,7 +17,6 @@ import {
 } from "@/features/curriculum-preview/v2/detect";
 import type { LessonV2 } from "@/features/curriculum-preview/v2/types";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
-import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import { getCurriculumEntryBySlug } from "@/data/curriculumData";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { cn } from "@/lib/utils";
@@ -57,10 +56,12 @@ export default function CourseDetailsV2() {
     scheduleAfterSpeech,
     clearScheduledAfterSpeech,
     isSpeaking,
+    isPaused,
+    togglePause,
     currentSubtitle,
     showMobileAudioUnlock,
     unlockMobileAudio,
-  } = usePreviewAvatar();
+  } = usePreviewAvatar({ instructorSource: "global" });
 
   const lessonOrdinal = useMemo(() => {
     if (!currentLesson) return 1;
@@ -75,7 +76,6 @@ export default function CourseDetailsV2() {
   );
 
   useEffect(() => {
-    prefetchAvatar();
     prefetchMonacoEditor();
   }, []);
 
@@ -364,6 +364,8 @@ export default function CourseDetailsV2() {
         scheduleAfterSpeech={scheduleAfterSpeech}
         clearScheduledAfterSpeech={clearScheduledAfterSpeech}
         isSpeaking={isSpeaking}
+        isPaused={isPaused}
+        onTogglePause={togglePause}
         currentSubtitle={currentSubtitle}
         avatarSlot={avatarSlot}
         onLessonComplete={handleLessonComplete}

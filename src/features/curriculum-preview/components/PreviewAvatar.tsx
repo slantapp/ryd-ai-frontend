@@ -1,6 +1,11 @@
 import { useRef, useMemo, useCallback, useState, useEffect } from "react";
 import NarratorAvatar from "narrator-avatar";
 import { Volume2 } from "lucide-react";
+import {
+  INSTRUCTORS,
+  useInstructorStore,
+  type InstructorType,
+} from "@/stores/instructorStore";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
 
 type NarratorAvatarRef = {
@@ -17,17 +22,12 @@ export interface PreviewAvatarHandle {
   isReady: () => boolean;
 }
 
-const INSTRUCTORS = {
-  woman: {
-    avatarUrl: "/avatars/avatar.glb",
-    avatarBody: "F" as const,
-    ttsVoice: "aura-2-aurora-en",
-  },
-  man: {
-    avatarUrl: "/avatars/male.glb",
-    avatarBody: "M" as const,
-    ttsVoice: "aura-2-mars-en",
-  },
+export type PreviewAvatarOptions = {
+  /**
+   * `global` — use the instructor from settings / subscription gate (persisted).
+   * `local` — isolated picker for curriculum preview authoring (default).
+   */
+  instructorSource?: "local" | "global";
 };
 
 function isMobileViewport() {
@@ -36,7 +36,12 @@ function isMobileViewport() {
     : false;
 }
 
-export function usePreviewAvatar() {
+export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
+  const instructorSource = options.instructorSource ?? "local";
+
+  const globalInstructor = useInstructorStore((s) => s.selectedInstructor);
+  const setGlobalInstructor = useInstructorStore((s) => s.setSelectedInstructor);
+
   const avatarRef = useRef<NarratorAvatarRef | null>(null);
   const avatarReadyRef = useRef(false);
   /** After one user tap on mobile, AudioContext/autoplay is allowed for the session. */
@@ -47,10 +52,15 @@ export function usePreviewAvatar() {
   const [showMobileAudioUnlock, setShowMobileAudioUnlock] = useState(false);
   const [isAvatarReady, setIsAvatarReady] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [currentSubtitle, setCurrentSubtitle] = useState("");
-  const [selectedInstructor, setSelectedInstructor] = useState<"woman" | "man">(
-    "woman",
-  );
+  const [localInstructor, setLocalInstructor] =
+    useState<InstructorType>("woman");
+
+  const selectedInstructor =
+    instructorSource === "global" ? globalInstructor : localInstructor;
+  const setSelectedInstructor =
+    instructorSource === "global" ? setGlobalInstructor : setLocalInstructor;
 
   const instructorConfig = INSTRUCTORS[selectedInstructor];
 
@@ -110,6 +120,19 @@ export function usePreviewAvatar() {
     [needsMobileUnlock, speakImmediate],
   );
 
+  /** Pause the instructor mid-sentence, or resume from the same point. */
+  const togglePause = useCallback(() => {
+    const avatar = avatarRef.current;
+    if (!avatar) return;
+    if (isPaused) {
+      avatar.resumeSpeaking?.();
+      setIsPaused(false);
+    } else {
+      avatar.pauseSpeaking?.();
+      setIsPaused(true);
+    }
+  }, [isPaused]);
+
   const scheduleAfterSpeech = useCallback((fn: () => void) => {
     afterSpeechRef.current = fn;
   }, []);
@@ -126,6 +149,7 @@ export function usePreviewAvatar() {
       setShowMobileAudioUnlock(false);
       stopAvatarSpeech(avatarRef.current);
       setIsSpeaking(false);
+      setIsPaused(false);
       setCurrentSubtitle("");
     } catch (error) {
       console.warn("Error stopping speech:", error);
@@ -167,10 +191,12 @@ export function usePreviewAvatar() {
 
   const handleSpeechStart = useCallback(() => {
     setIsSpeaking(true);
+    setIsPaused(false);
   }, []);
 
   const handleSpeechEnd = useCallback(() => {
     setIsSpeaking(false);
+    setIsPaused(false);
     setCurrentSubtitle("");
     const hadQueuedSpeech = pendingSpeechQueueRef.current.length > 0;
     flushNextQueuedSpeech();
@@ -190,6 +216,11 @@ export function usePreviewAvatar() {
   const isReady = useCallback(() => avatarReadyRef.current, []);
 
   useEffect(() => {
+    avatarReadyRef.current = false;
+    setIsAvatarReady(false);
+  }, [selectedInstructor]);
+
+  useEffect(() => {
     return () => {
       stop();
     };
@@ -206,6 +237,7 @@ export function usePreviewAvatar() {
     }) => (
       <div className={`relative ${className || ""}`}>
         <NarratorAvatar
+          key={selectedInstructor}
           ref={avatarRef}
           {...avatarConfig}
           onReady={handleAvatarReady}
@@ -237,6 +269,7 @@ export function usePreviewAvatar() {
       handleSubtitle,
       showMobileAudioUnlock,
       handleMobileAudioUnlock,
+      selectedInstructor,
     ],
   );
 
@@ -249,6 +282,8 @@ export function usePreviewAvatar() {
     isReady,
     isAvatarReady,
     isSpeaking,
+    isPaused,
+    togglePause,
     currentSubtitle,
     selectedInstructor,
     setSelectedInstructor,

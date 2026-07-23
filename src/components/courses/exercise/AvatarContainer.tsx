@@ -1,7 +1,7 @@
 import { forwardRef, useMemo } from "react";
 import { CurriculumLearning } from "@sage-rsc/talking-head-react";
 import type { Curriculum } from "../../../data/curriculumData";
-import { useInstructorStore } from "../../../stores/instructorStore";
+import { useInstructorStore, INSTRUCTORS } from "../../../stores/instructorStore";
 
 interface CurriculumLearningRef {
   isAvatarReady?: () => boolean;
@@ -77,8 +77,8 @@ export const AvatarContainer = forwardRef<
     },
     ref
   ) => {
-    const { getInstructorConfig } = useInstructorStore();
-    const instructorConfig = getInstructorConfig();
+    const selectedInstructor = useInstructorStore((s) => s.selectedInstructor);
+    const instructorConfig = INSTRUCTORS[selectedInstructor];
 
     const transformedCurriculumData = useMemo(
       () => ({ curriculum }),
@@ -102,6 +102,7 @@ export const AvatarContainer = forwardRef<
     return (
       <div className={`w-full h-full relative ${className}`}>
         <CurriculumLearning
+          key={selectedInstructor}
           ref={ref}
           curriculumData={transformedCurriculumData}
           avatarConfig={avatarConfig}

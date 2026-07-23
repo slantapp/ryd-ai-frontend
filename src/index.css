@@ -209,3 +209,20 @@ svg {
 .animate-subtitle-pulse {
   animation: subtitlePulse 2s ease-in-out infinite;
 }
+
+/* Accessibility: honor the OS "reduce motion" setting.
+   Disables the many looping speaking/typing indicators and long transitions
+   for users prone to motion sickness, without removing functionality. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}

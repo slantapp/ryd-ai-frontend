@@ -7,13 +7,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { CheckCircle2, Lightbulb, ListTodo, Mic, Volume2, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Lightbulb, ListTodo, Mic, Pause, Play, Volume2, XCircle } from "lucide-react";
 import Split from "react-split";
 import MathText from "@/components/courses/math/MathText";
 import CodeEditor from "@/components/courses/exercise/CodeEditor";
 import FullscreenModal from "@/components/courses/exercise/FullscreenModal";
 import WebCodeWorkspace from "@/components/courses/exercise/WebCodeWorkspace";
 import TestResults from "@/components/courses/exercise/TestResults";
+import { MobileCollapsible } from "@/components/courses/exercise/MobileCollapsible";
+import { LessonProgressBar } from "@/components/courses/exercise/LessonProgressBar";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { PreviewQuestion } from "../../components/PreviewQuestion";
 import {
@@ -81,6 +83,10 @@ interface LessonPlayerProps {
   scheduleAfterSpeech: AfterSpeechFn;
   clearScheduledAfterSpeech: () => void;
   isSpeaking: boolean;
+  /** Whether the instructor is currently paused (mid-sentence). */
+  isPaused?: boolean;
+  /** Toggle pause/resume of the instructor's speech. */
+  onTogglePause?: () => void;
   currentSubtitle?: string;
   avatarSlot?: ReactNode;
   onLessonComplete: (lessonId: string) => void;
@@ -120,6 +126,8 @@ export function LessonPlayer({
   scheduleAfterSpeech,
   clearScheduledAfterSpeech,
   isSpeaking,
+  isPaused = false,
+  onTogglePause,
   currentSubtitle,
   avatarSlot,
   onLessonComplete,
@@ -1179,9 +1187,9 @@ export function LessonPlayer({
                   {avatarSlot}
                 </div>
                 {isLgUp ? (
-                  isSpeaking && currentSubtitle ? (
+                  isSpeaking ? (
                     <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
-                      {currentSubtitle}
+                      {currentSubtitle || "…"}
                     </p>
                   ) : (
                     <p className="mt-2 text-center text-xs text-gray-400">
@@ -1242,9 +1250,9 @@ export function LessonPlayer({
                           />
                         </div>
                       </div>
-                      {isSpeaking && currentSubtitle ? (
+                      {isSpeaking ? (
                         <p className="min-w-0 flex-1 line-clamp-3 text-left text-xs text-gray-600 sm:text-sm">
-                          {currentSubtitle}
+                          {currentSubtitle || "Speaking…"}
                         </p>
                       ) : (
                         <p className="min-w-0 flex-1 text-left text-xs text-gray-400">
@@ -1261,9 +1269,9 @@ export function LessonPlayer({
               <div className="aspect-square w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
                 {avatarSlot}
               </div>
-              {isSpeaking && currentSubtitle ? (
+              {isSpeaking ? (
                 <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
-                  {currentSubtitle}
+                  {currentSubtitle || "…"}
                 </p>
               ) : (
                 <p className="mt-2 text-center text-xs text-gray-400">
@@ -1365,9 +1373,9 @@ export function LessonPlayer({
               <div className="aspect-square w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
                 {avatarSlot}
               </div>
-              {isSpeaking && currentSubtitle ? (
+              {isSpeaking ? (
                 <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
-                  {currentSubtitle}
+                  {currentSubtitle || "…"}
                 </p>
               ) : (
                 <p className="mt-2 text-center text-xs text-gray-400">
@@ -1532,71 +1540,121 @@ export function LessonPlayer({
     // Match CourseDetails: show the prompt above the avatar while the learner answers a code test.
     const isCodeTestQuestionActive = isCodeTestPractice;
 
+    const flowLength = Math.max(1, lesson.flow.length);
+    const classicProgressPct = Math.min(
+      100,
+      Math.max(
+        0,
+        ((lessonOrdinal - 1 + (beatIndex + 1) / flowLength) /
+          Math.max(1, lessonTotal)) *
+          100,
+      ),
+    );
+
     const classicChrome = (
       <div className="relative z-10 w-full min-w-0 shrink-0">
-        <div className="mb-4 shrink-0 rounded-2xl border border-primary/10 bg-white/60 p-3 shadow-sm backdrop-blur sm:p-4">
-          <div className="mb-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
-              Lesson controls
-            </p>
-            <p className="mt-0.5 text-sm font-medium text-gray-800">
-              Lesson {lessonOrdinal} of {lessonTotal}
-              {lesson.title ? ` · ${lesson.title}` : ""}
-            </p>
-            <p className="mt-1 text-xs text-gray-500 sm:text-sm">
-              {isSpeaking
-                ? "Wait for the instructor to finish speaking."
-                : canPrimaryContinue
-                  ? "Ready when you are — continue to the next step."
-                  : beat?.type === "question"
-                    ? "Answer the question to continue."
-                    : "Listen to your instructor."}
-            </p>
+        <div className="mb-3 shrink-0 rounded-xl border border-primary/10 bg-white/70 p-2.5 shadow-sm backdrop-blur">
+          <div className="mb-2 flex items-center gap-2">
+            <LessonProgressBar
+              value={classicProgressPct}
+              label={`Lesson ${lessonOrdinal} of ${lessonTotal}`}
+              hidePercent
+              className="flex-1"
+            />
+            {onTogglePause && (isSpeaking || isPaused) && (
+              <button
+                type="button"
+                onClick={onTogglePause}
+                title={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                aria-label={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                aria-pressed={isPaused}
+                className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-[0.7rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
+              >
+                {isPaused ? (
+                  <Play className="size-3.5" aria-hidden />
+                ) : (
+                  <Pause className="size-3.5" aria-hidden />
+                )}
+                <span className="hidden min-[360px]:inline">
+                  {isPaused ? "Resume" : "Pause"}
+                </span>
+              </button>
+            )}
           </div>
+          <p className="mb-2 line-clamp-1 text-[0.7rem] text-gray-500 sm:text-xs">
+            {isSpeaking
+              ? "Wait for the instructor to finish speaking."
+              : canPrimaryContinue
+                ? "Ready — continue to the next step."
+                : beat?.type === "question"
+                  ? "Answer the question to continue."
+                  : "Listen to your instructor."}
+          </p>
 
-          <div className="flex gap-2 sm:gap-3">
+          <div className="flex items-stretch gap-2">
             <button
               type="button"
               onClick={() => goToBeat(beatIndex - 1)}
               disabled={!canGoPreviousBeat}
               className={cn(
-                "min-w-0 flex-1 rounded-xl px-2 py-2.5 text-xs font-semibold transition-colors sm:px-3 sm:text-sm",
+                "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-sm",
                 canGoPreviousBeat
-                  ? "bg-red-500 text-white shadow hover:bg-red-600"
-                  : "cursor-not-allowed bg-gray-200 text-gray-500",
+                  ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+                  : "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400",
               )}
             >
-              Previous
+              <ArrowLeft className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">Previous</span>
             </button>
             <button
               type="button"
               onClick={() => advance()}
               disabled={!canPrimaryContinue}
               className={cn(
-                "min-w-0 flex-[1.4] rounded-xl px-2 py-2.5 text-xs font-semibold transition-colors sm:px-3 sm:text-sm",
+                "min-w-0 flex-[1.4] rounded-lg px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-sm",
                 canPrimaryContinue
                   ? "bg-green-500 text-white shadow hover:bg-green-600"
                   : "cursor-not-allowed bg-gray-200 text-gray-500",
               )}
             >
-              {continueLabel}
+              <span className="truncate">{continueLabel}</span>
             </button>
           </div>
         </div>
 
         {isCodeTestQuestionActive ? (
-          <div className="min-w-0">
-            <h2 className="mb-2 text-base font-bold leading-snug text-gray-900 sm:text-lg lg:text-xl">
-              {beat.question.question}
-            </h2>
-            {avatarSlot ? (
-              <div className="mt-3 flex justify-center lg:mt-4 lg:justify-start">
-                <div className="aspect-square h-36 w-36 max-w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner sm:h-44 sm:w-44 lg:h-auto lg:min-h-48 lg:w-full">
+          isLgUp ? (
+            <div className="min-w-0">
+              <h2 className="mb-2 text-base font-bold leading-snug text-gray-900 sm:text-lg lg:text-xl">
+                {beat.question.question}
+              </h2>
+              {avatarSlot ? (
+                <div className="mt-3 flex justify-center lg:mt-4 lg:justify-start">
+                  <div className="aspect-square h-36 w-36 max-w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner sm:h-44 sm:w-44 lg:h-auto lg:min-h-48 lg:w-full">
+                    {avatarSlot}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              {/* Mobile: collapse the prompt so the editor gets full height. */}
+              <MobileCollapsible label="question">
+                <h2 className="text-base font-bold leading-snug text-gray-900 sm:text-lg">
+                  {beat.question.question}
+                </h2>
+              </MobileCollapsible>
+              {/* Keep the instructor mounted (off-screen) so voice still plays on mobile. */}
+              {avatarSlot ? (
+                <div
+                  className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
+                  aria-hidden
+                >
                   {avatarSlot}
                 </div>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </>
+          )
         ) : null}
       </div>
     );
@@ -1628,7 +1686,6 @@ export function LessonPlayer({
             avatar is still speaking the prompt.
           */}
           {isSpeaking &&
-          currentSubtitle &&
           beat?.type !== "question" &&
           beat?.type !== "bridge" &&
           beat?.type !== "recap" ? (
@@ -1655,7 +1712,7 @@ export function LessonPlayer({
                 </div>
                 <div className="rounded-2xl border-2 border-primary/20 bg-white/80 p-5 shadow-xl backdrop-blur-md sm:p-8">
                   <p className="text-center text-lg font-medium leading-relaxed text-gray-800 sm:text-2xl md:text-3xl">
-                    {currentSubtitle}
+                    {currentSubtitle || "…"}
                   </p>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { RotateCcw } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LessonNavSnapshot, PrimaryNavKind } from "@/utils/lessonNavigation";
 
@@ -24,32 +24,27 @@ export default function LessonNavControls({
       nav.primary.kind === "next_module");
 
   return (
-    <div className="mb-4 shrink-0 rounded-2xl border border-primary/10 bg-white/60 p-3 shadow-sm backdrop-blur sm:p-4">
-      <div className="mb-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
-          Lesson controls
+    <div className="shrink-0 rounded-xl border border-primary/10 bg-white/70 p-2 shadow-sm backdrop-blur sm:p-2.5">
+      {nav.statusHint ? (
+        <p className="mb-1.5 line-clamp-1 px-0.5 text-[0.7rem] text-gray-500 sm:text-xs">
+          {nav.statusHint}
         </p>
-        <p className="mt-0.5 text-sm font-medium text-gray-800">
-          {nav.positionLabel}
-        </p>
-        {nav.statusHint ? (
-          <p className="mt-1 text-xs text-gray-500 sm:text-sm">{nav.statusHint}</p>
-        ) : null}
-      </div>
+      ) : null}
 
-      <div className="flex gap-2 sm:gap-3">
+      <div className="flex items-stretch gap-2">
         <button
           type="button"
           onClick={onPrevious}
           disabled={!nav.canGoPrevious}
           className={cn(
-            "min-w-0 flex-1 rounded-xl px-2 py-2.5 text-xs font-semibold transition-colors sm:px-3 sm:text-sm",
+            "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-sm",
             nav.canGoPrevious
-              ? "bg-red-500 text-white shadow hover:bg-red-600"
-              : "cursor-not-allowed bg-gray-200 text-gray-500",
+              ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+              : "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400",
           )}
         >
-          {nav.previousLabel}
+          <ArrowLeft className="size-3.5 shrink-0" aria-hidden />
+          <span className="truncate">{nav.previousLabel}</span>
         </button>
 
         <button
@@ -59,7 +54,7 @@ export default function LessonNavControls({
           }}
           disabled={!primaryClickable}
           className={cn(
-            "min-w-0 flex-[1.4] rounded-xl px-2 py-2.5 text-xs font-semibold transition-colors sm:px-3 sm:text-sm",
+            "min-w-0 flex-[1.4] rounded-lg px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-sm",
             primaryClickable
               ? nav.primary.kind === "start_questions"
                 ? "bg-primary text-white shadow hover:bg-primary/90"
@@ -67,7 +62,7 @@ export default function LessonNavControls({
               : "cursor-not-allowed bg-gray-200 text-gray-500",
           )}
         >
-          {nav.primary.label}
+          <span className="truncate">{nav.primary.label}</span>
         </button>
       </div>
 
@@ -75,9 +70,9 @@ export default function LessonNavControls({
         <button
           type="button"
           onClick={onRestart}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-3 py-2.5 text-sm font-semibold text-white shadow transition-colors hover:bg-amber-600"
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white shadow transition-colors hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:text-sm"
         >
-          <RotateCcw className="h-4 w-4" />
+          <RotateCcw className="size-4" />
           Restart course
         </button>
       ) : null}

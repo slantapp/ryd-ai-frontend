@@ -7,22 +7,17 @@ import svgr from "vite-plugin-svgr";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), svgr()],
+  // optimizeDeps: {
+  //   exclude: ["@met4citizen/talkinghead"],
+  // },
+  optimizeDeps: { exclude: ['@met4citizen/talkinghead'] },
   build: {
     rollupOptions: {
+      external: ["@met4citizen/talkinghead", "three"],
       output: {
         manualChunks(id) {
           if (id.includes("monaco-editor") || id.includes("@monaco-editor")) {
             return "monaco";
-          }
-          if (id.includes("node_modules/three")) {
-            return "three";
-          }
-          if (
-            id.includes("narrator-avatar") ||
-            id.includes("@sage-rsc/talking-head") ||
-            id.includes("@met4citizen/talkinghead")
-          ) {
-            return "avatar";
           }
         },
       },
@@ -38,4 +33,3 @@ export default defineConfig({
     port: 3000, // 👈 Set desired port here
   },
 });
-

@@ -48,7 +48,6 @@ import {
 } from "@/utils/codeTestRunner";
 import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
-import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import {
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
@@ -276,10 +275,6 @@ export default function CurriculumPreviewPage() {
     selectedInstructor,
     setSelectedInstructor,
   } = usePreviewAvatar();
-
-  useEffect(() => {
-    prefetchAvatar();
-  }, []);
 
   useEffect(() => {
     if (currentSubtitle) {
@@ -1148,7 +1143,7 @@ export default function CurriculumPreviewPage() {
               </div>
 
               {/* Subtitle display */}
-              {isSpeaking && currentSubtitleText && (
+              {isSpeaking && (
                 <div className="mt-4 rounded-xl bg-white p-4 shadow-sm border border-primary/15">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="flex gap-1">
@@ -1158,7 +1153,7 @@ export default function CurriculumPreviewPage() {
                     </div>
                     <span className="text-xs text-primary">Speaking...</span>
                   </div>
-                  <p className="text-sm text-gray-700 leading-relaxed">{currentSubtitleText}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{currentSubtitleText || "…"}</p>
                 </div>
               )}
             </div>

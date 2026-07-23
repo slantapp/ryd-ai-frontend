@@ -10,3 +10,5 @@ export { default as TrueFalseQuestion } from "./TrueFalseQuestion";
 export { default as WebCodeWorkspace } from "./WebCodeWorkspace";
 export { default as FullscreenModal } from "./FullscreenModal";
 export { default as LessonNavControls } from "./LessonNavControls";
+export { MobileCollapsible } from "./MobileCollapsible";
+export { LessonProgressBar } from "./LessonProgressBar";

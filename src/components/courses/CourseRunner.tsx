@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
   getCurriculumBySlug,
@@ -7,7 +6,6 @@ import {
 } from "@/data/curriculumData";
 import { isCurriculumV2 } from "@/features/curriculum-preview/v2/detect";
 import { useCoursesStore } from "@/stores/coursesStore";
-import { prefetchAvatar } from "@/utils/prefetchAvatar";
 import CourseDetails from "./CourseDetails";
 import CourseDetailsV2 from "./CourseDetailsV2";
 import MathCourseDetails from "./math/MathCourseDetails";
@@ -39,10 +37,6 @@ export default function CourseRunner() {
   const { exercise } = useParams<{ exercise: string }>();
   // Re-resolve when visible curricula finish loading / refresh.
   const curriculaRevision = useCoursesStore((s) => s.curriculaRevision);
-
-  useEffect(() => {
-    prefetchAvatar();
-  }, [exercise]);
 
   const entry = exercise ? getCurriculumEntryBySlug(exercise) : null;
 

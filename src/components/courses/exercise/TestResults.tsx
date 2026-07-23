@@ -178,6 +178,7 @@ export default function TestResults({
                 onClick={onToggleFullscreen}
                 className="mr-2 rounded p-2 transition-colors hover:bg-gray-800"
                 title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
               >
                 {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               </button>

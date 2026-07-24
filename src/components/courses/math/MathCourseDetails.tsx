@@ -120,7 +120,6 @@ function MathCourseDetailsInner() {
 
   const avatarRef = useRef<NarratorAvatarRef | null>(null);
   const avatarReadyRef = useRef(false);
-  const [isAvatarReady, setIsAvatarReady] = useState(false);
   const [awaitingSpeech, setAwaitingSpeech] = useState(false);
   const [hasPendingSpeech, setHasPendingSpeech] = useState(false);
   const pendingSpeechQueueRef = useRef<
@@ -262,7 +261,6 @@ function MathCourseDetailsInner() {
     const avatar = getAvatar() as { isReady?: boolean } | null;
     if (avatar?.isReady) {
       avatarReadyRef.current = true;
-      setIsAvatarReady(true);
       return true;
     }
     return false;
@@ -377,7 +375,6 @@ function MathCourseDetailsInner() {
 
   const handleAvatarReady = useCallback(() => {
     avatarReadyRef.current = true;
-    setIsAvatarReady(true);
     if (pendingSpeechQueueRef.current.length === 0) {
       setShowMobileAudioUnlock(false);
       return;
@@ -1427,7 +1424,6 @@ function MathCourseDetailsInner() {
 
   useEffect(() => {
     avatarReadyRef.current = false;
-    setIsAvatarReady(false);
     setShowMobileAudioUnlock(false);
   }, [exercise, isLgUp, selectedInstructor]);
 

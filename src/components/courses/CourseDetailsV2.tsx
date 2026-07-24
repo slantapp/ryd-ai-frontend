@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import Split from "react-split";
 import { Play } from "lucide-react";
 import { usePreviewAvatar } from "@/features/curriculum-preview/components/PreviewAvatar";
 import { LessonPlayer } from "@/features/curriculum-preview/v2/components/LessonPlayer";
@@ -16,16 +15,17 @@ import {
   isCurriculumV2,
 } from "@/features/curriculum-preview/v2/detect";
 import type { LessonV2 } from "@/features/curriculum-preview/v2/types";
+import { PageLoadWaitBanner } from "@/components/courses/exercise/PageLoadWaitBanner";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
+import { MOBILE_INSTRUCTOR_AUDIO_BUTTON } from "@/constants/mobileInstructorAudio";
 import { getCurriculumEntryBySlug } from "@/data/curriculumData";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
-import { cn } from "@/lib/utils";
 import { useCoursesStore } from "@/stores/coursesStore";
 
 /**
  * Paid / enrolled learning environment for schema v2 (flow) curricula.
- * Same classic shell as sneak peek / CourseDetails: start screen, then
- * avatar left / board right via LessonPlayer.
+ * Mirrors DemoSneakPeekPage: start gate (with mobile audio unlock on tap),
+ * then avatar left / board right via LessonPlayer.
  */
 export default function CourseDetailsV2() {
   const { exercise } = useParams<{ exercise: string }>();
@@ -60,7 +60,6 @@ export default function CourseDetailsV2() {
     togglePause,
     currentSubtitle,
     isInstructorWaiting,
-    isAvatarReady,
     showMobileAudioUnlock,
     unlockMobileAudio,
   } = usePreviewAvatar({
@@ -84,7 +83,7 @@ export default function CourseDetailsV2() {
     prefetchMonacoEditor();
   }, []);
 
-  // Hydrate progress, then pick the lesson — do not auto-start teaching.
+  // Hydrate progress, then pick the lesson — do not auto-start teaching on mobile.
   useEffect(() => {
     if (!curriculum || !exercise) {
       setProgressReady(false);
@@ -111,7 +110,13 @@ export default function CourseDetailsV2() {
         lesson = getFirstLessonV2(curriculum);
       }
 
-      const started = !!stored?.lessonStarted && !!lesson;
+      // Desktop may resume in-progress lessons; mobile always needs the start tap
+      // so unlockMobileAudio() runs inside a user gesture before the first speak().
+      const isDesktopViewport =
+        typeof window !== "undefined" &&
+        window.matchMedia("(min-width: 1024px)").matches;
+      const started =
+        !!stored?.lessonStarted && !!lesson && isDesktopViewport;
       setCurrentLesson(lesson);
       setLessonStarted(started);
       if (started) {
@@ -147,7 +152,7 @@ export default function CourseDetailsV2() {
     const lesson = currentLesson ?? getFirstLessonV2(curriculum);
     if (!lesson) return;
 
-    // User gesture unlocks mobile audio before the first speak() call.
+    // Unlock audio inside the user tap; do not stop() — that clears speech queued for the new lesson.
     unlockMobileAudio();
     clearScheduledAfterSpeech();
     setCurrentLesson(lesson);
@@ -164,6 +169,7 @@ export default function CourseDetailsV2() {
 
   const selectLesson = useCallback(
     (lesson: LessonV2) => {
+      unlockMobileAudio();
       stop();
       clearScheduledAfterSpeech();
       setCurrentLesson(lesson);
@@ -171,7 +177,7 @@ export default function CourseDetailsV2() {
       setLessonKey((k) => k + 1);
       persistLessonPosition(lesson, true);
     },
-    [clearScheduledAfterSpeech, persistLessonPosition, stop],
+    [clearScheduledAfterSpeech, persistLessonPosition, stop, unlockMobileAudio],
   );
 
   const handleLessonComplete = useCallback(
@@ -245,144 +251,95 @@ export default function CourseDetailsV2() {
     );
   }
 
-  const startScreen = (
-    <div className="flex h-full min-h-[300px] items-center justify-center">
-      <div className="mx-auto max-w-md px-6 text-center">
-        <div className="relative mb-6 inline-flex items-center justify-center">
-          <div className="absolute h-20 w-20 animate-ping rounded-full bg-primary/10" />
-          <div className="absolute h-16 w-16 animate-pulse rounded-full bg-primary/20" />
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-primary to-primary/80 shadow-lg shadow-primary/30">
-            <svg
-              className="h-8 w-8 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              aria-hidden
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </div>
-        </div>
-
-        <h2 className="mb-2 text-2xl font-bold text-gray-800">
-          Ready to Learn?
-        </h2>
-        <p className="mb-2 text-sm font-medium text-gray-700">
-          {curriculum.title}
-        </p>
-        <p className="mb-6 leading-relaxed text-gray-500">
-          Your learning adventure awaits! Click the button below to begin your
-          lesson and start building amazing things.
-        </p>
-
-        <button
-          type="button"
-          onClick={handleStartLesson}
-          className="group mx-auto flex w-full max-w-xs shrink-0 items-center justify-center gap-3 whitespace-nowrap rounded-full bg-linear-to-r from-primary via-primary to-primary/90 px-10 py-4 text-base font-bold tracking-tight text-white shadow-lg shadow-primary/35 ring-2 ring-primary/20 transition-all duration-200 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98] sm:max-w-none sm:px-12"
-        >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
-            <Play className="size-5 fill-white text-white" aria-hidden />
-          </span>
-          <span className="pr-1">Start learning</span>
-        </button>
-
-        <div className="mt-8 flex items-center justify-center gap-2 text-xs text-gray-400">
-          <span className="h-1 w-1 rounded-full bg-primary/40" />
-          <span>Interactive lessons</span>
-          <span className="h-1 w-1 rounded-full bg-primary/40" />
-          <span>Fun quizzes</span>
-          <span className="h-1 w-1 rounded-full bg-primary/40" />
-          <span>Hands-on coding</span>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="relative h-full min-h-0 overflow-hidden rounded-[20px] bg-white shadow-lg">
-      {/* Mobile: keep one avatar instance mounted (never remount on start → lesson). */}
-      {!isLgUp ? (
-        <div
-          className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
-          aria-hidden
-        >
-          {avatarSlot}
-        </div>
-      ) : null}
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[20px] bg-white shadow-lg">
+      <PageLoadWaitBanner
+        isLoading={isInstructorWaiting && !showMobileAudioUnlock}
+        mobileOnly={false}
+      />
 
-      <Split
-        className="flex h-full min-h-0"
-        sizes={isLgUp ? [35, 65] : [0, 100]}
-        minSize={isLgUp ? 200 : 0}
-        gutterSize={isLgUp ? 8 : 0}
-        gutterStyle={(dimension, gutterSize) =>
-          dimension === "width" && gutterSize > 0
-            ? {
-                width: `${gutterSize}px`,
-                cursor: "col-resize",
-                pointerEvents: "auto",
-              }
-            : { width: "0px", pointerEvents: "none" }
-        }
-      >
-        <div
-          className={cn(
-            "relative flex min-h-0 flex-col overflow-y-auto scrollbar-hide",
-            isLgUp ? "pr-4" : "min-w-0 overflow-hidden",
-          )}
-        >
+      {!lessonStarted ? (
+        <div className="flex h-full min-h-0 flex-col overflow-hidden border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white lg:border-l-2">
           {isLgUp ? (
-            <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-              <div className="flex h-full min-h-0 min-w-0 w-full items-center justify-start">
+            <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+              <div className="aspect-square h-full max-h-80 w-full max-w-sm overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
                 {avatarSlot}
               </div>
             </div>
-          ) : null}
-        </div>
-
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white lg:border-l-2">
-          {!lessonStarted ? (
-            startScreen
           ) : (
-            <LessonPlayer
-              key={`${currentLesson.id}-${lessonKey}`}
-              curriculum={curriculum}
-              lesson={currentLesson}
-              lessonOrdinal={lessonOrdinal}
-              lessonTotal={lessonTotal}
-              speak={speak}
-              stop={stop}
-              scheduleAfterSpeech={scheduleAfterSpeech}
-              clearScheduledAfterSpeech={clearScheduledAfterSpeech}
-              isSpeaking={isSpeaking}
-              isPaused={isPaused}
-              onTogglePause={togglePause}
-              currentSubtitle={currentSubtitle}
-              avatarSlot={undefined}
-              isAvatarReady={isAvatarReady}
-              onLessonComplete={handleLessonComplete}
-              onNextLesson={handleNextLesson}
-              hideFlowChrome
-              classicLayout
-              embedInParentSplit
-              showMobileAudioUnlock={showMobileAudioUnlock}
-              onMobileAudioUnlock={unlockMobileAudio}
-              isInstructorWaiting={isInstructorWaiting}
-            />
+            <div
+              className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
+              aria-hidden
+            >
+              {avatarSlot}
+            </div>
           )}
+          <div className="flex min-h-[280px] flex-1 items-center justify-center px-4 py-8 sm:px-6">
+            <div className="mx-auto max-w-md text-center">
+              <div className="relative mb-6 inline-flex items-center justify-center">
+                <div className="absolute h-20 w-20 animate-ping rounded-full bg-primary/10" />
+                <div className="absolute h-16 w-16 animate-pulse rounded-full bg-primary/20" />
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-primary to-primary/80 shadow-lg shadow-primary/30">
+                  <Play className="size-8 fill-white text-white" aria-hidden />
+                </div>
+              </div>
+              <h2 className="mb-2 font-solway text-2xl font-bold text-gray-800">
+                Ready to Learn?
+              </h2>
+              <p className="mb-2 font-inter text-sm font-medium text-gray-700">
+                {curriculum.title}
+              </p>
+              <p className="mb-6 font-inter leading-relaxed text-gray-500">
+                Your learning adventure awaits! Tap below to begin your lesson and
+                start building amazing things.
+              </p>
+              <button
+                type="button"
+                onClick={handleStartLesson}
+                className="group mx-auto flex w-full max-w-xs shrink-0 items-center justify-center gap-3 whitespace-nowrap rounded-full bg-linear-to-r from-primary via-primary to-primary/90 px-10 py-4 font-solway text-base font-bold tracking-tight text-white shadow-lg shadow-primary/35 ring-2 ring-primary/20 transition-all duration-200 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98] sm:max-w-none sm:px-12"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
+                  <Play className="size-5 fill-white text-white" aria-hidden />
+                </span>
+                <span className="pr-1">{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
+              </button>
+              <div className="mt-8 flex items-center justify-center gap-2 font-inter text-xs text-gray-400">
+                <span className="h-1 w-1 rounded-full bg-primary/40" />
+                <span>Interactive lessons</span>
+                <span className="h-1 w-1 rounded-full bg-primary/40" />
+                <span>Fun quizzes</span>
+                <span className="h-1 w-1 rounded-full bg-primary/40" />
+                <span>Hands-on coding</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </Split>
+      ) : (
+        <LessonPlayer
+          key={`${currentLesson.id}-${lessonKey}`}
+          curriculum={curriculum}
+          lesson={currentLesson}
+          lessonOrdinal={lessonOrdinal}
+          lessonTotal={lessonTotal}
+          speak={speak}
+          stop={stop}
+          scheduleAfterSpeech={scheduleAfterSpeech}
+          clearScheduledAfterSpeech={clearScheduledAfterSpeech}
+          isSpeaking={isSpeaking}
+          isPaused={isPaused}
+          onTogglePause={togglePause}
+          currentSubtitle={currentSubtitle}
+          avatarSlot={avatarSlot}
+          onLessonComplete={handleLessonComplete}
+          onNextLesson={handleNextLesson}
+          hideFlowChrome
+          classicLayout
+          showMobileAudioUnlock={showMobileAudioUnlock}
+          onMobileAudioUnlock={unlockMobileAudio}
+          isInstructorWaiting={isInstructorWaiting}
+          suppressMobileWaitBanner
+        />
+      )}
     </div>
   );
 }

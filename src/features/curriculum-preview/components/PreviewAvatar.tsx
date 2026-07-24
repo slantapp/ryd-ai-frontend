@@ -33,7 +33,7 @@ export type PreviewAvatarOptions = {
    * `local` — isolated picker for curriculum preview authoring (default).
    */
   instructorSource?: "local" | "global";
-  /** When false, suppress the wait banner (e.g. pre-start gate screen). Default true. */
+  /** When false, suppress the instructor wait banner (e.g. before "Start lesson"). */
   lessonActive?: boolean;
 };
 
@@ -285,20 +285,11 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     avatarReadyRef.current = true;
     setIsAvatarReady(true);
 
-    const queued = pendingSpeechQueueRef.current.length > 0;
-
-    // Match CourseDetails v1: on mobile only prompt when speech is already queued.
     if (needsMobileUnlock()) {
-      if (queued) {
-        setShowMobileAudioUnlock(true);
-      }
+      // Always show the tap CTA once the avatar can speak — do not require a
+      // non-empty queue at this exact moment (lesson speech often starts after ready).
+      setShowMobileAudioUnlock(true);
       return;
-    }
-
-    if (isMobileViewport() && mobileAudioUnlockedRef.current) {
-      void avatarRef.current?.resumeAudioContext?.().catch(() => {
-        // Suspended until speakText — expected on some WebKit builds.
-      });
     }
 
     flushNextQueuedSpeech();
@@ -308,13 +299,10 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     mobileAudioUnlockedRef.current = true;
     setShowMobileAudioUnlock(false);
 
-    const resume = avatarRef.current?.resumeAudioContext?.();
-    if (resume) {
-      void resume
-        .then(() => flushNextQueuedSpeech())
-        .catch(() => flushNextQueuedSpeech());
-      return;
-    }
+    // Best-effort AudioContext resume inside the user gesture.
+    void avatarRef.current?.resumeAudioContext?.().catch(() => {
+      // Suspended until speakText — expected on some WebKit builds.
+    });
 
     flushNextQueuedSpeech();
   }, [flushNextQueuedSpeech]);
@@ -355,9 +343,9 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
 
   const isInstructorWaiting = isInstructorWaitActive({
     isPaused,
-    lessonActive,
     hasPendingSpeech,
     awaitingSpeech,
+    lessonActive,
   });
 
   useEffect(() => {

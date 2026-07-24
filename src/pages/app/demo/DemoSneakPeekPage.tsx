@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Split from "react-split";
 import { BookOpen, Lock, Play, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,7 +67,6 @@ export default function DemoSneakPeekPage() {
     togglePause,
     currentSubtitle,
     isInstructorWaiting,
-    isAvatarReady,
     showMobileAudioUnlock,
     unlockMobileAudio,
   } = usePreviewAvatar({
@@ -143,9 +141,9 @@ export default function DemoSneakPeekPage() {
 
   const selectLesson = useCallback(
     (lesson: LessonV2) => {
+      unlockMobileAudio();
       stop();
       clearScheduledAfterSpeech();
-      unlockMobileAudio();
       setCurrentLesson(lesson);
       setLessonStarted(true);
       setLessonKey((k) => k + 1);
@@ -236,53 +234,28 @@ export default function DemoSneakPeekPage() {
       </div>
 
       <PageLoadWaitBanner
-        isLoading={lessonStarted && isInstructorWaiting}
+        isLoading={isInstructorWaiting && !showMobileAudioUnlock}
         mobileOnly={false}
       />
 
       <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[20px] bg-white shadow-lg">
-        {!isLgUp ? (
-          <div
-            className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
-            aria-hidden
-          >
-            {avatarSlot}
-          </div>
-        ) : null}
-
-        <Split
-          className="flex h-full min-h-0"
-          sizes={isLgUp ? [35, 65] : [0, 100]}
-          minSize={isLgUp ? 200 : 0}
-          gutterSize={isLgUp ? 8 : 0}
-          gutterStyle={(dimension, gutterSize) =>
-            dimension === "width" && gutterSize > 0
-              ? {
-                  width: `${gutterSize}px`,
-                  cursor: "col-resize",
-                  pointerEvents: "auto",
-                }
-              : { width: "0px", pointerEvents: "none" }
-          }
-        >
-          <div
-            className={cn(
-              "relative flex min-h-0 flex-col overflow-y-auto scrollbar-hide",
-              isLgUp ? "pr-4" : "min-w-0 overflow-hidden",
-            )}
-          >
+        {!lessonStarted ? (
+          <div className="flex h-full min-h-0 flex-col overflow-hidden border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white lg:border-l-2">
             {isLgUp ? (
-              <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4">
-                <div className="aspect-square h-full max-h-80 w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
+              <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+                <div className="aspect-square h-full max-h-80 w-full max-w-sm overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
                   {avatarSlot}
                 </div>
               </div>
-            ) : null}
-          </div>
-
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white lg:border-l-2">
-            {!lessonStarted ? (
-              <div className="flex min-h-[280px] flex-1 items-center justify-center px-4 py-8 sm:px-6">
+            ) : (
+              <div
+                className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
+                aria-hidden
+              >
+                {avatarSlot}
+              </div>
+            )}
+            <div className="flex min-h-[280px] flex-1 items-center justify-center px-4 py-8 sm:px-6">
               <div className="mx-auto max-w-md text-center">
                 <div className="relative mb-6 inline-flex items-center justify-center">
                   <div className="absolute h-20 w-20 animate-ping rounded-full bg-primary/10" />
@@ -321,37 +294,34 @@ export default function DemoSneakPeekPage() {
                 </button>
               </div>
             </div>
-            ) : (
-              <LessonPlayer
-                key={`${currentLesson.id}-${lessonKey}`}
-                curriculum={curriculum}
-                lesson={currentLesson}
-                lessonOrdinal={lessonOrdinal}
-                lessonTotal={allLessons.length}
-                speak={speak}
-                stop={stop}
-                scheduleAfterSpeech={scheduleAfterSpeech}
-                clearScheduledAfterSpeech={clearScheduledAfterSpeech}
-                isSpeaking={isSpeaking}
-                isPaused={isPaused}
-                onTogglePause={togglePause}
-                currentSubtitle={currentSubtitle}
-                avatarSlot={undefined}
-                isAvatarReady={isAvatarReady}
-                onLessonComplete={handleLessonComplete}
-                onNextLesson={handleNextLesson}
-                hideFlowChrome
-                classicLayout
-                embedInParentSplit
-                subscribeGateAfterLesson={isFreeLesson}
-                showMobileAudioUnlock={showMobileAudioUnlock}
-                onMobileAudioUnlock={unlockMobileAudio}
-                isInstructorWaiting={isInstructorWaiting}
-                suppressMobileWaitBanner
-              />
-            )}
           </div>
-        </Split>
+        ) : (
+          <LessonPlayer
+            key={`${currentLesson.id}-${lessonKey}`}
+            curriculum={curriculum}
+            lesson={currentLesson}
+            lessonOrdinal={lessonOrdinal}
+            lessonTotal={allLessons.length}
+            speak={speak}
+            stop={stop}
+            scheduleAfterSpeech={scheduleAfterSpeech}
+            clearScheduledAfterSpeech={clearScheduledAfterSpeech}
+            isSpeaking={isSpeaking}
+            isPaused={isPaused}
+            onTogglePause={togglePause}
+            currentSubtitle={currentSubtitle}
+            avatarSlot={avatarSlot}
+            onLessonComplete={handleLessonComplete}
+            onNextLesson={handleNextLesson}
+            hideFlowChrome
+            classicLayout
+            subscribeGateAfterLesson={isFreeLesson}
+            showMobileAudioUnlock={showMobileAudioUnlock}
+            onMobileAudioUnlock={unlockMobileAudio}
+            isInstructorWaiting={isInstructorWaiting}
+            suppressMobileWaitBanner
+          />
+        )}
       </div>
 
       {/* Lessons menu — only on demand (brief: outline not always open) */}

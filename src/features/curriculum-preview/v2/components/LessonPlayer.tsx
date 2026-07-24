@@ -15,6 +15,8 @@ import FullscreenModal from "@/components/courses/exercise/FullscreenModal";
 import WebCodeWorkspace from "@/components/courses/exercise/WebCodeWorkspace";
 import TestResults from "@/components/courses/exercise/TestResults";
 import { MobileCollapsible } from "@/components/courses/exercise/MobileCollapsible";
+import MultipleChoiceQuestion from "@/components/courses/exercise/MultipleChoiceQuestion";
+import TrueFalseQuestion from "@/components/courses/exercise/TrueFalseQuestion";
 import { LessonProgressBar } from "@/components/courses/exercise/LessonProgressBar";
 import { PageLoadWaitBanner } from "@/components/courses/exercise/PageLoadWaitBanner";
 import {
@@ -22,7 +24,6 @@ import {
   MOBILE_INSTRUCTOR_AUDIO_HINT,
 } from "@/constants/mobileInstructorAudio";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
-import { PreviewQuestion } from "../../components/PreviewQuestion";
 import {
   buildSubmitCodeResultLines,
   evaluateSubmissionCodeTest,
@@ -109,11 +110,6 @@ interface LessonPlayerProps {
    */
   classicLayout?: boolean;
   /**
-   * Parent already provides the split shell and avatar column (CourseDetailsV2).
-   * Renders only the lesson board column — no nested Split or avatar slot.
-   */
-  embedInParentSplit?: boolean;
-  /**
    * Mobile WebKit: first speak after avatar ready must run inside a tap.
    * Shown when the 3D avatar is off-screen on small viewports.
    */
@@ -126,8 +122,6 @@ interface LessonPlayerProps {
   isAvatarLoading?: boolean;
   /** When true, parent renders PageLoadWaitBanner (e.g. sneak peek page chrome). */
   suppressMobileWaitBanner?: boolean;
-  /** Gate beat speech until the 3D avatar has fired onReady. */
-  isAvatarReady?: boolean;
   /**
    * Sneak-peek cliffhanger: after this lesson, the bridge CTA opens the
    * subscribe flow instead of advancing (parent still handles onNextLesson).
@@ -154,13 +148,11 @@ export function LessonPlayer({
   hideFlowChrome = false,
   kidsStage = false,
   classicLayout = false,
-  embedInParentSplit = false,
   showMobileAudioUnlock = false,
   onMobileAudioUnlock,
   isAvatarLoading = false,
   isInstructorWaiting,
   suppressMobileWaitBanner = false,
-  isAvatarReady = true,
   subscribeGateAfterLesson = false,
 }: LessonPlayerProps) {
   const isLgUp = useMediaQueryMinLg();
@@ -373,14 +365,9 @@ export function LessonPlayer({
     return `In this lesson, your goal is: ${goal}.`;
   }, [lesson.goal]);
 
-  // Drive each beat — wait until the avatar is live (avoids losing speech on mobile remount).
+  // Drive each beat
   useEffect(() => {
-    if (!beat || !isAvatarReady) {
-      if (!isAvatarReady) {
-        beatStartedRef.current = null;
-      }
-      return;
-    }
+    if (!beat) return;
     const key = `${lesson.id}:${beat.id}:${beatIndex}`;
     if (beatStartedRef.current === key) return;
     beatStartedRef.current = key;
@@ -513,7 +500,7 @@ export function LessonPlayer({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [beat, beatIndex, lesson.id, isAvatarReady]);
+  }, [beat, beatIndex, lesson.id]);
 
   // Pause countdown
   useEffect(() => {
@@ -1485,7 +1472,7 @@ export function LessonPlayer({
   );
 
   const beatBoard = (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       {showCodePanel || showFormulaPanel ? (
         <DemoIntro
           title={demoIntroTitle}
@@ -1584,6 +1571,9 @@ export function LessonPlayer({
       ),
     );
 
+    const isCompactMobileBeat =
+      !isLgUp && beat != null && !showCodePanel && !showFormulaPanel;
+
     const classicChrome = (
       <div className="relative z-10 w-full min-w-0 shrink-0">
         <div className="mb-3 shrink-0 rounded-xl border border-primary/10 bg-white/70 p-2.5 shadow-sm backdrop-blur">
@@ -1614,17 +1604,19 @@ export function LessonPlayer({
               </button>
             )}
           </div>
-          <p className="mb-2 line-clamp-1 text-[0.7rem] text-gray-500 sm:text-xs">
-            {isInstructorActive
-              ? "Wait for the instructor to finish speaking."
-              : isPaused
-                ? "Lesson paused — tap Resume when you're ready."
-                : canPrimaryContinue
-                  ? "Ready — continue to the next step."
-                  : beat?.type === "question"
-                    ? "Answer the question to continue."
-                    : "Listen to your instructor."}
-          </p>
+          {!isCompactMobileBeat ? (
+            <p className="mb-2 line-clamp-1 text-[0.7rem] text-gray-500 sm:text-xs">
+              {isInstructorActive
+                ? "Wait for the instructor to finish speaking."
+                : isPaused
+                  ? "Lesson paused — tap Resume when you're ready."
+                  : canPrimaryContinue
+                    ? "Ready — continue to the next step."
+                    : beat?.type === "question"
+                      ? "Answer the question to continue."
+                      : "Listen to your instructor."}
+            </p>
+          ) : null}
 
           <div className="flex items-stretch gap-2">
             <button
@@ -1695,25 +1687,31 @@ export function LessonPlayer({
     );
 
     const classicLessonBoard = (
-      <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-y-auto border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-6 lg:border-l-2">
+      <div className="relative min-h-0 w-full min-w-0 flex-1">
         <div className="pointer-events-none absolute inset-0 opacity-5">
           <div className="absolute top-20 right-10 h-32 w-32 rounded-full bg-primary blur-3xl" />
           <div className="absolute bottom-20 left-10 h-40 w-40 rounded-full bg-primary/60 blur-3xl" />
         </div>
 
-        <div className="relative z-10 space-y-6">
-          <div className="mb-2">
-            <div className="mb-2 flex items-center gap-2">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-              <span className="text-sm font-medium uppercase tracking-wide text-primary/70">
-                {phaseLabel}
-              </span>
+        <div className="relative z-10 min-w-0 space-y-4 pb-6 sm:space-y-6 sm:pb-8">
+          {!isCompactMobileBeat ? (
+            <div className="mb-2">
+              <div className="mb-2 flex items-center gap-2">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+                <span className="text-sm font-medium uppercase tracking-wide text-primary/70">
+                  {phaseLabel}
+                </span>
+              </div>
+              <h2 className="mb-3 text-xl font-bold leading-tight text-gray-900 sm:text-2xl lg:text-3xl">
+                {lesson.title}
+              </h2>
+              <div className="h-1 w-24 rounded-full bg-linear-to-r from-primary via-primary/80 to-primary/60" />
             </div>
-            <h2 className="mb-3 text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">
-              {lesson.title}
-            </h2>
-            <div className="h-1 w-24 rounded-full bg-linear-to-r from-primary via-primary/80 to-primary/60" />
-          </div>
+          ) : beat?.type === "question" ? (
+            <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-primary/70">
+              {phaseLabel}
+            </p>
+          ) : null}
 
           {/*
             Subtitle stage is for teaching beats only. Questions / bridge must
@@ -1759,129 +1757,8 @@ export function LessonPlayer({
       </div>
     );
 
-    const classicBoardColumn = (
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        {!isLgUp && (
-          <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
-            {!suppressMobileWaitBanner ? (
-              <PageLoadWaitBanner isLoading={showInstructorWait} />
-            ) : null}
-            <div className="flex items-center gap-3 px-4 py-2 sm:px-5">
-              <div className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
-                {isInstructorActive ? (
-                  <>
-                    <span className="absolute inline-flex size-[120%] animate-ping rounded-full bg-primary/30" />
-                    <span className="absolute inline-flex size-full rounded-full bg-primary/20" />
-                  </>
-                ) : null}
-                <div
-                  className={cn(
-                    "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md transition-all duration-300 sm:size-10",
-                    isInstructorActive
-                      ? "scale-105 border-primary shadow-lg shadow-primary/25"
-                      : "border-primary/25",
-                  )}
-                >
-                  <Mic
-                    className={cn(
-                      "size-[1.15rem] text-primary sm:size-5",
-                      isInstructorActive && "animate-pulse",
-                    )}
-                    aria-hidden
-                  />
-                </div>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/80">
-                  Instructor audio
-                </p>
-                <p className="truncate text-xs text-gray-600 sm:text-sm">
-                  {isInstructorActive
-                    ? currentSubtitle || "Speaking…"
-                    : isPaused
-                      ? currentSubtitle || "Paused"
-                      : "Ready when you are"}
-                </p>
-              </div>
-            </div>
-            {showMobileAudioUnlock ? (
-              <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-4 py-3 sm:px-5">
-                <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
-                  {MOBILE_INSTRUCTOR_AUDIO_HINT}
-                </p>
-                <button
-                  type="button"
-                  onClick={onMobileAudioUnlock}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
-                >
-                  <Volume2 className="h-5 w-5 shrink-0" aria-hidden />
-                  <span>{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
-                </button>
-              </div>
-            ) : null}
-            <div className="px-4 pb-4 sm:px-5">{classicChrome}</div>
-          </div>
-        )}
-
-        {embedInParentSplit && isLgUp ? (
-          <div className="shrink-0 border-b border-primary/10 bg-white/95 px-5 py-4 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
-            {classicChrome}
-          </div>
-        ) : null}
-
-        <div
-          className={cn(
-            "flex min-h-0 flex-1 flex-col",
-            fillWorkspace ? "overflow-hidden" : "overflow-y-auto scrollbar-hide",
-          )}
-        >
-          {showCodePanel ? (
-            <div className="flex h-full min-h-0 w-full flex-1 flex-col">
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                {codeWorkspace}
-              </div>
-            </div>
-          ) : showFormulaPanel ? (
-            <div className="min-h-0 flex-1 overflow-y-auto border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-6 lg:border-l-2">
-              <div className="overflow-hidden rounded-xl border border-primary/20 bg-white/60 p-4 shadow-sm backdrop-blur-sm">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
-                  Formula board
-                </p>
-                <div className="min-h-[120px] rounded-lg bg-primary/5 p-3 font-mono text-base text-gray-900">
-                  <MathText displayMode forceMath>
-                    {formulaBoardText}
-                  </MathText>
-                </div>
-                {beat?.type === "question" && demoMode === "practice" && (
-                  <div className="mt-3 space-y-2.5">
-                    <input
-                      type="text"
-                      value={formulaAnswer}
-                      onChange={(e) => setFormulaAnswer(e.target.value)}
-                      disabled={isAnswerSubmitted}
-                      placeholder="Type your answer…"
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium outline-none focus:border-primary"
-                    />
-                    {!isAnswerSubmitted && (
-                      <ContinueButton
-                        label="Check answer"
-                        onClick={handleSubmitFormula}
-                        disabled={!formulaAnswer.trim() || isSpeaking}
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            classicLessonBoard
-          )}
-        </div>
-      </div>
-    );
-
-    const classicShell = (
-      <div className="relative h-full overflow-hidden bg-white">
+    return (
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-white">
         {!hideFlowChrome ? (
           <V2SkipPanel
             lesson={lesson}
@@ -1890,9 +1767,6 @@ export function LessonPlayer({
           />
         ) : null}
 
-        {embedInParentSplit ? (
-          classicBoardColumn
-        ) : (
         <Split
           className="flex h-full min-h-0"
           sizes={isLgUp ? [35, 65] : [0, 100]}
@@ -1910,8 +1784,8 @@ export function LessonPlayer({
         >
           <div
             className={cn(
-              "relative box-border flex min-h-0 flex-col overflow-y-auto scrollbar-hide",
-              isLgUp ? "px-5 py-4 sm:px-6 sm:py-5" : "min-w-0 overflow-hidden",
+              "relative box-border flex h-full min-h-0 flex-col overflow-y-auto scrollbar-hide",
+              isLgUp ? "px-5 py-4 sm:px-6 sm:py-5" : "min-w-0",
             )}
           >
             {isLgUp ? (
@@ -1935,7 +1809,7 @@ export function LessonPlayer({
             ) : null}
           </div>
 
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {!isLgUp && (
               <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
                 {!suppressMobileWaitBanner ? (
@@ -2000,12 +1874,20 @@ export function LessonPlayer({
 
             <div
               className={cn(
-                "flex min-h-0 flex-1 flex-col",
+                "flex min-h-0 min-w-0 flex-1 flex-col border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white lg:border-l-2",
                 fillWorkspace
                   ? "overflow-hidden"
-                  : "overflow-y-auto scrollbar-hide",
+                  : "overflow-y-auto overflow-x-hidden overscroll-y-contain scrollbar-hide touch-pan-y",
               )}
             >
+              <div
+                className={cn(
+                  "flex min-h-0 w-full min-w-0 flex-1 flex-col",
+                  fillWorkspace
+                    ? "h-full"
+                    : "p-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 sm:pb-8",
+                )}
+              >
               {showCodePanel ? (
                 <div className="flex h-full min-h-0 w-full flex-1 flex-col">
                   <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -2047,10 +1929,10 @@ export function LessonPlayer({
               ) : (
                 classicLessonBoard
               )}
+              </div>
             </div>
           </div>
         </Split>
-        )}
 
         {fullscreen && showCodePanel && !useWeb && (
           <FullscreenModal
@@ -2067,8 +1949,6 @@ export function LessonPlayer({
         )}
       </div>
     );
-
-    return classicShell;
   }
 
   return (
@@ -2094,9 +1974,11 @@ export function LessonPlayer({
 
       <div
         className={cn(
-          "min-h-0 flex-1",
+          "min-h-0 min-w-0 flex-1 overflow-x-hidden",
           kidsStage ? "p-2 sm:p-3 md:p-4" : "p-3 sm:p-4 lg:p-5",
-          fillWorkspace ? "flex flex-col overflow-hidden" : "overflow-y-auto",
+          fillWorkspace
+            ? "flex flex-col overflow-hidden"
+            : "overflow-y-auto overscroll-y-contain scrollbar-hide touch-pan-y",
         )}
       >
         <div
@@ -2230,6 +2112,10 @@ function QuestionPanel({
 }) {
   const q = beat.question;
   const triesLeft = Math.max(0, retryMax - wrongAttempts);
+  const isMcTf =
+    q.type === "multiple_choice" || q.type === "true_false";
+  const correctTfAnswer =
+    typeof q.answer === "boolean" ? q.answer : undefined;
 
   return (
     <Panel label="Quick check">
@@ -2254,16 +2140,74 @@ function QuestionPanel({
         </div>
       )}
 
-      {(q.type === "multiple_choice" || q.type === "true_false") && (
-        <PreviewQuestion
-          question={q}
-          selectedAnswer={selectedAnswer}
-          onSelectAnswer={onSelectAnswer}
-          isSubmitted={isSubmitted}
-          onSubmit={onSubmitMcTf}
-          disabled={isSpeaking}
-        />
-      )}
+      {isMcTf ? (
+        <div className="min-w-0">
+          <h3 className="mb-2 text-base font-semibold leading-snug text-gray-900 sm:text-lg">
+            <MathText>{q.question}</MathText>
+          </h3>
+          <div className="mb-3 h-0.5 w-14 rounded-full bg-linear-to-r from-primary via-primary/80 to-primary/60" />
+
+          {q.type === "multiple_choice" && (
+            <MultipleChoiceQuestion
+              question={q}
+              selectedAnswer={
+                typeof selectedAnswer === "string" ? selectedAnswer : null
+              }
+              onSelect={onSelectAnswer}
+              disabled={isSubmitted || isSpeaking}
+              isSubmitted={isSubmitted}
+            />
+          )}
+
+          {q.type === "true_false" && (
+            <TrueFalseQuestion
+              selectedAnswer={
+                typeof selectedAnswer === "boolean" ? selectedAnswer : null
+              }
+              onSelect={onSelectAnswer}
+              disabled={isSubmitted || isSpeaking}
+              isSubmitted={isSubmitted}
+              correctAnswer={correctTfAnswer}
+            />
+          )}
+
+          <div className="sticky bottom-0 z-10 -mx-3 mt-4 border-t border-primary/10 bg-white/95 px-3 py-3 backdrop-blur-sm supports-backdrop-filter:bg-white/90 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
+            <button
+              type="button"
+              onClick={onSubmitMcTf}
+              disabled={
+                selectedAnswer === null || isSubmitted || isSpeaking
+              }
+              className={cn(
+                "w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all sm:w-auto sm:py-2.5",
+                selectedAnswer !== null && !isSubmitted && !isSpeaking
+                  ? "bg-primary text-white shadow-md hover:bg-primary/90 active:scale-[0.99]"
+                  : "cursor-not-allowed bg-gray-200 text-gray-500",
+              )}
+            >
+              {isSubmitted ? "Answer Submitted" : "Submit Answer"}
+            </button>
+          </div>
+
+          {isSubmitted && q.explanation ? (
+            <div
+              className={cn(
+                "mt-4 rounded-lg border-l-4 p-3",
+                selectedAnswer === q.answer
+                  ? "border-green-500 bg-green-50"
+                  : "border-red-500 bg-red-50",
+              )}
+            >
+              <p className="text-sm font-semibold text-gray-800">
+                {selectedAnswer === q.answer ? "Correct!" : "Incorrect"}
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-gray-700">
+                <MathText>{q.explanation}</MathText>
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </Panel>
   );
 }

@@ -1,19 +1,21 @@
 /**
  * True when the learner should see the patience banner — the lesson is active,
- * speech was requested, but audio has not started yet (queued TTS / waiting on avatar).
+ * the instructor was asked to speak, but audio has not started yet.
  */
 export function isInstructorWaitActive({
   isPaused = false,
-  lessonActive = true,
   hasPendingSpeech = false,
   awaitingSpeech = false,
+  lessonActive = true,
 }: {
   isPaused?: boolean;
-  /** Only show while the learner has started the lesson (not on pre-start screens). */
-  lessonActive?: boolean;
+  /** @deprecated Avatar readiness alone should not trigger the banner. */
+  isAvatarReady?: boolean;
   hasPendingSpeech?: boolean;
   awaitingSpeech?: boolean;
+  /** When false (e.g. start gate), never show the wait banner. */
+  lessonActive?: boolean;
 }): boolean {
-  if (isPaused || !lessonActive) return false;
+  if (!lessonActive || isPaused) return false;
   return hasPendingSpeech || awaitingSpeech;
 }

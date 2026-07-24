@@ -12,7 +12,7 @@ function Panel({
   label?: string;
 }) {
   return (
-    <div className="rounded-xl border border-primary/15 bg-white p-3 shadow-sm sm:p-4">
+    <div className="min-w-0 rounded-xl border border-primary/15 bg-white p-3 shadow-sm sm:p-4">
       {label && (
         <p className="mb-1.5 text-[0.7rem] font-semibold uppercase tracking-wide text-primary">
           {label}

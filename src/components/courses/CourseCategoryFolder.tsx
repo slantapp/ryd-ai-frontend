@@ -21,12 +21,12 @@ const CourseCategoryFolder = ({
       type="button"
       onClick={onOpen}
       className={cn(
-        "group h-full w-full text-left transition-transform duration-200",
+        "group flex h-full w-full text-left transition-transform duration-200",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
       )}
     >
-      <Card className="h-full overflow-hidden rounded-2xl border border-gray-100 bg-white p-0 shadow-sm transition-all duration-300 hover:border-primary/25 hover:shadow-md">
-        <CardContent className="flex h-full min-h-[4.75rem] items-center gap-3 p-3 sm:min-h-[5.25rem] sm:gap-4 sm:p-4">
+      <Card className="h-full w-full overflow-hidden rounded-2xl border border-gray-100 bg-white p-0 shadow-sm transition-all duration-300 hover:border-primary/25 hover:shadow-md">
+        <CardContent className="flex h-full min-h-[5.5rem] items-center gap-3 p-3 sm:min-h-[6rem] sm:gap-4 sm:p-4">
           <div
             className={cn(
               "relative flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-primary/10 text-primary",
@@ -44,7 +44,7 @@ const CourseCategoryFolder = ({
               aria-hidden
             />
           </div>
-          <div className="flex min-h-[2.75rem] min-w-0 flex-1 flex-col justify-center sm:min-h-[3rem]">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-1">
             <div className="flex min-w-0 items-center gap-2">
               <h3
                 className="min-w-0 flex-1 truncate font-solway text-base font-bold leading-tight text-[#0A090B] sm:text-lg"
@@ -57,7 +57,7 @@ const CourseCategoryFolder = ({
               </span>
             </div>
             <p
-              className="mt-1 line-clamp-1 font-inter text-xs leading-snug text-gray-600 sm:text-sm"
+              className="line-clamp-1 font-inter text-xs leading-snug text-gray-600 sm:text-sm"
               title={category.subtitle}
             >
               {category.subtitle}

@@ -170,6 +170,7 @@ function CourseDetailInner({
   const avatarRef = useRef<NarratorAvatarRef | null>(null);
   /** False until NarratorAvatar fires onReady (WebGL + TTS ready). Mobile needs this before speak. */
   const avatarReadyRef = useRef(false);
+  const [isAvatarReady, setIsAvatarReady] = useState(false);
   const [awaitingSpeech, setAwaitingSpeech] = useState(false);
   const [hasPendingSpeech, setHasPendingSpeech] = useState(false);
   /** Speech requested before avatar was ready; desktop flushes on ready, mobile after tap-to-unlock. */
@@ -447,6 +448,7 @@ function CourseDetailInner({
     const avatar = getAvatar() as { isReady?: boolean } | null;
     if (avatar?.isReady) {
       avatarReadyRef.current = true;
+      setIsAvatarReady(true);
       return true;
     }
     return false;
@@ -573,6 +575,7 @@ function CourseDetailInner({
 
   const handleAvatarReady = useCallback(() => {
     avatarReadyRef.current = true;
+    setIsAvatarReady(true);
     const q = pendingSpeechQueueRef.current;
     if (q.length === 0) {
       setShowMobileAudioUnlock(false);
@@ -1936,18 +1939,20 @@ function CourseDetailInner({
   // Never clear pendingSpeechQueueRef here — onReady should flush queued lines.
   useEffect(() => {
     avatarReadyRef.current = false;
+    setIsAvatarReady(false);
     setShowMobileAudioUnlock(false);
   }, [exercise, selectedInstructor, isLgUp]);
 
   useEffect(() => {
     if (!isLgUp) return;
     avatarReadyRef.current = false;
+    setIsAvatarReady(false);
     setShowMobileAudioUnlock(false);
   }, [isCodeTestQuestionActive, isLgUp]);
 
   const isInstructorWaiting = isInstructorWaitActive({
     isPaused,
-    lessonActive: lessonStarted,
+    isAvatarReady,
     hasPendingSpeech,
     awaitingSpeech,
   });

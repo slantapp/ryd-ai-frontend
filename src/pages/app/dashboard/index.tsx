@@ -8,13 +8,13 @@ import {
   PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import CourseCategoryFolder from "@/components/courses/CourseCategoryFolder";
 import CourseCard from "@/components/shared/CourseCard";
 import {
   getCategoryIcon,
   listCategoriesWithCounts,
 } from "@/data/courseCategories";
 import { getAllCurricula } from "@/data/curriculumData";
-import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import { useCoursesStore } from "@/stores/coursesStore";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
@@ -235,33 +235,16 @@ const Dashboard = () => {
               </div>
               {/* Horizontal scroll on small phones; grid from sm up */}
               <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 md:grid-cols-3 lg:grid-cols-6">
-                {categoryFolders.map(({ category, count }) => {
-                  const Icon = getCategoryIcon(category.id);
-                  return (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => navigate(PRIVATE_PATHS.COURSES)}
-                      className={cn(
-                        "flex w-[9.5rem] shrink-0 flex-col items-start gap-2 rounded-xl border border-gray-100 bg-white p-3 text-left sm:w-auto",
-                        "shadow-sm transition-all hover:border-primary/30 hover:shadow-md",
-                        "active:scale-[0.98]",
-                      )}
-                    >
-                      <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <Icon className="size-4" />
-                      </span>
-                      <span className="min-w-0 w-full">
-                        <span className="block truncate font-solway text-sm font-semibold text-gray-900">
-                          {category.title}
-                        </span>
-                        <span className="font-inter text-xs text-gray-500">
-                          {count} {count === 1 ? "course" : "courses"}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
+                {categoryFolders.map(({ category, count }) => (
+                  <CourseCategoryFolder
+                    key={category.id}
+                    variant="compact"
+                    category={category}
+                    count={count}
+                    icon={getCategoryIcon(category.id)}
+                    onOpen={() => navigate(PRIVATE_PATHS.COURSES)}
+                  />
+                ))}
               </div>
             </section>
           )}

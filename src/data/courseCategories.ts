@@ -6,6 +6,7 @@ import {
   Calculator,
   Database,
   Palette,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,10 +27,29 @@ export function normalizeCategoryId(value: string | undefined | null): string {
   return trimmed ? trimmed.toLowerCase() : DEFAULT_CATEGORY_ID;
 }
 
+/**
+ * Temporary: some AI curricula still ship with category "coding".
+ * If the title mentions AI, list the course under the AI folder instead.
+ */
+export function resolveCourseCategoryId(
+  category: string | undefined | null,
+  title: string | undefined | null,
+): CourseCategoryId {
+  const normalized = normalizeCategoryId(category);
+  const titleText = typeof title === "string" ? title.trim() : "";
+
+  if (normalized === "coding" && /\bai\b/i.test(titleText)) {
+    return "ai";
+  }
+
+  return normalized;
+}
+
 /** Human-readable label for a category string, e.g. "computer-science" → "Computer Science". */
 export function formatCategoryTitle(categoryId: string): string {
   const normalized = normalizeCategoryId(categoryId);
   if (normalized === DEFAULT_CATEGORY_ID) return "General";
+  if (normalized === "ai") return "AI";
 
   return normalized
     .replace(/[-_]+/g, " ")
@@ -50,6 +70,7 @@ export function getCategoryMeta(id: CourseCategoryId): CourseCategory {
 export function getCategoryIcon(categoryId: CourseCategoryId): LucideIcon {
   const lower = normalizeCategoryId(categoryId);
 
+  if (lower === "ai") return Sparkles;
   if (lower.includes("math")) return Calculator;
   if (lower.includes("english") || lower.includes("language")) return BookText;
   if (lower.includes("design") || lower.includes("ui") || lower.includes("ux")) {
@@ -93,6 +114,7 @@ export function isAgeClassFilterableCategory(categoryId: CourseCategoryId): bool
 export function isLevelFilterableCategory(categoryId: CourseCategoryId): boolean {
   const lower = normalizeCategoryId(categoryId);
   return (
+    lower === "ai" ||
     lower === "coding" ||
     lower.includes("program") ||
     lower.includes("software") ||

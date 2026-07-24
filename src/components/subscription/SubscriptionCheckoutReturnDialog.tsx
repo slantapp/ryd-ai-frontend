@@ -50,7 +50,7 @@ export default function SubscriptionCheckoutReturnDialog({
               </DialogTitle>
               <DialogDescription className="font-inter text-base text-gray-600">
                 We&apos;re activating your subscription. This can take a few
-                seconds—stay on this page. You&apos;ll get full access as soon
+                seconds. Stay on this page. You&apos;ll get full access as soon
                 as it&apos;s ready, and this message will close on its own.
               </DialogDescription>
             </DialogHeader>
@@ -69,7 +69,7 @@ export default function SubscriptionCheckoutReturnDialog({
                 Checkout cancelled
               </DialogTitle>
               <DialogDescription className="font-inter text-base text-gray-600">
-                No worries—you weren&apos;t charged. When you&apos;re ready, you
+                No worries. You weren&apos;t charged. When you&apos;re ready, you
                 can pick a plan and try checkout again.
               </DialogDescription>
             </DialogHeader>

@@ -8,7 +8,7 @@ import {
   type Curriculum,
   type CurriculumEntry,
 } from "../data/curriculumData";
-import { normalizeCategoryId, type CourseCategoryId } from "../data/courseCategories";
+import { resolveCourseCategoryId, type CourseCategoryId } from "../data/courseCategories";
 import type { CourseProgressRecord } from "@/api/courseProgress";
 import {
   fetchAllCourseProgress as fetchAllCourseProgressRequest,
@@ -58,7 +58,7 @@ function curriculumToCourse(
     level,
     rating,
   } = curriculum.curriculum;
-  const categoryId = normalizeCategoryId(category);
+  const categoryId = resolveCourseCategoryId(category, title);
 
   return {
     title,
@@ -303,7 +303,10 @@ export const useCoursesStore = create<CoursesState>()(
           curricula.map((curriculum) => ({
             slug: curriculum.slug,
             title: curriculum.curriculum.title,
-            categoryId: normalizeCategoryId(curriculum.curriculum.category),
+            categoryId: resolveCourseCategoryId(
+              curriculum.curriculum.category,
+              curriculum.curriculum.title,
+            ),
           })),
         );
         set((state) => ({

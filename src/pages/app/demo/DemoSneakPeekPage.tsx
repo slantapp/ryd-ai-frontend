@@ -270,7 +270,7 @@ export default function DemoSneakPeekPage() {
                 <p className="mb-6 font-inter leading-relaxed text-gray-500">
                   Meet your AI instructor and write real code with{" "}
                   <span className="font-semibold">p</span> and{" "}
-                  <span className="font-semibold">h1</span> tags — no subscription
+                  <span className="font-semibold">h1</span> tags. No subscription
                   needed for this peek.
                 </p>
                 <button
@@ -415,8 +415,8 @@ export default function DemoSneakPeekPage() {
             <DialogDescription className="font-inter text-sm text-gray-600">
               You wrote real code with <span className="font-semibold">p</span> and{" "}
               <span className="font-semibold">h1</span> tags. Subscribe to unlock
-              the next step — building a clickable{" "}
-              <span className="font-semibold">button</span> — and the rest of
+              the next step: building a clickable{" "}
+              <span className="font-semibold">button</span>, and the rest of
               every course with your AI instructor.
             </DialogDescription>
           </DialogHeader>

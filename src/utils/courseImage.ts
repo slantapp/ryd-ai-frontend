@@ -65,6 +65,9 @@ const TOPIC_IMAGE_POOLS: Array<{
 ];
 
 const CATEGORY_IMAGE_POOLS: Record<string, string[]> = {
+  ai: [
+    "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=200&fit=crop&auto=format",
+  ],
   coding: [
     "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=200&fit=crop&auto=format",
     "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=200&fit=crop&auto=format",
@@ -123,6 +126,7 @@ export function buildCourseImageSearchQuery(
     .trim();
 
   const categoryHint: Record<string, string> = {
+    ai: "artificial intelligence education",
     coding: "programming code",
     mathematics: "mathematics education",
     math: "mathematics education",

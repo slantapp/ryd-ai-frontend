@@ -148,7 +148,7 @@ function SubscriptionPlansSkeleton({ gateMode }: { gateMode: boolean }) {
 const PLAN_UI_META: Record<string, PlanUiMeta> = {
   monthly: {
     nameFallback: "Monthly",
-    taglineFallback: "Flexible — renew every month",
+    taglineFallback: "Flexible. Renew every month",
     periodSuffixFallback: "/ month",
     accent: "from-[#E8E0FF] to-[#F3ECFE]",
     borderAccent: "border-transparent",
@@ -156,7 +156,7 @@ const PLAN_UI_META: Record<string, PlanUiMeta> = {
   },
   annual: {
     nameFallback: "Annual",
-    taglineFallback: "Best value — pay once per year",
+    taglineFallback: "Best value. Pay once per year",
     periodSuffixFallback: "/ year",
     accent: "from-[#FCE7F3] to-[#F3ECFE]",
     borderAccent: "ring-2 ring-[#0063F7]/35",
@@ -214,7 +214,7 @@ function getPlanButtonConfig(
     return {
       label: resumePending ? "Continuing…" : "Continue subscription",
       helperText: accessEndsLabel
-        ? `Turn auto-renewal back on — you have access until ${accessEndsLabel}`
+        ? `Turn auto-renewal back on. You have access until ${accessEndsLabel}`
         : "Turn auto-renewal back on before your current period ends",
       disabled: resumePending,
       action: "resume",

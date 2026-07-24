@@ -84,8 +84,8 @@ const CourseCard = ({
 
   const ageLabel =
     showAgeClassMeta &&
-    typeof course.minAge === "number" &&
-    Number.isFinite(course.minAge)
+      typeof course.minAge === "number" &&
+      Number.isFinite(course.minAge)
       ? `${course.minAge}+`
       : null;
 
@@ -217,8 +217,8 @@ const CourseCard = ({
             course.status === "completed"
               ? "bg-green-600 hover:bg-green-700"
               : course.status === "ongoing"
-              ? "bg-primary hover:bg-primary/90"
-              : "bg-primary hover:bg-primary/90"
+                ? "bg-primary hover:bg-primary/90"
+                : "bg-primary hover:bg-primary/90"
           )}
         >
           {course.status === "completed" ? (

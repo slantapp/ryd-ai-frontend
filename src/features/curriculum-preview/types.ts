@@ -55,7 +55,7 @@ export interface Module {
   lessons: Array<Lesson | CodingLesson>;
 }
 
-/** Category label for grouping courses in the library folder view (any non-empty string). */
+/** Category for grouping courses in the library folder view (any non-empty string). */
 export type CurriculumCategory = string;
 
 export type CurriculumLevel = "Beginner" | "Intermediate" | "Advanced";
@@ -80,7 +80,8 @@ export interface Curriculum {
 }
 
 export function isMathematicsPreview(curriculum: CurriculumData): boolean {
-  return curriculum.category === "mathematics";
+  const category = String(curriculum.category ?? "").trim().toLowerCase();
+  return category === "mathematics" || category === "math";
 }
 
 export type PublishStatus = "idle" | "uploading" | "published";

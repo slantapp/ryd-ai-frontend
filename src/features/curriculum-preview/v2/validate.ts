@@ -246,7 +246,7 @@ export function validateCurriculumV2(data: unknown): {
     typeof curriculumData.category !== "string" ||
     !curriculumData.category.trim()
   ) {
-    errors.push("Missing or invalid 'category' (must be a non-empty string)");
+    errors.push("Missing or invalid 'category' (non-empty string)");
   }
   if (
     curriculumData.level !== undefined &&

@@ -652,11 +652,11 @@ export function MathCurriculumPreview({
               <div className="h-64 overflow-hidden rounded-xl border border-primary/20 bg-white shadow-inner">
                 <AvatarComponent className="h-full w-full" />
               </div>
-              {isSpeaking && currentSubtitleText && (
+              {isSpeaking && (
                 <div className="mt-4 rounded-xl border border-primary/15 bg-white p-4 shadow-sm">
                   <p className="mb-2 text-xs text-primary">Speaking...</p>
                   <p className="text-sm leading-relaxed text-gray-700">
-                    {currentSubtitleText}
+                    {currentSubtitleText || "…"}
                   </p>
                 </div>
               )}

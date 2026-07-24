@@ -1,4 +1,7 @@
-import type { CourseCategoryId } from "@/data/courseCategories";
+import {
+  formatCategoryTitle,
+  type CourseCategoryId,
+} from "@/data/courseCategories";
 
 const IMAGE_WIDTH = 400;
 const IMAGE_HEIGHT = 200;
@@ -61,12 +64,15 @@ const TOPIC_IMAGE_POOLS: Array<{
   },
 ];
 
-const CATEGORY_IMAGE_POOLS: Partial<Record<string, string[]>> = {
+const CATEGORY_IMAGE_POOLS: Record<string, string[]> = {
   coding: [
     "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=200&fit=crop&auto=format",
     "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=200&fit=crop&auto=format",
   ],
   mathematics: [
+    "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400&h=200&fit=crop&auto=format",
+  ],
+  math: [
     "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400&h=200&fit=crop&auto=format",
   ],
   english: [
@@ -80,6 +86,9 @@ const CATEGORY_IMAGE_POOLS: Partial<Record<string, string[]>> = {
   ],
   careers: [
     "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&h=200&fit=crop&auto=format",
+  ],
+  general: [
+    "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=200&fit=crop&auto=format",
   ],
 };
 
@@ -113,16 +122,23 @@ export function buildCourseImageSearchQuery(
     .replace(/\s+/g, " ")
     .trim();
 
-  const categoryHint: Partial<Record<string, string>> = {
+  const categoryHint: Record<string, string> = {
     coding: "programming code",
     mathematics: "mathematics education",
+    math: "mathematics education",
     english: "english language learning",
     design: "design creative",
     data: "data science technology",
     careers: "career education",
+    general: "education learning",
   };
 
-  return `${cleaned} ${categoryHint[categoryId] ?? categoryId}`.trim();
+  const normalized = categoryId.trim().toLowerCase();
+  const hint =
+    categoryHint[normalized] ??
+  `${formatCategoryTitle(normalized).toLowerCase()} education`;
+
+  return `${cleaned} ${hint}`.trim();
 }
 
 /** Immediate, title-aware fallback using verified image pools. */
@@ -135,7 +151,10 @@ export function getCourseImageFallback(
       return pickFromPool(topic.urls, title);
     }
   }
-  return pickFromPool(CATEGORY_IMAGE_POOLS[categoryId] ?? [DEFAULT_IMAGE], title);
+  return pickFromPool(
+    CATEGORY_IMAGE_POOLS[categoryId.trim().toLowerCase()] ?? [DEFAULT_IMAGE],
+    title,
+  );
 }
 
 function formatUnsplashUrl(rawUrl: string): string {

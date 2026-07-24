@@ -10,9 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import CourseCard from "@/components/shared/CourseCard";
 import {
-  listCategoriesWithCounts,
   getCategoryIcon,
-  type CourseCategoryId,
+  listCategoriesWithCounts,
 } from "@/data/courseCategories";
 import { getAllCurricula } from "@/data/curriculumData";
 import { cn } from "@/lib/utils";

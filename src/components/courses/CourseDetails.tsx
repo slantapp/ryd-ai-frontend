@@ -2236,15 +2236,15 @@ function CourseDetailInner({
                     title={
                       isPaused
                         ? currentSubtitle || "Paused"
-                        : isSpeaking && currentSubtitle
-                          ? currentSubtitle
+                        : isSpeaking
+                          ? currentSubtitle || "Speaking…"
                           : "Ready when you are"
                     }
                   >
                     {isPaused
                       ? currentSubtitle || "Paused"
-                      : isSpeaking && currentSubtitle
-                        ? currentSubtitle
+                      : isSpeaking
+                        ? currentSubtitle || "Speaking…"
                         : "Ready when you are"}
                   </p>
                 </div>
@@ -2654,10 +2654,10 @@ function CourseDetailInner({
                       </div>
 
                       {/* Subtitle Mode - Show when avatar is speaking */}
-                      {isShowingSubtitles && currentSubtitle ? (
+                      {isShowingSubtitles ? (
                         <div className="flex min-h-[200px] flex-1 items-center justify-center sm:min-h-[260px] lg:min-h-[300px]">
                           <div className="max-w-2xl mx-auto px-6">
-                            {/* Subtitle container with animation */}
+                            {/* Subtitle container */}
                             <div className="relative">
                               {/* Speaking indicator */}
                               <div className="flex items-center justify-center gap-2 mb-6">
@@ -2671,18 +2671,10 @@ function CourseDetailInner({
                                 </span>
                               </div>
 
-                              {/* Main subtitle text */}
-                              <div
-                                className="rounded-2xl border-2 border-primary/20 bg-white/80 p-5 shadow-xl backdrop-blur-md transition-all duration-500 ease-out sm:p-8"
-                                key={currentSubtitle}
-                              >
-                                <p
-                                  className="animate-fade-in text-center text-lg font-medium leading-relaxed text-gray-800 sm:text-2xl md:text-3xl"
-                                  style={{
-                                    animation: "fadeIn 0.5s ease-out forwards",
-                                  }}
-                                >
-                                  {currentSubtitle}
+                              {/* Main subtitle text — no key/animation per word update */}
+                              <div className="rounded-2xl border-2 border-primary/20 bg-white/80 p-5 shadow-xl backdrop-blur-md sm:p-8">
+                                <p className="text-center text-lg font-medium leading-relaxed text-gray-800 sm:text-2xl md:text-3xl">
+                                  {currentSubtitle || "…"}
                                 </p>
                               </div>
 

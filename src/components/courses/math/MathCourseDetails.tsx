@@ -1696,15 +1696,15 @@ function MathCourseDetailsInner() {
                     title={
                       isPaused
                         ? currentSubtitle || "Paused"
-                        : isSpeaking && currentSubtitle
-                          ? currentSubtitle
+                        : isSpeaking
+                          ? currentSubtitle || "Speaking…"
                           : "Ready when you are"
                     }
                   >
                     {isPaused
                       ? currentSubtitle || "Paused"
-                      : isSpeaking && currentSubtitle
-                        ? currentSubtitle
+                      : isSpeaking
+                        ? currentSubtitle || "Speaking…"
                         : "Ready when you are"}
                   </p>
                 </div>
@@ -1800,7 +1800,7 @@ function MathCourseDetailsInner() {
                   <div className="mt-3 h-1 w-16 rounded-full bg-linear-to-r from-primary via-primary/80 to-primary/60 sm:w-20" />
                 </div>
 
-                {isShowingSubtitles && currentSubtitle ? (
+                {isShowingSubtitles ? (
                   <div className="flex min-h-[180px] items-center justify-center sm:min-h-[220px]">
                     <div className="w-full max-w-2xl px-2 sm:px-4">
                       <div className="mb-4 flex items-center justify-center gap-2">
@@ -1815,7 +1815,7 @@ function MathCourseDetailsInner() {
                       </div>
                       <div className="rounded-2xl border-2 border-primary/20 bg-white/90 p-5 text-center shadow-lg sm:p-8">
                         <p className="text-base font-medium leading-relaxed break-words text-gray-800 sm:text-lg lg:text-xl">
-                          {currentSubtitle}
+                          {currentSubtitle || "…"}
                         </p>
                       </div>
                     </div>

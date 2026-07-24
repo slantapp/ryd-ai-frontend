@@ -446,9 +446,9 @@ export function LessonPlayer({
           : (beat.avatar?.text ?? "Let's recap what you learned.");
         const spokenPoints = missed
           ? pointLines.filter(
-              (line) =>
-                !/\byou (made|built|did|put|finished|added)\b/i.test(line),
-            )
+            (line) =>
+              !/\byou (made|built|did|put|finished|added)\b/i.test(line),
+          )
           : pointLines;
         speakSequence(
           [
@@ -1204,9 +1204,9 @@ export function LessonPlayer({
                   {avatarSlot}
                 </div>
                 {isLgUp ? (
-                  isInstructorActive && currentSubtitle ? (
+                  isInstructorActive ? (
                     <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
-                      {currentSubtitle}
+                      {currentSubtitle || "…"}
                     </p>
                   ) : (
                     <p className="mt-2 text-center text-xs text-gray-400">
@@ -1269,9 +1269,9 @@ export function LessonPlayer({
                           />
                         </div>
                       </div>
-                      {isInstructorActive && currentSubtitle ? (
+                      {isInstructorActive ? (
                         <p className="min-w-0 flex-1 line-clamp-3 text-left text-xs text-gray-600 sm:text-sm">
-                          {currentSubtitle}
+                          {currentSubtitle || "Speaking…"}
                         </p>
                       ) : (
                         <p className="min-w-0 flex-1 text-left text-xs text-gray-400">
@@ -1288,9 +1288,9 @@ export function LessonPlayer({
               <div className="aspect-square w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
                 {avatarSlot}
               </div>
-              {isInstructorActive && currentSubtitle ? (
+              {isInstructorActive ? (
                 <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
-                  {currentSubtitle}
+                  {currentSubtitle || "…"}
                 </p>
               ) : (
                 <p className="mt-2 text-center text-xs text-gray-400">
@@ -1392,9 +1392,9 @@ export function LessonPlayer({
               <div className="aspect-square w-full overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
                 {avatarSlot}
               </div>
-              {isInstructorActive && currentSubtitle ? (
+              {isInstructorActive ? (
                 <p className="mt-2 line-clamp-3 text-center text-xs text-gray-600">
-                  {currentSubtitle}
+                  {currentSubtitle || "…"}
                 </p>
               ) : (
                 <p className="mt-2 text-center text-xs text-gray-400">
@@ -1411,10 +1411,10 @@ export function LessonPlayer({
             showAvatarBelowQuestion
               ? "hidden"
               : kidsStage
-              ? sideBySide
-                ? "grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 lg:grid-cols-1"
-                : "grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 lg:flex lg:w-48 lg:grid-cols-none xl:w-56"
-              : "lg:w-52 xl:w-56",
+                ? sideBySide
+                  ? "grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 lg:grid-cols-1"
+                  : "grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 lg:flex lg:w-48 lg:grid-cols-none xl:w-56"
+                : "lg:w-52 xl:w-56",
           )}
         >
           <div
@@ -1566,7 +1566,7 @@ export function LessonPlayer({
         0,
         ((lessonOrdinal - 1 + (beatIndex + 1) / flowLength) /
           Math.max(1, lessonTotal)) *
-          100,
+        100,
       ),
     );
 
@@ -1606,10 +1606,10 @@ export function LessonPlayer({
               : isPaused
                 ? "Lesson paused — tap Resume when you're ready."
                 : canPrimaryContinue
-                ? "Ready — continue to the next step."
-                : beat?.type === "question"
-                  ? "Answer the question to continue."
-                  : "Listen to your instructor."}
+                  ? "Ready — continue to the next step."
+                  : beat?.type === "question"
+                    ? "Answer the question to continue."
+                    : "Listen to your instructor."}
           </p>
 
           <div className="flex items-stretch gap-2">
@@ -1706,11 +1706,10 @@ export function LessonPlayer({
             show their UI immediately (like CourseDetails), even while the
             avatar is still speaking the prompt.
           */}
-          {isSpeaking &&
-          currentSubtitle &&
-          beat?.type !== "question" &&
-          beat?.type !== "bridge" &&
-          beat?.type !== "recap" ? (
+          {isInstructorActive &&
+            beat?.type !== "question" &&
+            beat?.type !== "bridge" &&
+            beat?.type !== "recap" ? (
             <div className="flex min-h-[200px] flex-1 items-center justify-center sm:min-h-[260px] lg:min-h-[300px]">
               <div className="mx-auto max-w-2xl px-4 sm:px-6">
                 <div className="mb-6 flex items-center justify-center gap-2">
@@ -1734,7 +1733,7 @@ export function LessonPlayer({
                 </div>
                 <div className="rounded-2xl border-2 border-primary/20 bg-white/80 p-5 shadow-xl backdrop-blur-md sm:p-8">
                   <p className="text-center text-lg font-medium leading-relaxed text-gray-800 sm:text-2xl md:text-3xl">
-                    {currentSubtitle}
+                    {currentSubtitle || "…"}
                   </p>
                 </div>
               </div>
@@ -1764,10 +1763,10 @@ export function LessonPlayer({
           gutterStyle={(dimension, gutterSize) =>
             dimension === "width" && gutterSize > 0
               ? {
-                  width: `${gutterSize}px`,
-                  cursor: "col-resize",
-                  pointerEvents: "auto",
-                }
+                width: `${gutterSize}px`,
+                cursor: "col-resize",
+                pointerEvents: "auto",
+              }
               : { width: "0px", pointerEvents: "none" }
           }
         >
@@ -1834,8 +1833,8 @@ export function LessonPlayer({
                       Instructor audio
                     </p>
                     <p className="truncate text-xs text-gray-600 sm:text-sm">
-                      {isInstructorActive && currentSubtitle
-                        ? currentSubtitle
+                      {isInstructorActive
+                        ? currentSubtitle || "Speaking…"
                         : isPaused
                           ? currentSubtitle || "Paused"
                           : "Ready when you are"}

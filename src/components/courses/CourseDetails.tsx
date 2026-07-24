@@ -1952,7 +1952,7 @@ function CourseDetailInner({
 
   const isInstructorWaiting = isInstructorWaitActive({
     isPaused,
-    isAvatarReady,
+    lessonActive: lessonStarted,
     hasPendingSpeech,
     awaitingSpeech,
   });

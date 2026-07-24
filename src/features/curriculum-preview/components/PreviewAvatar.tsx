@@ -33,6 +33,8 @@ export type PreviewAvatarOptions = {
    * `local` — isolated picker for curriculum preview authoring (default).
    */
   instructorSource?: "local" | "global";
+  /** When false, suppress the wait banner (e.g. pre-start gate screen). Default true. */
+  lessonActive?: boolean;
 };
 
 function isMobileViewport() {
@@ -106,6 +108,7 @@ function PreviewAvatarView({
 
 export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   const instructorSource = options.instructorSource ?? "local";
+  const lessonActive = options.lessonActive ?? true;
 
   const globalInstructor = useInstructorStore((s) => s.selectedInstructor);
   const setGlobalInstructor = useInstructorStore((s) => s.setSelectedInstructor);
@@ -282,11 +285,20 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     avatarReadyRef.current = true;
     setIsAvatarReady(true);
 
+    const queued = pendingSpeechQueueRef.current.length > 0;
+
+    // Match CourseDetails v1: on mobile only prompt when speech is already queued.
     if (needsMobileUnlock()) {
-      // Always show the tap CTA once the avatar can speak — do not require a
-      // non-empty queue at this exact moment (lesson speech often starts after ready).
-      setShowMobileAudioUnlock(true);
+      if (queued) {
+        setShowMobileAudioUnlock(true);
+      }
       return;
+    }
+
+    if (isMobileViewport() && mobileAudioUnlockedRef.current) {
+      void avatarRef.current?.resumeAudioContext?.().catch(() => {
+        // Suspended until speakText — expected on some WebKit builds.
+      });
     }
 
     flushNextQueuedSpeech();
@@ -296,10 +308,13 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     mobileAudioUnlockedRef.current = true;
     setShowMobileAudioUnlock(false);
 
-    // Best-effort AudioContext resume inside the user gesture.
-    void avatarRef.current?.resumeAudioContext?.().catch(() => {
-      // Suspended until speakText — expected on some WebKit builds.
-    });
+    const resume = avatarRef.current?.resumeAudioContext?.();
+    if (resume) {
+      void resume
+        .then(() => flushNextQueuedSpeech())
+        .catch(() => flushNextQueuedSpeech());
+      return;
+    }
 
     flushNextQueuedSpeech();
   }, [flushNextQueuedSpeech]);
@@ -340,7 +355,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
 
   const isInstructorWaiting = isInstructorWaitActive({
     isPaused,
-    isAvatarReady,
+    lessonActive,
     hasPendingSpeech,
     awaitingSpeech,
   });

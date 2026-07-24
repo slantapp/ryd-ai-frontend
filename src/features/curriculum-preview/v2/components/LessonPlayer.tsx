@@ -109,6 +109,11 @@ interface LessonPlayerProps {
    */
   classicLayout?: boolean;
   /**
+   * Parent already provides the split shell and avatar column (CourseDetailsV2).
+   * Renders only the lesson board column — no nested Split or avatar slot.
+   */
+  embedInParentSplit?: boolean;
+  /**
    * Mobile WebKit: first speak after avatar ready must run inside a tap.
    * Shown when the 3D avatar is off-screen on small viewports.
    */
@@ -121,6 +126,8 @@ interface LessonPlayerProps {
   isAvatarLoading?: boolean;
   /** When true, parent renders PageLoadWaitBanner (e.g. sneak peek page chrome). */
   suppressMobileWaitBanner?: boolean;
+  /** Gate beat speech until the 3D avatar has fired onReady. */
+  isAvatarReady?: boolean;
   /**
    * Sneak-peek cliffhanger: after this lesson, the bridge CTA opens the
    * subscribe flow instead of advancing (parent still handles onNextLesson).
@@ -147,11 +154,13 @@ export function LessonPlayer({
   hideFlowChrome = false,
   kidsStage = false,
   classicLayout = false,
+  embedInParentSplit = false,
   showMobileAudioUnlock = false,
   onMobileAudioUnlock,
   isAvatarLoading = false,
   isInstructorWaiting,
   suppressMobileWaitBanner = false,
+  isAvatarReady = true,
   subscribeGateAfterLesson = false,
 }: LessonPlayerProps) {
   const isLgUp = useMediaQueryMinLg();
@@ -364,9 +373,14 @@ export function LessonPlayer({
     return `In this lesson, your goal is: ${goal}.`;
   }, [lesson.goal]);
 
-  // Drive each beat
+  // Drive each beat — wait until the avatar is live (avoids losing speech on mobile remount).
   useEffect(() => {
-    if (!beat) return;
+    if (!beat || !isAvatarReady) {
+      if (!isAvatarReady) {
+        beatStartedRef.current = null;
+      }
+      return;
+    }
     const key = `${lesson.id}:${beat.id}:${beatIndex}`;
     if (beatStartedRef.current === key) return;
     beatStartedRef.current = key;
@@ -499,7 +513,7 @@ export function LessonPlayer({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [beat, beatIndex, lesson.id]);
+  }, [beat, beatIndex, lesson.id, isAvatarReady]);
 
   // Pause countdown
   useEffect(() => {
@@ -1745,7 +1759,128 @@ export function LessonPlayer({
       </div>
     );
 
-    return (
+    const classicBoardColumn = (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {!isLgUp && (
+          <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
+            {!suppressMobileWaitBanner ? (
+              <PageLoadWaitBanner isLoading={showInstructorWait} />
+            ) : null}
+            <div className="flex items-center gap-3 px-4 py-2 sm:px-5">
+              <div className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
+                {isInstructorActive ? (
+                  <>
+                    <span className="absolute inline-flex size-[120%] animate-ping rounded-full bg-primary/30" />
+                    <span className="absolute inline-flex size-full rounded-full bg-primary/20" />
+                  </>
+                ) : null}
+                <div
+                  className={cn(
+                    "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md transition-all duration-300 sm:size-10",
+                    isInstructorActive
+                      ? "scale-105 border-primary shadow-lg shadow-primary/25"
+                      : "border-primary/25",
+                  )}
+                >
+                  <Mic
+                    className={cn(
+                      "size-[1.15rem] text-primary sm:size-5",
+                      isInstructorActive && "animate-pulse",
+                    )}
+                    aria-hidden
+                  />
+                </div>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/80">
+                  Instructor audio
+                </p>
+                <p className="truncate text-xs text-gray-600 sm:text-sm">
+                  {isInstructorActive
+                    ? currentSubtitle || "Speaking…"
+                    : isPaused
+                      ? currentSubtitle || "Paused"
+                      : "Ready when you are"}
+                </p>
+              </div>
+            </div>
+            {showMobileAudioUnlock ? (
+              <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-4 py-3 sm:px-5">
+                <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
+                  {MOBILE_INSTRUCTOR_AUDIO_HINT}
+                </p>
+                <button
+                  type="button"
+                  onClick={onMobileAudioUnlock}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
+                >
+                  <Volume2 className="h-5 w-5 shrink-0" aria-hidden />
+                  <span>{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
+                </button>
+              </div>
+            ) : null}
+            <div className="px-4 pb-4 sm:px-5">{classicChrome}</div>
+          </div>
+        )}
+
+        {embedInParentSplit && isLgUp ? (
+          <div className="shrink-0 border-b border-primary/10 bg-white/95 px-5 py-4 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
+            {classicChrome}
+          </div>
+        ) : null}
+
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col",
+            fillWorkspace ? "overflow-hidden" : "overflow-y-auto scrollbar-hide",
+          )}
+        >
+          {showCodePanel ? (
+            <div className="flex h-full min-h-0 w-full flex-1 flex-col">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                {codeWorkspace}
+              </div>
+            </div>
+          ) : showFormulaPanel ? (
+            <div className="min-h-0 flex-1 overflow-y-auto border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-6 lg:border-l-2">
+              <div className="overflow-hidden rounded-xl border border-primary/20 bg-white/60 p-4 shadow-sm backdrop-blur-sm">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
+                  Formula board
+                </p>
+                <div className="min-h-[120px] rounded-lg bg-primary/5 p-3 font-mono text-base text-gray-900">
+                  <MathText displayMode forceMath>
+                    {formulaBoardText}
+                  </MathText>
+                </div>
+                {beat?.type === "question" && demoMode === "practice" && (
+                  <div className="mt-3 space-y-2.5">
+                    <input
+                      type="text"
+                      value={formulaAnswer}
+                      onChange={(e) => setFormulaAnswer(e.target.value)}
+                      disabled={isAnswerSubmitted}
+                      placeholder="Type your answer…"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium outline-none focus:border-primary"
+                    />
+                    {!isAnswerSubmitted && (
+                      <ContinueButton
+                        label="Check answer"
+                        onClick={handleSubmitFormula}
+                        disabled={!formulaAnswer.trim() || isSpeaking}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            classicLessonBoard
+          )}
+        </div>
+      </div>
+    );
+
+    const classicShell = (
       <div className="relative h-full overflow-hidden bg-white">
         {!hideFlowChrome ? (
           <V2SkipPanel
@@ -1755,6 +1890,9 @@ export function LessonPlayer({
           />
         ) : null}
 
+        {embedInParentSplit ? (
+          classicBoardColumn
+        ) : (
         <Split
           className="flex h-full min-h-0"
           sizes={isLgUp ? [35, 65] : [0, 100]}
@@ -1912,6 +2050,7 @@ export function LessonPlayer({
             </div>
           </div>
         </Split>
+        )}
 
         {fullscreen && showCodePanel && !useWeb && (
           <FullscreenModal
@@ -1928,6 +2067,8 @@ export function LessonPlayer({
         )}
       </div>
     );
+
+    return classicShell;
   }
 
   return (

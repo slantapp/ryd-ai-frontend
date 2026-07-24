@@ -1433,7 +1433,7 @@ function MathCourseDetailsInner() {
 
   const isInstructorWaiting = isInstructorWaitActive({
     isPaused,
-    isAvatarReady,
+    lessonActive: lessonStarted,
     hasPendingSpeech,
     awaitingSpeech,
   });

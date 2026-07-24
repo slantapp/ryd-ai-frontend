@@ -9,7 +9,7 @@ import {
 interface PageLoadWaitBannerProps {
   /** True while the avatar / page is still loading. */
   isLoading: boolean;
-  /** When true (default), only show on viewports below Tailwind `lg`. */
+  /** When true, only show on viewports below Tailwind `lg`. Default: show on all viewports. */
   mobileOnly?: boolean;
   className?: string;
 }
@@ -22,7 +22,7 @@ const MESSAGES: Record<Exclude<PageLoadWaitPhase, "none">, string> = {
 
 export function PageLoadWaitBanner({
   isLoading,
-  mobileOnly = true,
+  mobileOnly = false,
   className,
 }: PageLoadWaitBannerProps) {
   const isLgUp = useMediaQueryMinLg();

@@ -90,13 +90,12 @@ export default function DemoSneakPeekPage() {
 
   const handleStartLesson = useCallback(() => {
     if (!currentLesson) return;
-    // Same as paid courses: unlock audio inside the tap that starts teaching.
+    // Unlock audio inside the user tap; do not stop() — that clears speech queued for the new lesson.
     unlockMobileAudio();
-    stop();
     clearScheduledAfterSpeech();
     setLessonStarted(true);
     setLessonKey((k) => k + 1);
-  }, [clearScheduledAfterSpeech, currentLesson, stop, unlockMobileAudio]);
+  }, [clearScheduledAfterSpeech, currentLesson, unlockMobileAudio]);
 
   useEffect(() => {
     completionFiredRef.current = false;
@@ -231,7 +230,7 @@ export default function DemoSneakPeekPage() {
         </div>
       </div>
 
-      <PageLoadWaitBanner isLoading={isInstructorWaiting} />
+      <PageLoadWaitBanner isLoading={isInstructorWaiting} mobileOnly={false} />
 
       <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[20px] bg-white shadow-lg">
         {!lessonStarted ? (

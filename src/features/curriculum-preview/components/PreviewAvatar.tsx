@@ -1,4 +1,4 @@
-import { useRef, useMemo, useCallback, useState, useEffect } from "react";
+import { useRef, useMemo, useCallback, useState, useEffect, type RefObject } from "react";
 import NarratorAvatar from "narrator-avatar";
 import { Volume2 } from "lucide-react";
 import {
@@ -39,6 +39,69 @@ function isMobileViewport() {
   return typeof window !== "undefined"
     ? window.matchMedia("(max-width: 1023px)").matches
     : false;
+}
+
+type PreviewAvatarViewProps = {
+  className?: string;
+  showUnlockOverlay?: boolean;
+  avatarRef: RefObject<NarratorAvatarRef | null>;
+  avatarConfig: Record<string, unknown>;
+  selectedInstructor: InstructorType;
+  showMobileAudioUnlock: boolean;
+  onReady: () => void;
+  onSpeechStart: () => void;
+  onSpeechEnd: () => void;
+  onSubtitle: (text: string) => void;
+  onUnmount: () => void;
+  onMobileAudioUnlock: () => void;
+};
+
+function PreviewAvatarView({
+  className,
+  showUnlockOverlay = true,
+  avatarRef,
+  avatarConfig,
+  selectedInstructor,
+  showMobileAudioUnlock,
+  onReady,
+  onSpeechStart,
+  onSpeechEnd,
+  onSubtitle,
+  onUnmount,
+  onMobileAudioUnlock,
+}: PreviewAvatarViewProps) {
+  useEffect(() => onUnmount, [onUnmount]);
+
+  return (
+    <div className={`relative ${className || ""}`}>
+      <NarratorAvatar
+        key={selectedInstructor}
+        ref={avatarRef}
+        {...avatarConfig}
+        onReady={onReady}
+        onError={(error: unknown) => console.error("Avatar error:", error)}
+        onSpeechStart={onSpeechStart}
+        onSpeechEnd={onSpeechEnd}
+        onSubtitle={onSubtitle}
+        className="h-full w-full"
+      />
+      {showUnlockOverlay && showMobileAudioUnlock && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl bg-black/50 px-4 backdrop-blur-sm">
+          <p className="max-w-xs text-center text-xs leading-snug text-white/90">
+            {MOBILE_INSTRUCTOR_AUDIO_HINT}
+          </p>
+          <button
+            type="button"
+            onClick={onMobileAudioUnlock}
+            className="flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90"
+          >
+            <Volume2 className="h-5 w-5" />
+            <span>{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
@@ -95,26 +158,49 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     setHasPendingSpeech(pendingSpeechQueueRef.current.length > 0);
   }, []);
 
-  const speakImmediate = useCallback((text: string) => {
-    try {
-      if (
-        avatarRef.current &&
-        text &&
-        typeof avatarRef.current.speakText === "function"
-      ) {
-        setAwaitingSpeech(true);
-        avatarRef.current.speakText(text);
-      }
-    } catch (error) {
-      console.warn("Error speaking text:", error);
-      setAwaitingSpeech(false);
-    }
+  /** True when the live avatar ref can accept speakText right now. */
+  const isAvatarLive = useCallback(() => {
+    const avatar = avatarRef.current;
+    return !!(avatar && typeof avatar.speakText === "function");
   }, []);
+
+  const markAvatarNotReady = useCallback(() => {
+    avatarReadyRef.current = false;
+    setIsAvatarReady(false);
+  }, []);
+
+  const speakImmediate = useCallback(
+    (text: string) => {
+      try {
+        if (!text) return;
+
+        if (!isAvatarLive()) {
+          pendingSpeechQueueRef.current.push(text);
+          syncPendingSpeech();
+          setAwaitingSpeech(true);
+          markAvatarNotReady();
+          return;
+        }
+
+        setAwaitingSpeech(true);
+        avatarRef.current!.speakText(text);
+      } catch (error) {
+        console.warn("Error speaking text:", error);
+        setAwaitingSpeech(false);
+      }
+    },
+    [isAvatarLive, markAvatarNotReady, syncPendingSpeech],
+  );
 
   const speak = useCallback(
     (text: string) => {
-      // Not ready yet — queue and wait for onReady.
-      if (!avatarReadyRef.current) {
+      if (!text) return;
+
+      // Queue when the 3D avatar is still loading or was remounted (stale ready flag).
+      if (!avatarReadyRef.current || !isAvatarLive()) {
+        if (!isAvatarLive()) {
+          markAvatarNotReady();
+        }
         pendingSpeechQueueRef.current.push(text);
         syncPendingSpeech();
         setAwaitingSpeech(true);
@@ -122,8 +208,6 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
       }
 
       // Mobile: never autoplay until the user taps (even if avatar is already ready).
-      // This is the race that used to hide the unlock button: onReady with an empty
-      // queue skipped the CTA, then speakImmediate ran outside a gesture and failed.
       if (needsMobileUnlock()) {
         pendingSpeechQueueRef.current.push(text);
         syncPendingSpeech();
@@ -134,7 +218,13 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
 
       speakImmediate(text);
     },
-    [needsMobileUnlock, speakImmediate, syncPendingSpeech],
+    [
+      isAvatarLive,
+      markAvatarNotReady,
+      needsMobileUnlock,
+      speakImmediate,
+      syncPendingSpeech,
+    ],
   );
 
   /** Pause the instructor mid-sentence, or resume from the same point. */
@@ -267,37 +357,22 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
       showUnlockOverlay = true,
     }: {
       className?: string;
-      /** When false, parent shows its own unlock CTA (e.g. kids stage mobile). */
       showUnlockOverlay?: boolean;
     }) => (
-      <div className={`relative ${className || ""}`}>
-        <NarratorAvatar
-          key={selectedInstructor}
-          ref={avatarRef}
-          {...avatarConfig}
-          onReady={handleAvatarReady}
-          onError={(error: unknown) => console.error("Avatar error:", error)}
-          onSpeechStart={handleSpeechStart}
-          onSpeechEnd={handleSpeechEnd}
-          onSubtitle={handleSubtitle}
-          className="h-full w-full"
-        />
-        {showUnlockOverlay && showMobileAudioUnlock && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl bg-black/50 px-4 backdrop-blur-sm">
-            <p className="max-w-xs text-center text-xs leading-snug text-white/90">
-              {MOBILE_INSTRUCTOR_AUDIO_HINT}
-            </p>
-            <button
-              type="button"
-              onClick={handleMobileAudioUnlock}
-              className="flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90"
-            >
-              <Volume2 className="h-5 w-5" />
-              <span>{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
-            </button>
-          </div>
-        )}
-      </div>
+      <PreviewAvatarView
+        className={className}
+        showUnlockOverlay={showUnlockOverlay}
+        avatarRef={avatarRef}
+        avatarConfig={avatarConfig}
+        selectedInstructor={selectedInstructor}
+        showMobileAudioUnlock={showMobileAudioUnlock}
+        onReady={handleAvatarReady}
+        onSpeechStart={handleSpeechStart}
+        onSpeechEnd={handleSpeechEnd}
+        onSubtitle={handleSubtitle}
+        onUnmount={markAvatarNotReady}
+        onMobileAudioUnlock={handleMobileAudioUnlock}
+      />
     ),
     [
       avatarConfig,
@@ -305,6 +380,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
       handleSpeechStart,
       handleSpeechEnd,
       handleSubtitle,
+      markAvatarNotReady,
       showMobileAudioUnlock,
       handleMobileAudioUnlock,
       selectedInstructor,

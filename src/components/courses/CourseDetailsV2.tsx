@@ -145,7 +145,6 @@ export default function CourseDetailsV2() {
 
     // User gesture unlocks mobile audio before the first speak() call.
     unlockMobileAudio();
-    stop();
     clearScheduledAfterSpeech();
     setCurrentLesson(lesson);
     setLessonStarted(true);
@@ -156,7 +155,6 @@ export default function CourseDetailsV2() {
     curriculum,
     currentLesson,
     persistLessonPosition,
-    stop,
     unlockMobileAudio,
   ]);
 

@@ -62,7 +62,7 @@ export function getCategoryMeta(id: CourseCategoryId): CourseCategory {
   return {
     id: normalized,
     title,
-    subtitle: `Explore ${title.toLowerCase()} courses`,
+    subtitle: `Browse ${title} courses`,
   };
 }
 

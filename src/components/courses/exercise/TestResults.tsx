@@ -1,6 +1,8 @@
 import { useMemo, useEffect, useState } from "react";
 import { Minimize2, Maximize2, Terminal, Eye, Palette } from "lucide-react";
 import { prepareHtmlForPreview } from "@/utils/prepareHtmlForPreview";
+import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
+import { cn } from "@/lib/utils";
 
 interface TestResultsProps {
   results: string[];
@@ -67,6 +69,7 @@ export default function TestResults({
   turtleTargetId,
 }: TestResultsProps) {
   const [activeTab, setActiveTab] = useState<"console" | "preview">("console");
+  const isLgUp = useMediaQueryMinLg();
 
   const isHTML = useMemo(() => isHTMLCode(code), [code]);
   const hasTurtlePreview = Boolean(turtleTargetId);
@@ -102,33 +105,61 @@ export default function TestResults({
   }, [hasVisualPreview]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-md border border-gray-200 bg-black text-white">
-      <div className="flex h-full min-h-0 flex-col lg:grid lg:grid-cols-3">
-        <div className="flex min-h-[140px] w-full min-w-0 flex-1 flex-col lg:col-span-1 lg:min-h-0">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-gray-200 bg-black text-white">
+      <div
+        className={cn(
+          "flex h-full min-h-0 flex-col",
+          hasVisualPreview && isLgUp && "lg:grid lg:grid-cols-3",
+        )}
+      >
+        <div
+          className={cn(
+            "flex w-full min-w-0 flex-col",
+            hasVisualPreview && isLgUp
+              ? "lg:col-span-1 lg:min-h-0"
+              : "min-h-0 flex-1",
+            hasVisualPreview && !isLgUp && activeTab !== "console" && "hidden",
+          )}
+        >
           <div className="flex shrink-0 items-center justify-between border-b border-gray-700 bg-gray-900">
             <div className="flex flex-1 items-center">
               <div className="flex gap-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab("console")}
-                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:text-sm ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:py-2 sm:text-sm ${
                     activeTab === "console"
                       ? "border-b-2 border-blue-500 bg-gray-800 text-white"
                       : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-300"
                   }`}
                   title="Console (Ctrl/Cmd + 1)"
                 >
-                  <Terminal size={16} />
+                  <Terminal size={14} className="sm:size-4" />
                   <span>Console</span>
                 </button>
+                {hasVisualPreview && !isLgUp ? (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("preview")}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:py-2 sm:text-sm ${
+                      activeTab === "preview"
+                        ? "border-b-2 border-blue-500 bg-gray-800 text-white"
+                        : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-300"
+                    }`}
+                    title={`${hasTurtlePreview ? "Turtle canvas" : "Preview"} (Ctrl/Cmd + 2)`}
+                  >
+                    {hasTurtlePreview ? (
+                      <Palette size={14} className="sm:size-4" />
+                    ) : (
+                      <Eye size={14} className="sm:size-4" />
+                    )}
+                    <span>{hasTurtlePreview ? "Canvas" : "Preview"}</span>
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
-          <div
-            className={`h-full overflow-auto bg-gray-950 p-3 font-mono text-xs sm:p-4 sm:text-sm ${
-              activeTab !== "console" && hasVisualPreview ? "hidden lg:block" : ""
-            }`}
-          >
+          <div className="min-h-0 flex-1 overflow-auto bg-gray-950 p-2 font-mono text-xs sm:p-3 sm:text-sm">
             {results.length > 0 ? (
               <div className="space-y-1">
                 {results.map((r, i) => {
@@ -145,79 +176,99 @@ export default function TestResults({
               </div>
             ) : (
               <div className="text-gray-500">
-                <div className="mb-2">Console output will appear here...</div>
-                <div className="text-xs text-gray-600">
-                  Run your code to see test results and console output.
+                <div className="mb-1 text-[0.7rem] sm:text-sm">
+                  Console output will appear here…
+                </div>
+                <div className="text-[0.65rem] text-gray-600 sm:text-xs">
+                  Run your code to see test results.
                 </div>
               </div>
             )}
           </div>
         </div>
-        <div className="flex min-h-[200px] w-full min-w-0 flex-1 flex-col lg:col-span-2 lg:min-h-0">
-          <div className="flex shrink-0 items-center justify-between border-b border-gray-700 bg-gray-900">
-            <div className="flex flex-1 items-center">
-              <div className="flex gap-1">
+
+        {hasVisualPreview ? (
+          <div
+            className={cn(
+              "flex w-full min-w-0 flex-col",
+              isLgUp
+                ? "lg:col-span-2 lg:min-h-0"
+                : activeTab !== "preview"
+                  ? "hidden"
+                  : "min-h-0 flex-1",
+            )}
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-gray-700 bg-gray-900">
+              <div className="flex flex-1 items-center">
+                <div className="flex gap-1">
+                  {isLgUp ? (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("preview")}
+                      className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:text-sm ${
+                        activeTab === "preview"
+                          ? "border-b-2 border-blue-500 bg-gray-800 text-white"
+                          : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-300"
+                      }`}
+                      title={`${hasTurtlePreview ? "Turtle canvas" : "Preview"} (Ctrl/Cmd + 2)`}
+                    >
+                      {hasTurtlePreview ? (
+                        <Palette size={16} />
+                      ) : (
+                        <Eye size={16} />
+                      )}
+                      <span>
+                        {hasTurtlePreview ? "Turtle Canvas" : "Preview"}
+                      </span>
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              {!hasTurtlePreview && (
                 <button
                   type="button"
-                  onClick={() => setActiveTab("preview")}
-                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all sm:gap-2 sm:px-4 sm:text-sm ${
-                    activeTab === "preview"
-                      ? "border-b-2 border-blue-500 bg-gray-800 text-white"
-                      : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-300"
-                  }`}
-                  title={`${hasTurtlePreview ? "Turtle canvas" : "Preview"} (Ctrl/Cmd + 2)`}
+                  onClick={onToggleFullscreen}
+                  className="mr-2 rounded p-2 transition-colors hover:bg-gray-800"
+                  title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                  aria-label={
+                    isFullscreen ? "Exit fullscreen" : "Enter fullscreen"
+                  }
                 >
-                  {hasTurtlePreview ? <Palette size={16} /> : <Eye size={16} />}
-                  <span>{hasTurtlePreview ? "Turtle Canvas" : "Preview"}</span>
+                  {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                 </button>
-              </div>
+              )}
             </div>
-            {!hasTurtlePreview && (
-              <button
-                type="button"
-                onClick={onToggleFullscreen}
-                className="mr-2 rounded p-2 transition-colors hover:bg-gray-800"
-                title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-                aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              >
-                {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              </button>
-            )}
-          </div>
-          <div
-            className={`h-full border-t border-gray-700 bg-white ${
-              activeTab !== "preview" && hasVisualPreview ? "hidden lg:block" : ""
-            }`}
-          >
-            {hasTurtlePreview && turtleTargetId ? (
-              <div className="flex h-full min-h-64 items-center justify-center overflow-auto bg-white p-2">
-                <div
-                  id={turtleTargetId}
-                  className="min-h-64 w-full overflow-hidden rounded-md bg-white [&>canvas]:mx-auto [&>canvas]:max-w-full [&>svg]:mx-auto [&>svg]:max-w-full"
-                  aria-label="Python Turtle drawing canvas"
+            <div className="min-h-0 flex-1 border-t border-gray-700 bg-white">
+              {hasTurtlePreview && turtleTargetId ? (
+                <div className="flex h-full min-h-0 items-center justify-center overflow-auto bg-white p-2">
+                  <div
+                    id={turtleTargetId}
+                    className="min-h-48 w-full overflow-hidden rounded-md bg-white [&>canvas]:mx-auto [&>canvas]:max-w-full [&>svg]:mx-auto [&>svg]:max-w-full"
+                    aria-label="Python Turtle drawing canvas"
+                  />
+                </div>
+              ) : htmlContent ? (
+                <iframe
+                  key={htmlContent.slice(0, 64)}
+                  srcDoc={htmlContent}
+                  className="h-full w-full border-0"
+                  title="HTML Preview"
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                  referrerPolicy="no-referrer"
                 />
-              </div>
-            ) : htmlContent ? (
-              <iframe
-                key={htmlContent.slice(0, 64)}
-                srcDoc={htmlContent}
-                className="h-full w-full border-0"
-                title="HTML Preview"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-gray-500">
-                <div className="text-center">
-                  <div className="mb-2 text-lg">No HTML to preview</div>
-                  <div className="text-sm">
-                    Write some HTML code to see the preview
+              ) : (
+                <div className="flex h-full items-center justify-center text-gray-500">
+                  <div className="text-center">
+                    <div className="mb-2 text-lg">No HTML to preview</div>
+                    <div className="text-sm">
+                      Write some HTML code to see the preview
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </div>
   );

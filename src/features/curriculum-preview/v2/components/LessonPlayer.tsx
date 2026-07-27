@@ -15,6 +15,10 @@ import FullscreenModal from "@/components/courses/exercise/FullscreenModal";
 import WebCodeWorkspace from "@/components/courses/exercise/WebCodeWorkspace";
 import TestResults from "@/components/courses/exercise/TestResults";
 import { MobileCollapsible } from "@/components/courses/exercise/MobileCollapsible";
+import {
+  editorConsoleMinSizes,
+  editorConsoleSplitSizes,
+} from "@/components/courses/exercise/codeWorkspaceLayout";
 import MultipleChoiceQuestion from "@/components/courses/exercise/MultipleChoiceQuestion";
 import TrueFalseQuestion from "@/components/courses/exercise/TrueFalseQuestion";
 import { LessonProgressBar } from "@/components/courses/exercise/LessonProgressBar";
@@ -1028,8 +1032,8 @@ export function LessonPlayer({
         <Split
           direction="vertical"
           className="flex h-full min-h-0 w-full flex-col"
-          sizes={[58, 42]}
-          minSize={100}
+          sizes={editorConsoleSplitSizes(!isLgUp)}
+          minSize={editorConsoleMinSizes(!isLgUp)}
           gutterSize={8}
         >
           <CodeEditor

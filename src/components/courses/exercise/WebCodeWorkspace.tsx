@@ -219,8 +219,8 @@ export default function WebCodeWorkspace({
       <Split
         direction="vertical"
         className="flex min-h-0 w-full flex-1 flex-col"
-        sizes={stackPreview ? [48, 52] : [42, 58]}
-        minSize={stackPreview ? 80 : 100}
+        sizes={stackPreview ? [64, 36] : [42, 58]}
+        minSize={stackPreview ? [160, 72] : 100}
         gutterSize={8}
       >
         <div className="min-h-0 overflow-hidden">
@@ -236,9 +236,9 @@ export default function WebCodeWorkspace({
           <Split
             direction="vertical"
             className="flex h-full min-h-0 w-full flex-col"
-            sizes={[70, 30]}
-            minSize={60}
-            gutterSize={8}
+            sizes={[78, 22]}
+            minSize={[100, 56]}
+            gutterSize={6}
           >
             <div className="min-h-0 overflow-hidden">{previewPane}</div>
             <div className="min-h-0 overflow-hidden">{consolePane}</div>

@@ -52,6 +52,10 @@ import {
   seedWebCodeFromExample,
   type WebCodeSources,
 } from "@/utils/webCodeWorkspace";
+import {
+  editorConsoleMinSizes,
+  editorConsoleSplitSizes,
+} from "@/components/courses/exercise/codeWorkspaceLayout";
 import { prefetchMonacoEditor } from "./exercise/MonacoEditorLazy";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
 import {
@@ -2388,9 +2392,9 @@ function CourseDetailInner({
                   ) : (
                     <Split
                       direction="vertical"
-                      className="flex flex-col h-full w-full"
-                      sizes={[35, 65]}
-                      minSize={100}
+                      className="flex h-full w-full flex-col"
+                      sizes={editorConsoleSplitSizes(!isLgUp)}
+                      minSize={editorConsoleMinSizes(!isLgUp)}
                       gutterSize={8}
                       gutterStyle={(dimension, gutterSize) =>
                         dimension === "height"

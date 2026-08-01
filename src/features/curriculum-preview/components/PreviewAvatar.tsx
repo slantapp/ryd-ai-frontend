@@ -1,6 +1,7 @@
 import { useRef, useMemo, useCallback, useState, useEffect, type RefObject } from "react";
 import NarratorAvatar from "narrator-avatar";
 import { Volume2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   INSTRUCTORS,
   useInstructorStore,
@@ -43,6 +44,10 @@ function isMobileViewport() {
     : false;
 }
 
+/** Matches CourseDetails NarratorAvatar sizing so WebGL gets a real layout box. */
+export const PREVIEW_AVATAR_CLASS =
+  "h-full w-full min-h-0 min-w-0 max-h-full max-w-full";
+
 type PreviewAvatarViewProps = {
   className?: string;
   showUnlockOverlay?: boolean;
@@ -54,7 +59,6 @@ type PreviewAvatarViewProps = {
   onSpeechStart: () => void;
   onSpeechEnd: () => void;
   onSubtitle: (text: string) => void;
-  onUnmount: () => void;
   onMobileAudioUnlock: () => void;
 };
 
@@ -69,13 +73,10 @@ function PreviewAvatarView({
   onSpeechStart,
   onSpeechEnd,
   onSubtitle,
-  onUnmount,
   onMobileAudioUnlock,
 }: PreviewAvatarViewProps) {
-  useEffect(() => onUnmount, [onUnmount]);
-
   return (
-    <div className={`relative ${className || ""}`}>
+    <div className={cn("relative min-h-0 min-w-0", className)}>
       <NarratorAvatar
         key={selectedInstructor}
         ref={avatarRef}
@@ -85,7 +86,7 @@ function PreviewAvatarView({
         onSpeechStart={onSpeechStart}
         onSpeechEnd={onSpeechEnd}
         onSubtitle={onSubtitle}
-        className="h-full w-full"
+        className={PREVIEW_AVATAR_CLASS}
       />
       {showUnlockOverlay && showMobileAudioUnlock && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl bg-black/50 px-4 backdrop-blur-sm">
@@ -147,7 +148,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
       ttsApiKey: import.meta.env.VITE_DEEPGRAM_API_KEY,
       lipsyncModules: ["en"] as const,
       lipsyncLang: "en",
-      speechRate: 0.95,
+      speechRate: 0.9,
       accurateLipSync: true,
     }),
     [instructorConfig],
@@ -341,6 +342,24 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     setHasPendingSpeech(false);
   }, [selectedInstructor]);
 
+  /** Preload GLB so the instructor model is requested as soon as preview mounts. */
+  useEffect(() => {
+    const url = instructorConfig.avatarUrl;
+    if (!url) return;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "fetch";
+    link.href = url;
+    link.crossOrigin = "anonymous";
+    document.head.appendChild(link);
+    void fetch(url).catch(() => {
+      /* best-effort warm cache */
+    });
+    return () => {
+      link.remove();
+    };
+  }, [instructorConfig.avatarUrl]);
+
   const isInstructorWaiting = isInstructorWaitActive({
     isPaused,
     hasPendingSpeech,
@@ -373,7 +392,6 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
         onSpeechStart={handleSpeechStart}
         onSpeechEnd={handleSpeechEnd}
         onSubtitle={handleSubtitle}
-        onUnmount={markAvatarNotReady}
         onMobileAudioUnlock={handleMobileAudioUnlock}
       />
     ),
@@ -383,15 +401,26 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
       handleSpeechStart,
       handleSpeechEnd,
       handleSubtitle,
-      markAvatarNotReady,
       showMobileAudioUnlock,
       handleMobileAudioUnlock,
       selectedInstructor,
     ],
   );
 
+  /** Render a fresh avatar mount (never reuse the returned element in two places). */
+  const renderAvatar = useCallback(
+    (className = "h-full w-full", showUnlockOverlay = true) => (
+      <AvatarComponent
+        className={className}
+        showUnlockOverlay={showUnlockOverlay}
+      />
+    ),
+    [AvatarComponent],
+  );
+
   return {
     AvatarComponent,
+    renderAvatar,
     speak,
     stop,
     scheduleAfterSpeech,

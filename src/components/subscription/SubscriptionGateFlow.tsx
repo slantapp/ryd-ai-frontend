@@ -112,8 +112,8 @@ const SubscriptionGateFlow = ({
                 Meet your AI instructors
               </DialogTitle>
               <DialogDescription className="font-inter text-sm text-gray-600">
-                Hover or tap an instructor to hear a quick intro. Try a free
-                sneak-peek lesson, or continue to choose a plan.
+                Hover or tap an instructor to hear a quick intro. Try for FREE,
+                or continue to choose a plan.
               </DialogDescription>
             </DialogHeader>
 
@@ -139,7 +139,7 @@ const SubscriptionGateFlow = ({
               >
                 <PlayCircle className="size-5 shrink-0 fill-white/25" aria-hidden />
                 <span className="font-sans-serifbookflf text-sm font-bold tracking-wide">
-                  Try a free sneak peek
+                  Try for FREE
                 </span>
               </Button>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -163,7 +163,7 @@ const SubscriptionGateFlow = ({
                   >
                     <PlayCircle className="size-5 shrink-0 fill-white/25" aria-hidden />
                     <span className="font-sans-serifbookflf text-sm font-bold tracking-wide">
-                      Try a free sneak peek
+                      Try for FREE
                     </span>
                   </Button>
                   <Button
@@ -220,7 +220,7 @@ const SubscriptionGateFlow = ({
               >
                 <PlayCircle className="size-4 shrink-0 fill-white/25" aria-hidden />
                 <span className="font-sans-serifbookflf text-sm font-bold tracking-wide">
-                  Free sneak peek
+                  Try for FREE
                 </span>
               </Button>
             </div>

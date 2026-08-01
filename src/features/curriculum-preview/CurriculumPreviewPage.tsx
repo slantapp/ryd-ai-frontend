@@ -10,6 +10,9 @@ import {
   Upload,
   CheckCircle2,
   Loader2,
+  Mic,
+  Volume2,
+  Pause,
 } from "lucide-react";
 import Split from "react-split";
 import {
@@ -24,6 +27,15 @@ import CodeEditor from "@/components/courses/exercise/CodeEditor";
 import WebCodeWorkspace from "@/components/courses/exercise/WebCodeWorkspace";
 import TestResults from "@/components/courses/exercise/TestResults";
 import FullscreenModal from "@/components/courses/exercise/FullscreenModal";
+import { PageLoadWaitBanner } from "@/components/courses/exercise/PageLoadWaitBanner";
+import { MobileCollapsible } from "@/components/courses/exercise/MobileCollapsible";
+import {
+  editorConsoleMinSizes,
+  editorConsoleSplitSizes,
+} from "@/components/courses/exercise/codeWorkspaceLayout";
+import { MOBILE_INSTRUCTOR_AUDIO_BUTTON, MOBILE_INSTRUCTOR_AUDIO_HINT } from "@/constants/mobileInstructorAudio";
+import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
+import { cn } from "@/lib/utils";
 import {
   decodeCurriculumCode,
   decodeHandoffSegment,
@@ -69,6 +81,7 @@ type RemoteLoadStatus = "idle" | "loading" | "success" | "error";
 
 export default function CurriculumPreviewPage() {
   const [searchParams] = useSearchParams();
+  const isLgUp = useMediaQueryMinLg();
   const curriculumCodeParam = searchParams.get("curriculumCode");
   const handoffCode = searchParams.get("code");
   const isRemotePreview = Boolean(curriculumCodeParam?.trim());
@@ -265,16 +278,21 @@ export default function CurriculumPreviewPage() {
   }, []);
 
   const {
-    AvatarComponent,
+    renderAvatar,
     speak,
     stop,
     scheduleAfterSpeech,
     clearScheduledAfterSpeech,
     isSpeaking,
+    isPaused,
+    togglePause,
     currentSubtitle,
+    isInstructorWaiting,
+    showMobileAudioUnlock,
+    unlockMobileAudio,
     selectedInstructor,
     setSelectedInstructor,
-  } = usePreviewAvatar();
+  } = usePreviewAvatar({ lessonActive: lessonPhase !== "intro" });
 
   useEffect(() => {
     if (currentSubtitle) {
@@ -599,6 +617,7 @@ export default function CurriculumPreviewPage() {
 
   const startLesson = useCallback(() => {
     if (!currentLesson || lessonStartedRef.current) return;
+    unlockMobileAudio();
     lessonStartedRef.current = true;
     setLessonPhase("teaching");
     setCanStartQuestions(false);
@@ -606,7 +625,7 @@ export default function CurriculumPreviewPage() {
 
     const segments = getTeachingSegments(currentLesson);
     playTeachingSegment(currentLesson, segments[0]);
-  }, [currentLesson, playTeachingSegment]);
+  }, [currentLesson, playTeachingSegment, unlockMobileAudio]);
 
   const startQuestions = useCallback(() => {
     if (!currentLesson || currentLesson.questions.length === 0 || !canStartQuestions) return;
@@ -962,6 +981,8 @@ export default function CurriculumPreviewPage() {
 
   const currentQuestion = currentLesson.questions[currentQuestionIndex];
   const isCodeQuestion = currentQuestion?.type === "code_test";
+  const isCodeTestQuestionActive =
+    lessonPhase === "questions" && isCodeQuestion;
 
   return (
     <div className="flex h-screen min-h-0 bg-gray-100">
@@ -1053,119 +1074,206 @@ export default function CurriculumPreviewPage() {
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {/* Top bar */}
-        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
-          <div className="flex items-center gap-4">
-            <h1 className="text-lg font-semibold text-gray-900">{currentLesson.title}</h1>
-            <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary">
-              {lessonPhase === "intro"
-                ? "Ready to start"
-                : lessonPhase === "teaching"
-                  ? "Learning"
-                  : lessonPhase === "questions"
-                    ? `Question ${currentQuestionIndex + 1}/${currentLesson.questions.length}`
-                    : "Complete"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {lessonPhase === "intro" && (
-              <button
-                type="button"
-                onClick={startLesson}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 transition-all hover:bg-primary/90"
-              >
-                <Play className="h-4 w-4" />
-                Start Lesson
-              </button>
-            )}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-2 sm:p-3">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] bg-white shadow-lg">
+          <PageLoadWaitBanner
+            isLoading={isInstructorWaiting && !showMobileAudioUnlock}
+            mobileOnly={false}
+          />
 
-            {lessonPhase === "teaching" && (
-              <button
-                type="button"
-                onClick={startQuestions}
-                disabled={!canStartQuestions || currentLesson.questions.length === 0}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${canStartQuestions && currentLesson.questions.length > 0
-                  ? "bg-primary text-white shadow-md shadow-primary/25 hover:bg-primary/90"
-                  : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  }`}
-              >
-                <SkipForward className="h-4 w-4" />
-                {currentLesson.questions.length === 0
-                  ? "No Questions"
-                  : canStartQuestions
-                    ? "Start Questions"
-                    : "Listening..."}
-              </button>
-            )}
-
-            {lessonPhase === "questions" && isAnswerSubmitted && !isCodeQuestion && (
-              <button
-                type="button"
-                onClick={handleNextQuestion}
-                disabled={isSpeaking}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 transition-all hover:bg-primary/90 disabled:opacity-50"
-              >
-                <ChevronRight className="h-4 w-4" />
-                {currentQuestionIndex + 1 < currentLesson.questions.length
-                  ? "Next Question"
-                  : "Complete Lesson"}
-              </button>
-            )}
-
-            {lessonPhase === "complete" && (
-              <button
-                type="button"
-                onClick={handleNextLesson}
-                className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-green-500/25 transition-all hover:bg-green-700"
-              >
-                <ChevronRight className="h-4 w-4" />
-                Next Lesson
-              </button>
-            )}
-          </div>
-        </div>
-
-        <PreviewSkipPanel
-          lesson={currentLesson}
-          activeItemId={activeSkipItemId}
-          onJump={jumpToTarget}
-        />
-
-        {/* Content area */}
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          {/* Avatar panel */}
-          <div className="flex w-80 flex-col border-r border-gray-200 bg-linear-to-b from-primary/10 to-white">
-            <div className="flex-1 p-4">
-              <div className="h-64 overflow-hidden rounded-xl border border-primary/20 bg-white shadow-inner">
-                <AvatarComponent className="h-full w-full" />
-              </div>
-
-              {/* Subtitle display */}
-              {isSpeaking && (
-                <div className="mt-4 rounded-xl bg-white p-4 shadow-sm border border-primary/15">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex gap-1">
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "0ms" }} />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "150ms" }} />
-                      <div className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "300ms" }} />
-                    </div>
-                    <span className="text-xs text-primary">Speaking...</span>
+          {lessonPhase === "intro" ? (
+            <div className="flex h-full min-h-0 flex-col overflow-hidden border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white lg:border-l-2">
+              {isLgUp ? (
+                <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+                  <div className="aspect-square h-full max-h-80 w-full max-w-sm overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
+                    {renderAvatar("h-full w-full", false)}
                   </div>
-                  <p className="text-sm text-gray-700 leading-relaxed">{currentSubtitleText || "…"}</p>
+                </div>
+              ) : (
+                <div
+                  className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
+                  aria-hidden
+                >
+                  {renderAvatar("h-full w-full", false)}
                 </div>
               )}
+              <div className="flex min-h-[280px] flex-1 items-center justify-center px-4 py-8 sm:px-6">
+                <div className="mx-auto max-w-md text-center">
+                  <div className="relative mb-6 inline-flex items-center justify-center">
+                    <div className="absolute h-20 w-20 animate-ping rounded-full bg-primary/10" />
+                    <div className="absolute h-16 w-16 animate-pulse rounded-full bg-primary/20" />
+                    <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-primary to-primary/80 shadow-lg shadow-primary/30">
+                      <Play className="size-8 fill-white text-white" aria-hidden />
+                    </div>
+                  </div>
+                  <h2 className="mb-2 font-solway text-2xl font-bold text-gray-800">
+                    Ready to preview?
+                  </h2>
+                  <p className="mb-2 font-inter text-sm font-medium text-gray-700">
+                    {currentLesson.title}
+                  </p>
+                  <p className="mb-6 font-inter leading-relaxed text-gray-500">
+                    This matches what students see. Tap below to start the lesson.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={startLesson}
+                    className="group mx-auto flex w-full max-w-xs shrink-0 items-center justify-center gap-3 whitespace-nowrap rounded-full bg-linear-to-r from-primary via-primary to-primary/90 px-10 py-4 font-solway text-base font-bold tracking-tight text-white shadow-lg shadow-primary/35 ring-2 ring-primary/20 transition-all duration-200 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98] sm:max-w-none sm:px-12"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
+                      <Play className="size-5 fill-white text-white" aria-hidden />
+                    </span>
+                    <span className="pr-1">{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
+                  </button>
+                </div>
+              </div>
             </div>
+          ) : (
+            <>
+              <PreviewSkipPanel
+                lesson={currentLesson}
+                activeItemId={activeSkipItemId}
+                onJump={jumpToTarget}
+              />
 
-          </div>
+              <div className="relative min-h-0 flex-1 overflow-hidden">
+                <Split
+                  className="flex h-full min-h-0"
+                  sizes={isLgUp ? [35, 65] : [0, 100]}
+                  minSize={isLgUp ? 200 : 0}
+                  gutterSize={isLgUp ? 8 : 0}
+                  gutterStyle={(dimension, gutterSize) =>
+                    dimension === "width" && gutterSize > 0
+                      ? {
+                          width: `${gutterSize}px`,
+                          cursor: "col-resize",
+                          pointerEvents: "auto",
+                        }
+                      : { width: "0px", pointerEvents: "none" }
+                  }
+                >
+                  <div
+                    className={cn(
+                      "relative box-border flex h-full min-h-0 flex-col overflow-y-auto scrollbar-hide",
+                      isLgUp ? "px-5 py-4 sm:px-6 sm:py-5" : "min-w-0",
+                    )}
+                  >
+                    {isLgUp ? (
+                      <>
+                        {!isCodeTestQuestionActive ? (
+                          <div className="mt-2 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden sm:mt-4">
+                            <div className="flex h-full min-h-0 min-w-0 w-full items-center justify-center sm:justify-start">
+                              {renderAvatar("h-full w-full", false)}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="pointer-events-none invisible absolute inset-0">
+                            {renderAvatar("h-full w-full", false)}
+                          </div>
+                        )}
+                      </>
+                    ) : null}
+                  </div>
 
-          {/* Main panel */}
-          <div className="flex flex-1 flex-col overflow-hidden">
-            {lessonPhase === "intro" || (lessonPhase === "teaching" && !isLessonCodeDemo) ? (
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="mx-auto max-w-2xl">
-                  <div className="rounded-xl bg-white p-6 shadow-sm">
+                  <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                    {!isLgUp && (
+                      <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
+                        <div className="flex items-center gap-3 px-3 py-2">
+                          <div className="relative flex size-11 shrink-0 items-center justify-center">
+                            {isSpeaking && !isPaused ? (
+                              <>
+                                <span className="absolute inline-flex size-[120%] animate-ping rounded-full bg-primary/30" />
+                                <span className="absolute inline-flex size-full rounded-full bg-primary/20" />
+                              </>
+                            ) : null}
+                            <div
+                              className={cn(
+                                "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md",
+                                isSpeaking && !isPaused
+                                  ? "border-primary shadow-primary/25"
+                                  : "border-primary/25",
+                              )}
+                            >
+                              <Mic className="size-[1.15rem] text-primary" aria-hidden />
+                            </div>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/80">
+                              Instructor audio
+                            </p>
+                            <p className="truncate text-xs text-gray-600">
+                              {isSpeaking && !isPaused
+                                ? currentSubtitleText || "Speaking…"
+                                : isPaused
+                                  ? currentSubtitleText || "Paused"
+                                  : "Ready when you are"}
+                            </p>
+                          </div>
+                          {(isSpeaking || isPaused) && (
+                            <button
+                              type="button"
+                              onClick={togglePause}
+                              className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary"
+                            >
+                              {isPaused ? (
+                                <Play className="size-3.5" aria-hidden />
+                              ) : (
+                                <Pause className="size-3.5" aria-hidden />
+                              )}
+                              {isPaused ? "Resume" : "Pause"}
+                            </button>
+                          )}
+                        </div>
+                        {showMobileAudioUnlock ? (
+                          <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
+                            <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600">
+                              {MOBILE_INSTRUCTOR_AUDIO_HINT}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={unlockMobileAudio}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white"
+                            >
+                              <Volume2 className="h-5 w-5 shrink-0" aria-hidden />
+                              <span>{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
+                            </button>
+                          </div>
+                        ) : null}
+                        {lessonPhase === "teaching" && (
+                          <div className="border-t border-primary/10 px-3 py-2">
+                            <button
+                              type="button"
+                              onClick={startQuestions}
+                              disabled={
+                                !canStartQuestions ||
+                                currentLesson.questions.length === 0
+                              }
+                              className={cn(
+                                "flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold",
+                                canStartQuestions &&
+                                  currentLesson.questions.length > 0
+                                  ? "bg-primary text-white"
+                                  : "cursor-not-allowed bg-gray-200 text-gray-500",
+                              )}
+                            >
+                              <SkipForward className="h-4 w-4" />
+                              {currentLesson.questions.length === 0
+                                ? "No questions"
+                                : canStartQuestions
+                                  ? "Start questions"
+                                  : "Listening…"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+                      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            {lessonPhase === "teaching" && !isLessonCodeDemo ? (
+              <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-y-auto border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-6 lg:border-l-2">
+                <div className="mx-auto w-full max-w-2xl">
+                  <div className="rounded-xl bg-white/80 p-6 shadow-sm backdrop-blur-sm">
                     <h2 className="text-2xl font-bold text-gray-900">{currentLesson.title}</h2>
                     <div className="mt-4 prose max-w-none">
                       <p className="text-gray-700 leading-relaxed">{currentLesson.body}</p>
@@ -1176,7 +1284,7 @@ export default function CurriculumPreviewPage() {
                         <p className="text-gray-700 text-sm leading-relaxed">{currentLesson.avatar_script}</p>
                       </div>
                     )}
-                    {currentLesson.code_example && lessonPhase === "intro" && (
+                    {currentLesson.code_example && (
                       <div className="mt-6 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4">
                         <p className="text-sm text-gray-600">
                           This lesson includes a live code example after the instructor finishes the lesson script.
@@ -1222,9 +1330,9 @@ export default function CurriculumPreviewPage() {
                   ) : (
                     <Split
                       direction="vertical"
-                      className="flex h-full min-h-[320px] w-full flex-col"
-                      sizes={[55, 45]}
-                      minSize={120}
+                      className="flex h-full min-h-0 w-full flex-col"
+                      sizes={editorConsoleSplitSizes(!isLgUp)}
+                      minSize={editorConsoleMinSizes(!isLgUp)}
                       gutterSize={8}
                     >
                       <CodeEditor
@@ -1263,20 +1371,43 @@ export default function CurriculumPreviewPage() {
               </div>
             ) : lessonPhase === "questions" && currentQuestion ? (
               isCodeQuestion ? (
-                <div className="flex flex-1 overflow-hidden">
-                  <div className="flex flex-1 flex-col">
-                    <div className="border-b border-gray-200 bg-white p-4">
-                      <h3 className="font-semibold text-gray-900">{currentQuestion.question}</h3>
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  {!isLgUp ? (
+                    <div className="shrink-0 px-3 pt-2">
+                      <MobileCollapsible label="question">
+                        <h3 className="text-base font-bold leading-snug text-gray-900">
+                          {currentQuestion.question}
+                        </h3>
+                        {currentQuestion.code_example ? (
+                          <div className="mt-2 rounded-lg bg-gray-100 p-3">
+                            <p className="mb-2 text-sm text-gray-600">
+                              {currentQuestion.code_example.description}
+                            </p>
+                            <pre className="overflow-x-auto text-xs text-gray-800">
+                              {currentQuestion.code_example.code}
+                            </pre>
+                          </div>
+                        ) : null}
+                      </MobileCollapsible>
+                    </div>
+                  ) : (
+                    <div className="shrink-0 border-b border-gray-200 bg-white p-4">
+                      <h3 className="font-semibold text-gray-900">
+                        {currentQuestion.question}
+                      </h3>
                       {currentQuestion.code_example && (
                         <div className="mt-3 rounded-lg bg-gray-100 p-3">
-                          <p className="text-sm text-gray-600 mb-2">{currentQuestion.code_example.description}</p>
-                          <pre className="text-xs text-gray-800 overflow-x-auto">
+                          <p className="mb-2 text-sm text-gray-600">
+                            {currentQuestion.code_example.description}
+                          </p>
+                          <pre className="overflow-x-auto text-xs text-gray-800">
                             {currentQuestion.code_example.code}
                           </pre>
                         </div>
                       )}
                     </div>
-                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+                  )}
+                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2 sm:p-4">
                       {useWebWorkspace ? (
                         <WebCodeWorkspace
                           sources={webCode}
@@ -1309,9 +1440,9 @@ export default function CurriculumPreviewPage() {
                       ) : (
                         <Split
                           direction="vertical"
-                          className="flex h-full min-h-[320px] w-full flex-col"
-                          sizes={[55, 45]}
-                          minSize={120}
+                          className="flex h-full min-h-0 w-full flex-col"
+                          sizes={editorConsoleSplitSizes(!isLgUp)}
+                          minSize={editorConsoleMinSizes(!isLgUp)}
                           gutterSize={8}
                         >
                           <CodeEditor
@@ -1383,11 +1514,10 @@ export default function CurriculumPreviewPage() {
                       </div>
                     )}
                   </div>
-                </div>
               ) : (
-                <div className="flex-1 overflow-y-auto p-6">
-                  <div className="mx-auto max-w-2xl">
-                    <div className="rounded-xl bg-white p-6 shadow-sm">
+                <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-y-auto border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-6 lg:border-l-2">
+                  <div className="mx-auto w-full max-w-2xl">
+                    <div className="rounded-xl bg-white/80 p-6 shadow-sm backdrop-blur-sm">
                       <PreviewQuestion
                         question={currentQuestion}
                         selectedAnswer={selectedAnswer}
@@ -1415,10 +1545,35 @@ export default function CurriculumPreviewPage() {
                   <p className="mt-1 text-sm text-gray-500">
                     Answered {currentLesson.questions.length} questions
                   </p>
+                  {getNextLesson() ? (
+                    <button
+                      type="button"
+                      onClick={handleNextLesson}
+                      className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-white transition-all hover:bg-primary/90"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                      Next Lesson
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ) : null}
-          </div>
+                      </div>
+                    </div>
+
+                    {!isLgUp ? (
+                      <div
+                        className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
+                        aria-hidden
+                      >
+                        {renderAvatar("h-full w-full", false)}
+                      </div>
+                    ) : null}
+                  </div>
+                </Split>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

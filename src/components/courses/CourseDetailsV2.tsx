@@ -193,15 +193,19 @@ export default function CourseDetailsV2() {
           ? Math.round((completed.length / lessonTotal) * 100)
           : 0;
       const done = completed.length >= lessonTotal;
-      updateCourseProgress(exercise, {
-        status: done ? "completed" : "ongoing",
-        progress,
-        completedLessons: completed,
-        currentLessonId: lessonId,
-        lessonStarted: true,
-        canStartQuestions: true,
-        lastUpdated: Date.now(),
-      });
+      updateCourseProgress(
+        exercise,
+        {
+          status: done ? "completed" : "ongoing",
+          progress,
+          completedLessons: completed,
+          currentLessonId: lessonId,
+          lessonStarted: true,
+          canStartQuestions: true,
+          lastUpdated: Date.now(),
+        },
+        done ? { immediate: true } : undefined,
+      );
     },
     [exercise, getCourseProgress, lessonTotal, updateCourseProgress],
   );

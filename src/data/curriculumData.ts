@@ -255,6 +255,8 @@ export const DEMO_COURSE_SLUG = "sneak-peek-joke-machine-html";
  */
 export type CurriculumEntry = {
   slug: string;
+  /** Numeric id from `/parent/curriculum/visible` when provided by the API. */
+  curriculumId?: number;
   schema_version?: number;
   curriculum: Curriculum["curriculum"] | CurriculumV2Data | Record<string, unknown>;
 };
@@ -271,8 +273,42 @@ export function isDemoCourseSlug(slug: string | null | undefined): boolean {
 /** Curricula loaded from `/parent/curriculum/visible`. */
 let remoteCurricula: CurriculumEntry[] = [];
 
+function normalizeCurriculumEntry(entry: CurriculumEntry): CurriculumEntry {
+  const raw = entry as CurriculumEntry & {
+    id?: number;
+    curriculum_id?: number;
+  };
+  const curriculumId =
+    typeof entry.curriculumId === "number"
+      ? entry.curriculumId
+      : typeof raw.id === "number"
+        ? raw.id
+        : typeof raw.curriculum_id === "number"
+          ? raw.curriculum_id
+          : undefined;
+  return curriculumId !== undefined ? { ...entry, curriculumId } : entry;
+}
+
 export function setRemoteCurricula(curricula: CurriculumEntry[]): void {
-  remoteCurricula = curricula;
+  remoteCurricula = curricula.map(normalizeCurriculumEntry);
+}
+
+/** Resolves the API curriculum id for feedback and other parent endpoints. */
+export function getCurriculumIdBySlug(slug: string): number | null {
+  const entry = getCurriculumEntryBySlug(slug);
+  if (!entry?.curriculumId || !Number.isFinite(entry.curriculumId)) {
+    return null;
+  }
+  return entry.curriculumId;
+}
+
+export function getCourseTitleBySlug(slug: string): string {
+  const entry = getCurriculumEntryBySlug(slug);
+  if (!entry) return slug;
+  const data = entry.curriculum as { title?: string };
+  return typeof data.title === "string" && data.title.trim()
+    ? data.title.trim()
+    : slug;
 }
 
 /** Visible curriculums from the API only (no bundled local JSON). */

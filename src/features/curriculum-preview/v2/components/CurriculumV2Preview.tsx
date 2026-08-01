@@ -3,14 +3,19 @@ import {
   CheckCircle2,
   Loader2,
   Menu,
+  Play,
   Upload,
   X,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { usePreviewAvatar } from "../../components/PreviewAvatar";
+import { PageLoadWaitBanner } from "@/components/courses/exercise/PageLoadWaitBanner";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
+import { MOBILE_INSTRUCTOR_AUDIO_BUTTON } from "@/constants/mobileInstructorAudio";
+import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import type { PublishStatus } from "../../types";
 import {
+  countLessonsV2,
   findLessonV2ById,
   getFirstLessonV2,
   getNextLessonV2,
@@ -36,6 +41,7 @@ export function CurriculumV2Preview({
   onPublish,
   onBackToUpload,
 }: CurriculumV2PreviewProps) {
+  const isLgUp = useMediaQueryMinLg();
   const [currentLesson, setCurrentLesson] = useState<LessonV2 | null>(
     () => getFirstLessonV2(curriculum),
   );
@@ -44,19 +50,24 @@ export function CurriculumV2Preview({
   );
   const [showSidebar, setShowSidebar] = useState(true);
   const [lessonKey, setLessonKey] = useState(0);
+  const [lessonStarted, setLessonStarted] = useState(false);
 
   const {
-    AvatarComponent,
+    renderAvatar,
     speak,
     stop,
     scheduleAfterSpeech,
     clearScheduledAfterSpeech,
     isSpeaking,
+    isPaused,
+    togglePause,
     currentSubtitle,
     isInstructorWaiting,
+    showMobileAudioUnlock,
+    unlockMobileAudio,
     selectedInstructor,
     setSelectedInstructor,
-  } = usePreviewAvatar();
+  } = usePreviewAvatar({ lessonActive: lessonStarted });
 
   const allLessons = useMemo(
     () => curriculum.modules.flatMap((m) => m.lessons),
@@ -68,6 +79,8 @@ export function CurriculumV2Preview({
     const idx = allLessons.findIndex((l) => l.id === currentLesson.id);
     return idx >= 0 ? idx + 1 : 1;
   }, [allLessons, currentLesson]);
+
+  const lessonTotal = countLessonsV2(curriculum);
 
   useEffect(() => {
     const hasCode = curriculum.modules.some((m) =>
@@ -82,15 +95,25 @@ export function CurriculumV2Preview({
     if (hasCode) prefetchMonacoEditor();
   }, [curriculum]);
 
+  const handleStartLesson = useCallback(() => {
+    if (!currentLesson) return;
+    unlockMobileAudio();
+    clearScheduledAfterSpeech();
+    setLessonStarted(true);
+    setLessonKey((k) => k + 1);
+  }, [clearScheduledAfterSpeech, currentLesson, unlockMobileAudio]);
+
   const selectLesson = useCallback(
     (lesson: LessonV2) => {
+      unlockMobileAudio();
       stop();
       clearScheduledAfterSpeech();
       setCurrentLesson(lesson);
+      setLessonStarted(true);
       setLessonKey((k) => k + 1);
       setShowSidebar(false);
     },
-    [clearScheduledAfterSpeech, stop],
+    [clearScheduledAfterSpeech, stop, unlockMobileAudio],
   );
 
   const handleLessonComplete = useCallback((lessonId: string) => {
@@ -136,16 +159,15 @@ export function CurriculumV2Preview({
         {showSidebar ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
-        {showSidebar && (
-          <button
-            type="button"
-            aria-label="Close course menu"
-            className="fixed inset-0 z-30 bg-black/30 lg:hidden"
-            onClick={() => setShowSidebar(false)}
-          />
-        )}
+      {showSidebar && (
+        <button
+          type="button"
+          aria-label="Close course menu"
+          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
 
-      {/* Course outline — CodeKids-style sidebar */}
       <div
         className={`fixed inset-y-0 left-0 z-40 flex h-full w-76 shrink-0 flex-col border-r border-gray-200 bg-white shadow-lg transition-transform lg:relative lg:translate-x-0 ${
           showSidebar ? "translate-x-0" : "-translate-x-full"
@@ -222,25 +244,87 @@ export function CurriculumV2Preview({
         />
       </div>
 
-      {/* Main stage — full height learning space */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <LessonPlayer
-          key={`${currentLesson.id}-${lessonKey}`}
-          curriculum={curriculum}
-          lesson={currentLesson}
-          lessonOrdinal={lessonOrdinal}
-          lessonTotal={allLessons.length}
-          speak={speak}
-          stop={stop}
-          scheduleAfterSpeech={scheduleAfterSpeech}
-          clearScheduledAfterSpeech={clearScheduledAfterSpeech}
-          isSpeaking={isSpeaking}
-          currentSubtitle={currentSubtitle}
-          avatarSlot={<AvatarComponent className="h-full w-full" />}
-          onLessonComplete={handleLessonComplete}
-          onNextLesson={handleNextLesson}
-          isInstructorWaiting={isInstructorWaiting}
-        />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-2 sm:p-3">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[20px] bg-white shadow-lg">
+          <PageLoadWaitBanner
+            isLoading={isInstructorWaiting && !showMobileAudioUnlock}
+            mobileOnly={false}
+          />
+
+          {!lessonStarted ? (
+            <div className="flex h-full min-h-0 flex-col overflow-hidden border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white lg:border-l-2">
+              {isLgUp ? (
+                <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+                  <div className="aspect-square h-full max-h-80 w-full max-w-sm overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
+                    {renderAvatar("h-full w-full", false)}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
+                  aria-hidden
+                >
+                  {renderAvatar("h-full w-full", false)}
+                </div>
+              )}
+              <div className="flex min-h-[280px] flex-1 items-center justify-center px-4 py-8 sm:px-6">
+                <div className="mx-auto max-w-md text-center">
+                  <div className="relative mb-6 inline-flex items-center justify-center">
+                    <div className="absolute h-20 w-20 animate-ping rounded-full bg-primary/10" />
+                    <div className="absolute h-16 w-16 animate-pulse rounded-full bg-primary/20" />
+                    <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-primary to-primary/80 shadow-lg shadow-primary/30">
+                      <Play className="size-8 fill-white text-white" aria-hidden />
+                    </div>
+                  </div>
+                  <h2 className="mb-2 font-solway text-2xl font-bold text-gray-800">
+                    Ready to preview?
+                  </h2>
+                  <p className="mb-2 font-inter text-sm font-medium text-gray-700">
+                    {curriculum.title}
+                  </p>
+                  <p className="mb-6 font-inter leading-relaxed text-gray-500">
+                    This is the same learning experience your students will see.
+                    Tap below to start the lesson.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleStartLesson}
+                    className="group mx-auto flex w-full max-w-xs shrink-0 items-center justify-center gap-3 whitespace-nowrap rounded-full bg-linear-to-r from-primary via-primary to-primary/90 px-10 py-4 font-solway text-base font-bold tracking-tight text-white shadow-lg shadow-primary/35 ring-2 ring-primary/20 transition-all duration-200 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98] sm:max-w-none sm:px-12"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
+                      <Play className="size-5 fill-white text-white" aria-hidden />
+                    </span>
+                    <span className="pr-1">{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <LessonPlayer
+              key={`${currentLesson.id}-${lessonKey}`}
+              curriculum={curriculum}
+              lesson={currentLesson}
+              lessonOrdinal={lessonOrdinal}
+              lessonTotal={lessonTotal}
+              speak={speak}
+              stop={stop}
+              scheduleAfterSpeech={scheduleAfterSpeech}
+              clearScheduledAfterSpeech={clearScheduledAfterSpeech}
+              isSpeaking={isSpeaking}
+              isPaused={isPaused}
+              onTogglePause={togglePause}
+              currentSubtitle={currentSubtitle}
+              avatarSlot={renderAvatar("h-full w-full", false)}
+              onLessonComplete={handleLessonComplete}
+              onNextLesson={handleNextLesson}
+              classicLayout
+              showMobileAudioUnlock={showMobileAudioUnlock}
+              onMobileAudioUnlock={unlockMobileAudio}
+              isInstructorWaiting={isInstructorWaiting}
+              suppressMobileWaitBanner
+            />
+          )}
+        </div>
       </div>
     </div>
   );

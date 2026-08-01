@@ -209,7 +209,7 @@ export default function DemoSneakPeekPage() {
       <div className="flex shrink-0 items-center justify-between gap-2">
         <p className="flex min-w-0 items-center gap-1.5 truncate font-inter text-xs font-semibold uppercase tracking-wide text-primary sm:text-sm">
           <Sparkles className="size-3.5 shrink-0" aria-hidden />
-          <span className="truncate">Free sneak peek · Lesson {lessonOrdinal}</span>
+          <span className="truncate">Try for FREE · Lesson {lessonOrdinal}</span>
         </p>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <Button

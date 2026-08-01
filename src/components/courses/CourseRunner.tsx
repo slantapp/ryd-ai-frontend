@@ -1,11 +1,16 @@
+import { useCallback, useState, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import {
   getCurriculumBySlug,
   getCurriculumEntryBySlug,
+  getCourseTitleBySlug,
+  getCurriculumIdBySlug,
   type Curriculum,
 } from "@/data/curriculumData";
 import { isCurriculumV2 } from "@/features/curriculum-preview/v2/detect";
 import { useCoursesStore } from "@/stores/coursesStore";
+import { useCourseCompletionFeedback } from "@/hooks/useCourseCompletionFeedback";
+import { CourseCompletionFeedbackDialog } from "./CourseCompletionFeedbackDialog";
 import CourseDetails from "./CourseDetails";
 import CourseDetailsV2 from "./CourseDetailsV2";
 import MathCourseDetails from "./math/MathCourseDetails";
@@ -35,23 +40,49 @@ function isMathematicsCurriculum(
 
 export default function CourseRunner() {
   const { exercise } = useParams<{ exercise: string }>();
-  // Re-resolve when visible curricula finish loading / refresh.
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const curriculaRevision = useCoursesStore((s) => s.curriculaRevision);
+
+  const openFeedback = useCallback(() => setFeedbackOpen(true), []);
+
+  useCourseCompletionFeedback(exercise, openFeedback);
 
   const entry = exercise ? getCurriculumEntryBySlug(exercise) : null;
 
-  // Flow curricula use the classic LessonPlayer shell (avatar left / board right).
+  let courseView: ReactNode;
+
   if (entry && isCurriculumV2(entry)) {
-    return <CourseDetailsV2 key={`v2-${exercise}-${curriculaRevision}`} />;
+    courseView = (
+      <CourseDetailsV2 key={`v2-${exercise}-${curriculaRevision}`} />
+    );
+  } else {
+    const curriculum = exercise
+      ? getCurriculumBySlug(exercise)?.curriculum
+      : undefined;
+
+    if (isMathematicsCurriculum(curriculum)) {
+      courseView = (
+        <MathCourseDetails key={`math-${exercise}-${curriculaRevision}`} />
+      );
+    } else {
+      courseView = (
+        <CourseDetails key={`v1-${exercise}-${curriculaRevision}`} />
+      );
+    }
   }
 
-  const curriculum = exercise
-    ? getCurriculumBySlug(exercise)?.curriculum
-    : undefined;
-
-  if (isMathematicsCurriculum(curriculum)) {
-    return <MathCourseDetails key={`math-${exercise}-${curriculaRevision}`} />;
-  }
-
-  return <CourseDetails key={`v1-${exercise}-${curriculaRevision}`} />;
+  return (
+    <>
+      {courseView}
+      {exercise ? (
+        <CourseCompletionFeedbackDialog
+          open={feedbackOpen}
+          onOpenChange={setFeedbackOpen}
+          courseSlug={exercise}
+          courseTitle={getCourseTitleBySlug(exercise)}
+          curriculumId={getCurriculumIdBySlug(exercise)}
+        />
+      ) : null}
+    </>
+  );
 }

@@ -35,6 +35,8 @@ export interface AiRegisterPayload {
   survey?: string;
   /** Optional agent / partner referral code. */
   referralCode?: string;
+  /** Resolved via geo-IP (same source as subscription checkout). */
+  country?: string;
 }
 
 export type ProfileUpdatePayload = {
@@ -147,6 +149,9 @@ export const useAuthStore = create<AuthState>()(
           ...(payload.survey?.trim() ? { survey: payload.survey.trim() } : {}),
           ...(payload.referralCode?.trim()
             ? { referralCode: payload.referralCode.trim() }
+            : {}),
+          ...(payload.country?.trim()
+            ? { country: payload.country.trim() }
             : {}),
         };
         const res = await axiosInstance.post("/parent/auth/register/ai", body);

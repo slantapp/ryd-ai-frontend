@@ -18,6 +18,7 @@ import { HEAR_ABOUT_US_OPTIONS } from "@/data/signupReferralSources";
 import { cn } from "@/lib/utils";
 import type { AiRegisterPayload } from "@/stores/authStore";
 import { useAuthStore } from "@/stores/authStore";
+import { useLocationDefaultsStore } from "@/stores/locationDefaultsStore";
 import { isEmailAlreadyRegisteredError, getErrorMessage } from "@/utils/authErrors";
 import { PRIVATE_PATHS, PUBLIC_PATHS } from "@/utils/routePaths";
 
@@ -154,11 +155,15 @@ export function PersonalInfoStep({
     setFieldErrors({});
     setLoading(true);
     try {
+      const location = await useLocationDefaultsStore
+        .getState()
+        .ensureCountryForCheckout();
       await register({
         email: formData.email.trim(),
         password: formData.password,
         survey: formData.survey?.trim() || undefined,
         referralCode: formData.referralCode?.trim() || undefined,
+        country: location.country?.trim() || undefined,
       });
       toast.success("Account created — welcome!");
       navigate(PRIVATE_PATHS.DASHBOARD, { replace: true });

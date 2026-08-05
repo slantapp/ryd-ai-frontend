@@ -4,6 +4,7 @@ import { useRoutes, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
 import AuthLayout from "@/layout/AuthLayout";
 import DashboardLayout from "@/layout/dashboardLayout";
+import { ContactMessageWidget } from "@/components/contact/ContactMessageWidget";
 import { CurriculumPreviewPage, CurriculumEditPage } from "@/features/curriculum-preview";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 
@@ -26,7 +27,12 @@ const Pages = () => {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
   if (location.pathname in STANDALONE_ROUTES) {
-    return STANDALONE_ROUTES[location.pathname];
+    return (
+      <>
+        {STANDALONE_ROUTES[location.pathname]}
+        <ContactMessageWidget />
+      </>
+    );
   }
 
   return isLoggedIn ? (

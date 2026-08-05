@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import {
   getContactApiErrorMessage,
@@ -24,32 +24,43 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AI_TUTOR_FAQ_GROUPS } from "@/data/aiTutorFaq";
+import { useAuthStore } from "@/stores/authStore";
+import {
+  emptyContactMessageForm,
+  getContactPrefillFromUser,
+  validateContactMessageForm,
+  type ContactMessageFormData,
+  type ContactMessageFormErrors,
+} from "@/utils/contactMessageForm";
 
-type ContactFormData = {
-  name: string;
-  email: string;
-  subject: string;
-  message: string;
-};
-
-type ContactFormErrors = Partial<Record<keyof ContactFormData, string>>;
-
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+type ContactFormErrors = ContactMessageFormErrors;
 
 const SupportPage = () => {
+  const user = useAuthStore((s) => s.user);
+  const buildPrefilledForm = useCallback(() => {
+    const { name, email } = getContactPrefillFromUser(user);
+    return emptyContactMessageForm({ name, email });
+  }, [user]);
+
   const [activeSection, setActiveSection] =
     useState<"contact" | "faq">("contact");
   const [openFaq, setOpenFaq] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [formData, setFormData] = useState<ContactFormData>({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
-  });
+  const [formData, setFormData] = useState<ContactMessageFormData>(() =>
+    emptyContactMessageForm(),
+  );
   const [formErrors, setFormErrors] = useState<ContactFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  useEffect(() => {
+    const { name, email } = getContactPrefillFromUser(user);
+    setFormData((prev) => ({
+      ...prev,
+      name: prev.name || name,
+      email: prev.email || email,
+    }));
+  }, [user]);
 
   const faqs = AI_TUTOR_FAQ_GROUPS;
 
@@ -80,26 +91,7 @@ const SupportPage = () => {
     .filter((group) => group.items.length > 0);
 
   const validateForm = () => {
-    const nextErrors: ContactFormErrors = {};
-
-    if (!formData.name.trim()) {
-      nextErrors.name = "Please enter your name.";
-    }
-
-    if (!formData.email.trim()) {
-      nextErrors.email = "Please enter your email address.";
-    } else if (!emailPattern.test(formData.email.trim())) {
-      nextErrors.email = "Please enter a valid email address.";
-    }
-
-    if (!formData.subject.trim()) {
-      nextErrors.subject = "Please enter a subject.";
-    }
-
-    if (!formData.message.trim()) {
-      nextErrors.message = "Please enter your message.";
-    }
-
+    const nextErrors = validateContactMessageForm(formData);
     setFormErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -139,7 +131,7 @@ const SupportPage = () => {
       [e.target.name]: e.target.value,
     }));
     setFormErrors((prev) => {
-      const field = e.target.name as keyof ContactFormData;
+      const field = e.target.name as keyof ContactMessageFormData;
       if (!prev[field]) return prev;
       const next = { ...prev };
       delete next[field];
@@ -248,12 +240,7 @@ const SupportPage = () => {
                     onClick={() => {
                       setIsSubmitted(false);
                       setFormErrors({});
-                      setFormData({
-                        name: "",
-                        email: "",
-                        subject: "",
-                        message: "",
-                      });
+                      setFormData(buildPrefilledForm());
                     }}
                   >
                     Send another message

@@ -59,5 +59,9 @@ export async function sendContactMessage(payload: SendMessagePayload) {
     "/common/contact/send-message",
     payload,
   );
-  return res.data;
+  const data = res.data;
+  if (data.status !== true) {
+    throw new Error(data.message?.trim() || "Could not send message");
+  }
+  return data;
 }

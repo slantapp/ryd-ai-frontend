@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { devSkipSubscriptionGate } from "@/utils/devSubscriptionBypass";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
+import { ContactMessageWidget } from "@/components/contact/ContactMessageWidget";
 
 interface DashboardProps {
   children?: ReactNode;
@@ -312,6 +313,8 @@ const DashboardLayout = ({ children }: DashboardProps) => {
         onDismiss={handleCheckoutReturnDismiss}
         onSubscribeAgain={handleSubscribeAgainFromCheckout}
       />
+
+      <ContactMessageWidget />
     </div>
   );
 };

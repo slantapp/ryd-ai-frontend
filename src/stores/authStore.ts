@@ -210,7 +210,7 @@ export const useAuthStore = create<AuthState>()(
         }
       },
       updateProfile: async ({ firstName, lastName }) => {
-        const res = await axiosInstance.put("/parent/auth/profile-update", {
+        const res = await axiosInstance.post("/parent/auth/profile-update", {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
         });

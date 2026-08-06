@@ -25,7 +25,7 @@ const inputClass =
   "h-9 rounded-lg border-border bg-[#F8F8FA] px-3 font-inter text-sm text-[#0A090B] shadow-none";
 
 const launcherClass =
-  "flex size-14 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/35 transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
+  "pointer-events-auto flex size-14 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/35 transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 
 type WidgetPhase = "form" | "success";
 
@@ -162,7 +162,7 @@ export function ContactMessageWidget() {
     <div
       ref={rootRef}
       className={cn(
-        "fixed z-100 flex flex-col items-end gap-3",
+        "fixed z-[100] flex flex-col items-end gap-3 pointer-events-none",
         "bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]",
       )}
     >

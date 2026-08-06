@@ -173,14 +173,15 @@ export function ContactMessageWidget() {
         aria-labelledby={`${formId}-title`}
         aria-hidden={!open}
         className={cn(
-          "flex w-[min(calc(100vw-2rem),380px)] origin-bottom-right flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-2xl shadow-black/15 transition-all duration-200 ease-out",
+          "flex origin-bottom-right flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-2xl shadow-black/15 transition-all duration-200 ease-out",
           open
-            ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-            : "pointer-events-none translate-y-2 scale-95 opacity-0",
+            ? "pointer-events-auto w-[min(calc(100vw-2rem),380px)] translate-y-0 scale-100 opacity-100"
+            : "pointer-events-none w-0 h-0 translate-y-2 scale-95 opacity-0",
         )}
         style={{
-          maxHeight:
-            "min(520px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 6rem))",
+          maxHeight: open
+            ? "min(520px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 6rem))"
+            : "0px",
         }}
       >
         <header className="flex shrink-0 items-start justify-between gap-3 bg-primary px-4 py-3 text-white">
@@ -384,4 +385,4 @@ export function ContactMessageWidget() {
       </button>
     </div>
   );
-}
+                    }

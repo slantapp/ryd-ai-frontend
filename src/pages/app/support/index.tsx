@@ -232,7 +232,7 @@ const SupportPage = () => {
                     Message sent successfully!
                   </p>
                   <p className="mt-2 font-sans-serifbookflf text-sm text-gray-500">
-                    We'll get back to you within 24 hours.
+                    We will back to you shortly.
                   </p>
                   <Button
                     variant="outline"

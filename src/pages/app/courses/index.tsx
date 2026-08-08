@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search, ChevronLeft, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -9,10 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ChevronLeft,
-  BookOpen,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCoursesStore } from "@/stores/coursesStore";
 import CourseCard from "@/components/shared/CourseCard";
@@ -34,6 +31,7 @@ import {
 
 const CoursesPage = () => {
   const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   /** Learner age (years): show courses where learner meets the course minimum age. */
   const [ageFilter, setAgeFilter] = useState<
     "all" | "6" | "8" | "10" | "12" | "14" | "16"
@@ -113,9 +111,28 @@ const CoursesPage = () => {
       result = result.filter((c) => (c.level ?? "Beginner") === levelFilter);
     }
 
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      result = result.filter((c) => {
+        const haystack = [
+          c.title,
+          c.desc,
+          c.level,
+          c.class,
+          c.duration,
+          getCategoryMeta(c.categoryId)?.title,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(query);
+      });
+    }
+
     return result;
   }, [
     activeTab,
+    searchQuery,
     ageFilter,
     classFilter,
     levelFilter,
@@ -137,6 +154,8 @@ const CoursesPage = () => {
     () => listCategoriesWithCounts(filteredCourses),
     [filteredCourses]
   );
+
+  const isSearching = searchQuery.trim().length > 0;
 
   useEffect(() => {
     setSelectedCategoryId(null);
@@ -169,11 +188,11 @@ const CoursesPage = () => {
   useEffect(() => {
     if (!selectedCategoryId) return;
     // Keep the category open when filters simply match nothing — show empty state.
-    if (hasActiveFilters) return;
+    if (hasActiveFilters || isSearching) return;
     if (!categoryFolders.some((f) => f.category.id === selectedCategoryId)) {
       setSelectedCategoryId(null);
     }
-  }, [categoryFolders, hasActiveFilters, selectedCategoryId]);
+  }, [categoryFolders, hasActiveFilters, isSearching, selectedCategoryId]);
 
   const tabTriggerClass = cn(
     "shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-all sm:px-4 sm:py-2 sm:text-sm md:px-6",
@@ -195,7 +214,7 @@ const CoursesPage = () => {
   return (
     <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col">
       <section className="flex min-h-0 flex-1 flex-col space-y-3 sm:space-y-4">
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <h2 className="font-solway text-xl font-bold tracking-tight text-[#0A090B] sm:text-2xl lg:text-3xl">
               Courses Collection
@@ -203,8 +222,24 @@ const CoursesPage = () => {
             <p className="mt-1 font-inter text-sm text-gray-600 sm:text-base">
               {selectedCategoryId
                 ? `Courses in ${activeCategoryMeta?.title ?? "this category"}.`
-                : "Browse by category, then open a course to start learning."}
+                : isSearching
+                  ? "Showing courses that match your search."
+                  : "Browse by category, then open a course to start learning."}
             </p>
+          </div>
+          <div className="relative w-full sm:max-w-xs lg:max-w-sm">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400"
+              aria-hidden
+            />
+            <Input
+              type="search"
+              placeholder="Search courses..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 rounded-lg border-primary/20 bg-white pl-9 font-inter text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label="Search courses"
+            />
           </div>
         </div>
 
@@ -349,12 +384,44 @@ const CoursesPage = () => {
                   No courses found
                 </h3>
                 <p className="max-w-sm text-sm text-gray-500 sm:text-base">
-                  {activeTab === "ongoing"
-                    ? "You don't have any ongoing courses yet."
-                    : activeTab === "completed"
-                      ? "You haven't completed any courses yet."
-                      : "No courses available."}
+                  {isSearching
+                    ? "Nothing matches your search. Try a different title or keyword."
+                    : activeTab === "ongoing"
+                      ? "You don't have any ongoing courses yet."
+                      : activeTab === "completed"
+                        ? "You haven't completed any courses yet."
+                        : "No courses available."}
                 </p>
+                {isSearching ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 font-inter"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    Clear search
+                  </Button>
+                ) : null}
+              </div>
+            ) : !selectedCategoryId && isSearching ? (
+              <div className="space-y-4 pb-4 sm:space-y-5">
+                <p className="font-inter text-sm font-medium text-gray-800">
+                  {filteredCourses.length}{" "}
+                  {filteredCourses.length === 1 ? "result" : "results"}
+                </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6">
+                  {filteredCourses.map((course) => (
+                    <CourseCard
+                      key={course.slug}
+                      course={course}
+                      showWishlistButton={true}
+                      isInWishlist={isInWishlist(course.slug)}
+                      onWishlistToggle={toggleWishlist}
+                      wishlistButtonVariant="toggle"
+                    />
+                  ))}
+                </div>
               </div>
             ) : !selectedCategoryId ? (
               <div className="space-y-4 pb-4 sm:space-y-5">
@@ -405,11 +472,24 @@ const CoursesPage = () => {
                       No courses found
                     </h4>
                     <p className="mt-1 max-w-sm font-inter text-sm text-gray-600">
-                      {hasActiveFilters
-                        ? "Nothing matches your current filters. Try another level, age, or class — or clear the filters."
-                        : "No courses in this category yet."}
+                      {isSearching
+                        ? "Nothing in this category matches your search."
+                        : hasActiveFilters
+                          ? "Nothing matches your current filters. Try another level, age, or class — or clear the filters."
+                          : "No courses in this category yet."}
                     </p>
                     <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                      {isSearching ? (
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          className="font-inter"
+                          onClick={() => setSearchQuery("")}
+                        >
+                          Clear search
+                        </Button>
+                      ) : null}
                       {hasActiveFilters ? (
                         <Button
                           type="button"
@@ -423,7 +503,9 @@ const CoursesPage = () => {
                       ) : null}
                       <Button
                         type="button"
-                        variant={hasActiveFilters ? "outline" : "link"}
+                        variant={
+                          hasActiveFilters || isSearching ? "outline" : "link"
+                        }
                         size="sm"
                         className="font-inter"
                         onClick={() => setSelectedCategoryId(null)}

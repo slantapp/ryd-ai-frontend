@@ -52,3 +52,4 @@ On `code_test` practice handoff, optional `code_example.starterCode` seeds the e
 
 - [`docs/CURRICULUM_V2_GUIDE.md`](../../../../docs/CURRICULUM_V2_GUIDE.md)
 - [`docs/CURRICULUM_V2_SAMPLE.json`](../../../../docs/CURRICULUM_V2_SAMPLE.json)
+- [`docs/CURRICULUM_V2_CAPTION_SAMPLE.json`](../../../../docs/CURRICULUM_V2_CAPTION_SAMPLE.json) — speech vs subtitle `avatar.show`

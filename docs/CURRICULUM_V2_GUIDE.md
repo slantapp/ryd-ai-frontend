@@ -4,6 +4,8 @@ This guide is for **authors, teachers, and developers** building **schema v2** c
 
 **Working example:** [`CURRICULUM_V2_SAMPLE.json`](./CURRICULUM_V2_SAMPLE.json)
 
+**Subtitle `show` test file:** [`CURRICULUM_V2_CAPTION_SAMPLE.json`](./CURRICULUM_V2_CAPTION_SAMPLE.json) — upload this in Curriculum Preview to hear speech vs live subtitle swaps.
+
 **Legacy v1 format:** [`CURRICULUM_JSON_GUIDE.md`](./CURRICULUM_JSON_GUIDE.md)
 
 ---
@@ -184,6 +186,49 @@ On `pause` beats, **Continue** is disabled until a timer finishes:
   "advance": "auto"
 }
 ```
+
+---
+
+### Voice vs subtitle (`avatar.show`)
+
+The avatar **always speaks** `avatar.text` (and other spoken fields). The live subtitle normally repeats those words as they are spoken, so voice and captions stay in time.
+
+If a phrase should **look** like math or code while still being **said** in everyday words, add optional `avatar.show`. You only list the islands inside the sentence — you do not rewrite the whole line.
+
+```json
+{
+  "id": "multiply",
+  "type": "speak",
+  "phase": "teach",
+  "avatar": {
+    "text": "When we multiply, 2 times 3 equals 6, and we call that the product.",
+    "show": [
+      { "say": "2 times 3", "as": "2 × 3" },
+      { "say": "equals 6", "as": "= 6" }
+    ]
+  },
+  "advance": "manual"
+}
+```
+
+**They hear:** “When we multiply, 2 times 3 equals 6…”  
+**They read in the subtitle (once each phrase is fully spoken):** “When we multiply, 2 × 3 = 6…”
+
+| Field | Who it is for |
+|--------|----------------|
+| `avatar.text` | Voice — write how you would **say** it |
+| `avatar.show[].say` | The exact spoken island, copied from `text` |
+| `avatar.show[].as` | What the subtitle should **show** for that island |
+
+Rules for authors:
+
+1. `show` is **optional**. Skip it and the subtitle matches the voice.
+2. Copy `say` **exactly** from the spoken line (same words and spaces). Do not invent a shorter caption for the whole sentence.
+3. You can list several islands on one line. Longer phrases win if two overlap (`2 times 3` beats `times`).
+4. Until an island is fully spoken, learners still see the spoken words; the swap happens when that phrase completes. That keeps captions in time with the voice.
+5. The same `show` list is used for other spoken fields on that beat (`on_ask`, `on_correct`, recap lead, and a `display` body if `speak_body` is true).
+
+**Test file:** [`CURRICULUM_V2_CAPTION_SAMPLE.json`](./CURRICULUM_V2_CAPTION_SAMPLE.json)
 
 ---
 
@@ -618,13 +663,14 @@ Authors should **preview** before publishing to hear speech, test code runs, and
 1. **Start with a hook** — one short `speak` or `display` beat before heavy content.
 2. **Chunk explanations** — several short `display` beats beat one giant paragraph.
 3. **Use `speak_body: false`** on long display bodies; let `avatar.text` carry the narration.
-4. **Check understanding early** — put a `question` beat before a hard `code_demo` if needed.
-5. **Pause after demos** — give learners time to absorb (`keep_previous` keeps code visible).
-6. **End with recap + bridge** — feels like a real class ending.
-7. **Stable beat IDs** — used by the skip panel in preview; don’t rename casually.
-8. **Unique lesson IDs** — prefix with module: `module_02__lesson_03`.
-9. **`starterCode` on code tests** — skeleton with comments, not the full answer.
-10. **Set `schema_version: 2`** on the root object.
+4. **Use `avatar.show`** when a spoken phrase should look like math or code in the subtitle (`say` must match the spoken words exactly).
+5. **Check understanding early** — put a `question` beat before a hard `code_demo` if needed.
+6. **Pause after demos** — give learners time to absorb (`keep_previous` keeps code visible).
+7. **End with recap + bridge** — feels like a real class ending.
+8. **Stable beat IDs** — used by the skip panel in preview; don’t rename casually.
+9. **Unique lesson IDs** — prefix with module: `module_02__lesson_03`.
+10. **`starterCode` on code tests** — skeleton with comments, not the full answer.
+11. **Set `schema_version: 2`** on the root object.
 
 ### Suggested pattern for a ~10-minute lesson
 
@@ -703,6 +749,7 @@ When you upload JSON in curriculum preview, the app validates:
 
 - Every beat has `id`, `type`, and `advance`
 - `speak` requires `avatar.text`
+- `avatar.show` is optional; each item needs `say` and `as`, and `say` must appear in the spoken line
 - `display` requires `body`
 - `question` requires a valid question object
 - `code_demo` / `formula_demo` require their example objects

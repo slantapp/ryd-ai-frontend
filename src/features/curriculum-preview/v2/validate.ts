@@ -82,6 +82,58 @@ function validateQuestion(
   }
 }
 
+const AVATAR_SAY_FIELDS = [
+  "text",
+  "on_ask",
+  "on_correct",
+  "on_wrong",
+  "before_demo",
+  "handoff",
+] as const;
+
+function validateAvatarShow(
+  avatar: Record<string, unknown> | undefined,
+  label: string,
+  errors: string[],
+  extraSpoken: string[] = [],
+): void {
+  if (!avatar || avatar.show === undefined) return;
+  if (!Array.isArray(avatar.show)) {
+    errors.push(`${label}: avatar.show must be an array of { say, as } objects`);
+    return;
+  }
+
+  const spokenBlob = [
+    ...AVATAR_SAY_FIELDS.map((key) => avatar[key]),
+    ...extraSpoken,
+  ]
+    .filter((v): v is string => typeof v === "string")
+    .join("\n")
+    .toLowerCase();
+
+  avatar.show.forEach((item, i) => {
+    const entry = `${label}: avatar.show[${i}]`;
+    if (!item || typeof item !== "object") {
+      errors.push(`${entry} must be an object with say and as`);
+      return;
+    }
+    const row = item as Record<string, unknown>;
+    if (!row.say || typeof row.say !== "string") {
+      errors.push(`${entry}: missing 'say' string`);
+    }
+    if (row.as === undefined || typeof row.as !== "string") {
+      errors.push(`${entry}: missing 'as' string`);
+    }
+    if (typeof row.say === "string" && row.say.trim() && spokenBlob) {
+      if (!spokenBlob.includes(row.say.trim().toLowerCase())) {
+        errors.push(
+          `${entry}: 'say' must appear exactly in avatar.text (or on_ask / on_correct / on_wrong / before_demo / handoff)`,
+        );
+      }
+    }
+  });
+}
+
 function validateBeat(
   beat: unknown,
   label: string,
@@ -103,6 +155,28 @@ function validateBeat(
   }
   if (!b.advance || typeof b.advance !== "string" || !ADVANCE_MODES.has(b.advance)) {
     errors.push(`${label}: advance must be auto, manual, or on_answer`);
+  }
+
+  if (b.avatar !== undefined) {
+    if (!b.avatar || typeof b.avatar !== "object") {
+      errors.push(`${label}: avatar must be an object`);
+    } else {
+      const extraSpoken: string[] = [];
+      if (typeof b.body === "string") extraSpoken.push(b.body);
+      if (Array.isArray(b.points)) {
+        extraSpoken.push(
+          ...(b.points.filter((p) => typeof p === "string") as string[]),
+        );
+      }
+      const q = b.question as Record<string, unknown> | undefined;
+      if (typeof q?.question === "string") extraSpoken.push(q.question);
+      validateAvatarShow(
+        b.avatar as Record<string, unknown>,
+        label,
+        errors,
+        extraSpoken,
+      );
+    }
   }
 
   switch (b.type) {

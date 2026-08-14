@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { RichBody } from "../RichBody";
+import { applySubtitleShow } from "../../subtitleShow";
 import type { Beat, DisplayBeat, MediaBeat, RecapBeat, SpeakBeat } from "../../types";
 import { phaseMeta } from "../../phaseStyles";
 
@@ -28,7 +29,7 @@ export function SpeakBeatView({ beat }: { beat: SpeakBeat }) {
   return (
     <Panel label={meta?.label ?? "Listen"}>
       <p className="text-sm leading-relaxed text-gray-800 sm:text-base">
-        {beat.avatar.text}
+        {applySubtitleShow(beat.avatar.text, beat.avatar.show)}
       </p>
     </Panel>
   );
@@ -102,7 +103,10 @@ export function PauseBeatView({
   return (
     <Panel label="Pause">
       <p className="text-sm text-gray-800 sm:text-base">
-        {beat.avatar?.text ?? "Look at the screen, then continue when you're ready."}
+        {applySubtitleShow(
+          beat.avatar?.text ?? "Look at the screen, then continue when you're ready.",
+          beat.avatar?.show,
+        )}
       </p>
       {secondsLeft > 0 && (
         <p className="mt-3 text-sm font-medium text-primary">

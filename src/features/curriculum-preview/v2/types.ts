@@ -32,8 +32,21 @@ export interface QuestionRetry {
   on_exhausted?: "continue";
 }
 
+/** Swap a spoken island in the live subtitle without changing TTS. */
+export interface AvatarShowReplacement {
+  /** Exact phrase as it appears in the spoken line (e.g. "2 times 3"). */
+  say: string;
+  /** What learners should read in the subtitle (e.g. "2 × 3"). */
+  as: string;
+}
+
 export interface BeatAvatarLines {
   text?: string;
+  /**
+   * Phrase swaps for the live subtitle. The avatar still speaks `text`;
+   * when a `say` phrase is fully spoken, the subtitle shows `as` instead.
+   */
+  show?: AvatarShowReplacement[];
   timing?: "with_display" | "before_display" | "after_display";
   on_ask?: string;
   on_correct?: string;

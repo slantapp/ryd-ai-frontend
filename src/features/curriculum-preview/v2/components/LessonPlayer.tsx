@@ -51,7 +51,13 @@ import {
   resolveQuestionRetry,
 } from "../studentFlow";
 import { stripMarkdownForSpeech } from "../speechText";
+import {
+  normalizeSpeechPart,
+  withShow,
+  type SpeechPart,
+} from "../subtitleShow";
 import type {
+  AvatarShowReplacement,
   Beat,
   BridgeBeat,
   CodeDemoBeat,
@@ -80,7 +86,7 @@ import {
 } from "./beats/ContentBeats";
 import { BridgeBeatView } from "./beats/BridgeBeatView";
 
-type SpeakFn = (text: string) => void;
+type SpeakFn = (text: string, options?: { show?: AvatarShowReplacement[] }) => void;
 type AfterSpeechFn = (fn: () => void) => void;
 
 interface LessonPlayerProps {
@@ -284,24 +290,31 @@ export function LessonPlayer({
   advanceRef.current = advance;
 
   const speakThen = useCallback(
-    (text: string | undefined, then?: () => void) => {
+    (text: string | undefined, then?: () => void, show?: AvatarShowReplacement[]) => {
       const trimmed = text?.trim();
       if (!trimmed) {
         then?.();
         return;
       }
       if (then) scheduleAfterSpeech(then);
-      speak(trimmed);
+      speak(trimmed, show?.length ? { show } : undefined);
     },
     [scheduleAfterSpeech, speak],
   );
 
   /** Speak several learning lines in order (avatar reads almost everything). */
   const speakSequence = useCallback(
-    (parts: Array<string | undefined | null>, then?: () => void) => {
+    (parts: SpeechPart[], then?: () => void) => {
       const queue = parts
-        .map((p) => (p ? stripMarkdownForSpeech(p) : ""))
-        .filter(Boolean);
+        .map((p) => {
+          const u = normalizeSpeechPart(p);
+          if (!u) return null;
+          return {
+            ...u,
+            text: stripMarkdownForSpeech(u.text),
+          };
+        })
+        .filter((u): u is NonNullable<typeof u> => !!u && !!u.text);
       if (queue.length === 0) {
         then?.();
         return;
@@ -311,7 +324,8 @@ export function LessonPlayer({
           then?.();
           return;
         }
-        speakThen(queue[index], () => run(index + 1));
+        const item = queue[index];
+        speakThen(item.text, () => run(index + 1), item.show);
       };
       run(0);
     },
@@ -385,22 +399,23 @@ export function LessonPlayer({
 
     switch (beat.type) {
       case "speak": {
-        speakSequence([goalLine, beat.avatar.text], () =>
+        speakSequence([goalLine, withShow(beat.avatar.text, beat.avatar.show)], () =>
           finishAutoOrManual(beat),
         );
         break;
       }
       case "display": {
         const timing = beat.avatar?.timing ?? "with_display";
+        const show = beat.avatar?.show;
         const titleLine = beat.title
           ? `Let's look at this: ${beat.title}.`
           : undefined;
         const speakBody = beat.speak_body !== false;
         const bodyLine =
           speakBody && beat.body
-            ? stripMarkdownForSpeech(beat.body)
+            ? withShow(stripMarkdownForSpeech(beat.body), show)
             : undefined;
-        const avatarLine = beat.avatar?.text;
+        const avatarLine = withShow(beat.avatar?.text, show);
 
         if (timing === "before_display") {
           speakSequence([goalLine, avatarLine, titleLine, bodyLine], () =>
@@ -417,7 +432,7 @@ export function LessonPlayer({
         speakSequence(
           [
             goalLine,
-            beat.avatar?.text,
+            withShow(beat.avatar?.text, beat.avatar?.show),
             beat.media.alt
               ? `Here's a picture: ${beat.media.alt}.`
               : "Take a look at this on the screen.",
@@ -432,7 +447,7 @@ export function LessonPlayer({
         speakSequence(
           [
             goalLine,
-            beat.avatar?.text,
+            withShow(beat.avatar?.text, beat.avatar?.show),
             "Take a moment to look at the screen. When you're ready, continue.",
           ],
           () => {
@@ -455,12 +470,15 @@ export function LessonPlayer({
               !/\byou (made|built|did|put|finished|added)\b/i.test(line),
           )
           : pointLines;
+        const show = beat.avatar?.show;
         speakSequence(
           [
             goalLine,
-            recapLead,
+            withShow(recapLead, missed ? undefined : show),
             "Here are the key takeaways.",
-            ...(spokenPoints.length > 0 ? spokenPoints : pointLines),
+            ...(spokenPoints.length > 0 ? spokenPoints : pointLines).map((line) =>
+              withShow(line, show),
+            ),
           ],
           () => finishAutoOrManual(beat),
         );
@@ -476,14 +494,16 @@ export function LessonPlayer({
             : missed
               ? "You've reached the end of this sneak peek. Keep practicing — subscribe to unlock more courses."
               : "You've reached the end of this course. Amazing work!";
+        const bridgeText =
+          missed && !gated
+            ? beat.next
+              ? "Nice effort — we'll keep building on these ideas in the next lesson."
+              : beat.avatar?.text
+            : beat.avatar?.text;
         speakSequence(
           [
             goalLine,
-            missed && !gated
-              ? beat.next
-                ? "Nice effort — we'll keep building on these ideas in the next lesson."
-                : beat.avatar?.text
-              : beat.avatar?.text,
+            withShow(bridgeText, beat.avatar?.show),
             endLine,
           ],
           () => enableManualContinue(),
@@ -569,7 +589,7 @@ export function LessonPlayer({
     speakSequence(
       [
         goalLine,
-        demoBeat.avatar?.text,
+        withShow(demoBeat.avatar?.text, demoBeat.avatar?.show),
         example.description ?? "Watch carefully as I type this example.",
       ],
       () => {
@@ -591,7 +611,7 @@ export function LessonPlayer({
     speakSequence(
       [
         goalLine,
-        demoBeat.avatar?.text,
+        withShow(demoBeat.avatar?.text, demoBeat.avatar?.show),
         example.description ?? "Let's work through this step by step.",
       ],
       () => {
@@ -630,6 +650,7 @@ export function LessonPlayer({
   const startQuestion = (qBeat: QuestionBeat, goalLine?: string) => {
     const q = qBeat.question;
     const avatar = qBeat.avatar;
+    const show = avatar?.show;
 
     if (q.type === "code_test" && q.code_example) {
       setDemoMode("demo");
@@ -637,7 +658,7 @@ export function LessonPlayer({
       speakSequence(
         [
           goalLine,
-          avatar?.before_demo ?? "I'll show you an example first.",
+          withShow(avatar?.before_demo ?? "I'll show you an example first.", show),
           example.description,
         ],
         () => {
@@ -649,8 +670,8 @@ export function LessonPlayer({
             speakSequence(
               [
                 example.explanation,
-                avatar?.handoff ?? defaults.handoff_to_practice,
-                avatar?.on_ask ?? q.question,
+                withShow(avatar?.handoff ?? defaults.handoff_to_practice, show),
+                withShow(avatar?.on_ask ?? q.question, show),
               ],
               () => {
                 applyStudentStarter(example);
@@ -669,7 +690,7 @@ export function LessonPlayer({
       speakSequence(
         [
           goalLine,
-          avatar?.before_demo ?? "I'll work through an example first.",
+          withShow(avatar?.before_demo ?? "I'll work through an example first.", show),
           example.description,
         ],
         () => {
@@ -677,8 +698,8 @@ export function LessonPlayer({
             speakSequence(
               [
                 example.explanation,
-                avatar?.handoff ?? defaults.handoff_to_practice,
-                avatar?.on_ask ?? q.question,
+                withShow(avatar?.handoff ?? defaults.handoff_to_practice, show),
+                withShow(avatar?.on_ask ?? q.question, show),
               ],
               () => {
                 typed.reset();
@@ -694,8 +715,8 @@ export function LessonPlayer({
     setDemoMode("practice");
     speakSequence([
       goalLine,
-      avatar?.on_ask,
-      q.question,
+      withShow(avatar?.on_ask, show),
+      withShow(q.question, show),
       q.type === "multiple_choice"
         ? "Pick the best answer."
         : q.type === "true_false"
@@ -725,9 +746,12 @@ export function LessonPlayer({
         // Solved it — they understood the task, so don't re-explain it.
         const feedback =
           beat.avatar?.on_correct ?? defaults.correct_feedback;
-        speakSequence([feedback, "Let's keep going!"], () => {
-          setTimeout(() => advanceRef.current(), 600);
-        });
+        speakSequence(
+          [withShow(feedback, beat.avatar?.show), "Let's keep going!"],
+          () => {
+            setTimeout(() => advanceRef.current(), 600);
+          },
+        );
         return;
       }
 
@@ -748,7 +772,7 @@ export function LessonPlayer({
               setTimeout(() => advanceRef.current(), 600);
             },
           );
-        });
+        }, beat.avatar?.show);
         return;
       }
 
@@ -758,12 +782,18 @@ export function LessonPlayer({
           ? beat.avatar?.on_ask ?? q.question
           : undefined;
       speakThen(feedback, () => {
-        speakSequence([reAskInstruction, retry.hint], () => {
-          setIsAnswerSubmitted(false);
-          setShowCelebration(false);
-          if (clearSelection) setSelectedAnswer(null);
-        });
-      });
+        speakSequence(
+          [
+            withShow(reAskInstruction, beat.avatar?.show),
+            retry.hint,
+          ],
+          () => {
+            setIsAnswerSubmitted(false);
+            setShowCelebration(false);
+            if (clearSelection) setSelectedAnswer(null);
+          },
+        );
+      }, beat.avatar?.show);
     },
     [
       beat,

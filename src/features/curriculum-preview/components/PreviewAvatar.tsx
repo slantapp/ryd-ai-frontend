@@ -13,6 +13,11 @@ import {
   MOBILE_INSTRUCTOR_AUDIO_BUTTON,
   MOBILE_INSTRUCTOR_AUDIO_HINT,
 } from "@/constants/mobileInstructorAudio";
+import {
+  applySubtitleShow,
+  type SpeechUtterance,
+} from "@/features/curriculum-preview/v2/subtitleShow";
+import type { AvatarShowReplacement } from "@/features/curriculum-preview/v2/types";
 
 type NarratorAvatarRef = {
   speakText: (text: string, options?: Record<string, unknown>) => void;
@@ -22,8 +27,12 @@ type NarratorAvatarRef = {
   resumeAudioContext?: () => Promise<void>;
 };
 
+export type SpeakOptions = {
+  show?: AvatarShowReplacement[];
+};
+
 export interface PreviewAvatarHandle {
-  speak: (text: string) => void;
+  speak: (text: string, options?: SpeakOptions) => void;
   stop: () => void;
   isReady: () => boolean;
 }
@@ -118,7 +127,9 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   const avatarReadyRef = useRef(false);
   /** After one user tap on mobile, AudioContext/autoplay is allowed for the session. */
   const mobileAudioUnlockedRef = useRef(false);
-  const pendingSpeechQueueRef = useRef<string[]>([]);
+  const pendingSpeechQueueRef = useRef<SpeechUtterance[]>([]);
+  /** Phrase swaps for the utterance currently being spoken. */
+  const activeShowRef = useRef<AvatarShowReplacement[] | undefined>(undefined);
   /** Runs once after the current utterance finishes (and any queued speech is flushed). */
   const afterSpeechRef = useRef<(() => void) | null>(null);
   const [showMobileAudioUnlock, setShowMobileAudioUnlock] = useState(false);
@@ -174,20 +185,21 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   }, []);
 
   const speakImmediate = useCallback(
-    (text: string) => {
+    (utterance: SpeechUtterance) => {
       try {
-        if (!text) return;
+        if (!utterance.text) return;
 
         if (!isAvatarLive()) {
-          pendingSpeechQueueRef.current.push(text);
+          pendingSpeechQueueRef.current.push(utterance);
           syncPendingSpeech();
           setAwaitingSpeech(true);
           markAvatarNotReady();
           return;
         }
 
+        activeShowRef.current = utterance.show;
         setAwaitingSpeech(true);
-        avatarRef.current!.speakText(text);
+        avatarRef.current!.speakText(utterance.text);
       } catch (error) {
         console.warn("Error speaking text:", error);
         setAwaitingSpeech(false);
@@ -197,15 +209,16 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   );
 
   const speak = useCallback(
-    (text: string) => {
+    (text: string, options?: SpeakOptions) => {
       if (!text) return;
+      const utterance: SpeechUtterance = { text, show: options?.show };
 
       // Queue when the 3D avatar is still loading or was remounted (stale ready flag).
       if (!avatarReadyRef.current || !isAvatarLive()) {
         if (!isAvatarLive()) {
           markAvatarNotReady();
         }
-        pendingSpeechQueueRef.current.push(text);
+        pendingSpeechQueueRef.current.push(utterance);
         syncPendingSpeech();
         setAwaitingSpeech(true);
         return;
@@ -213,14 +226,14 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
 
       // Mobile: never autoplay until the user taps (even if avatar is already ready).
       if (needsMobileUnlock()) {
-        pendingSpeechQueueRef.current.push(text);
+        pendingSpeechQueueRef.current.push(utterance);
         syncPendingSpeech();
         setAwaitingSpeech(true);
         setShowMobileAudioUnlock(true);
         return;
       }
 
-      speakImmediate(text);
+      speakImmediate(utterance);
     },
     [
       isAvatarLive,
@@ -263,6 +276,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
       // Keep mobileAudioUnlockedRef — one tap unlocks the whole session.
       setShowMobileAudioUnlock(false);
       stopAvatarSpeech(avatarRef.current);
+      activeShowRef.current = undefined;
       setIsSpeaking(false);
       setIsPaused(false);
       setCurrentSubtitle("");
@@ -330,7 +344,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   }, [flushNextQueuedSpeech]);
 
   const handleSubtitle = useCallback((text: string) => {
-    setCurrentSubtitle(text);
+    setCurrentSubtitle(applySubtitleShow(text, activeShowRef.current));
   }, []);
 
   const isReady = useCallback(() => avatarReadyRef.current, []);

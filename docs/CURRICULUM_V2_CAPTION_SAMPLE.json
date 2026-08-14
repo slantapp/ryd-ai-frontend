@@ -1,0 +1,121 @@
+{
+  "slug": "subtitle-show-preview-v2",
+  "schema_version": 2,
+  "curriculum": {
+    "title": "Subtitle show() preview",
+    "description": "Short test course: the instructor speaks everyday language while the live subtitle swaps math and code islands. Upload this file in Curriculum Preview to try avatar.show.",
+    "language": "en",
+    "category": "math",
+    "age": 10,
+    "class": "Primary 5",
+    "grade": 5,
+    "duration": "10 minutes",
+    "level": "Beginner",
+    "defaults": {
+      "avatar": {
+        "continue_prompt": "Tap Continue when you're ready."
+      }
+    },
+    "modules": [
+      {
+        "id": "module_01",
+        "title": "Voice vs subtitle",
+        "lessons": [
+          {
+            "id": "module_01__lesson_01",
+            "title": "Try the live subtitle swaps",
+            "goal": "Watch the subtitle change while I keep speaking normally.",
+            "estimated_minutes": 5,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "advance": "auto",
+                "avatar": {
+                  "text": "Listen to my voice, and watch the subtitle under me. I will say things the easy way, and the subtitle will show the written way."
+                }
+              },
+              {
+                "id": "math_island",
+                "type": "speak",
+                "phase": "teach",
+                "advance": "manual",
+                "avatar": {
+                  "text": "When we multiply, 2 times 3 equals 6, and we call that the product.",
+                  "show": [
+                    { "say": "2 times 3", "as": "2 × 3" },
+                    { "say": "equals 6", "as": "= 6" }
+                  ]
+                }
+              },
+              {
+                "id": "math_on_board",
+                "type": "display",
+                "phase": "teach",
+                "advance": "manual",
+                "title": "The board can look different too",
+                "body": "The lesson board can show **2 × 3 = 6** while I still say two times three.",
+                "speak_body": false,
+                "avatar": {
+                  "text": "Look at the board. I still say 2 times 3 equals 6, but you can read it as proper math.",
+                  "show": [
+                    { "say": "2 times 3 equals 6", "as": "2 × 3 = 6" }
+                  ]
+                }
+              },
+              {
+                "id": "code_island",
+                "type": "speak",
+                "phase": "teach",
+                "advance": "manual",
+                "avatar": {
+                  "text": "In code, we write let x equals 5, and we print with console log hello.",
+                  "show": [
+                    { "say": "let x equals 5", "as": "let x = 5" },
+                    { "say": "console log hello", "as": "console.log('hello')" }
+                  ]
+                }
+              },
+              {
+                "id": "no_show",
+                "type": "speak",
+                "phase": "teach",
+                "advance": "manual",
+                "avatar": {
+                  "text": "This line has no show list, so the subtitle matches my voice exactly. That is the default."
+                }
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "advance": "manual",
+                "points": [
+                  "Say math in words. Show math symbols in the subtitle.",
+                  "Copy the spoken phrase exactly into say."
+                ],
+                "avatar": {
+                  "text": "You heard 2 times 3 spoken out loud, while the subtitle used the multiply sign.",
+                  "show": [
+                    { "say": "2 times 3", "as": "2 × 3" }
+                  ]
+                }
+              },
+              {
+                "id": "bridge",
+                "type": "bridge",
+                "phase": "reflect",
+                "advance": "manual",
+                "next": null,
+                "avatar": {
+                  "text": "That's the test. If the subtitle showed 2 times 3 as symbols while I spoke, it is working."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

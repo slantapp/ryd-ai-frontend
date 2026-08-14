@@ -1,4 +1,5 @@
 export * from "./types";
+export * from "./subtitleShow";
 export * from "./detect";
 export * from "./validate";
 export * from "./defaults";

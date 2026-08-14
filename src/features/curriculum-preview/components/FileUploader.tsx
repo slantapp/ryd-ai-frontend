@@ -7,7 +7,16 @@ import {
   Download,
   FileText,
   BookOpen,
+  ChevronDown,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { CurriculumData } from "../types";
 import { sampleCurriculumJSON, sampleMathCurriculumJSON } from "../templates";
 import curriculumJsonGuide from "../../../../docs/CURRICULUM_JSON_GUIDE.md?raw";
@@ -15,7 +24,7 @@ import curriculumV2Guide from "../../../../docs/CURRICULUM_V2_GUIDE.md?raw";
 import {
   extractCurriculumV2Data,
   isCurriculumV2,
-  sampleV2CurriculumJSON,
+  V2_SAMPLE_DOWNLOADS,
   validateCurriculumV2,
   type PreviewLoadResult,
 } from "../v2";
@@ -369,13 +378,12 @@ export function FileUploader({
     );
   }, [downloadFile]);
 
-  const handleDownloadV2Template = useCallback(() => {
-    downloadFile(
-      sampleV2CurriculumJSON,
-      "flow-curriculum-v2-template.json",
-      "application/json",
-    );
-  }, [downloadFile]);
+  const handleDownloadV2Sample = useCallback(
+    (json: string, filename: string) => {
+      downloadFile(json, filename, "application/json");
+    },
+    [downloadFile],
+  );
 
   const handleDownloadV2Guide = useCallback(() => {
     downloadFile(
@@ -660,14 +668,36 @@ export function FileUploader({
               checks, pauses, and recaps. Best for the kid-friendly preview player.
             </p>
             <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={handleDownloadV2Template}
-                className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-teal-700"
-              >
-                <Download className="h-4 w-4" />
-                Download v2 template
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-teal-700"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download v2 sample
+                    <ChevronDown className="h-4 w-4 opacity-90" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-80">
+                  <DropdownMenuLabel>Choose a v2 sample</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {V2_SAMPLE_DOWNLOADS.map((sample) => (
+                    <DropdownMenuItem
+                      key={sample.id}
+                      className="flex cursor-pointer flex-col items-start gap-0.5 py-2.5"
+                      onSelect={() =>
+                        handleDownloadV2Sample(sample.json, sample.filename)
+                      }
+                    >
+                      <span className="font-medium">{sample.label}</span>
+                      <span className="text-muted-foreground text-xs leading-snug whitespace-normal">
+                        {sample.description}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <button
                 type="button"
                 onClick={handleDownloadV2Guide}

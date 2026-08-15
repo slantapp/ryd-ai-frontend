@@ -33,6 +33,7 @@ export interface Lesson {
   title: string;
   body: string;
   avatar_script: string;
+  avatar_show?: Array<{ say: string; as: string }>;
   media: {
     image?: string;
     video?: string;

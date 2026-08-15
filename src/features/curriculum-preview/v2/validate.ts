@@ -91,7 +91,7 @@ const AVATAR_SAY_FIELDS = [
   "handoff",
 ] as const;
 
-function validateAvatarShow(
+export function validateAvatarShow(
   avatar: Record<string, unknown> | undefined,
   label: string,
   errors: string[],

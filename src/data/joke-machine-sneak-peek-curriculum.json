@@ -118,6 +118,11 @@
                 "speak_body": false,
                 "avatar": {
                   "text": "First up: the p tag. It creates a paragraph, a regular line of text. Opening p tag, your sentence, closing p tag. That's the whole pattern.",
+                  "show": [
+                    { "say": "Opening p tag", "as": "<p>" },
+                    { "say": "closing p tag", "as": "</p>" },
+                    { "say": "the p tag", "as": "the <p> tag" }
+                  ],
                   "timing": "with_display"
                 },
                 "advance": "manual"
@@ -211,6 +216,10 @@
                 "speak_body": false,
                 "avatar": {
                   "text": "You already know the pattern, so this one is easy.\n\nSame pattern, new tag. The h1 tag makes the biggest heading on the page — perfect for a title. Let's give your Joke Machine a name.",
+                  "show": [
+                    { "say": "The h1 tag", "as": "The <h1> tag" },
+                    { "say": "h1 tag", "as": "<h1> tag" }
+                  ],
                   "timing": "with_display"
                 },
                 "advance": "manual"

@@ -17,6 +17,7 @@ import {
   getLessonIndexInCurriculum,
   getLessonByIndex,
 } from "@/data/curriculumData";
+import { applySubtitleShow } from "@/features/curriculum-preview/v2/subtitleShow";
 import {
   MultipleChoiceQuestion,
   TrueFalseQuestion,
@@ -142,6 +143,8 @@ function MathCourseDetailsInner() {
   const pendingIntroUnlockLessonIdRef = useRef<string | null>(null);
 
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
+  const currentLessonRef = useRef<Lesson | null>(null);
+  currentLessonRef.current = currentLesson;
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [lessonStarted, setLessonStarted] = useState(false);
@@ -172,6 +175,11 @@ function MathCourseDetailsInner() {
   const [activeFormulaExample, setActiveFormulaExample] =
     useState<FormulaExample | null>(null);
   const [currentSubtitle, setCurrentSubtitle] = useState("");
+  const handleSubtitle = useCallback((text: string) => {
+    setCurrentSubtitle(
+      applySubtitleShow(text, currentLessonRef.current?.avatar_show),
+    );
+  }, []);
   const [isShowingSubtitles, setIsShowingSubtitles] = useState(false);
   const [showMobileAudioUnlock, setShowMobileAudioUnlock] = useState(false);
   const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(
@@ -1670,7 +1678,7 @@ function MathCourseDetailsInner() {
                     clearPausedState();
                   }}
                   onSpeechEnd={handleSpeechEnd}
-                  onSubtitle={setCurrentSubtitle}
+                  onSubtitle={handleSubtitle}
                   className="h-full min-h-0 w-full min-w-0 max-h-full max-w-full"
                 />
               </div>
@@ -1898,7 +1906,7 @@ function MathCourseDetailsInner() {
                   clearPausedState();
                 }}
                 onSpeechEnd={handleSpeechEnd}
-                onSubtitle={setCurrentSubtitle}
+                onSubtitle={handleSubtitle}
                 className="h-full w-full"
               />
             </div>

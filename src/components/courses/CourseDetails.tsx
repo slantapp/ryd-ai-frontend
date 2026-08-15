@@ -17,6 +17,7 @@ import {
   getLessonIndexInCurriculum,
   getLessonByIndex,
 } from "../../data/curriculumData";
+import { applySubtitleShow } from "@/features/curriculum-preview/v2/subtitleShow";
 import {
   QuestionInfo,
   CodeEditor,
@@ -205,6 +206,8 @@ function CourseDetailInner({
 
   // Lesson & Question state
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
+  const currentLessonRef = useRef<Lesson | null>(null);
+  currentLessonRef.current = currentLesson;
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [lessonStarted, setLessonStarted] = useState(false);
@@ -656,7 +659,9 @@ function CourseDetailInner({
 
   // Subtitle comes from NarratorAvatar's onSubtitle callback (real-time spoken word)
   const handleSubtitle = useCallback((text: string) => {
-    setCurrentSubtitle(text);
+    setCurrentSubtitle(
+      applySubtitleShow(text, currentLessonRef.current?.avatar_show),
+    );
   }, []);
 
   // ============================================================================

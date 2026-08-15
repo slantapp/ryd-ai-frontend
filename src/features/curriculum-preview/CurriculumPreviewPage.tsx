@@ -292,7 +292,12 @@ export default function CurriculumPreviewPage() {
     unlockMobileAudio,
     selectedInstructor,
     setSelectedInstructor,
+    setDefaultShow,
   } = usePreviewAvatar({ lessonActive: lessonPhase !== "intro" });
+
+  useEffect(() => {
+    setDefaultShow(currentLesson?.avatar_show);
+  }, [currentLesson, setDefaultShow]);
 
   useEffect(() => {
     if (currentSubtitle) {

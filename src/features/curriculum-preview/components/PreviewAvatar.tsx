@@ -130,6 +130,8 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   const pendingSpeechQueueRef = useRef<SpeechUtterance[]>([]);
   /** Phrase swaps for the utterance currently being spoken. */
   const activeShowRef = useRef<AvatarShowReplacement[] | undefined>(undefined);
+  /** Lesson-level fallback (classic v1 `avatar_show`) when speak() omits options. */
+  const defaultShowRef = useRef<AvatarShowReplacement[] | undefined>(undefined);
   /** Runs once after the current utterance finishes (and any queued speech is flushed). */
   const afterSpeechRef = useRef<(() => void) | null>(null);
   const [showMobileAudioUnlock, setShowMobileAudioUnlock] = useState(false);
@@ -197,7 +199,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
           return;
         }
 
-        activeShowRef.current = utterance.show;
+        activeShowRef.current = utterance.show ?? defaultShowRef.current;
         setAwaitingSpeech(true);
         avatarRef.current!.speakText(utterance.text);
       } catch (error) {
@@ -347,6 +349,10 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     setCurrentSubtitle(applySubtitleShow(text, activeShowRef.current));
   }, []);
 
+  const setDefaultShow = useCallback((show?: AvatarShowReplacement[]) => {
+    defaultShowRef.current = show && show.length > 0 ? show : undefined;
+  }, []);
+
   const isReady = useCallback(() => avatarReadyRef.current, []);
 
   useEffect(() => {
@@ -439,6 +445,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     stop,
     scheduleAfterSpeech,
     clearScheduledAfterSpeech,
+    setDefaultShow,
     isReady,
     isAvatarReady,
     isInstructorWaiting,

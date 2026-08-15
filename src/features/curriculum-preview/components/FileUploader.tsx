@@ -25,6 +25,7 @@ import {
   extractCurriculumV2Data,
   isCurriculumV2,
   V2_SAMPLE_DOWNLOADS,
+  validateAvatarShow,
   validateCurriculumV2,
   type PreviewLoadResult,
 } from "../v2";
@@ -223,6 +224,18 @@ function validateCurriculum(data: unknown): { valid: boolean; errors: string[] }
       if (!les.body && !les.avatar_script) {
         errors.push(
           `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1} needs 'body' or 'avatar_script'`
+        );
+      }
+
+      if (les.avatar_show !== undefined) {
+        validateAvatarShow(
+          {
+            show: les.avatar_show,
+            text: typeof les.avatar_script === "string" ? les.avatar_script : "",
+          },
+          `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}`,
+          errors,
+          typeof les.body === "string" ? [les.body] : [],
         );
       }
 

@@ -53,6 +53,11 @@ export interface Lesson {
   title: string;
   body: string;
   avatar_script: string;
+  /**
+   * Optional subtitle phrase swaps for this lesson. The avatar still speaks
+   * `avatar_script`; finished `say` islands render as `as` in the live subtitle.
+   */
+  avatar_show?: Array<{ say: string; as: string }>;
   media: {
     image?: string;
     video?: string;

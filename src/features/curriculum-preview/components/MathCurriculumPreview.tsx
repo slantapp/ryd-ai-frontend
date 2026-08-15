@@ -85,7 +85,12 @@ export function MathCurriculumPreview({
     currentSubtitle,
     selectedInstructor,
     setSelectedInstructor,
+    setDefaultShow,
   } = usePreviewAvatar();
+
+  useEffect(() => {
+    setDefaultShow(currentLesson?.avatar_show);
+  }, [currentLesson, setDefaultShow]);
 
   useEffect(() => {
     if (currentSubtitle) setCurrentSubtitleText(currentSubtitle);

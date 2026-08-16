@@ -64,6 +64,13 @@ interface CourseProgress {
   lastUpdated: number;
 }
 
+type PendingResume = {
+  lesson: Lesson;
+  questionIndex: number;
+  canStartQuestions: boolean;
+  lessonComplete: boolean;
+};
+
 type PendingAction =
   | { type: "none" }
   | { type: "next_question" }
@@ -141,6 +148,8 @@ function MathCourseDetailsInner() {
   );
   /** Lesson id waiting for intro unlock (speech end or fallback). */
   const pendingIntroUnlockLessonIdRef = useRef<string | null>(null);
+  const pendingResumeRef = useRef<PendingResume | null>(null);
+  const [canResume, setCanResume] = useState(false);
 
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const currentLessonRef = useRef<Lesson | null>(null);
@@ -887,6 +896,94 @@ function MathCourseDetailsInner() {
 
   const handleStartLesson = useCallback(() => {
     if (!curriculum) return;
+
+    const pending = pendingResumeRef.current;
+    if (pending) {
+      pendingResumeRef.current = null;
+      setCanResume(false);
+      const { lesson, questionIndex, canStartQuestions, lessonComplete } =
+        pending;
+
+      void (avatarRef.current as { resumeAudioContext?: () => Promise<void> } | null)
+        ?.resumeAudioContext?.()
+        .catch(() => {
+          /* expected until speakText on some WebKit builds */
+        });
+
+      setLessonStarted(true);
+
+      if (lesson.formula_example) {
+        setActiveFormulaExample(lesson.formula_example);
+        setDisplayedFormula(lesson.formula_example.formula);
+      } else {
+        setActiveFormulaExample(null);
+        setDisplayedFormula("");
+      }
+
+      if (lessonComplete) {
+        setCurrentLesson(lesson);
+        setCurrentQuestion(null);
+        setCurrentQuestionIndex(lesson.questions?.length ?? 0);
+        setLessonPhase("complete");
+        setIntroReady(true);
+        setCompletedLessonIds((prev) => {
+          const next = new Set(prev);
+          next.add(lesson.id);
+          return next;
+        });
+        persistCoursePosition({
+          lessonId: lesson.id,
+          lessonIndex: getLessonIndexInCurriculum(lesson, curriculum),
+          questionIndex: lesson.questions?.length ?? 0,
+          lessonStarted: true,
+          canStartQuestions: true,
+        });
+        return;
+      }
+
+      if (!canStartQuestions) {
+        enterLessonIntro(lesson);
+        persistCoursePosition({
+          lessonId: lesson.id,
+          lessonIndex: getLessonIndexInCurriculum(lesson, curriculum),
+          questionIndex: 0,
+          lessonStarted: true,
+          canStartQuestions: false,
+        });
+        speakLessonContent(lesson);
+        return;
+      }
+
+      const question = lesson.questions?.[questionIndex];
+      if (question) {
+        setCurrentLesson(lesson);
+        setCurrentQuestion(question);
+        setCurrentQuestionIndex(questionIndex);
+        setLessonPhase("questions");
+        setIntroReady(true);
+        persistCoursePosition({
+          lessonId: lesson.id,
+          lessonIndex: getLessonIndexInCurriculum(lesson, curriculum),
+          questionIndex,
+          lessonStarted: true,
+          canStartQuestions: true,
+        });
+        speak(question.question);
+        return;
+      }
+
+      enterLessonIntro(lesson);
+      persistCoursePosition({
+        lessonId: lesson.id,
+        lessonIndex: getLessonIndexInCurriculum(lesson, curriculum),
+        questionIndex: 0,
+        lessonStarted: true,
+        canStartQuestions: false,
+      });
+      speakLessonContent(lesson);
+      return;
+    }
+
     const firstLesson = getFirstLesson(curriculum);
     if (!firstLesson) return;
 
@@ -906,7 +1003,13 @@ function MathCourseDetailsInner() {
     });
 
     speakLessonContent(firstLesson);
-  }, [curriculum, enterLessonIntro, persistCoursePosition, speakLessonContent]);
+  }, [
+    curriculum,
+    enterLessonIntro,
+    persistCoursePosition,
+    speak,
+    speakLessonContent,
+  ]);
 
   const handleRestartCourse = useCallback(() => {
     if (!exercise || !curriculum) return;
@@ -931,6 +1034,8 @@ function MathCourseDetailsInner() {
     setCurrentQuestion(null);
     setCurrentQuestionIndex(0);
     setLessonStarted(false);
+    setCanResume(false);
+    pendingResumeRef.current = null;
     setLessonPhase("intro");
     setIntroReady(false);
     setStudentAnswer("");
@@ -1284,46 +1389,16 @@ function MathCourseDetailsInner() {
       const allQuestionsDone = questionCount > 0 && questionIndex >= questionCount;
       const lessonComplete = completed.has(lesson.id) || allQuestionsDone;
 
+      // Park for Continue tap — async hydrate is outside a user gesture for TTS.
       setCurrentLesson(lesson);
-      setLessonStarted(true);
-
-      if (lesson.formula_example) {
-        setActiveFormulaExample(lesson.formula_example);
-        setDisplayedFormula(lesson.formula_example.formula);
-      } else {
-        setActiveFormulaExample(null);
-        setDisplayedFormula("");
-      }
-
-      if (lessonComplete) {
-        setCurrentQuestion(null);
-        setCurrentQuestionIndex(questionCount);
-        setLessonPhase("complete");
-        setIntroReady(true);
-        setCompletedLessonIds((prev) => {
-          const next = new Set(prev);
-          next.add(lesson.id);
-          return next;
-        });
-      } else if (!saved.canStartQuestions) {
-        // Intro not finished — re-teach currentLessonId instead of jumping to questions.
-        enterLessonIntro(lesson);
-        if (lesson.formula_example) {
-          setActiveFormulaExample(lesson.formula_example);
-          setDisplayedFormula(lesson.formula_example.formula);
-        }
-        speakLessonContent(lesson);
-      } else if (lesson.questions?.[questionIndex]) {
-        setCurrentQuestion(lesson.questions[questionIndex]);
-        setCurrentQuestionIndex(questionIndex);
-        setLessonPhase("questions");
-        setIntroReady(true);
-      } else {
-        setCurrentQuestion(null);
-        setCurrentQuestionIndex(0);
-        setLessonPhase("intro");
-        setIntroReady(true);
-      }
+      setLessonStarted(false);
+      setCanResume(true);
+      pendingResumeRef.current = {
+        lesson,
+        questionIndex,
+        canStartQuestions: saved.canStartQuestions,
+        lessonComplete,
+      };
     })();
 
     return () => {
@@ -1793,7 +1868,7 @@ function MathCourseDetailsInner() {
                   {renderQuestion()}
                 </div>
               </div>
-            ) : currentLesson ? (
+            ) : currentLesson && lessonStarted ? (
               <div className="mx-auto w-full min-w-0 max-w-3xl space-y-4 sm:space-y-5">
                 <div>
                   <div className="mb-2 flex items-center gap-2">
@@ -1863,11 +1938,12 @@ function MathCourseDetailsInner() {
                     <Calculator className="size-7 sm:size-8" />
                   </div>
                   <h2 className="mb-2 text-xl font-bold text-gray-900 sm:text-2xl">
-                    Ready for math?
+                    {canResume ? "Continue your lesson?" : "Ready for math?"}
                   </h2>
                   <p className="mb-6 text-sm leading-relaxed text-gray-600 sm:text-base">
-                    Your instructor will guide you through formulas, examples,
-                    and practice questions — built for learning mathematics.
+                    {canResume && currentLesson
+                      ? `Resume “${currentLesson.title}”. Tap below and your instructor will start speaking again.`
+                      : "Your instructor will guide you through formulas, examples, and practice questions — built for learning mathematics."}
                   </p>
                   <button
                     type="button"
@@ -1875,7 +1951,7 @@ function MathCourseDetailsInner() {
                     className="mx-auto flex w-full max-w-xs items-center justify-center gap-3 rounded-full bg-primary px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 active:scale-[0.98] sm:max-w-none sm:px-10 sm:py-4"
                   >
                     <Play className="size-5 shrink-0 fill-white" />
-                    Start learning
+                    {canResume ? "Continue learning" : "Start learning"}
                   </button>
                 </div>
               </div>

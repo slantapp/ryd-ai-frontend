@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Loader2, Search, ChevronLeft, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import {
   getCategoryIcon,
   isAgeClassFilterableCategory,
   isLevelFilterableCategory,
+  normalizeCategoryId,
   COURSE_LEVEL_FILTER_OPTIONS,
   type CourseCategoryId,
   type CourseLevelFilter,
@@ -30,6 +32,7 @@ import {
 } from "@/utils/schoolClass";
 
 const CoursesPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   /** Learner age (years): show courses where learner meets the course minimum age. */
@@ -40,8 +43,28 @@ const CoursesPage = () => {
   const [levelFilter, setLevelFilter] = useState<"all" | CourseLevelFilter>(
     "all",
   );
-  const [selectedCategoryId, setSelectedCategoryId] =
-    useState<CourseCategoryId | null>(null);
+  const categoryFromUrl = searchParams.get("category");
+  const selectedCategoryId: CourseCategoryId | null = categoryFromUrl
+    ? normalizeCategoryId(categoryFromUrl)
+    : null;
+
+  const openCategory = useCallback(
+    (id: CourseCategoryId | null) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (id) {
+            next.set("category", id);
+          } else {
+            next.delete("category");
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
   const {
     toggleWishlist,
     isInWishlist,
@@ -156,10 +179,13 @@ const CoursesPage = () => {
   );
 
   const isSearching = searchQuery.trim().length > 0;
+  const prevActiveTabRef = useRef(activeTab);
 
   useEffect(() => {
-    setSelectedCategoryId(null);
-  }, [activeTab]);
+    if (prevActiveTabRef.current === activeTab) return;
+    prevActiveTabRef.current = activeTab;
+    openCategory(null);
+  }, [activeTab, openCategory]);
 
   useEffect(() => {
     if (showAgeClassFilters) return;
@@ -187,12 +213,22 @@ const CoursesPage = () => {
 
   useEffect(() => {
     if (!selectedCategoryId) return;
+    // Wait until curricula are loaded so we don't clear a deep-linked category early.
+    if (!curriculaFetched || curriculaLoading) return;
     // Keep the category open when filters simply match nothing — show empty state.
     if (hasActiveFilters || isSearching) return;
     if (!categoryFolders.some((f) => f.category.id === selectedCategoryId)) {
-      setSelectedCategoryId(null);
+      openCategory(null);
     }
-  }, [categoryFolders, hasActiveFilters, isSearching, selectedCategoryId]);
+  }, [
+    categoryFolders,
+    curriculaFetched,
+    curriculaLoading,
+    hasActiveFilters,
+    isSearching,
+    openCategory,
+    selectedCategoryId,
+  ]);
 
   const tabTriggerClass = cn(
     "shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-all sm:px-4 sm:py-2 sm:text-sm md:px-6",
@@ -435,7 +471,7 @@ const CoursesPage = () => {
                       category={category}
                       count={count}
                       icon={getCategoryIcon(category.id)}
-                      onOpen={() => setSelectedCategoryId(category.id)}
+                      onOpen={() => openCategory(category.id)}
                     />
                   ))}
                 </div>
@@ -448,7 +484,7 @@ const CoursesPage = () => {
                     variant="ghost"
                     size="sm"
                     className="w-fit gap-1 px-2 font-inter text-gray-700"
-                    onClick={() => setSelectedCategoryId(null)}
+                    onClick={() => openCategory(null)}
                   >
                     <ChevronLeft className="size-4 shrink-0" aria-hidden />
                     All categories
@@ -508,7 +544,7 @@ const CoursesPage = () => {
                         }
                         size="sm"
                         className="font-inter"
-                        onClick={() => setSelectedCategoryId(null)}
+                        onClick={() => openCategory(null)}
                       >
                         Pick another category
                       </Button>

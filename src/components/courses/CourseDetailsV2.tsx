@@ -48,6 +48,8 @@ export default function CourseDetailsV2() {
   const [lessonStarted, setLessonStarted] = useState(false);
   const [lessonKey, setLessonKey] = useState(0);
   const [progressReady, setProgressReady] = useState(false);
+  /** True when returning to an in-progress lesson — gate asks to continue, then speech starts on tap. */
+  const [canResume, setCanResume] = useState(false);
 
   const {
     AvatarComponent,
@@ -83,7 +85,8 @@ export default function CourseDetailsV2() {
     prefetchMonacoEditor();
   }, []);
 
-  // Hydrate progress, then pick the lesson — do not auto-start teaching on mobile.
+  // Hydrate progress, then pick the lesson — always wait for a Continue/Start tap
+  // so avatar speech runs inside a user gesture (autoplay policies after async load).
   useEffect(() => {
     if (!curriculum || !exercise) {
       setProgressReady(false);
@@ -110,18 +113,14 @@ export default function CourseDetailsV2() {
         lesson = getFirstLessonV2(curriculum);
       }
 
-      // Desktop may resume in-progress lessons; mobile always needs the start tap
-      // so unlockMobileAudio() runs inside a user gesture before the first speak().
-      const isDesktopViewport =
-        typeof window !== "undefined" &&
-        window.matchMedia("(min-width: 1024px)").matches;
-      const started =
-        !!stored?.lessonStarted && !!lesson && isDesktopViewport;
+      const resume =
+        !!stored?.lessonStarted &&
+        !!lesson &&
+        (stored.status === "ongoing" || stored.status === "completed");
+
       setCurrentLesson(lesson);
-      setLessonStarted(started);
-      if (started) {
-        setLessonKey((k) => k + 1);
-      }
+      setLessonStarted(false);
+      setCanResume(resume);
       setProgressReady(true);
     })();
 
@@ -157,6 +156,7 @@ export default function CourseDetailsV2() {
     clearScheduledAfterSpeech();
     setCurrentLesson(lesson);
     setLessonStarted(true);
+    setCanResume(false);
     setLessonKey((k) => k + 1);
     persistLessonPosition(lesson, true);
   }, [
@@ -288,14 +288,17 @@ export default function CourseDetailsV2() {
                 </div>
               </div>
               <h2 className="mb-2 font-solway text-2xl font-bold text-gray-800">
-                Ready to Learn?
+                {canResume ? "Continue your lesson?" : "Ready to Learn?"}
               </h2>
               <p className="mb-2 font-inter text-sm font-medium text-gray-700">
-                {curriculum.title}
+                {canResume && currentLesson
+                  ? currentLesson.title
+                  : curriculum.title}
               </p>
               <p className="mb-6 font-inter leading-relaxed text-gray-500">
-                Your learning adventure awaits! Tap below to begin your lesson and
-                start building amazing things.
+                {canResume
+                  ? "Pick up where you left off. Tap below and your instructor will start teaching this lesson again."
+                  : "Your learning adventure awaits! Tap below to begin your lesson and start building amazing things."}
               </p>
               <button
                 type="button"
@@ -305,7 +308,9 @@ export default function CourseDetailsV2() {
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
                   <Play className="size-5 fill-white text-white" aria-hidden />
                 </span>
-                <span className="pr-1">{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
+                <span className="pr-1">
+                  {canResume ? "Continue learning" : MOBILE_INSTRUCTOR_AUDIO_BUTTON}
+                </span>
               </button>
               <div className="mt-8 flex items-center justify-center gap-2 font-inter text-xs text-gray-400">
                 <span className="h-1 w-1 rounded-full bg-primary/40" />

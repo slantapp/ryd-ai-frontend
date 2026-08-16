@@ -241,7 +241,11 @@ const Dashboard = () => {
                     <button
                       key={category.id}
                       type="button"
-                      onClick={() => navigate(PRIVATE_PATHS.COURSES)}
+                      onClick={() =>
+                        navigate(
+                          `${PRIVATE_PATHS.COURSES}?category=${encodeURIComponent(category.id)}`,
+                        )
+                      }
                       className={cn(
                         "flex w-[9.5rem] shrink-0 flex-col items-start gap-2 rounded-xl border border-gray-100 bg-white p-3 text-left sm:w-auto",
                         "shadow-sm transition-all hover:border-primary/30 hover:shadow-md",

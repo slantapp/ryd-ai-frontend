@@ -129,6 +129,13 @@ interface CourseProgress {
   lastUpdated: number;
 }
 
+type PendingResume = {
+  lesson: Lesson;
+  questionIndex: number;
+  canStartQuestions: boolean;
+  lessonComplete: boolean;
+};
+
 // Action to perform after speech ends
 type PendingAction =
   | { type: "none" }
@@ -199,6 +206,9 @@ function CourseDetailInner({
   );
   /** Lesson id waiting for intro unlock (speech end or fallback). */
   const pendingIntroUnlockLessonIdRef = useRef<string | null>(null);
+  /** Progress to apply on Continue tap so speech starts inside a user gesture. */
+  const pendingResumeRef = useRef<PendingResume | null>(null);
+  const [canResume, setCanResume] = useState(false);
 
   // ============================================================================
   // STATE
@@ -1260,6 +1270,87 @@ function CourseDetailInner({
   const handleStartLesson = useCallback(() => {
     if (!curriculum) return;
 
+    // Resume path: continue the saved lesson and start avatar speech in this tap.
+    const pending = pendingResumeRef.current;
+    if (pending) {
+      pendingResumeRef.current = null;
+      setCanResume(false);
+      const { lesson, questionIndex, canStartQuestions, lessonComplete } =
+        pending;
+
+      void (avatarRef.current as { resumeAudioContext?: () => Promise<void> } | null)
+        ?.resumeAudioContext?.()
+        .catch(() => {
+          /* expected on some WebKit builds until speakText */
+        });
+
+      setLessonStarted(true);
+      setShowMobileAudioUnlock(false);
+
+      if (lessonComplete) {
+        setCurrentLesson(lesson);
+        setCurrentQuestion(null);
+        setCurrentQuestionIndex(lesson.questions?.length ?? 0);
+        setLessonPhase("complete");
+        setIntroReady(true);
+        setCompletedLessonIds((prev) => {
+          const next = new Set(prev);
+          next.add(lesson.id);
+          return next;
+        });
+        persistCoursePosition({
+          lessonId: lesson.id,
+          lessonIndex: getLessonIndexInCurriculum(lesson, curriculum),
+          questionIndex: lesson.questions?.length ?? 0,
+          lessonStarted: true,
+          canStartQuestions: true,
+        });
+        return;
+      }
+
+      if (!canStartQuestions) {
+        enterLessonIntro(lesson);
+        persistCoursePosition({
+          lessonId: lesson.id,
+          lessonIndex: getLessonIndexInCurriculum(lesson, curriculum),
+          questionIndex: 0,
+          lessonStarted: true,
+          canStartQuestions: false,
+        });
+        speakLessonContent(lesson);
+        return;
+      }
+
+      const question = lesson.questions?.[questionIndex];
+      if (question) {
+        setCurrentLesson(lesson);
+        setCurrentQuestion(question);
+        setCurrentQuestionIndex(questionIndex);
+        setLessonPhase("questions");
+        setIntroReady(true);
+        persistCoursePosition({
+          lessonId: lesson.id,
+          lessonIndex: getLessonIndexInCurriculum(lesson, curriculum),
+          questionIndex,
+          lessonStarted: true,
+          canStartQuestions: true,
+        });
+        speak(question.question);
+        return;
+      }
+
+      enterLessonIntro(lesson);
+      persistCoursePosition({
+        lessonId: lesson.id,
+        lessonIndex: getLessonIndexInCurriculum(lesson, curriculum),
+        questionIndex: 0,
+        lessonStarted: true,
+        canStartQuestions: false,
+      });
+      speakLessonContent(lesson);
+      return;
+    }
+
     const firstLesson = getFirstLesson(curriculum);
     if (!firstLesson) return;
 
@@ -1285,6 +1376,7 @@ function CourseDetailInner({
     curriculum,
     enterLessonIntro,
     persistCoursePosition,
+    speak,
     speakLessonContent,
   ]);
 
@@ -1311,6 +1403,8 @@ function CourseDetailInner({
     setCurrentQuestion(null);
     setCurrentQuestionIndex(0);
     setLessonStarted(false);
+    setCanResume(false);
+    pendingResumeRef.current = null;
     setLessonPhase("intro");
     setIntroReady(false);
     resetCodeState();
@@ -1862,36 +1956,16 @@ function CourseDetailInner({
       const lessonComplete =
         completed.has(lesson.id) || allQuestionsDone;
 
-      setLessonStarted(true);
-
-      if (lessonComplete) {
-        setCurrentLesson(lesson);
-        setCurrentQuestion(null);
-        setCurrentQuestionIndex(questionCount);
-        setLessonPhase("complete");
-        setIntroReady(true);
-        setCompletedLessonIds((prev) => {
-          const next = new Set(prev);
-          next.add(lesson.id);
-          return next;
-        });
-      } else if (!saved.canStartQuestions) {
-        // Intro not finished — re-teach currentLessonId instead of jumping to questions.
-        enterLessonIntro(lesson);
-        speakLessonContent(lesson);
-      } else if (lesson.questions?.[questionIndex]) {
-        setCurrentLesson(lesson);
-        setCurrentQuestion(lesson.questions[questionIndex]);
-        setCurrentQuestionIndex(questionIndex);
-        setLessonPhase("questions");
-        setIntroReady(true);
-      } else {
-        setCurrentLesson(lesson);
-        setCurrentQuestion(null);
-        setCurrentQuestionIndex(0);
-        setLessonPhase("intro");
-        setIntroReady(true);
-      }
+      // Park the lesson for Continue — do not auto-speak (async hydrate is outside a user gesture).
+      setCurrentLesson(lesson);
+      setLessonStarted(false);
+      setCanResume(true);
+      pendingResumeRef.current = {
+        lesson,
+        questionIndex,
+        canStartQuestions: saved.canStartQuestions,
+        lessonComplete,
+      };
     })();
 
     return () => {
@@ -2647,7 +2721,7 @@ function CourseDetailInner({
                         </>
                       )}
                     </>
-                  ) : currentLesson ? (
+                  ) : currentLesson && lessonStarted ? (
                     <div className="space-y-6">
                       <div className="mb-6">
                         <div className="flex items-center gap-2 mb-2">
@@ -2773,10 +2847,12 @@ function CourseDetailInner({
 
                         {/* Welcome text */}
                         <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                          Ready to Learn?
+                          {canResume ? "Continue your lesson?" : "Ready to Learn?"}
                         </h2>
                         <p className="text-gray-500 mb-6 leading-relaxed">
-                          Your learning adventure awaits! Click the button below to begin your lesson and start building amazing things.
+                          {canResume && currentLesson
+                            ? `Resume “${currentLesson.title}”. Tap below and your instructor will start speaking again.`
+                            : "Your learning adventure awaits! Click the button below to begin your lesson and start building amazing things."}
                         </p>
 
                         {/* Start course — same action as former StartLessonButton; label stays on one line */}
@@ -2788,7 +2864,9 @@ function CourseDetailInner({
                           <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
                             <Play className="size-5 fill-white text-white" aria-hidden />
                           </span>
-                          <span className="pr-1">Start learning</span>
+                          <span className="pr-1">
+                            {canResume ? "Continue learning" : "Start learning"}
+                          </span>
                         </button>
 
                         {/* Decorative elements */}

@@ -23,19 +23,19 @@ export function BridgeBeatView({
 }) {
   const gated = subscribeGate && !isCourseEnd;
   const title = isCourseEnd
-    ? "Great job!"
+    ? "You finished the course!"
     : gated
       ? "Want to see what happens next?"
       : "Ready for the next lesson?";
   const body =
     beat.avatar?.text ??
     (isCourseEnd
-      ? "You finished this course. Keep practising!"
+      ? "Every lesson complete — that's a huge achievement. Take a moment to celebrate!"
       : gated
         ? "Subscribe to unlock the next lesson and keep building."
         : "Let's keep going.");
   const ctaLabel = isCourseEnd
-    ? "Finish"
+    ? "Celebrate"
     : gated
       ? "Subscribe to continue"
       : "Next lesson";

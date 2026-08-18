@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Play } from "lucide-react";
 import { usePreviewAvatar } from "@/features/curriculum-preview/components/PreviewAvatar";
@@ -21,6 +21,11 @@ import { MOBILE_INSTRUCTOR_AUDIO_BUTTON } from "@/constants/mobileInstructorAudi
 import { getCurriculumEntryBySlug } from "@/data/curriculumData";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { useCoursesStore } from "@/stores/coursesStore";
+import {
+  buildCourseCompletionSpeech,
+  computeV2CourseProgress,
+} from "@/utils/courseProgress";
+import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 
 /**
  * Paid / enrolled learning environment for schema v2 (flow) curricula.
@@ -31,6 +36,9 @@ export default function CourseDetailsV2() {
   const { exercise } = useParams<{ exercise: string }>();
   const updateCourseProgress = useCoursesStore((s) => s.updateCourseProgress);
   const getCourseProgress = useCoursesStore((s) => s.getCourseProgress);
+  const isCourseCompleted = useCoursesStore((s) =>
+    exercise ? s.courseProgress[exercise]?.status === "completed" : false,
+  );
   const isLgUp = useMediaQueryMinLg();
 
   const entry = exercise ? getCurriculumEntryBySlug(exercise) : null;
@@ -50,6 +58,7 @@ export default function CourseDetailsV2() {
   const [progressReady, setProgressReady] = useState(false);
   /** True when returning to an in-progress lesson — gate asks to continue, then speech starts on tap. */
   const [canResume, setCanResume] = useState(false);
+  const courseCompletionSpeechRef = useRef(false);
 
   const {
     AvatarComponent,
@@ -188,11 +197,14 @@ export default function CourseDetailsV2() {
       const completed = Array.from(
         new Set([...(stored?.completedLessons ?? []), lessonId]),
       );
-      const progress =
-        lessonTotal > 0
-          ? Math.round((completed.length / lessonTotal) * 100)
-          : 0;
-      const done = completed.length >= lessonTotal;
+      const lessonIndex = allLessons.findIndex((l) => l.lesson.id === lessonId);
+      const { progress, done } = computeV2CourseProgress({
+        lessonId,
+        lessonIndex,
+        lessonTotal,
+        completedLessonIds: completed,
+      });
+
       updateCourseProgress(
         exercise,
         {
@@ -200,6 +212,7 @@ export default function CourseDetailsV2() {
           progress,
           completedLessons: completed,
           currentLessonId: lessonId,
+          lessonIndex: lessonIndex >= 0 ? lessonIndex : stored?.lessonIndex,
           lessonStarted: true,
           canStartQuestions: true,
           lastUpdated: Date.now(),
@@ -207,7 +220,7 @@ export default function CourseDetailsV2() {
         done ? { immediate: true } : undefined,
       );
     },
-    [exercise, getCourseProgress, lessonTotal, updateCourseProgress],
+    [allLessons, exercise, getCourseProgress, lessonTotal, updateCourseProgress],
   );
 
   const handleNextLesson = useCallback(
@@ -228,6 +241,46 @@ export default function CourseDetailsV2() {
     },
     [curriculum, currentLesson, selectLesson],
   );
+
+  const handleRestartCourse = useCallback(() => {
+    if (!exercise || !curriculum) return;
+    stop();
+    clearScheduledAfterSpeech();
+    courseCompletionSpeechRef.current = false;
+    const first = getFirstLessonV2(curriculum);
+    updateCourseProgress(
+      exercise,
+      {
+        status: "not-started",
+        progress: 0,
+        currentLessonId: null,
+        completedLessons: [],
+        lessonIndex: undefined,
+        questionIndex: 0,
+        lessonStarted: false,
+        canStartQuestions: false,
+        lastUpdated: Date.now(),
+      },
+      { immediate: true },
+    );
+    setCurrentLesson(first);
+    setLessonStarted(false);
+    setCanResume(false);
+    setLessonKey((k) => k + 1);
+  }, [
+    clearScheduledAfterSpeech,
+    curriculum,
+    exercise,
+    stop,
+    updateCourseProgress,
+  ]);
+
+  useEffect(() => {
+    if (!isCourseCompleted || !lessonStarted || !curriculum) return;
+    if (courseCompletionSpeechRef.current) return;
+    courseCompletionSpeechRef.current = true;
+    speak(buildCourseCompletionSpeech(curriculum.title));
+  }, [curriculum, isCourseCompleted, lessonStarted, speak]);
 
   if (!entry) {
     return (
@@ -323,6 +376,15 @@ export default function CourseDetailsV2() {
             </div>
           </div>
         </div>
+      ) : isCourseCompleted && currentLesson ? (
+        <CourseCompletionCelebration
+          courseTitle={curriculum.title}
+          instructorMessage={buildCourseCompletionSpeech(curriculum.title)}
+          currentSubtitle={currentSubtitle}
+          isSpeaking={isSpeaking}
+          avatarSlot={avatarSlot}
+          onRestart={handleRestartCourse}
+        />
       ) : (
         <LessonPlayer
           key={`${currentLesson.id}-${lessonKey}`}

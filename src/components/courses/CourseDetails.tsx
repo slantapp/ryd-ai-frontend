@@ -73,6 +73,12 @@ import {
   type LessonPhase,
   type PrimaryNavKind,
 } from "@/utils/lessonNavigation";
+import {
+  buildCourseCompletionSpeech,
+  isLessonProgressComplete,
+  isV1CourseFinished,
+} from "@/utils/courseProgress";
+import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 
 function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
   return (
@@ -201,6 +207,7 @@ function CourseDetailInner({
   const afterSpeechRef = useRef<(() => void) | null>(null);
   const pendingTypingStartRef = useRef<(() => void) | null>(null);
   const courseCompletedNotifiedRef = useRef(false);
+  const courseCompletionSpeechRef = useRef(false);
   const introUnlockTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -1112,6 +1119,7 @@ function CourseDetailInner({
     } else {
       // All questions completed
       setCurrentQuestion(null);
+      setCurrentQuestionIndex(currentLesson.questions.length);
       setLessonPhase("complete");
       setIntroReady(true);
 
@@ -1413,6 +1421,7 @@ function CourseDetailInner({
     setModuleCorrectCount(0);
     setModuleTotalAnswered(0);
     setCompletedLessonIds(new Set());
+    courseCompletionSpeechRef.current = false;
   }, [
     exercise,
     curriculum,
@@ -2053,8 +2062,11 @@ function CourseDetailInner({
     if (currentIndex < 0) return;
 
     const totalQuestions = currentLesson.questions?.length ?? 0;
-    // Lesson is complete when all questions have been answered (questionIndex >= totalQuestions)
-    const isCurrentLessonComplete = totalQuestions > 0 && currentQuestionIndex >= totalQuestions;
+    const isCurrentLessonComplete = isLessonProgressComplete(
+      currentLesson,
+      completedLessonIds,
+      currentQuestionIndex,
+    );
 
     const progress = calculateProgress(
       currentIndex,
@@ -2062,15 +2074,18 @@ function CourseDetailInner({
       currentQuestionIndex,
       totalQuestions,
       lessonStarted,
-      isCurrentLessonComplete
+      isCurrentLessonComplete,
     );
 
-    setProgressPct(progress);
+    const isCourseFinished = isV1CourseFinished({
+      lesson: currentLesson,
+      curriculum,
+      completedLessonIds,
+      questionIndex: currentQuestionIndex,
+    });
+    const finalProgress = isCourseFinished ? 100 : progress;
 
-    const isLastLesson = currentIndex === allLessons.length - 1;
-
-    // Only mark "completed" when the final lesson is actually finished (all questions answered)
-    const isCourseFinished = isLastLesson && isCurrentLessonComplete;
+    setProgressPct(finalProgress);
 
     const status: "not-started" | "ongoing" | "completed" = !lessonStarted
       ? "not-started"
@@ -2082,7 +2097,7 @@ function CourseDetailInner({
       exercise,
       {
         status,
-        progress,
+        progress: finalProgress,
         currentLessonId: currentLesson.id,
         completedLessons: Array.from(completedLessonIds),
       },
@@ -2108,6 +2123,14 @@ function CourseDetailInner({
     updateCourseProgress,
     onCourseCompleted,
   ]);
+
+  // Instructor celebrates when the course is fully complete.
+  useEffect(() => {
+    if (!isCourseCompleted || !lessonStarted || !curriculum) return;
+    if (courseCompletionSpeechRef.current) return;
+    courseCompletionSpeechRef.current = true;
+    speak(buildCourseCompletionSpeech(curriculum.title));
+  }, [curriculum, isCourseCompleted, lessonStarted, speak]);
 
   // Stop speech when navigating away from this course (before avatar ref is cleared).
   useEffect(() => {
@@ -2721,6 +2744,16 @@ function CourseDetailInner({
                         </>
                       )}
                     </>
+                  ) : isCourseCompleted && currentLesson && lessonStarted ? (
+                    <CourseCompletionCelebration
+                      courseTitle={curriculum?.title ?? currentLesson.title}
+                      instructorMessage={buildCourseCompletionSpeech(
+                        curriculum?.title ?? currentLesson.title,
+                      )}
+                      currentSubtitle={currentSubtitle}
+                      isSpeaking={isSpeaking}
+                      onRestart={handleRestartCourse}
+                    />
                   ) : currentLesson && lessonStarted ? (
                     <div className="space-y-6">
                       <div className="mb-6">

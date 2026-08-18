@@ -47,6 +47,12 @@ import {
   type LessonPhase,
   type PrimaryNavKind,
 } from "@/utils/lessonNavigation";
+import {
+  buildCourseCompletionSpeech,
+  isLessonProgressComplete,
+  isV1CourseFinished,
+} from "@/utils/courseProgress";
+import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 
 interface NarratorAvatarRef {
   speakText: (text: string, options?: Record<string, unknown>) => void;
@@ -149,6 +155,7 @@ function MathCourseDetailsInner() {
   /** Lesson id waiting for intro unlock (speech end or fallback). */
   const pendingIntroUnlockLessonIdRef = useRef<string | null>(null);
   const pendingResumeRef = useRef<PendingResume | null>(null);
+  const courseCompletionSpeechRef = useRef(false);
   const [canResume, setCanResume] = useState(false);
 
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
@@ -653,6 +660,7 @@ function MathCourseDetailsInner() {
 
     setCurrentQuestion(null);
     setActiveFormulaExample(null);
+    setCurrentQuestionIndex(currentLesson.questions.length);
     setLessonPhase("complete");
     setIntroReady(true);
     setCompletedLessonIds((prev) => {
@@ -1046,6 +1054,7 @@ function MathCourseDetailsInner() {
     setTotalQuestionsAnswered(0);
     setModuleCorrectCount(0);
     setModuleTotalAnswered(0);
+    courseCompletionSpeechRef.current = false;
   }, [clearIntroUnlockTimeout, curriculum, exercise, stopSpeaking, updateCourseProgress]);
 
   const handlePreviousLesson = useCallback(() => {
@@ -1457,8 +1466,11 @@ function MathCourseDetailsInner() {
     const currentIndex = getLessonIndexInCurriculum(currentLesson, curriculum);
     if (currentIndex < 0) return;
     const totalQuestions = currentLesson.questions?.length ?? 0;
-    const isCurrentLessonComplete =
-      totalQuestions > 0 && currentQuestionIndex >= totalQuestions;
+    const isCurrentLessonComplete = isLessonProgressComplete(
+      currentLesson,
+      completedLessonIds,
+      currentQuestionIndex,
+    );
     const progress = calculateProgress(
       currentIndex,
       allLessons.length,
@@ -1467,17 +1479,28 @@ function MathCourseDetailsInner() {
       lessonStarted,
       isCurrentLessonComplete,
     );
-    setProgressPct(progress);
-    updateCourseProgress(exercise, {
-      progress,
-      status: progress >= 100 ? "completed" : "ongoing",
-      currentLessonId: currentLesson.id,
-      lessonIndex: currentIndex,
+    const isCourseFinished = isV1CourseFinished({
+      lesson: currentLesson,
+      curriculum,
+      completedLessonIds,
       questionIndex: currentQuestionIndex,
-      lessonStarted,
-      canStartQuestions: introReady,
-      completedLessons: Array.from(completedLessonIds),
     });
+    const finalProgress = isCourseFinished ? 100 : progress;
+    setProgressPct(finalProgress);
+    updateCourseProgress(
+      exercise,
+      {
+        progress: finalProgress,
+        status: isCourseFinished ? "completed" : finalProgress >= 100 ? "completed" : "ongoing",
+        currentLessonId: currentLesson.id,
+        lessonIndex: currentIndex,
+        questionIndex: currentQuestionIndex,
+        lessonStarted,
+        canStartQuestions: introReady,
+        completedLessons: Array.from(completedLessonIds),
+      },
+      isCourseFinished ? { immediate: true } : undefined,
+    );
   }, [
     calculateProgress,
     completedLessonIds,
@@ -1489,6 +1512,13 @@ function MathCourseDetailsInner() {
     lessonStarted,
     updateCourseProgress,
   ]);
+
+  useEffect(() => {
+    if (!isCourseCompleted || !lessonStarted || !curriculum) return;
+    if (courseCompletionSpeechRef.current) return;
+    courseCompletionSpeechRef.current = true;
+    speak(buildCourseCompletionSpeech(curriculum.title));
+  }, [curriculum, isCourseCompleted, lessonStarted, speak]);
 
   // Stop speech when navigating away from this course (before avatar ref is cleared).
   useEffect(() => {
@@ -1868,6 +1898,16 @@ function MathCourseDetailsInner() {
                   {renderQuestion()}
                 </div>
               </div>
+            ) : isCourseCompleted && currentLesson && lessonStarted ? (
+              <CourseCompletionCelebration
+                courseTitle={curriculum?.title ?? currentLesson.title}
+                instructorMessage={buildCourseCompletionSpeech(
+                  curriculum?.title ?? currentLesson.title,
+                )}
+                currentSubtitle={currentSubtitle}
+                isSpeaking={isSpeaking}
+                onRestart={handleRestartCourse}
+              />
             ) : currentLesson && lessonStarted ? (
               <div className="mx-auto w-full min-w-0 max-w-3xl space-y-4 sm:space-y-5">
                 <div>

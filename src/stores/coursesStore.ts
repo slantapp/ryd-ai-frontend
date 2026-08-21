@@ -8,7 +8,10 @@ import {
   type Curriculum,
   type CurriculumEntry,
 } from "../data/curriculumData";
-import { resolveCourseCategoryId, type CourseCategoryId } from "../data/courseCategories";
+import {
+  resolveCourseCategoryId,
+  type CourseCategoryId,
+} from "../data/courseCategories";
 import type { CourseProgressRecord } from "@/api/courseProgress";
 import {
   fetchAllCourseProgress as fetchAllCourseProgressRequest,

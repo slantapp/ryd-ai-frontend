@@ -2558,7 +2558,7 @@ function CourseDetailInner({
                             (isLessonCodeDemoActive
                               ? currentLesson?.code_example?.code
                               : currentQuestion?.code_example?.starterCode) ??
-                              "",
+                            "",
                           )
                         }
                         testDisabledReason="Write some code first"

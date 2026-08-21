@@ -5,6 +5,7 @@ import TopNav from "./TopNav";
 import { cn } from "@/lib/utils";
 import SubscriptionGateFlow from "@/components/subscription/SubscriptionGateFlow";
 import ProfileCompletionGate from "@/components/subscription/ProfileCompletionGate";
+import PasswordResetGate from "@/components/auth/PasswordResetGate";
 import SubscriptionCheckoutReturnDialog, {
   type CheckoutReturnVariant,
 } from "@/components/subscription/SubscriptionCheckoutReturnDialog";
@@ -48,6 +49,7 @@ const DashboardLayout = ({ children }: DashboardProps) => {
   const location = useLocation();
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
+  const mustResetPasswordFlag = useAuthStore((s) => s.mustResetPassword);
   const queryClient = useQueryClient();
   const ensureLocationResolved = useLocationDefaultsStore((s) => s.ensureResolved);
 
@@ -55,11 +57,17 @@ const DashboardLayout = ({ children }: DashboardProps) => {
 
   const subscribed = subscriptionStatus.data?.data?.subscribed === true;
   const profileIncomplete = isParentProfileIncomplete(user);
+  const mustResetPassword =
+    mustResetPasswordFlag === true || user?.mustResetPassword === true;
   const isDemoSneakPeek =
     location.pathname === PRIVATE_PATHS.DEMO_SNEAK_PEEK ||
     location.pathname.startsWith(`${PRIVATE_PATHS.DEMO_SNEAK_PEEK}/`);
 
+  /** Forced password change takes priority over subscription / profile gates. */
+  const showPasswordResetGate = !isDemoSneakPeek && mustResetPassword;
+
   useEffect(() => {
+    if (showPasswordResetGate) return;
     if (devSkipSubscriptionGate) {
       void useCoursesStore.getState().fetchVisibleCurriculums();
       void useCoursesStore.getState().fetchAllCourseProgress();
@@ -72,6 +80,7 @@ const DashboardLayout = ({ children }: DashboardProps) => {
     void useCoursesStore.getState().fetchAllCourseProgress();
   }, [
     profileIncomplete,
+    showPasswordResetGate,
     subscribed,
     subscriptionStatus.isFetched,
     subscriptionStatus.isSuccess,
@@ -80,6 +89,7 @@ const DashboardLayout = ({ children }: DashboardProps) => {
   const showSubscriptionGate =
     !devSkipSubscriptionGate &&
     !isDemoSneakPeek &&
+    !showPasswordResetGate &&
     subscriptionStatus.isFetched &&
     subscriptionStatus.isSuccess &&
     subscribed === false;
@@ -93,6 +103,7 @@ const DashboardLayout = ({ children }: DashboardProps) => {
   const showProfileCompletionGate =
     !devSkipSubscriptionGate &&
     !isDemoSneakPeek &&
+    !showPasswordResetGate &&
     subscriptionStatus.isFetched &&
     subscriptionStatus.isSuccess &&
     subscribed === true &&
@@ -102,16 +113,20 @@ const DashboardLayout = ({ children }: DashboardProps) => {
   const blockForStatusLoadingOrError =
     !devSkipSubscriptionGate &&
     !isDemoSneakPeek &&
+    !showPasswordResetGate &&
     (subscriptionStatus.isLoading || subscriptionStatus.isError);
 
   const blockDashboardAccess =
     !isDemoSneakPeek &&
-    (showSubscriptionGate ||
+    (showPasswordResetGate ||
+      showSubscriptionGate ||
       showProfileCompletionGate ||
       blockForStatusLoadingOrError);
 
   /** Only one Radix Dialog should be open; gate + loading dialog steal clicks from stacked modals. */
   const checkoutReturnBlocking = checkoutReturn !== null;
+  const passwordResetModalOpen =
+    showPasswordResetGate && !checkoutReturnBlocking;
   const subscriptionGateModalOpen =
     showSubscriptionGate && !checkoutReturnBlocking;
   const subscriptionStatusBlockModalOpen =
@@ -294,6 +309,11 @@ const DashboardLayout = ({ children }: DashboardProps) => {
           )}
         </DialogContent>
       </Dialog>
+
+      <PasswordResetGate
+        open={passwordResetModalOpen}
+        onSignOut={handleSignOutFromGate}
+      />
 
       <SubscriptionGateFlow
         open={subscriptionGateModalOpen}

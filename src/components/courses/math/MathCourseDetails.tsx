@@ -88,10 +88,10 @@ type PendingAction =
   | { type: "wait_then_clear_and_ask"; question: Question }
   | { type: "start_lesson_formula_demo"; lesson: Lesson }
   | {
-      type: "lesson_formula_outro";
-      hasQuestions: boolean;
-      hasNextLesson: boolean;
-    };
+    type: "lesson_formula_outro";
+    hasQuestions: boolean;
+    hasNextLesson: boolean;
+  };
 
 function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
   return (
@@ -148,7 +148,7 @@ function MathCourseDetailsInner() {
   const isTypingFormulaRef = useRef(false);
   const speechStartTimeRef = useRef(0);
   const lastSpeechTextRef = useRef("");
-  const moveToNextQuestionRef = useRef<() => void>(() => {});
+  const moveToNextQuestionRef = useRef<() => void>(() => { });
   const introUnlockTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -1705,10 +1705,10 @@ function MathCourseDetailsInner() {
         gutterStyle={(dimension, gutterSize) =>
           dimension === "width" && gutterSize > 0
             ? {
-                width: `${gutterSize}px`,
-                cursor: "col-resize",
-                pointerEvents: "auto",
-              }
+              width: `${gutterSize}px`,
+              cursor: "col-resize",
+              pointerEvents: "auto",
+            }
             : { width: "0px", pointerEvents: "none" }
         }
       >

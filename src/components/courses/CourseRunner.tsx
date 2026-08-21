@@ -10,6 +10,7 @@ import {
 import { isCurriculumV2 } from "@/features/curriculum-preview/v2/detect";
 import { useCoursesStore } from "@/stores/coursesStore";
 import { useCourseCompletionFeedback } from "@/hooks/useCourseCompletionFeedback";
+import { useCourseLearningSession } from "@/hooks/useCourseLearningSession";
 import { CourseCompletionFeedbackDialog } from "./CourseCompletionFeedbackDialog";
 import CourseDetails from "./CourseDetails";
 import CourseDetailsV2 from "./CourseDetailsV2";
@@ -46,6 +47,7 @@ export default function CourseRunner() {
   const openFeedback = useCallback(() => setFeedbackOpen(true), []);
 
   useCourseCompletionFeedback(exercise, openFeedback);
+  useCourseLearningSession(exercise);
 
   const entry = exercise ? getCurriculumEntryBySlug(exercise) : null;
 

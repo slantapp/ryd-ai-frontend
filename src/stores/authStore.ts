@@ -24,6 +24,8 @@ export interface AuthUser {
   canAccessNormal?: boolean;
   signupSource?: string;
   privacyMode?: boolean;
+  /** True after password-reset email — must change password before using the app. */
+  mustResetPassword?: boolean;
   role?: { id: string; name: string };
   [key: string]: unknown;
 }
@@ -47,12 +49,20 @@ export type ProfileUpdatePayload = {
 /** Never persist these on `user` (API sometimes echoes password hash). */
 const USER_OMIT_KEYS = new Set(["password", "token", "accessToken"]);
 
+/** Coerce API booleans that may arrive as true | 1 | "true". */
+function coerceMustResetPassword(value: unknown): boolean {
+  return value === true || value === 1 || value === "true" || value === "1";
+}
+
 function sanitizeUser(obj: Record<string, unknown>): AuthUser {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (!USER_OMIT_KEYS.has(key)) {
       out[key] = value;
     }
+  }
+  if ("mustResetPassword" in obj) {
+    out.mustResetPassword = coerceMustResetPassword(obj.mustResetPassword);
   }
   return out as AuthUser;
 }
@@ -85,9 +95,22 @@ function extractSession(res: { data?: unknown }) {
     if (!accessToken) {
       throw new Error("Invalid login response: missing token");
     }
-    const user = sanitizeUser(inner.user as Record<string, unknown>);
+    const nested = inner.user as Record<string, unknown>;
+    const user = sanitizeUser({
+      ...nested,
+      mustResetPassword:
+        nested.mustResetPassword ?? inner.mustResetPassword,
+    });
+    user.mustResetPassword = coerceMustResetPassword(
+      nested.mustResetPassword ?? inner.mustResetPassword,
+    );
     const expiresAt = (inner.expiresAt ?? null) as string | null;
-    return { accessToken, user, expiresAt };
+    return {
+      accessToken,
+      user,
+      expiresAt,
+      mustResetPassword: user.mustResetPassword === true,
+    };
   }
 
   // Parent AI shape: profile + `token` on the same object
@@ -97,9 +120,15 @@ function extractSession(res: { data?: unknown }) {
   }
 
   const user = sanitizeUser(inner);
+  user.mustResetPassword = coerceMustResetPassword(inner.mustResetPassword);
   const expiresAt = (inner.expiresAt ?? null) as string | null;
 
-  return { accessToken, user, expiresAt };
+  return {
+    accessToken,
+    user,
+    expiresAt,
+    mustResetPassword: user.mustResetPassword === true,
+  };
 }
 
 interface AuthState {
@@ -107,6 +136,11 @@ interface AuthState {
   accessToken: string | null;
   expiresAt: string | null;
   isLoggedIn: boolean;
+  /**
+   * Top-level copy of login `mustResetPassword` so the blocking gate does not
+   * depend only on a nested user field surviving persist/merge.
+   */
+  mustResetPassword: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (payload: AiRegisterPayload) => Promise<void>;
   loginFromParentCode: (decoded: LoginPayload) => Promise<void>;
@@ -129,17 +163,20 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       expiresAt: null,
       isLoggedIn: false,
+      mustResetPassword: false,
       login: async (email, password) => {
         const res = await axiosInstance.post("/parent/auth/login/ai", {
           email,
           password,
         });
-        const { accessToken, user, expiresAt } = extractSession(res);
+        const { accessToken, user, expiresAt, mustResetPassword } =
+          extractSession(res);
         set({
           accessToken,
           user,
           expiresAt,
           isLoggedIn: true,
+          mustResetPassword,
         });
       },
       register: async (payload) => {
@@ -155,12 +192,14 @@ export const useAuthStore = create<AuthState>()(
             : {}),
         };
         const res = await axiosInstance.post("/parent/auth/register/ai", body);
-        const { accessToken, user, expiresAt } = extractSession(res);
+        const { accessToken, user, expiresAt, mustResetPassword } =
+          extractSession(res);
         set({
           accessToken,
           user,
           expiresAt,
           isLoggedIn: true,
+          mustResetPassword,
         });
       },
       loginFromParentCode: async (decoded: LoginPayload) => {
@@ -184,12 +223,14 @@ export const useAuthStore = create<AuthState>()(
         } else {
           throw new Error("Invalid authorization code payload");
         }
-        const { accessToken, user, expiresAt } = extractSession(res);
+        const { accessToken, user, expiresAt, mustResetPassword } =
+          extractSession(res);
         set({
           accessToken,
           user,
           expiresAt,
           isLoggedIn: true,
+          mustResetPassword,
         });
       },
       requestPasswordReset: async (email) => {
@@ -208,6 +249,12 @@ export const useAuthStore = create<AuthState>()(
             typeof msg === "string" ? msg : "Password update failed",
           );
         }
+        set((state) => ({
+          mustResetPassword: false,
+          user: state.user
+            ? { ...state.user, mustResetPassword: false }
+            : state.user,
+        }));
       },
       updateProfile: async ({ firstName, lastName }) => {
         const res = await axiosInstance.post("/parent/auth/profile-update", {
@@ -239,10 +286,16 @@ export const useAuthStore = create<AuthState>()(
             inner && !Array.isArray(inner)
               ? { ...(state.user ?? {}), ...sanitizeUser(inner) }
               : { ...(state.user ?? {}) };
+          // Profile update must not wipe an outstanding forced reset.
+          const mustResetPassword =
+            state.mustResetPassword ||
+            coerceMustResetPassword(base.mustResetPassword);
           return {
+            mustResetPassword,
             user: {
               ...base,
               ...nextNames,
+              mustResetPassword,
             },
           };
         });
@@ -253,6 +306,7 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           expiresAt: null,
           isLoggedIn: false,
+          mustResetPassword: false,
         });
         // Avoid leaking the previous user's in-memory progress/wishlist into the next session.
         // Persisted course data remains stored under the previous user's scoped key.
@@ -262,6 +316,25 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "ryd-ai-platform-auth",
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState ?? {}) as Partial<AuthState>;
+        const user = persisted.user ?? currentState.user;
+        const fromPersistedFlag = coerceMustResetPassword(
+          persisted.mustResetPassword,
+        );
+        const fromUser = coerceMustResetPassword(user?.mustResetPassword);
+        return {
+          ...currentState,
+          ...persisted,
+          mustResetPassword: fromPersistedFlag || fromUser,
+          user: user
+            ? {
+                ...user,
+                mustResetPassword: fromPersistedFlag || fromUser,
+              }
+            : null,
+        };
+      },
     },
   ),
 );

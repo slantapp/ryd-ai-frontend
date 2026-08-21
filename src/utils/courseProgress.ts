@@ -56,17 +56,12 @@ export function computeV2CourseProgress(args: {
   const { lessonId, lessonIndex, lessonTotal, completedLessonIds } = args;
   if (lessonTotal <= 0) return { progress: 0, done: false };
 
-  const completed = Array.from(
-    new Set([...completedLessonIds, lessonId]),
-  );
+  const completed = Array.from(new Set([...completedLessonIds, lessonId]));
   const byUniqueIds = Math.round((completed.length / lessonTotal) * 100);
   const byIndex =
-    lessonIndex >= 0
-      ? Math.round(((lessonIndex + 1) / lessonTotal) * 100)
-      : 0;
+    lessonIndex >= 0 ? Math.round(((lessonIndex + 1) / lessonTotal) * 100) : 0;
 
-  const isLastLesson =
-    lessonIndex >= 0 && lessonIndex === lessonTotal - 1;
+  const isLastLesson = lessonIndex >= 0 && lessonIndex === lessonTotal - 1;
   const done = isLastLesson;
   const progress = done ? 100 : Math.min(100, Math.max(byUniqueIds, byIndex));
 

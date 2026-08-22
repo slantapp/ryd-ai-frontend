@@ -2,11 +2,11 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   PartyPopper,
-  RotateCcw,
   Sparkles,
   Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
 
 interface CourseCompletionCelebrationProps {
   courseTitle: string;
@@ -112,7 +112,7 @@ export function CourseCompletionCelebration({
             </blockquote>
           ) : null}
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <div className="mt-8 flex flex-col items-center gap-3">
             <Link
               to="/courses"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-linear-to-r from-primary via-primary to-primary/90 px-8 py-3.5 font-solway text-sm font-bold text-white shadow-lg shadow-primary/30 transition hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
@@ -121,14 +121,10 @@ export function CourseCompletionCelebration({
               <ArrowRight className="size-4" aria-hidden />
             </Link>
             {onRestart ? (
-              <button
-                type="button"
-                onClick={onRestart}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/30 bg-white/90 px-8 py-3.5 font-solway text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/5"
-              >
-                <RotateCcw className="size-4" aria-hidden />
-                Review this course
-              </button>
+              <CourseProgressResetLink
+                variant="completed"
+                onReset={onRestart}
+              />
             ) : null}
           </div>
         </div>

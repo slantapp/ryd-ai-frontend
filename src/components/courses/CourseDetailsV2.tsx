@@ -26,6 +26,7 @@ import {
   computeV2CourseProgress,
 } from "@/utils/courseProgress";
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
+import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
 
 /**
  * Paid / enrolled learning environment for schema v2 (flow) curricula.
@@ -69,6 +70,7 @@ export default function CourseDetailsV2() {
     isSpeaking,
     isPaused,
     togglePause,
+    rewindSpeaking,
     currentSubtitle,
     isInstructorWaiting,
     showMobileAudioUnlock,
@@ -365,6 +367,9 @@ export default function CourseDetailsV2() {
                   {canResume ? "Continue learning" : MOBILE_INSTRUCTOR_AUDIO_BUTTON}
                 </span>
               </button>
+              {canResume ? (
+                <CourseProgressResetLink onReset={handleRestartCourse} />
+              ) : null}
               <div className="mt-8 flex items-center justify-center gap-2 font-inter text-xs text-gray-400">
                 <span className="h-1 w-1 rounded-full bg-primary/40" />
                 <span>Interactive lessons</span>
@@ -399,6 +404,7 @@ export default function CourseDetailsV2() {
           isSpeaking={isSpeaking}
           isPaused={isPaused}
           onTogglePause={togglePause}
+          onRewind={rewindSpeaking}
           currentSubtitle={currentSubtitle}
           avatarSlot={avatarSlot}
           onLessonComplete={handleLessonComplete}

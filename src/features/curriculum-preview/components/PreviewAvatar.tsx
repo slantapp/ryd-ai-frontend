@@ -18,6 +18,11 @@ import {
   type SpeechUtterance,
 } from "@/features/curriculum-preview/v2/subtitleShow";
 import type { AvatarShowReplacement } from "@/features/curriculum-preview/v2/types";
+import {
+  createSpeechRewindTracker,
+  REWIND_RESPEAK_DELAY_MS,
+  REWIND_SECONDS,
+} from "@/utils/speechRewind";
 
 type NarratorAvatarRef = {
   speakText: (text: string, options?: Record<string, unknown>) => void;
@@ -134,6 +139,10 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   const defaultShowRef = useRef<AvatarShowReplacement[] | undefined>(undefined);
   /** Runs once after the current utterance finishes (and any queued speech is flushed). */
   const afterSpeechRef = useRef<(() => void) | null>(null);
+  /** Tracks live playback position inside the current utterance (for rewind). */
+  const rewindTracker = useMemo(() => createSpeechRewindTracker(), []);
+  /** Drops the speech-end event that stopping mid-utterance triggers. */
+  const suppressSpeechEndUntilRef = useRef(0);
   const [showMobileAudioUnlock, setShowMobileAudioUnlock] = useState(false);
   const [isAvatarReady, setIsAvatarReady] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -200,6 +209,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
         }
 
         activeShowRef.current = utterance.show ?? defaultShowRef.current;
+        rewindTracker.beginUtterance(utterance.text);
         setAwaitingSpeech(true);
         avatarRef.current!.speakText(utterance.text);
       } catch (error) {
@@ -207,7 +217,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
         setAwaitingSpeech(false);
       }
     },
-    [isAvatarLive, markAvatarNotReady, syncPendingSpeech],
+    [isAvatarLive, markAvatarNotReady, rewindTracker, syncPendingSpeech],
   );
 
   const speak = useCallback(
@@ -252,14 +262,55 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     if (!avatar) return;
     if (isPaused) {
       avatar.resumeSpeaking?.();
+      rewindTracker.noteResume();
       setIsPaused(false);
       setIsSpeaking(true);
     } else {
+      rewindTracker.notePause();
       avatar.pauseSpeaking?.();
       setIsPaused(true);
       setIsSpeaking(false);
     }
-  }, [isPaused]);
+  }, [isPaused, rewindTracker]);
+
+  const rewindSpeaking = useCallback(() => {
+    if (!isSpeaking && !isPaused) return;
+    const slice = rewindTracker.computeRewind(REWIND_SECONDS);
+    if (!slice) return;
+
+    const avatar = avatarRef.current;
+    if (!avatar || typeof avatar.speakText !== "function") return;
+
+    // Stopping mid-utterance makes the avatar report speech-end; letting that
+    // through would flush the queue and jump the lesson forward.
+    suppressSpeechEndUntilRef.current = Date.now() + REWIND_RESPEAK_DELAY_MS * 3;
+    stopAvatarSpeech(avatar);
+    rewindTracker.beginChunk(slice.startIndex);
+
+    setIsPaused(false);
+    setIsSpeaking(true);
+    setAwaitingSpeech(true);
+    setCurrentSubtitle("");
+
+    // Keep the AudioContext alive inside this tap (WebKit autoplay policy).
+    void avatar.resumeAudioContext?.().catch(() => {
+      // Suspended until speakText — expected on some WebKit builds.
+    });
+
+    window.setTimeout(() => {
+      const live = avatarRef.current;
+      if (!live || typeof live.speakText !== "function") {
+        setAwaitingSpeech(false);
+        return;
+      }
+      try {
+        live.speakText(slice.text);
+      } catch (error) {
+        console.warn("Error rewinding speech:", error);
+        setAwaitingSpeech(false);
+      }
+    }, REWIND_RESPEAK_DELAY_MS);
+  }, [isPaused, isSpeaking, rewindTracker]);
 
   const scheduleAfterSpeech = useCallback((fn: () => void) => {
     afterSpeechRef.current = fn;
@@ -279,13 +330,15 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
       setShowMobileAudioUnlock(false);
       stopAvatarSpeech(avatarRef.current);
       activeShowRef.current = undefined;
+      rewindTracker.reset();
+      suppressSpeechEndUntilRef.current = 0;
       setIsSpeaking(false);
       setIsPaused(false);
       setCurrentSubtitle("");
     } catch (error) {
       console.warn("Error stopping speech:", error);
     }
-  }, []);
+  }, [rewindTracker]);
 
   const flushNextQueuedSpeech = useCallback(() => {
     const queue = pendingSpeechQueueRef.current;
@@ -325,12 +378,15 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   }, [flushNextQueuedSpeech]);
 
   const handleSpeechStart = useCallback(() => {
+    suppressSpeechEndUntilRef.current = 0;
+    rewindTracker.noteAudioStart();
     setIsSpeaking(true);
     setIsPaused(false);
     setAwaitingSpeech(false);
-  }, []);
+  }, [rewindTracker]);
 
   const handleSpeechEnd = useCallback(() => {
+    if (Date.now() < suppressSpeechEndUntilRef.current) return;
     setIsSpeaking(false);
     setIsPaused(false);
     setCurrentSubtitle("");
@@ -345,9 +401,13 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     }
   }, [flushNextQueuedSpeech]);
 
-  const handleSubtitle = useCallback((text: string) => {
-    setCurrentSubtitle(applySubtitleShow(text, activeShowRef.current));
-  }, []);
+  const handleSubtitle = useCallback(
+    (text: string) => {
+      rewindTracker.noteSubtitle(text);
+      setCurrentSubtitle(applySubtitleShow(text, activeShowRef.current));
+    },
+    [rewindTracker],
+  );
 
   const setDefaultShow = useCallback((show?: AvatarShowReplacement[]) => {
     defaultShowRef.current = show && show.length > 0 ? show : undefined;
@@ -452,6 +512,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     isSpeaking,
     isPaused,
     togglePause,
+    rewindSpeaking,
     currentSubtitle,
     selectedInstructor,
     setSelectedInstructor,

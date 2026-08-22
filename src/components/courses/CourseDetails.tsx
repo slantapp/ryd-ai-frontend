@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import Split from "react-split";
 import NarratorAvatar from "narrator-avatar";
-import { Volume2, Mic, Play, Pause, CheckCircle2, XCircle } from "lucide-react";
+import { Volume2, Mic, Play, Pause, RotateCcw, CheckCircle2, XCircle } from "lucide-react";
 import {
   type Question,
   type Lesson,
@@ -47,10 +47,13 @@ import {
 } from "@/utils/codeTestRunner";
 import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import {
+  buildWebCodeFromExample,
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
   isWebWorkspaceLanguage,
-  seedWebCodeFromExample,
+  webCodeForExampleDemoStart,
+  webCodeForExamplePractice,
+  webCodeForExampleTyping,
   type WebCodeSources,
 } from "@/utils/webCodeWorkspace";
 import {
@@ -59,6 +62,11 @@ import {
 } from "@/components/courses/exercise/codeWorkspaceLayout";
 import { prefetchMonacoEditor } from "./exercise/MonacoEditorLazy";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
+import {
+  createSpeechRewindTracker,
+  REWIND_RESPEAK_DELAY_MS,
+  REWIND_SECONDS,
+} from "@/utils/speechRewind";
 import {
   MOBILE_INSTRUCTOR_AUDIO_BUTTON,
   MOBILE_INSTRUCTOR_AUDIO_HINT,
@@ -79,6 +87,7 @@ import {
   isV1CourseFinished,
 } from "@/utils/courseProgress";
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
+import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
 
 function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
   return (
@@ -203,6 +212,10 @@ function CourseDetailInner({
   const lastSpeechTextRef = useRef<string>("");
   /** Last text spoken by the instructor, kept for the "Replay" control. */
   const lastSpokenTextRef = useRef<string>("");
+  /** Tracks live playback position inside the current utterance (for rewind). */
+  const rewindTracker = useMemo(() => createSpeechRewindTracker(), []);
+  /** Flat lesson index — disambiguates duplicate lesson IDs across modules. */
+  const lessonFlatIndexRef = useRef<number | undefined>(undefined);
   /** Runs after the avatar finishes the current speech chunk (reliable multi-step lesson flow). */
   const afterSpeechRef = useRef<(() => void) | null>(null);
   const pendingTypingStartRef = useRef<(() => void) | null>(null);
@@ -487,6 +500,7 @@ function CourseDetailInner({
           pendingActionRef.current = action;
           speechStartTimeRef.current = Date.now();
           lastSpeechTextRef.current = text;
+          rewindTracker.beginUtterance(text);
           // Persist for the "Replay" button (lastSpeechTextRef is cleared on speech end).
           lastSpokenTextRef.current = text;
           setAwaitingSpeech(true);
@@ -497,7 +511,7 @@ function CourseDetailInner({
         setAwaitingSpeech(false);
       }
     },
-    [getAvatar]
+    [getAvatar, rewindTracker]
   );
 
   const speak = useCallback(
@@ -559,26 +573,83 @@ function CourseDetailInner({
   const handleTogglePause = useCallback(() => {
     const avatar = getAvatar();
     if (isPaused) {
-      // Resume
       if (pausedLiveRef.current && typeof avatar?.resumeSpeaking === "function") {
         avatar.resumeSpeaking();
+        rewindTracker.noteResume();
         setIsSpeaking(true);
       } else if (lastSpokenTextRef.current) {
-        // Restored from a previous visit — replay the last line from the start.
-        speak(lastSpokenTextRef.current);
+        const resume = rewindTracker.computeResume();
+        speak(resume?.text ?? lastSpokenTextRef.current);
       }
       pausedLiveRef.current = false;
       setIsPaused(false);
       clearPausedState();
     } else {
-      // Pause
-      if (typeof avatar?.pauseSpeaking === "function") avatar.pauseSpeaking();
-      pausedLiveRef.current = true;
+      if (typeof avatar?.pauseSpeaking === "function") {
+        rewindTracker.notePause();
+        avatar.pauseSpeaking();
+        pausedLiveRef.current = true;
+      }
       setIsPaused(true);
       setIsSpeaking(false);
       persistPausedState(lastSpokenTextRef.current);
     }
-  }, [isPaused, getAvatar, speak, persistPausedState, clearPausedState]);
+  }, [
+    isPaused,
+    getAvatar,
+    rewindTracker,
+    speak,
+    persistPausedState,
+    clearPausedState,
+  ]);
+
+  const handleRewindSpeech = useCallback(() => {
+    if (!isSpeaking && !isPaused) return;
+    const slice = rewindTracker.computeRewind(REWIND_SECONDS);
+    if (!slice) return;
+
+    const avatar = getAvatar();
+    if (!avatar || typeof avatar.speakText !== "function") return;
+
+    // Stopping mid-utterance makes the avatar report speech-end; letting that
+    // through would run the queued follow-up and skip the lesson forward.
+    isManuallyStopped.current = true;
+    stopAvatarSpeech(avatar);
+    rewindTracker.beginChunk(slice.startIndex);
+
+    // pendingActionRef is deliberately left intact — the rewound line still has
+    // to unlock questions / the next lesson when it finishes.
+    pausedLiveRef.current = false;
+    setIsPaused(false);
+    clearPausedState();
+    speechStartTimeRef.current = Date.now();
+    lastSpeechTextRef.current = slice.text;
+    setCurrentSubtitle("");
+    setIsSpeaking(true);
+    setAwaitingSpeech(true);
+
+    // Keep the AudioContext alive inside this tap (WebKit autoplay policy).
+    void (avatar as { resumeAudioContext?: () => Promise<void> })
+      .resumeAudioContext?.()
+      .catch(() => {
+        /* expected on some WebKit builds until speakText */
+      });
+
+    window.setTimeout(() => {
+      isManuallyStopped.current = false;
+      const live = getAvatar();
+      if (!live || typeof live.speakText !== "function") {
+        setAwaitingSpeech(false);
+        return;
+      }
+      try {
+        live.speakText(slice.text);
+      } catch (error) {
+        console.warn("Error rewinding speech:", error);
+        setAwaitingSpeech(false);
+      }
+    }, REWIND_RESPEAK_DELAY_MS);
+  }, [clearPausedState, getAvatar, isPaused, isSpeaking, rewindTracker]);
 
   // Restore a previously paused lesson on mount so the button offers "Resume".
   useEffect(() => {
@@ -655,6 +726,7 @@ function CourseDetailInner({
       setIsSpeaking(false);
       setIsPaused(false);
       pausedLiveRef.current = false;
+      rewindTracker.reset();
       clearPausedState();
       setTimeout(() => {
         isManuallyStopped.current = false;
@@ -666,20 +738,31 @@ function CourseDetailInner({
       setIsSpeaking(false);
       setIsPaused(false);
       pausedLiveRef.current = false;
+      rewindTracker.reset();
       clearPausedState();
       pendingSpeechQueueRef.current = [];
       setHasPendingSpeech(false);
       setAwaitingSpeech(false);
       setShowMobileAudioUnlock(false);
     }
-  }, [getAvatar, stopSubtitles, clearIntroUnlockTimeout, clearPausedState]);
+  }, [
+    getAvatar,
+    rewindTracker,
+    stopSubtitles,
+    clearIntroUnlockTimeout,
+    clearPausedState,
+  ]);
 
   // Subtitle comes from NarratorAvatar's onSubtitle callback (real-time spoken word)
-  const handleSubtitle = useCallback((text: string) => {
-    setCurrentSubtitle(
-      applySubtitleShow(text, currentLessonRef.current?.avatar_show),
-    );
-  }, []);
+  const handleSubtitle = useCallback(
+    (text: string) => {
+      rewindTracker.noteSubtitle(text);
+      setCurrentSubtitle(
+        applySubtitleShow(text, currentLessonRef.current?.avatar_show),
+      );
+    },
+    [rewindTracker],
+  );
 
   // ============================================================================
   // CODE EXAMPLE TYPING (lesson demos + question teaching)
@@ -727,10 +810,13 @@ function CourseDetailInner({
       isTypingCodeRef.current = true;
 
       const isWeb = isWebWorkspaceLanguage(example.language);
-      const webTab = defaultWebEditorTab(example.language);
       const codeToType = example.code;
       const typingSpeed = example.typingSpeed ?? 30;
       let currentIndex = 0;
+
+      if (isWeb) {
+        setWebCode(webCodeForExampleDemoStart(example));
+      }
 
       const startTyping = () => {
         const typeNextChar = () => {
@@ -739,7 +825,7 @@ function CourseDetailInner({
           if (currentIndex < codeToType.length) {
             const partial = codeToType.substring(0, currentIndex + 1);
             if (isWeb) {
-              setWebCode((prev) => ({ ...prev, [webTab]: partial }));
+              setWebCode(webCodeForExampleTyping(example, partial));
             } else {
               setCode(partial);
             }
@@ -800,7 +886,7 @@ function CourseDetailInner({
             void runLessonExampleCode({
               code: example.code,
               webCode: isWeb
-                ? seedWebCodeFromExample(example.code, example.language)
+                ? buildWebCodeFromExample(example, "demo")
                 : undefined,
               language: normalizeRunLanguage(example.language),
             }).then(proceedAfterExample);
@@ -854,6 +940,9 @@ function CourseDetailInner({
   const persistCoursePosition = useCallback(
     (progress: Partial<CourseProgress>) => {
       if (!exercise) return;
+      if (typeof progress.lessonIndex === "number") {
+        lessonFlatIndexRef.current = progress.lessonIndex;
+      }
       updateCourseProgress(exercise, {
         currentLessonId: progress.lessonId ?? null,
         lessonIndex: progress.lessonIndex,
@@ -909,6 +998,7 @@ function CourseDetailInner({
 
   const handleSpeechStart = useCallback(() => {
     isManuallyStopped.current = false;
+    rewindTracker.noteAudioStart();
     setIsSpeaking(true);
     setIsShowingSubtitles(true);
     setCurrentSubtitle("");
@@ -918,7 +1008,7 @@ function CourseDetailInner({
     setIsPaused(false);
     pausedLiveRef.current = false;
     clearPausedState();
-  }, [clearPausedState, syncPendingSpeech]);
+  }, [clearPausedState, rewindTracker, syncPendingSpeech]);
 
   // Ref to hold the moveToNextQuestion function to avoid circular dependency
   const moveToNextQuestionRef = useRef<() => void>(() => { });
@@ -979,12 +1069,26 @@ function CourseDetailInner({
           speak(action.question.question);
         }, 300);
         break;
-      case "clear_code_and_ask":
-        resetCodeState();
+      case "clear_code_and_ask": {
+        const example = action.question.code_example;
+        setResults([]);
+        setPreviewRefreshKey(0);
+        setIsLessonCodeDemoActive(false);
+        if (
+          example &&
+          isWebWorkspaceLanguage(example.language, action.question.testCriteria)
+        ) {
+          setWebCode(webCodeForExamplePractice(example));
+          setCode("");
+        } else {
+          setWebCode(EMPTY_WEB_CODE);
+          setCode(example?.starterCode?.trim() ?? "");
+        }
         setTimeout(() => {
           speak(action.question.question);
         }, 500);
         break;
+      }
       case "wait_then_clear_and_ask":
         // After explanation finishes, wait a moment so student can absorb,
         // then announce we're clearing and ask the question
@@ -1150,11 +1254,19 @@ function CourseDetailInner({
       }
 
       const moduleInfo = curriculum
-        ? getModuleInfoForLesson(currentLesson.id, curriculum)
+        ? getModuleInfoForLesson(
+            currentLesson.id,
+            curriculum,
+            lessonFlatIndexRef.current,
+          )
         : null;
       const isLastLessonInModule = moduleInfo?.isLastLessonInModule ?? false;
       const hasNext = curriculum
-        ? !!getNextLessonInOrder(currentLesson, curriculum)
+        ? !!getNextLessonInOrder(
+            currentLesson,
+            curriculum,
+            lessonFlatIndexRef.current,
+          )
         : !!currentLesson.next_lesson_id;
 
       let completionMessage = "";
@@ -1437,11 +1549,26 @@ function CourseDetailInner({
     stopSpeaking();
     clearIntroUnlockTimeout();
 
-    const prevLesson = getPreviousLessonInOrder(currentLesson, curriculum);
+    const prevLesson = getPreviousLessonInOrder(
+      currentLesson,
+      curriculum,
+      lessonFlatIndexRef.current,
+    );
     if (!prevLesson) return;
 
-    const currentModIndex = getModuleIndexForLesson(currentLesson, curriculum);
-    const prevModIndex = getModuleIndexForLesson(prevLesson, curriculum);
+    const flatHint = lessonFlatIndexRef.current;
+    const prevFlatHint =
+      typeof flatHint === "number" && flatHint > 0 ? flatHint - 1 : undefined;
+    const currentModIndex = getModuleIndexForLesson(
+      currentLesson,
+      curriculum,
+      flatHint,
+    );
+    const prevModIndex = getModuleIndexForLesson(
+      prevLesson,
+      curriculum,
+      prevFlatHint,
+    );
     const movingToNewModule =
       currentModIndex !== -1 &&
       prevModIndex !== -1 &&
@@ -1459,7 +1586,11 @@ function CourseDetailInner({
     enterLessonIntro(prevLesson);
     persistCoursePosition({
       lessonId: prevLesson.id,
-      lessonIndex: getLessonIndexInCurriculum(prevLesson, curriculum),
+      lessonIndex: getLessonIndexInCurriculum(
+        prevLesson,
+        curriculum,
+        prevFlatHint,
+      ),
       questionIndex: 0,
       lessonStarted: true,
       canStartQuestions: false,
@@ -1681,14 +1812,29 @@ function CourseDetailInner({
       ((currentLesson.questions?.length ?? 0) === 0 && introReady);
     if (!lessonComplete) return;
 
-    const nextLesson = getNextLessonInOrder(currentLesson, curriculum);
+    const nextLesson = getNextLessonInOrder(
+      currentLesson,
+      curriculum,
+      lessonFlatIndexRef.current,
+    );
     if (!nextLesson) return;
 
     stopSpeaking();
     clearIntroUnlockTimeout();
 
-    const currentModIndex = getModuleIndexForLesson(currentLesson, curriculum);
-    const nextModIndex = getModuleIndexForLesson(nextLesson, curriculum);
+    const flatHint = lessonFlatIndexRef.current;
+    const nextFlatHint =
+      typeof flatHint === "number" ? flatHint + 1 : undefined;
+    const currentModIndex = getModuleIndexForLesson(
+      currentLesson,
+      curriculum,
+      flatHint,
+    );
+    const nextModIndex = getModuleIndexForLesson(
+      nextLesson,
+      curriculum,
+      nextFlatHint,
+    );
     const movingToNewModule =
       currentModIndex !== -1 &&
       nextModIndex !== -1 &&
@@ -1706,7 +1852,11 @@ function CourseDetailInner({
 
     persistCoursePosition({
       lessonId: nextLesson.id,
-      lessonIndex: getLessonIndexInCurriculum(nextLesson, curriculum),
+      lessonIndex: getLessonIndexInCurriculum(
+        nextLesson,
+        curriculum,
+        nextFlatHint,
+      ),
       questionIndex: 0,
       lessonStarted: true,
       canStartQuestions: false,
@@ -1966,6 +2116,9 @@ function CourseDetailInner({
         completed.has(lesson.id) || allQuestionsDone;
 
       // Park the lesson for Continue — do not auto-speak (async hydrate is outside a user gesture).
+      if (typeof saved.lessonIndex === "number") {
+        lessonFlatIndexRef.current = saved.lessonIndex;
+      }
       setCurrentLesson(lesson);
       setLessonStarted(false);
       setCanResume(true);
@@ -2014,6 +2167,7 @@ function CourseDetailInner({
       questionIndex: currentQuestionIndex,
       isSpeaking,
       completedLessonIds,
+      preferredFlatIndex: lessonFlatIndexRef.current,
     });
   }, [
     currentLesson,
@@ -2180,7 +2334,7 @@ function CourseDetailInner({
           nav={lessonNav}
           onPrevious={handlePrevious}
           onPrimary={handlePrimaryNav}
-          showRestart={isCourseCompleted}
+          showRestart={false}
           onRestart={handleRestartCourse}
         />
       )}
@@ -2260,23 +2414,35 @@ function CourseDetailInner({
                     className="flex-1"
                   />
                   {(isSpeaking || isPaused) && (
-                    <button
-                      type="button"
-                      onClick={handleTogglePause}
-                      title={isPaused ? "Resume the lesson" : "Pause the lesson"}
-                      aria-label={
-                        isPaused ? "Resume the lesson" : "Pause the lesson"
-                      }
-                      aria-pressed={isPaused}
-                      className="mt-4 flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                    >
-                      {isPaused ? (
-                        <Play className="size-3.5" aria-hidden />
-                      ) : (
-                        <Pause className="size-3.5" aria-hidden />
-                      )}
-                      {isPaused ? "Resume" : "Pause"}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleRewindSpeech}
+                        title="Rewind 10 seconds"
+                        aria-label="Rewind 10 seconds"
+                        className="mt-4 flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      >
+                        <RotateCcw className="size-3.5" aria-hidden />
+                        <span className="hidden min-[420px]:inline">-10s</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleTogglePause}
+                        title={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                        aria-label={
+                          isPaused ? "Resume the lesson" : "Pause the lesson"
+                        }
+                        aria-pressed={isPaused}
+                        className="mt-4 flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      >
+                        {isPaused ? (
+                          <Play className="size-3.5" aria-hidden />
+                        ) : (
+                          <Pause className="size-3.5" aria-hidden />
+                        )}
+                        {isPaused ? "Resume" : "Pause"}
+                      </button>
+                    </>
                   )}
                 </div>
               )}
@@ -2355,23 +2521,35 @@ function CourseDetailInner({
                   </p>
                 </div>
                 {lessonStarted && (isSpeaking || isPaused) && (
-                  <button
-                    type="button"
-                    onClick={handleTogglePause}
-                    title={isPaused ? "Resume the lesson" : "Pause the lesson"}
-                    aria-label={isPaused ? "Resume the lesson" : "Pause the lesson"}
-                    aria-pressed={isPaused}
-                    className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                  >
-                    {isPaused ? (
-                      <Play className="size-3.5" aria-hidden />
-                    ) : (
-                      <Pause className="size-3.5" aria-hidden />
-                    )}
-                    <span className="hidden min-[360px]:inline">
-                      {isPaused ? "Resume" : "Pause"}
-                    </span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleRewindSpeech}
+                      title="Rewind 10 seconds"
+                      aria-label="Rewind 10 seconds"
+                      className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    >
+                      <RotateCcw className="size-3.5" aria-hidden />
+                      <span className="hidden min-[360px]:inline">-10s</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleTogglePause}
+                      title={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                      aria-label={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                      aria-pressed={isPaused}
+                      className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    >
+                      {isPaused ? (
+                        <Play className="size-3.5" aria-hidden />
+                      ) : (
+                        <Pause className="size-3.5" aria-hidden />
+                      )}
+                      <span className="hidden min-[360px]:inline">
+                        {isPaused ? "Resume" : "Pause"}
+                      </span>
+                    </button>
+                  </>
                 )}
               </div>
               {lessonStarted && lessonNav && (
@@ -2410,7 +2588,7 @@ function CourseDetailInner({
                       nav={lessonNav}
                       onPrevious={handlePrevious}
                       onPrimary={handlePrimaryNav}
-                      showRestart={isCourseCompleted}
+                      showRestart={false}
                       onRestart={handleRestartCourse}
                     />
                   )}
@@ -2901,6 +3079,9 @@ function CourseDetailInner({
                             {canResume ? "Continue learning" : "Start learning"}
                           </span>
                         </button>
+                        {canResume ? (
+                          <CourseProgressResetLink onReset={handleRestartCourse} />
+                        ) : null}
 
                         {/* Decorative elements */}
                         <div className="mt-8 flex items-center justify-center gap-2 text-xs text-gray-400">

@@ -47,6 +47,81 @@ export function seedWebCodeFromExample(
   return { html: code, css: "", javascript: "" };
 }
 
+/** Infer companion pane language when `supportingLanguage` is omitted. */
+export function inferSupportingLanguage(mainLanguage?: string): string {
+  const lang = (mainLanguage || "html").toLowerCase().trim();
+  if (lang === "css") return "html";
+  if (lang === "html" || lang === "web" || lang.startsWith("html")) return "css";
+  if (lang === "javascript" || lang === "js") return "html";
+  return "html";
+}
+
+function mergeWebSources(
+  primary: WebCodeSources,
+  secondary: WebCodeSources,
+): WebCodeSources {
+  return {
+    html: primary.html || secondary.html,
+    css: primary.css || secondary.css,
+    javascript: primary.javascript || secondary.javascript,
+  };
+}
+
+export type WebCodeExampleLike = {
+  code: string;
+  language: string;
+  starterCode?: string;
+  supportingCode?: string;
+  supportingLanguage?: string;
+};
+
+/**
+ * Build HTML/CSS/JS panes from a code example.
+ * - `demo`: main `code` in its language pane + optional `supportingCode` companion.
+ * - `practice`: `starterCode` (or empty) in main pane + companion unchanged.
+ */
+export function buildWebCodeFromExample(
+  example: WebCodeExampleLike,
+  mode: "demo" | "practice",
+): WebCodeSources {
+  const mainText =
+    mode === "practice"
+      ? (example.starterCode?.trim() ?? "")
+      : example.code;
+  const primary = seedWebCodeFromExample(mainText, example.language);
+
+  const supporting = example.supportingCode?.trim();
+  if (!supporting) return primary;
+
+  const secondary = seedWebCodeFromExample(
+    supporting,
+    example.supportingLanguage ?? inferSupportingLanguage(example.language),
+  );
+  return mergeWebSources(primary, secondary);
+}
+
+/** Web workspace while the instructor types the main example (companion panes stay filled). */
+export function webCodeForExampleTyping(
+  example: WebCodeExampleLike,
+  partialMainCode: string,
+): WebCodeSources {
+  return buildWebCodeFromExample({ ...example, code: partialMainCode }, "demo");
+}
+
+/** Web workspace when the student practises (starter in main pane + supporting companion). */
+export function webCodeForExamplePractice(
+  example: WebCodeExampleLike,
+): WebCodeSources {
+  return buildWebCodeFromExample(example, "practice");
+}
+
+/** Initial web workspace before typing starts (companion prefilled, main pane empty). */
+export function webCodeForExampleDemoStart(
+  example: WebCodeExampleLike,
+): WebCodeSources {
+  return buildWebCodeFromExample({ ...example, code: "" }, "demo");
+}
+
 export function hasWebCodeContent(sources: WebCodeSources): boolean {
   return Boolean(
     sources.html.trim() || sources.css.trim() || sources.javascript.trim(),

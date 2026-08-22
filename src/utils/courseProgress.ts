@@ -1,6 +1,41 @@
 import type { Curriculum, Lesson } from "@/data/curriculumData";
 import { isLessonMarkedComplete } from "@/utils/lessonNavigation";
 
+import type { CurriculumEntry } from "@/data/curriculumData";
+
+type CurriculumModulesShape = {
+  modules?: Array<{ lessons?: Array<{ id?: string }> }>;
+};
+
+/** Lesson ids belonging to the first module (v1 and v2 curricula). */
+export function getFirstModuleLessonIds(entry: CurriculumEntry | null): string[] {
+  if (!entry?.curriculum || typeof entry.curriculum !== "object") return [];
+  const modules = (entry.curriculum as CurriculumModulesShape).modules;
+  if (!Array.isArray(modules) || modules.length === 0) return [];
+  const lessons = modules[0]?.lessons;
+  if (!Array.isArray(lessons)) return [];
+  return lessons
+    .map((lesson) => (typeof lesson.id === "string" ? lesson.id : ""))
+    .filter(Boolean);
+}
+
+export function isSingleModuleCourse(entry: CurriculumEntry | null): boolean {
+  if (!entry?.curriculum || typeof entry.curriculum !== "object") return false;
+  const modules = (entry.curriculum as CurriculumModulesShape).modules;
+  return Array.isArray(modules) && modules.length === 1;
+}
+
+/** True when every lesson in module 1 is in the learner's completed list. */
+export function isFirstModuleComplete(
+  entry: CurriculumEntry | null,
+  completedLessonIds: readonly string[],
+): boolean {
+  const lessonIds = getFirstModuleLessonIds(entry);
+  if (lessonIds.length === 0) return false;
+  const completed = new Set(completedLessonIds);
+  return lessonIds.every((id) => completed.has(id));
+}
+
 /** Avatar line when the learner finishes an entire course. */
 export function buildCourseCompletionSpeech(courseTitle: string): string {
   const title = courseTitle.trim() || "this course";

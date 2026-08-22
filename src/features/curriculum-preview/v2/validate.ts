@@ -36,6 +36,22 @@ function validateCodeExample(
   ) {
     errors.push(`${label}: code_example.starterCode must be a string when provided`);
   }
+  if (
+    ex.supportingCode !== undefined &&
+    typeof ex.supportingCode !== "string"
+  ) {
+    errors.push(
+      `${label}: code_example.supportingCode must be a string when provided`,
+    );
+  }
+  if (
+    ex.supportingLanguage !== undefined &&
+    typeof ex.supportingLanguage !== "string"
+  ) {
+    errors.push(
+      `${label}: code_example.supportingLanguage must be a string when provided`,
+    );
+  }
 }
 
 function validateFormulaExample(

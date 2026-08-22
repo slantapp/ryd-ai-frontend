@@ -4,6 +4,8 @@ This guide is for **authors, teachers, and developers** building **schema v2** c
 
 **Working example:** [`CURRICULUM_V2_SAMPLE.json`](./CURRICULUM_V2_SAMPLE.json)
 
+**Backend validation spec (send to API team):** [`CURRICULUM_V2_BACKEND_SPEC.md`](./CURRICULUM_V2_BACKEND_SPEC.md) — required vs optional fields, upload rules, and what **must not** be compulsory.
+
 **Subtitle `show` test file:** [`CURRICULUM_V2_CAPTION_SAMPLE.json`](./CURRICULUM_V2_CAPTION_SAMPLE.json) — upload this in Curriculum Preview to hear speech vs live subtitle swaps.
 
 **Legacy v1 format:** [`CURRICULUM_JSON_GUIDE.md`](./CURRICULUM_JSON_GUIDE.md)
@@ -13,20 +15,43 @@ This guide is for **authors, teachers, and developers** building **schema v2** c
 ## Table of contents
 
 1. [What is v2?](#what-is-v2)
-2. [How the JSON is organized](#how-the-json-is-organized)
-3. [What the student sees before the lesson starts](#what-the-student-sees-before-the-lesson-starts)
-4. [How a lesson runs (the flow)](#how-a-lesson-runs-the-flow)
-5. [Phases — what they mean in plain English](#phases--what-they-mean-in-plain-english)
-6. [Advance modes — when does the next step happen?](#advance-modes--when-does-the-next-step-happen)
-7. [Beat types — what you write vs what they see](#beat-types--what-you-write-vs-what-they-see)
-8. [Questions, wrong answers, and retries](#questions-wrong-answers-and-retries)
-9. [Defaults — set once, reuse everywhere](#defaults--set-once-reuse-everywhere)
-10. [Example lesson walkthrough](#example-lesson-walkthrough)
-11. [Progress and navigation](#progress-and-navigation)
-12. [Preview vs real student course](#preview-vs-real-student-course)
-13. [Authoring checklist](#authoring-checklist)
-14. [Migrating from v1](#migrating-from-v1)
-15. [Quick reference](#quick-reference)
+2. [Required vs optional (summary)](#required-vs-optional-summary)
+3. [How the JSON is organized](#how-the-json-is-organized)
+4. [What the student sees before the lesson starts](#what-the-student-sees-before-the-lesson-starts)
+5. [How a lesson runs (the flow)](#how-a-lesson-runs-the-flow)
+6. [Phases — what they mean in plain English](#phases--what-they-mean-in-plain-english)
+7. [Advance modes — when does the next step happen?](#advance-modes--when-does-the-next-step-happen)
+8. [Beat types — what you write vs what they see](#beat-types--what-you-write-vs-what-they-see)
+9. [Questions, wrong answers, and retries](#questions-wrong-answers-and-retries)
+10. [Defaults — set once, reuse everywhere](#defaults--set-once-reuse-everywhere)
+11. [Example lesson walkthrough](#example-lesson-walkthrough)
+12. [Progress and navigation](#progress-and-navigation)
+13. [Preview vs real student course](#preview-vs-real-student-course)
+14. [Authoring checklist](#authoring-checklist)
+15. [Migrating from v1](#migrating-from-v1)
+16. [Quick reference](#quick-reference)
+17. [Validation](#validation)
+
+---
+
+## Required vs optional (summary)
+
+Use this when authoring or building upload validation. **Full backend rules:** [`CURRICULUM_V2_BACKEND_SPEC.md`](./CURRICULUM_V2_BACKEND_SPEC.md).
+
+| Always required | Commonly optional (do not block uploads) |
+|-----------------|----------------------------------------|
+| Root: `slug`, `schema_version: 2`, `curriculum` | `curriculum.language`, `grade`, `duration`, `level`, `rating` |
+| Curriculum: `title`, `description`, `category`, `age`, `class`, `modules` | Entire `defaults` block |
+| Module: `id`, `title`, `lessons` | `unlock` |
+| Lesson: `id`, `title`, `flow` | `goal`, `estimated_minutes` |
+| Beat: `id`, `type`, `advance` | `phase`, most `avatar` lines |
+| `speak` → `avatar.text` | `avatar.show` |
+| `display` → `body` | `title`, `speak_body`, `avatar` |
+| `code_example` → `code`, `language` | **`starterCode`**, **`supportingCode`**, `description`, `explanation`, `autoRun`, `typingSpeed` |
+| `code_test` → `type`, `question` | **`code_example`**, **`testCriteria`**, `explanation` |
+| `formula_test` → `type`, `question`, `testCriteria.expectedFormula` | `formula_example` |
+
+**CSS lessons:** when `language` is `css`, add optional `supportingCode` (HTML to style) and optional `starterCode` (CSS skeleton for practice). See [code_demo](#code_demo--instructor-types-code) and [Backend spec — CSS example](./CURRICULUM_V2_BACKEND_SPEC.md#css-lesson-with-supporting-html-example).
 
 ---
 
@@ -313,7 +338,9 @@ Rules for authors:
 | `explanation` | No | Spoken after typing |
 | `autoRun` | No | Run after typing (default: false) |
 | `typingSpeed` | No | ms per character (default ~40) |
-| `starterCode` | No | Used on **question** handoff, not on standalone demos |
+| `starterCode` | No | Used on **question** handoff — skeleton in the main pane, **not** the full solution |
+| `supportingCode` | No | Companion pane (e.g. HTML to style when `language` is `css`) |
+| `supportingLanguage` | No | Language of `supportingCode` (defaults: `html` when main is `css`) |
 
 ```json
 {
@@ -321,12 +348,14 @@ Rules for authors:
   "type": "code_demo",
   "phase": "teach",
   "code_example": {
-    "code": "console.log('Hello');",
-    "language": "javascript",
-    "description": "Watch this line appear.",
-    "explanation": "console.log prints text to the output.",
+    "code": "h1 { color: red; }",
+    "language": "css",
+    "supportingCode": "<h1>My Page</h1>",
+    "supportingLanguage": "html",
+    "description": "Watch this CSS rule style the heading.",
+    "explanation": "The h1 selector picks headings; color sets text color.",
     "autoRun": true,
-    "typingSpeed": 60
+    "typingSpeed": 45
   },
   "advance": "auto"
 }
@@ -745,14 +774,18 @@ bridge
 
 ## Validation
 
-When you upload JSON in curriculum preview, the app validates:
+When you upload JSON in curriculum preview, the app validates structure (see [`validate.ts`](../src/features/curriculum-preview/v2/validate.ts)).
+
+**For backend upload APIs**, use [`CURRICULUM_V2_BACKEND_SPEC.md`](./CURRICULUM_V2_BACKEND_SPEC.md) — it lists required vs optional fields explicitly so teachers are not forced to fill in `starterCode`, `supportingCode`, `defaults`, or `avatar.show` when they are not needed.
+
+Preview validation highlights:
 
 - Every beat has `id`, `type`, and `advance`
 - `speak` requires `avatar.text`
 - `avatar.show` is optional; each item needs `say` and `as`, and `say` must appear in the spoken line
 - `display` requires `body`
-- `question` requires a valid question object
-- `code_demo` / `formula_demo` require their example objects
+- `question` requires a valid question object (`code_example` and `starterCode` are **optional** on `code_test`)
+- `code_demo` / `formula_demo` require their example objects (`code` + `language`, or `formula`)
 - `recap` requires `points[]`
 - `bridge` requires `next` (string or `null`)
 

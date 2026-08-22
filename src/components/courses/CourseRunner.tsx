@@ -9,7 +9,10 @@ import {
 } from "@/data/curriculumData";
 import { isCurriculumV2 } from "@/features/curriculum-preview/v2/detect";
 import { useCoursesStore } from "@/stores/coursesStore";
-import { useCourseCompletionFeedback } from "@/hooks/useCourseCompletionFeedback";
+import {
+  useCourseCompletionFeedback,
+  type CourseFeedbackVariant,
+} from "@/hooks/useCourseCompletionFeedback";
 import { useCourseLearningSession } from "@/hooks/useCourseLearningSession";
 import { CourseCompletionFeedbackDialog } from "./CourseCompletionFeedbackDialog";
 import CourseDetails from "./CourseDetails";
@@ -42,9 +45,14 @@ function isMathematicsCurriculum(
 export default function CourseRunner() {
   const { exercise } = useParams<{ exercise: string }>();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackVariant, setFeedbackVariant] =
+    useState<CourseFeedbackVariant>("course_complete");
   const curriculaRevision = useCoursesStore((s) => s.curriculaRevision);
 
-  const openFeedback = useCallback(() => setFeedbackOpen(true), []);
+  const openFeedback = useCallback((variant: CourseFeedbackVariant) => {
+    setFeedbackVariant(variant);
+    setFeedbackOpen(true);
+  }, []);
 
   useCourseCompletionFeedback(exercise, openFeedback);
   useCourseLearningSession(exercise);
@@ -80,6 +88,7 @@ export default function CourseRunner() {
         <CourseCompletionFeedbackDialog
           open={feedbackOpen}
           onOpenChange={setFeedbackOpen}
+          variant={feedbackVariant}
           courseSlug={exercise}
           courseTitle={getCourseTitleBySlug(exercise)}
           curriculumId={getCurriculumIdBySlug(exercise)}

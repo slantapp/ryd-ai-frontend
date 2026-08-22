@@ -1589,6 +1589,9 @@
                     "language": "css",
                     "description": "A tag selector for headings.",
                     "explanation": "Use the tag name `h1`, then add styles inside braces.",
+                    "supportingCode": "<h1>My Page</h1>\n<p>Welcome to my site.</p>",
+                    "supportingLanguage": "html",
+                    "starterCode": "/* Write a selector for h1 */\n\n",
                     "autoRun": false,
                     "typingSpeed": 45
                   },

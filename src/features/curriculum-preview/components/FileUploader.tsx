@@ -21,6 +21,7 @@ import type { CurriculumData } from "../types";
 import { sampleCurriculumJSON, sampleMathCurriculumJSON } from "../templates";
 import curriculumJsonGuide from "../../../../docs/CURRICULUM_JSON_GUIDE.md?raw";
 import curriculumV2Guide from "../../../../docs/CURRICULUM_V2_GUIDE.md?raw";
+import curriculumV2BackendSpec from "../../../../docs/CURRICULUM_V2_BACKEND_SPEC.md?raw";
 import {
   extractCurriculumV2Data,
   isCurriculumV2,
@@ -406,6 +407,14 @@ export function FileUploader({
     );
   }, [downloadFile]);
 
+  const handleDownloadV2BackendSpec = useCallback(() => {
+    downloadFile(
+      curriculumV2BackendSpec,
+      "CURRICULUM_V2_BACKEND_SPEC.md",
+      "text/markdown;charset=utf-8",
+    );
+  }, [downloadFile]);
+
   const processFile = useCallback((file: File) => {
     setError(null);
     setValidationErrors([]);
@@ -718,6 +727,14 @@ export function FileUploader({
               >
                 <Download className="h-4 w-4" />
                 Download v2 guide
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadV2BackendSpec}
+                className="inline-flex items-center gap-2 rounded-lg border border-teal-500/60 bg-teal-50/80 px-4 py-2.5 text-sm font-semibold text-teal-800 transition-all hover:bg-teal-100"
+              >
+                <BookOpen className="h-4 w-4" />
+                Backend validation spec
               </button>
             </div>
           </div>

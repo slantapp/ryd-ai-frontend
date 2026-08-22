@@ -113,6 +113,8 @@ export function buildLessonNavSnapshot(args: {
   questionIndex: number;
   isSpeaking: boolean;
   completedLessonIds: Set<string>;
+  /** Disambiguates duplicate lesson IDs across modules. */
+  preferredFlatIndex?: number;
 }): LessonNavSnapshot {
   const {
     lesson,
@@ -122,12 +124,21 @@ export function buildLessonNavSnapshot(args: {
     questionIndex,
     isSpeaking,
     completedLessonIds,
+    preferredFlatIndex,
   } = args;
 
   const questionCount = lesson.questions?.length ?? 0;
-  const hasPrevLesson = !!getPreviousLessonInOrder(lesson, curriculum);
-  const nextLesson = getNextLessonInOrder(lesson, curriculum);
-  const moduleInfo = getModuleInfoForLesson(lesson.id, curriculum);
+  const hasPrevLesson = !!getPreviousLessonInOrder(
+    lesson,
+    curriculum,
+    preferredFlatIndex,
+  );
+  const nextLesson = getNextLessonInOrder(lesson, curriculum, preferredFlatIndex);
+  const moduleInfo = getModuleInfoForLesson(
+    lesson.id,
+    curriculum,
+    preferredFlatIndex,
+  );
   const nextCrossesModule = !!(
     nextLesson &&
     moduleInfo?.isLastLessonInModule

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import Split from "react-split";
 import NarratorAvatar from "narrator-avatar";
-import { Calculator, CheckCircle2, Mic, Pause, Play, Volume2, XCircle } from "lucide-react";
+import { Calculator, CheckCircle2, Mic, Pause, Play, RotateCcw, Volume2, XCircle } from "lucide-react";
 import {
   type Question,
   type Lesson,
@@ -34,6 +34,11 @@ import { useCoursesStore } from "@/stores/coursesStore";
 import { cn } from "@/lib/utils";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
 import {
+  createSpeechRewindTracker,
+  REWIND_RESPEAK_DELAY_MS,
+  REWIND_SECONDS,
+} from "@/utils/speechRewind";
+import {
   MOBILE_INSTRUCTOR_AUDIO_BUTTON,
   MOBILE_INSTRUCTOR_AUDIO_HINT,
 } from "@/constants/mobileInstructorAudio";
@@ -53,6 +58,7 @@ import {
   isV1CourseFinished,
 } from "@/utils/courseProgress";
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
+import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
 
 interface NarratorAvatarRef {
   speakText: (text: string, options?: Record<string, unknown>) => void;
@@ -179,6 +185,9 @@ function MathCourseDetailsInner() {
   const [isPaused, setIsPaused] = useState(false);
   const pausedLiveRef = useRef(false);
   const lastSpokenTextRef = useRef<string>("");
+  /** Tracks live playback position inside the current utterance (for rewind). */
+  const rewindTracker = useMemo(() => createSpeechRewindTracker(), []);
+  const lessonFlatIndexRef = useRef<number | undefined>(undefined);
   const [totalQuestionsAnswered, setTotalQuestionsAnswered] = useState(0);
   const [moduleCorrectCount, setModuleCorrectCount] = useState(0);
   const [moduleTotalAnswered, setModuleTotalAnswered] = useState(0);
@@ -191,11 +200,15 @@ function MathCourseDetailsInner() {
   const [activeFormulaExample, setActiveFormulaExample] =
     useState<FormulaExample | null>(null);
   const [currentSubtitle, setCurrentSubtitle] = useState("");
-  const handleSubtitle = useCallback((text: string) => {
-    setCurrentSubtitle(
-      applySubtitleShow(text, currentLessonRef.current?.avatar_show),
-    );
-  }, []);
+  const handleSubtitle = useCallback(
+    (text: string) => {
+      rewindTracker.noteSubtitle(text);
+      setCurrentSubtitle(
+        applySubtitleShow(text, currentLessonRef.current?.avatar_show),
+      );
+    },
+    [rewindTracker],
+  );
   const [isShowingSubtitles, setIsShowingSubtitles] = useState(false);
   const [showMobileAudioUnlock, setShowMobileAudioUnlock] = useState(false);
   const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(
@@ -300,6 +313,7 @@ function MathCourseDetailsInner() {
           pendingActionRef.current = action;
           speechStartTimeRef.current = Date.now();
           lastSpeechTextRef.current = text;
+          rewindTracker.beginUtterance(text);
           lastSpokenTextRef.current = text;
           setAwaitingSpeech(true);
           avatar.speakText(text);
@@ -309,7 +323,7 @@ function MathCourseDetailsInner() {
         setAwaitingSpeech(false);
       }
     },
-    [getAvatar],
+    [getAvatar, rewindTracker],
   );
 
   const speak = useCallback(
@@ -367,21 +381,81 @@ function MathCourseDetailsInner() {
     if (isPaused) {
       if (pausedLiveRef.current && typeof avatar?.resumeSpeaking === "function") {
         avatar.resumeSpeaking();
+        rewindTracker.noteResume();
         setIsSpeaking(true);
       } else if (lastSpokenTextRef.current) {
-        speak(lastSpokenTextRef.current);
+        const resume = rewindTracker.computeResume();
+        speak(resume?.text ?? lastSpokenTextRef.current);
       }
       pausedLiveRef.current = false;
       setIsPaused(false);
       clearPausedState();
     } else {
-      if (typeof avatar?.pauseSpeaking === "function") avatar.pauseSpeaking();
-      pausedLiveRef.current = true;
+      if (typeof avatar?.pauseSpeaking === "function") {
+        rewindTracker.notePause();
+        avatar.pauseSpeaking();
+        pausedLiveRef.current = true;
+      }
       setIsPaused(true);
       setIsSpeaking(false);
       persistPausedState(lastSpokenTextRef.current);
     }
-  }, [isPaused, getAvatar, speak, persistPausedState, clearPausedState]);
+  }, [
+    isPaused,
+    getAvatar,
+    rewindTracker,
+    speak,
+    persistPausedState,
+    clearPausedState,
+  ]);
+
+  const handleRewindSpeech = useCallback(() => {
+    if (!isSpeaking && !isPaused) return;
+    const slice = rewindTracker.computeRewind(REWIND_SECONDS);
+    if (!slice) return;
+
+    const avatar = getAvatar();
+    if (!avatar || typeof avatar.speakText !== "function") return;
+
+    // Stopping mid-utterance makes the avatar report speech-end; letting that
+    // through would run the queued follow-up and skip the lesson forward.
+    isManuallyStopped.current = true;
+    stopAvatarSpeech(avatar);
+    rewindTracker.beginChunk(slice.startIndex);
+
+    // pendingActionRef is deliberately left intact — the rewound line still has
+    // to unlock questions / the next lesson when it finishes.
+    pausedLiveRef.current = false;
+    setIsPaused(false);
+    clearPausedState();
+    speechStartTimeRef.current = Date.now();
+    lastSpeechTextRef.current = slice.text;
+    setCurrentSubtitle("");
+    setIsSpeaking(true);
+    setAwaitingSpeech(true);
+
+    // Keep the AudioContext alive inside this tap (WebKit autoplay policy).
+    void (avatar as { resumeAudioContext?: () => Promise<void> })
+      .resumeAudioContext?.()
+      .catch(() => {
+        /* expected on some WebKit builds until speakText */
+      });
+
+    window.setTimeout(() => {
+      isManuallyStopped.current = false;
+      const live = getAvatar();
+      if (!live || typeof live.speakText !== "function") {
+        setAwaitingSpeech(false);
+        return;
+      }
+      try {
+        live.speakText(slice.text);
+      } catch (error) {
+        console.warn("Error rewinding speech:", error);
+        setAwaitingSpeech(false);
+      }
+    }, REWIND_RESPEAK_DELAY_MS);
+  }, [clearPausedState, getAvatar, isPaused, isSpeaking, rewindTracker]);
 
   useEffect(() => {
     if (!pauseStorageKey) return;
@@ -447,6 +521,7 @@ function MathCourseDetailsInner() {
     setIsSpeaking(false);
     setIsPaused(false);
     pausedLiveRef.current = false;
+    rewindTracker.reset();
     clearPausedState();
     setTimeout(() => {
       isManuallyStopped.current = false;
@@ -454,6 +529,7 @@ function MathCourseDetailsInner() {
   }, [
     clearIntroUnlockTimeout,
     getAvatar,
+    rewindTracker,
     stopFormulaTyping,
     stopSubtitles,
     clearPausedState,
@@ -462,6 +538,9 @@ function MathCourseDetailsInner() {
   const persistCoursePosition = useCallback(
     (progress: Partial<CourseProgress>) => {
       if (!exercise) return;
+      if (typeof progress.lessonIndex === "number") {
+        lessonFlatIndexRef.current = progress.lessonIndex;
+      }
       updateCourseProgress(exercise, {
         currentLessonId: progress.lessonId ?? null,
         lessonIndex: progress.lessonIndex,
@@ -834,6 +913,18 @@ function MathCourseDetailsInner() {
     stopSubtitles,
   ]);
 
+  const handleSpeechStart = useCallback(() => {
+    isManuallyStopped.current = false;
+    rewindTracker.noteAudioStart();
+    setIsSpeaking(true);
+    setIsShowingSubtitles(true);
+    setAwaitingSpeech(false);
+    syncPendingSpeech();
+    setIsPaused(false);
+    pausedLiveRef.current = false;
+    clearPausedState();
+  }, [clearPausedState, rewindTracker, syncPendingSpeech]);
+
   const handleSpeechEnd = useCallback(() => {
     if (isManuallyStopped.current) return;
     const textLength = lastSpeechTextRef.current.length;
@@ -1062,11 +1153,26 @@ function MathCourseDetailsInner() {
     stopSpeaking();
     clearIntroUnlockTimeout();
 
-    const prevLesson = getPreviousLessonInOrder(currentLesson, curriculum);
+    const prevLesson = getPreviousLessonInOrder(
+      currentLesson,
+      curriculum,
+      lessonFlatIndexRef.current,
+    );
     if (!prevLesson) return;
 
-    const currentModIndex = getModuleIndexForLesson(currentLesson, curriculum);
-    const prevModIndex = getModuleIndexForLesson(prevLesson, curriculum);
+    const flatHint = lessonFlatIndexRef.current;
+    const prevFlatHint =
+      typeof flatHint === "number" && flatHint > 0 ? flatHint - 1 : undefined;
+    const currentModIndex = getModuleIndexForLesson(
+      currentLesson,
+      curriculum,
+      flatHint,
+    );
+    const prevModIndex = getModuleIndexForLesson(
+      prevLesson,
+      curriculum,
+      prevFlatHint,
+    );
     const movingToNewModule =
       currentModIndex !== -1 &&
       prevModIndex !== -1 &&
@@ -1083,7 +1189,11 @@ function MathCourseDetailsInner() {
     enterLessonIntro(prevLesson);
     persistCoursePosition({
       lessonId: prevLesson.id,
-      lessonIndex: getLessonIndexInCurriculum(prevLesson, curriculum),
+      lessonIndex: getLessonIndexInCurriculum(
+        prevLesson,
+        curriculum,
+        prevFlatHint,
+      ),
       questionIndex: 0,
       lessonStarted: true,
       canStartQuestions: false,
@@ -1258,14 +1368,29 @@ function MathCourseDetailsInner() {
       ((currentLesson.questions?.length ?? 0) === 0 && introReady);
     if (!lessonComplete) return;
 
-    const nextLesson = getNextLessonInOrder(currentLesson, curriculum);
+    const nextLesson = getNextLessonInOrder(
+      currentLesson,
+      curriculum,
+      lessonFlatIndexRef.current,
+    );
     if (!nextLesson) return;
 
     stopSpeaking();
     clearIntroUnlockTimeout();
 
-    const currentModIndex = getModuleIndexForLesson(currentLesson, curriculum);
-    const nextModIndex = getModuleIndexForLesson(nextLesson, curriculum);
+    const flatHint = lessonFlatIndexRef.current;
+    const nextFlatHint =
+      typeof flatHint === "number" ? flatHint + 1 : undefined;
+    const currentModIndex = getModuleIndexForLesson(
+      currentLesson,
+      curriculum,
+      flatHint,
+    );
+    const nextModIndex = getModuleIndexForLesson(
+      nextLesson,
+      curriculum,
+      nextFlatHint,
+    );
     const movingToNewModule =
       currentModIndex !== -1 &&
       nextModIndex !== -1 &&
@@ -1282,7 +1407,11 @@ function MathCourseDetailsInner() {
 
     persistCoursePosition({
       lessonId: nextLesson.id,
-      lessonIndex: getLessonIndexInCurriculum(nextLesson, curriculum),
+      lessonIndex: getLessonIndexInCurriculum(
+        nextLesson,
+        curriculum,
+        nextFlatHint,
+      ),
       questionIndex: 0,
       lessonStarted: true,
       canStartQuestions: false,
@@ -1399,6 +1528,9 @@ function MathCourseDetailsInner() {
       const lessonComplete = completed.has(lesson.id) || allQuestionsDone;
 
       // Park for Continue tap — async hydrate is outside a user gesture for TTS.
+      if (typeof saved.lessonIndex === "number") {
+        lessonFlatIndexRef.current = saved.lessonIndex;
+      }
       setCurrentLesson(lesson);
       setLessonStarted(false);
       setCanResume(true);
@@ -1447,6 +1579,7 @@ function MathCourseDetailsInner() {
       questionIndex: currentQuestionIndex,
       isSpeaking,
       completedLessonIds,
+      preferredFlatIndex: lessonFlatIndexRef.current,
     });
   }, [
     completedLessonIds,
@@ -1735,30 +1868,42 @@ function MathCourseDetailsInner() {
                       className="flex-1"
                     />
                     {(isSpeaking || isPaused) && (
-                      <button
-                        type="button"
-                        onClick={handleTogglePause}
-                        title={isPaused ? "Resume the lesson" : "Pause the lesson"}
-                        aria-label={
-                          isPaused ? "Resume the lesson" : "Pause the lesson"
-                        }
-                        aria-pressed={isPaused}
-                        className="mt-4 flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                      >
-                        {isPaused ? (
-                          <Play className="size-3.5" aria-hidden />
-                        ) : (
-                          <Pause className="size-3.5" aria-hidden />
-                        )}
-                        {isPaused ? "Resume" : "Pause"}
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleRewindSpeech}
+                          title="Rewind 10 seconds"
+                          aria-label="Rewind 10 seconds"
+                          className="mt-4 flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                        >
+                          <RotateCcw className="size-3.5" aria-hidden />
+                          <span className="hidden min-[420px]:inline">-10s</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleTogglePause}
+                          title={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                          aria-label={
+                            isPaused ? "Resume the lesson" : "Pause the lesson"
+                          }
+                          aria-pressed={isPaused}
+                          className="mt-4 flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                        >
+                          {isPaused ? (
+                            <Play className="size-3.5" aria-hidden />
+                          ) : (
+                            <Pause className="size-3.5" aria-hidden />
+                          )}
+                          {isPaused ? "Resume" : "Pause"}
+                        </button>
+                      </>
                     )}
                   </div>
                   <LessonNavControls
                     nav={lessonNav}
                     onPrevious={handlePrevious}
                     onPrimary={handlePrimaryNav}
-                    showRestart={isCourseCompleted}
+                    showRestart={false}
                     onRestart={handleRestartCourse}
                   />
                 </>
@@ -1772,16 +1917,7 @@ function MathCourseDetailsInner() {
                   onError={(error: unknown) =>
                     console.error("Avatar error:", error)
                   }
-                  onSpeechStart={() => {
-                    isManuallyStopped.current = false;
-                    setIsSpeaking(true);
-                    setIsShowingSubtitles(true);
-                    setAwaitingSpeech(false);
-                    syncPendingSpeech();
-                    setIsPaused(false);
-                    pausedLiveRef.current = false;
-                    clearPausedState();
-                  }}
+                  onSpeechStart={handleSpeechStart}
                   onSpeechEnd={handleSpeechEnd}
                   onSubtitle={handleSubtitle}
                   className="h-full min-h-0 w-full min-w-0 max-h-full max-w-full"
@@ -1822,23 +1958,35 @@ function MathCourseDetailsInner() {
                   </p>
                 </div>
                 {lessonStarted && (isSpeaking || isPaused) && (
-                  <button
-                    type="button"
-                    onClick={handleTogglePause}
-                    title={isPaused ? "Resume the lesson" : "Pause the lesson"}
-                    aria-label={isPaused ? "Resume the lesson" : "Pause the lesson"}
-                    aria-pressed={isPaused}
-                    className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                  >
-                    {isPaused ? (
-                      <Play className="size-3.5" aria-hidden />
-                    ) : (
-                      <Pause className="size-3.5" aria-hidden />
-                    )}
-                    <span className="hidden min-[360px]:inline">
-                      {isPaused ? "Resume" : "Pause"}
-                    </span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleRewindSpeech}
+                      title="Rewind 10 seconds"
+                      aria-label="Rewind 10 seconds"
+                      className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    >
+                      <RotateCcw className="size-3.5" aria-hidden />
+                      <span className="hidden min-[360px]:inline">-10s</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleTogglePause}
+                      title={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                      aria-label={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                      aria-pressed={isPaused}
+                      className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    >
+                      {isPaused ? (
+                        <Play className="size-3.5" aria-hidden />
+                      ) : (
+                        <Pause className="size-3.5" aria-hidden />
+                      )}
+                      <span className="hidden min-[360px]:inline">
+                        {isPaused ? "Resume" : "Pause"}
+                      </span>
+                    </button>
+                  </>
                 )}
               </div>
               {showMobileAudioUnlock && (
@@ -1871,7 +2019,7 @@ function MathCourseDetailsInner() {
                       nav={lessonNav}
                       onPrevious={handlePrevious}
                       onPrimary={handlePrimaryNav}
-                      showRestart={isCourseCompleted}
+                      showRestart={false}
                       onRestart={handleRestartCourse}
                     />
                   </div>
@@ -1993,6 +2141,9 @@ function MathCourseDetailsInner() {
                     <Play className="size-5 shrink-0 fill-white" />
                     {canResume ? "Continue learning" : "Start learning"}
                   </button>
+                  {canResume ? (
+                    <CourseProgressResetLink onReset={handleRestartCourse} />
+                  ) : null}
                 </div>
               </div>
             )}
@@ -2011,16 +2162,7 @@ function MathCourseDetailsInner() {
                 onError={(error: unknown) =>
                   console.error("Avatar error:", error)
                 }
-                onSpeechStart={() => {
-                  isManuallyStopped.current = false;
-                  setIsSpeaking(true);
-                  setIsShowingSubtitles(true);
-                  setAwaitingSpeech(false);
-                  syncPendingSpeech();
-                  setIsPaused(false);
-                  pausedLiveRef.current = false;
-                  clearPausedState();
-                }}
+                onSpeechStart={handleSpeechStart}
                 onSpeechEnd={handleSpeechEnd}
                 onSubtitle={handleSubtitle}
                 className="h-full w-full"

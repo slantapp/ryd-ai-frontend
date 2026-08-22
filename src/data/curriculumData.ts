@@ -19,6 +19,13 @@ export interface CodeExample {
    * Prefer a skeleton with comments — not the full solution.
    */
   starterCode?: string;
+  /**
+   * Optional companion code in another web-workspace pane (e.g. HTML to style when
+   * `language` is `css`). Shown during demos and kept visible for practice.
+   */
+  supportingCode?: string;
+  /** Language of `supportingCode` (defaults: html when language is css, css when html). */
+  supportingLanguage?: string;
 }
 
 export interface Question {
@@ -141,65 +148,77 @@ export function findNextLesson(
 
 // Get the next lesson in curriculum order by position (not by ID).
 // Use this when lesson IDs are reused across modules so we don't jump to the wrong module.
+export function getFlatLessonIndex(
+  lesson: Lesson,
+  curriculum: Curriculum["curriculum"],
+  preferredFlatIndex?: number,
+): number {
+  let index = 0;
+  for (const mod of curriculum.modules) {
+    for (const l of mod.lessons) {
+      if (l === lesson) return index;
+      index++;
+    }
+  }
+
+  if (typeof preferredFlatIndex === "number" && preferredFlatIndex >= 0) {
+    const atIndex = getLessonByIndex(preferredFlatIndex, curriculum);
+    if (atIndex && atIndex.id === lesson.id) return preferredFlatIndex;
+  }
+
+  return -1;
+}
+
 export function getNextLessonInOrder(
   currentLesson: Lesson,
   curriculum: Curriculum["curriculum"],
+  preferredFlatIndex?: number,
 ): Lesson | null {
-  for (let modIndex = 0; modIndex < curriculum.modules.length; modIndex++) {
-    const mod = curriculum.modules[modIndex];
-    const lessonIndex = mod.lessons.findIndex((l) => l === currentLesson);
-    if (lessonIndex !== -1) {
-      // Next lesson in same module
-      if (lessonIndex + 1 < mod.lessons.length) {
-        return mod.lessons[lessonIndex + 1] as Lesson;
-      }
-      // Last lesson in module: next is first lesson of next module
-      if (modIndex + 1 < curriculum.modules.length) {
-        const nextMod = curriculum.modules[modIndex + 1];
-        if (nextMod.lessons.length > 0) {
-          return nextMod.lessons[0] as Lesson;
-        }
-      }
-      return null;
-    }
-  }
-  return null;
+  const flatIndex = getFlatLessonIndex(
+    currentLesson,
+    curriculum,
+    preferredFlatIndex,
+  );
+  if (flatIndex < 0) return null;
+
+  const total = curriculum.modules.reduce((sum, mod) => sum + mod.lessons.length, 0);
+  if (flatIndex >= total - 1) return null;
+  return getLessonByIndex(flatIndex + 1, curriculum);
 }
 
-// Get the previous lesson in curriculum order by position (not by ID).
-// Use this to navigate backward through lessons/modules.
+// Get the previous lesson in curriculum order by flat index (not by ID).
+// Use this to navigate backward through lessons/modules when IDs repeat.
 export function getPreviousLessonInOrder(
   currentLesson: Lesson,
   curriculum: Curriculum["curriculum"],
+  preferredFlatIndex?: number,
 ): Lesson | null {
-  for (let modIndex = 0; modIndex < curriculum.modules.length; modIndex++) {
-    const mod = curriculum.modules[modIndex];
-    const lessonIndex = mod.lessons.findIndex((l) => l === currentLesson);
-    if (lessonIndex !== -1) {
-      // Previous lesson in same module
-      if (lessonIndex > 0) {
-        return mod.lessons[lessonIndex - 1] as Lesson;
-      }
-      // First lesson in module: previous is last lesson of previous module
-      if (modIndex > 0) {
-        const prevMod = curriculum.modules[modIndex - 1];
-        if (prevMod.lessons.length > 0) {
-          return prevMod.lessons[prevMod.lessons.length - 1] as Lesson;
-        }
-      }
-      return null;
-    }
-  }
-  return null;
+  const flatIndex = getFlatLessonIndex(
+    currentLesson,
+    curriculum,
+    preferredFlatIndex,
+  );
+  if (flatIndex <= 0) return null;
+  return getLessonByIndex(flatIndex - 1, curriculum);
 }
 
-// Get the module index that contains this lesson (by reference). Used to detect module boundaries.
+// Get the module index that contains this lesson. Uses flat index when IDs repeat.
 export function getModuleIndexForLesson(
   lesson: Lesson,
   curriculum: Curriculum["curriculum"],
+  preferredFlatIndex?: number,
 ): number {
-  for (let i = 0; i < curriculum.modules.length; i++) {
-    if (curriculum.modules[i].lessons.includes(lesson)) return i;
+  const flatIndex = getFlatLessonIndex(
+    lesson,
+    curriculum,
+    preferredFlatIndex,
+  );
+  if (flatIndex < 0) return -1;
+
+  let count = 0;
+  for (let mi = 0; mi < curriculum.modules.length; mi++) {
+    count += curriculum.modules[mi].lessons.length;
+    if (flatIndex < count) return mi;
   }
   return -1;
 }
@@ -208,15 +227,9 @@ export function getModuleIndexForLesson(
 export function getLessonIndexInCurriculum(
   lesson: Lesson,
   curriculum: Curriculum["curriculum"],
+  preferredFlatIndex?: number,
 ): number {
-  let index = 0;
-  for (const mod of curriculum.modules) {
-    for (let i = 0; i < mod.lessons.length; i++) {
-      if (mod.lessons[i] === lesson) return index;
-      index++;
-    }
-  }
-  return -1;
+  return getFlatLessonIndex(lesson, curriculum, preferredFlatIndex);
 }
 
 // Get lesson by flat index in curriculum (for restoring progress when lesson IDs are duplicated).
@@ -342,11 +355,35 @@ export function getCurriculumBySlug(slug: string): Curriculum | null {
 export function getModuleInfoForLesson(
   lessonId: string,
   curriculum: Curriculum["curriculum"],
+  preferredFlatIndex?: number,
 ): {
   module: { id: string; title: string; lessons: Lesson[] };
   isLastLessonInModule: boolean;
   moduleTotalQuestions: number;
 } | null {
+  if (typeof preferredFlatIndex === "number" && preferredFlatIndex >= 0) {
+    const flatLesson = getLessonByIndex(preferredFlatIndex, curriculum);
+    if (flatLesson?.id === lessonId) {
+      let count = 0;
+      for (const mod of curriculum.modules) {
+        const lessonIndex = preferredFlatIndex - count;
+        if (lessonIndex >= 0 && lessonIndex < mod.lessons.length) {
+          const isLastLessonInModule = lessonIndex === mod.lessons.length - 1;
+          const moduleTotalQuestions = mod.lessons.reduce(
+            (sum, l) => sum + (l.questions?.length || 0),
+            0,
+          );
+          return {
+            module: mod,
+            isLastLessonInModule,
+            moduleTotalQuestions,
+          };
+        }
+        count += mod.lessons.length;
+      }
+    }
+  }
+
   for (const mod of curriculum.modules) {
     const lessonIndex = mod.lessons.findIndex((l) => l.id === lessonId);
     if (lessonIndex !== -1) {

@@ -1,4 +1,4 @@
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LessonNavSnapshot, PrimaryNavKind } from "@/utils/lessonNavigation";
 
@@ -70,10 +70,9 @@ export default function LessonNavControls({
         <button
           type="button"
           onClick={onRestart}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white shadow transition-colors hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:text-sm"
+          className="mt-2 w-full font-inter text-xs text-gray-400 underline-offset-2 transition-colors hover:text-gray-600 hover:underline"
         >
-          <RotateCcw className="size-4" />
-          Restart course
+          Reset progress and start over
         </button>
       ) : null}
     </div>

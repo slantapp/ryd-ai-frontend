@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ArrowLeft, CheckCircle2, Lightbulb, ListTodo, Mic, Pause, Play, Volume2, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Lightbulb, ListTodo, Mic, Pause, Play, RotateCcw, Volume2, XCircle } from "lucide-react";
 import Split from "react-split";
 import MathText from "@/components/courses/math/MathText";
 import CodeEditor from "@/components/courses/exercise/CodeEditor";
@@ -38,10 +38,15 @@ import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import { isTurtlePythonCode } from "@/utils/codeExecution/turtle";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
 import {
+  buildWebCodeFromExample,
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
   isWebWorkspaceLanguage,
+  webCodeForExampleDemoStart,
+  webCodeForExamplePractice,
+  webCodeForExampleTyping,
   seedWebCodeFromExample,
+  type WebCodeExampleLike,
   type WebCodeSources,
 } from "@/utils/webCodeWorkspace";
 import { pauseMinSeconds, resolveAvatarDefaults } from "../defaults";
@@ -103,6 +108,8 @@ interface LessonPlayerProps {
   isPaused?: boolean;
   /** Toggle pause/resume of the instructor's speech. */
   onTogglePause?: () => void;
+  /** Rewind the current spoken line by 10 seconds. */
+  onRewind?: () => void;
   currentSubtitle?: string;
   avatarSlot?: ReactNode;
   onLessonComplete: (lessonId: string) => void;
@@ -151,6 +158,7 @@ export function LessonPlayer({
   isSpeaking,
   isPaused = false,
   onTogglePause,
+  onRewind,
   currentSubtitle,
   avatarSlot,
   onLessonComplete,
@@ -198,6 +206,8 @@ export function LessonPlayer({
   const beatStartedRef = useRef<string | null>(null);
   const goalSpokenRef = useRef(false);
   const advanceRef = useRef<() => void>(() => { });
+  /** Active code example when demo/practice uses a multi-pane web workspace. */
+  const webExampleContextRef = useRef<WebCodeExampleLike | null>(null);
 
   const beat: Beat | undefined = lesson.flow[beatIndex];
   const isLastBeat = beatIndex >= lesson.flow.length - 1;
@@ -214,6 +224,7 @@ export function LessonPlayer({
     setWrongAttempts(0);
     setFullscreen(null);
     setPreviewRefreshKey(0);
+    webExampleContextRef.current = null;
     typed.reset();
   }, [typed]);
 
@@ -539,10 +550,11 @@ export function LessonPlayer({
 
   const runCodeDemo = (demoBeat: CodeDemoBeat, goalLine?: string) => {
     const example = demoBeat.code_example;
+    webExampleContextRef.current = example;
     setDemoMode("demo");
     const isWeb = isWebWorkspaceLanguage(example.language);
     if (isWeb) {
-      setWebCode(seedWebCodeFromExample(example.code, example.language));
+      setWebCode(webCodeForExampleDemoStart(example));
       setCode("");
     } else {
       setCode("");
@@ -568,7 +580,7 @@ export function LessonPlayer({
               {
                 code: example.code,
                 webCode: isWeb
-                  ? seedWebCodeFromExample(example.code, example.language)
+                  ? buildWebCodeFromExample(example, "demo")
                   : undefined,
                 language: lang,
               },
@@ -595,7 +607,7 @@ export function LessonPlayer({
       () => {
         typed.type(example.code, example.typingSpeed ?? 40, () => {
           if (isWeb) {
-            setWebCode(seedWebCodeFromExample(example.code, example.language));
+            setWebCode(buildWebCodeFromExample(example, "demo"));
           } else {
             setCode(example.code);
           }
@@ -629,17 +641,13 @@ export function LessonPlayer({
   };
 
   const applyStudentStarter = useCallback(
-    (example: { code: string; language: string; starterCode?: string }) => {
-      const starter = example.starterCode?.trim() ?? "";
+    (example: WebCodeExampleLike) => {
+      webExampleContextRef.current = example;
       if (isWebWorkspaceLanguage(example.language)) {
-        setWebCode(
-          starter
-            ? seedWebCodeFromExample(starter, example.language)
-            : EMPTY_WEB_CODE,
-        );
+        setWebCode(webCodeForExamplePractice(example));
         setCode("");
       } else {
-        setCode(starter);
+        setCode(example.starterCode?.trim() ?? "");
         setWebCode(EMPTY_WEB_CODE);
       }
       setResults([]);
@@ -655,6 +663,11 @@ export function LessonPlayer({
     if (q.type === "code_test" && q.code_example) {
       setDemoMode("demo");
       const example = q.code_example;
+      webExampleContextRef.current = example;
+      if (isWebWorkspaceLanguage(example.language)) {
+        setWebCode(webCodeForExampleDemoStart(example));
+        setCode("");
+      }
       speakSequence(
         [
           goalLine,
@@ -663,9 +676,10 @@ export function LessonPlayer({
         ],
         () => {
           typed.type(example.code, example.typingSpeed ?? 40, () => {
-            setCode(example.code);
             if (isWebWorkspaceLanguage(example.language)) {
-              setWebCode(seedWebCodeFromExample(example.code, example.language));
+              setWebCode(buildWebCodeFromExample(example, "demo"));
+            } else {
+              setCode(example.code);
             }
             speakSequence(
               [
@@ -940,7 +954,12 @@ export function LessonPlayer({
   useEffect(() => {
     if (demoMode !== "demo" || !typed.text) return;
     if (useWeb) {
-      setWebCode(seedWebCodeFromExample(typed.text, codeLang));
+      const ctx = webExampleContextRef.current;
+      if (ctx?.supportingCode?.trim()) {
+        setWebCode(webCodeForExampleTyping(ctx, typed.text));
+      } else {
+        setWebCode(seedWebCodeFromExample(typed.text, codeLang));
+      }
     } else {
       setCode(typed.text);
     }
@@ -1619,23 +1638,37 @@ export function LessonPlayer({
               className="flex-1"
             />
             {onTogglePause && (isSpeaking || isPaused) && (
-              <button
-                type="button"
-                onClick={onTogglePause}
-                title={isPaused ? "Resume the lesson" : "Pause the lesson"}
-                aria-label={isPaused ? "Resume the lesson" : "Pause the lesson"}
-                aria-pressed={isPaused}
-                className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-[0.7rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
-              >
-                {isPaused ? (
-                  <Play className="size-3.5" aria-hidden />
-                ) : (
-                  <Pause className="size-3.5" aria-hidden />
-                )}
-                <span className="hidden min-[360px]:inline">
-                  {isPaused ? "Resume" : "Pause"}
-                </span>
-              </button>
+              <>
+                {onRewind ? (
+                  <button
+                    type="button"
+                    onClick={onRewind}
+                    title="Rewind 10 seconds"
+                    aria-label="Rewind 10 seconds"
+                    className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-[0.7rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
+                  >
+                    <RotateCcw className="size-3.5" aria-hidden />
+                    <span className="hidden min-[420px]:inline">-10s</span>
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={onTogglePause}
+                  title={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                  aria-label={isPaused ? "Resume the lesson" : "Pause the lesson"}
+                  aria-pressed={isPaused}
+                  className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-[0.7rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
+                >
+                  {isPaused ? (
+                    <Play className="size-3.5" aria-hidden />
+                  ) : (
+                    <Pause className="size-3.5" aria-hidden />
+                  )}
+                  <span className="hidden min-[360px]:inline">
+                    {isPaused ? "Resume" : "Pause"}
+                  </span>
+                </button>
+              </>
             )}
           </div>
           {!isCompactMobileBeat ? (

@@ -61,10 +61,13 @@ import {
 import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
 import {
+  buildWebCodeFromExample,
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
   isWebWorkspaceLanguage,
-  seedWebCodeFromExample,
+  webCodeForExampleDemoStart,
+  webCodeForExamplePractice,
+  webCodeForExampleTyping,
   type WebCodeSources,
 } from "@/utils/webCodeWorkspace";
 import {
@@ -448,10 +451,13 @@ export default function CurriculumPreviewPage() {
       resetCodeState();
 
       const isWeb = isWebWorkspaceLanguage(example.language);
-      const webTab = defaultWebEditorTab(example.language);
       const hasQuestions = (lesson.questions?.length ?? 0) > 0;
       const typingSpeed = example.typingSpeed ?? 30;
       let currentIndex = 0;
+
+      if (isWeb) {
+        setWebCode(webCodeForExampleDemoStart(example));
+      }
 
       const proceedAfterExample = () => {
         if (example.explanation) {
@@ -475,7 +481,7 @@ export default function CurriculumPreviewPage() {
             void runLessonExampleCode({
               code: example.code,
               webCode: isWeb
-                ? seedWebCodeFromExample(example.code, example.language)
+                ? buildWebCodeFromExample(example, "demo")
                 : undefined,
               language: normalizeRunLanguage(example.language),
             }).then(proceedAfterExample);
@@ -492,7 +498,7 @@ export default function CurriculumPreviewPage() {
           if (currentIndex < example.code.length) {
             const partial = example.code.substring(0, currentIndex + 1);
             if (isWeb) {
-              setWebCode((prev) => ({ ...prev, [webTab]: partial }));
+              setWebCode(webCodeForExampleTyping(example, partial));
             } else {
               setCode(partial);
             }
@@ -525,21 +531,102 @@ export default function CurriculumPreviewPage() {
     ],
   );
 
+  const applyQuestionPracticeEditor = useCallback((question: Question) => {
+    const example = question.code_example;
+    setResults([]);
+    setPreviewRefreshKey(0);
+    if (
+      example &&
+      isWebWorkspaceLanguage(example.language, question.testCriteria)
+    ) {
+      setWebCode(webCodeForExamplePractice(example));
+      setCode("");
+    } else {
+      setWebCode(EMPTY_WEB_CODE);
+      setCode(example?.starterCode?.trim() ?? "");
+    }
+  }, []);
+
+  const runQuestionCodeExample = useCallback(
+    (example: CodeExample, question: Question) => {
+      stopCodeTyping();
+      setIsLessonCodeDemo(false);
+      resetCodeState();
+
+      const isWeb = isWebWorkspaceLanguage(
+        example.language,
+        question.testCriteria,
+      );
+      const typingSpeed = example.typingSpeed ?? 30;
+      let currentIndex = 0;
+
+      if (isWeb) {
+        setWebCode(webCodeForExampleDemoStart(example));
+      }
+
+      const handoffToStudent = () => {
+        applyQuestionPracticeEditor(question);
+        speak(question.question);
+      };
+
+      const finishTyping = () => {
+        isTypingCodeRef.current = false;
+        setIsTypingLessonCode(false);
+        if (example.explanation) {
+          speak(example.explanation);
+          scheduleAfterSpeech(handoffToStudent);
+        } else {
+          handoffToStudent();
+        }
+      };
+
+      const startTyping = () => {
+        isTypingCodeRef.current = true;
+        setIsTypingLessonCode(true);
+        const typeNextChar = () => {
+          if (!isTypingCodeRef.current) return;
+          if (currentIndex < example.code.length) {
+            const partial = example.code.substring(0, currentIndex + 1);
+            if (isWeb) {
+              setWebCode(webCodeForExampleTyping(example, partial));
+            } else {
+              setCode(partial);
+            }
+            currentIndex++;
+            codeTypingTimeoutRef.current = setTimeout(typeNextChar, typingSpeed);
+          } else {
+            finishTyping();
+          }
+        };
+        codeTypingTimeoutRef.current = setTimeout(typeNextChar, 500);
+      };
+
+      const desc = example.description || "";
+      if (desc) {
+        speak(desc);
+        scheduleAfterSpeech(startTyping);
+      } else {
+        setTimeout(startTyping, 500);
+      }
+    },
+    [
+      applyQuestionPracticeEditor,
+      resetCodeState,
+      scheduleAfterSpeech,
+      speak,
+      stopCodeTyping,
+    ],
+  );
+
   const presentQuestion = useCallback(
     (question: Question) => {
       if (question.type === "code_test" && question.code_example) {
-        const desc = question.code_example.description || "";
-        const explanation = question.code_example.explanation || "";
-        const questionText = question.question;
-        const fullSpeech = [desc, explanation, questionText]
-          .filter(Boolean)
-          .join(" ");
-        speak(fullSpeech || questionText);
-      } else {
-        speak(question.question);
+        runQuestionCodeExample(question.code_example, question);
+        return;
       }
+      speak(question.question);
     },
-    [speak],
+    [runQuestionCodeExample, speak],
   );
 
   const playTeachingSegment = useCallback(

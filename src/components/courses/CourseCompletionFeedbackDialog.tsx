@@ -16,11 +16,16 @@ import {
   getCourseFeedbackApiErrorMessage,
   submitCourseFeedback,
 } from "@/api/courseFeedback";
-import { markCourseFeedbackSubmitted } from "@/utils/courseFeedbackStorage";
+import {
+  markCourseFeedbackSubmitted,
+  markFirstModuleFeedbackSkipped,
+} from "@/utils/courseFeedbackStorage";
+import type { CourseFeedbackVariant } from "@/hooks/useCourseCompletionFeedback";
 
 type CourseCompletionFeedbackDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  variant: CourseFeedbackVariant;
   courseSlug: string;
   courseTitle: string;
   curriculumId: number | null;
@@ -97,6 +102,7 @@ function StarRating({
 export function CourseCompletionFeedbackDialog({
   open,
   onOpenChange,
+  variant,
   courseSlug,
   courseTitle,
   curriculumId,
@@ -106,16 +112,29 @@ export function CourseCompletionFeedbackDialog({
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const isFirstModule = variant === "first_module";
+
   useEffect(() => {
     if (!open) return;
     setRating(0);
     setComment("");
     setSubmitting(false);
     setSubmitted(false);
-  }, [open, courseSlug]);
+  }, [open, courseSlug, variant]);
 
-  const handleClose = () => {
+  const handleDismiss = () => {
+    if (!submitted && isFirstModule) {
+      markFirstModuleFeedbackSkipped(courseSlug);
+    }
     onOpenChange(false);
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      handleDismiss();
+      return;
+    }
+    onOpenChange(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -161,7 +180,7 @@ export function CourseCompletionFeedbackDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         showCloseButton={!submitting}
         className="max-w-md gap-0 overflow-hidden rounded-2xl border-0 p-0 sm:max-w-lg"
@@ -173,12 +192,18 @@ export function CourseCompletionFeedbackDialog({
           </div>
           <DialogHeader className="space-y-2 text-center sm:text-center">
             <DialogTitle className="font-solway text-2xl font-bold text-gray-900">
-              {submitted ? "Thank you!" : "You did it!"}
+              {submitted
+                ? "Thank you!"
+                : isFirstModule
+                  ? "Module 1 complete!"
+                  : "You did it!"}
             </DialogTitle>
             <DialogDescription className="text-base text-gray-600">
               {submitted
                 ? "Your feedback helps us build better lessons for every learner."
-                : `You finished ${courseTitle}. How was your experience?`}
+                : isFirstModule
+                  ? `Nice work on the first module of ${courseTitle}. How is it going so far?`
+                  : `You finished ${courseTitle}. How was your experience?`}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -203,7 +228,7 @@ export function CourseCompletionFeedbackDialog({
               <Button
                 type="button"
                 className="w-full rounded-xl"
-                onClick={handleClose}
+                onClick={handleDismiss}
               >
                 Continue
               </Button>
@@ -249,7 +274,7 @@ export function CourseCompletionFeedbackDialog({
                   variant="ghost"
                   className="text-gray-500 hover:text-gray-700"
                   disabled={submitting}
-                  onClick={handleClose}
+                  onClick={handleDismiss}
                 >
                   Maybe later
                 </Button>

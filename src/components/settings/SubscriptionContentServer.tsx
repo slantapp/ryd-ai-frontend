@@ -33,7 +33,9 @@ import {
 import {
   useApplyReferralCode,
   useCancelSubscription,
+  useConfirmAlatOneTimeCheckout,
   useCreateCheckoutSession,
+  useInitAlatOneTimeCheckout,
   useResumeSubscription,
   useSubscriptionHistory,
   useSubscriptionPlans,
@@ -41,7 +43,10 @@ import {
   useUpgradeSubscription,
 } from "@/hooks/useSubscription";
 import { useLocationDefaultsStore } from "@/stores/locationDefaultsStore";
+import { useAuthStore } from "@/stores/authStore";
 import { getPlanDisplayPricing } from "@/utils/planPricing";
+import { isNigeriaCountry } from "@/utils/billingRegion";
+import { loadAlatPayScript, openAlatPayCheckout } from "@/utils/alatPay";
 
 type SubscriptionContentServerProps = {
   /** When true, hides settings chrome and notifies parent after successful subscription. */
@@ -314,14 +319,28 @@ export default function SubscriptionContentServer({
     null,
   );
   const [referralCode, setReferralCode] = useState("");
+  const [stripeCheckoutPlanKey, setStripeCheckoutPlanKey] = useState<string | null>(
+    null,
+  );
+  const [alatCheckoutPlanKey, setAlatCheckoutPlanKey] = useState<string | null>(
+    null,
+  );
   const plansQuery = useSubscriptionPlans();
   const statusQuery = useSubscriptionStatus();
   const historyQuery = useSubscriptionHistory();
   const checkoutMutation = useCreateCheckoutSession();
+  const initAlatMutation = useInitAlatOneTimeCheckout();
+  const confirmAlatMutation = useConfirmAlatOneTimeCheckout();
   const cancelMutation = useCancelSubscription();
   const resumeMutation = useResumeSubscription();
   const upgradeMutation = useUpgradeSubscription();
   const applyReferralCodeMutation = useApplyReferralCode();
+  const user = useAuthStore((state) => state.user);
+  const locationDefaults = useLocationDefaultsStore((state) => state.defaults);
+
+  const billingCountry =
+    user?.country?.trim() || locationDefaults.country?.trim() || "";
+  const isNigeriaBilling = isNigeriaCountry(billingCountry);
 
   const statusData = statusQuery.data?.data;
   const subscribed = statusData?.subscribed === true;
@@ -473,10 +492,10 @@ export default function SubscriptionContentServer({
   const startCheckout = useCallback(
     async (planKey: string) => {
       const origin = window.location.origin;
-      // const httpsOrigin = origin.replace(/^http:/, "https:");
       const successUrl = `${origin}${PRIVATE_PATHS.DASHBOARD}?subscription=success&session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${origin}${PRIVATE_PATHS.DASHBOARD}?subscription=cancelled`;
 
+      setStripeCheckoutPlanKey(planKey);
       try {
         const location = await useLocationDefaultsStore
           .getState()
@@ -486,6 +505,7 @@ export default function SubscriptionContentServer({
           successUrl,
           cancelUrl,
           country: location.country?.trim() || undefined,
+          provider: "stripe",
         });
         const url = res.data?.checkoutUrl ?? res.data?.url;
         if (!res.status || !url) {
@@ -494,9 +514,83 @@ export default function SubscriptionContentServer({
         window.location.assign(url);
       } catch (err: unknown) {
         toast.error(getAxiosishErrorMessage(err) || "Checkout failed");
+        setStripeCheckoutPlanKey(null);
       }
     },
     [checkoutMutation],
+  );
+
+  const startAlatOneTime = useCallback(
+    async (planKey: string) => {
+      setAlatCheckoutPlanKey(planKey);
+      try {
+        const location = await useLocationDefaultsStore
+          .getState()
+          .ensureCountryForCheckout();
+        const country =
+          user?.country?.trim() || location.country?.trim() || undefined;
+        const init = await initAlatMutation.mutateAsync({ planKey, country });
+        if (!init.status || !init.data) {
+          throw new Error(init.message || "Could not start ALAT payment");
+        }
+
+        await loadAlatPayScript();
+        const cfg = init.data;
+        const popup = openAlatPayCheckout({
+          apiKey: cfg.alatKey,
+          businessId: cfg.alatBid,
+          email: cfg.email,
+          phone: cfg.phone,
+          firstName: cfg.firstName,
+          lastName: cfg.lastName,
+          metadata: cfg.metadata,
+          currency: cfg.currency,
+          amount: cfg.amount,
+          onTransaction: (response) => {
+            void (async () => {
+              const completed =
+                response.status && response.transactionStatus === "completed";
+              const id = response.data?.id;
+              if (!completed || !id) return;
+
+              try {
+                const confirmed = await confirmAlatMutation.mutateAsync({
+                  transactionId: String(id),
+                });
+                if (!confirmed.status) {
+                  throw new Error(
+                    confirmed.message || "Could not confirm ALAT payment",
+                  );
+                }
+                toast.success("Payment received. Activating your access…");
+                if (gateMode) {
+                  onSubscriptionComplete?.();
+                } else {
+                  window.location.assign(
+                    `${window.location.origin}${PRIVATE_PATHS.DASHBOARD}?subscription=success`,
+                  );
+                }
+              } catch (err: unknown) {
+                toast.error(
+                  getAxiosishErrorMessage(err) ||
+                    "We could not confirm your ALAT payment.",
+                );
+              } finally {
+                setAlatCheckoutPlanKey(null);
+              }
+            })();
+          },
+          onClose: () => {
+            setAlatCheckoutPlanKey(null);
+          },
+        });
+        popup.show();
+      } catch (err: unknown) {
+        toast.error(getAxiosishErrorMessage(err) || "ALAT payment failed");
+        setAlatCheckoutPlanKey(null);
+      }
+    },
+    [confirmAlatMutation, gateMode, initAlatMutation, onSubscriptionComplete, user?.country],
   );
 
   const performUpgrade = useCallback(
@@ -911,10 +1005,21 @@ export default function SubscriptionContentServer({
               });
               const blockOtherActionsWhileBusy =
                 (checkoutMutation.isPending ||
+                  initAlatMutation.isPending ||
+                  confirmAlatMutation.isPending ||
+                  alatCheckoutPlanKey !== null ||
+                  stripeCheckoutPlanKey !== null ||
                   upgradeFlowPlanKey !== null ||
                   resumeMutation.isPending ||
                   upgradeMutation.isPending) &&
                 !planButton.isLoading;
+              const stripeBusyForPlan =
+                stripeCheckoutPlanKey === p.key && checkoutMutation.isPending;
+              const alatBusyForPlan =
+                alatCheckoutPlanKey === p.key &&
+                (initAlatMutation.isPending || confirmAlatMutation.isPending);
+              const showPaymentChoices =
+                planButton.action === "subscribe" && !planButton.disabled;
               const meta = PLAN_UI_META[p.key] ?? {
                 nameFallback: p.name,
                 taglineFallback: "",
@@ -1079,35 +1184,98 @@ export default function SubscriptionContentServer({
                       </ul>
                     )}
 
-                    <Button
-                      type="button"
-                      onClick={() =>
-                        handlePlanAction(p, planButton.action)
-                      }
-                      className={cn(
-                        "h-11 w-full rounded-xl font-solway font-semibold shadow-sm",
-                        gateMode ? "mt-4 sm:mt-5" : "mt-6",
-                        planButton.disabled && planButton.action === "none"
-                          ? "bg-gray-200 text-gray-600 hover:bg-gray-200"
-                          : isPopular
-                            ? "bg-[#0063F7] hover:bg-[#0056d9]"
-                            : "bg-primary hover:bg-primary/90",
-                      )}
-                      disabled={
-                        planButton.disabled || blockOtherActionsWhileBusy
-                      }
-                    >
-                      {planButton.isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 size-4 animate-spin" />
-                          {planButton.label}
-                        </>
-                      ) : (
-                        planButton.label
-                      )}
-                    </Button>
+                    {showPaymentChoices ? (
+                      <div
+                        className={cn(
+                          "space-y-2",
+                          gateMode ? "mt-4 sm:mt-5" : "mt-6",
+                        )}
+                      >
+                        <Button
+                          type="button"
+                          onClick={() => void startCheckout(p.key)}
+                          className={cn(
+                            "h-11 w-full rounded-xl font-solway font-semibold shadow-sm",
+                            isPopular
+                              ? "bg-[#0063F7] hover:bg-[#0056d9]"
+                              : "bg-primary hover:bg-primary/90",
+                          )}
+                          disabled={blockOtherActionsWhileBusy}
+                        >
+                          {stripeBusyForPlan ? (
+                            <>
+                              <Loader2 className="mr-2 size-4 animate-spin" />
+                              Redirecting…
+                            </>
+                          ) : (
+                            "Subscribe with Stripe"
+                          )}
+                        </Button>
+                        {isNigeriaBilling ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => void startAlatOneTime(p.key)}
+                            className="h-11 w-full rounded-xl border-[#DDB5D2]/80 bg-white/80 font-solway font-semibold text-primary hover:bg-white"
+                            disabled={blockOtherActionsWhileBusy}
+                          >
+                            {alatBusyForPlan ? (
+                              <>
+                                <Loader2 className="mr-2 size-4 animate-spin" />
+                                Opening ALAT…
+                              </>
+                            ) : (
+                              "Pay once with ALAT"
+                            )}
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-11 w-full rounded-xl border-gray-200 bg-white/70 font-solway font-semibold text-gray-400"
+                            disabled
+                            title="Paystack one-time checkout is coming soon"
+                          >
+                            Pay once with Paystack · Coming soon
+                          </Button>
+                        )}
+                        <p className="text-center font-inter text-xs leading-relaxed text-gray-600">
+                          {isNigeriaBilling
+                            ? "Pay once with ALAT for a single billing period. Subscribe with Stripe for auto-renewal."
+                            : "International parents can subscribe with Stripe today. One-time Paystack checkout is coming soon."}
+                        </p>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        onClick={() =>
+                          handlePlanAction(p, planButton.action)
+                        }
+                        className={cn(
+                          "h-11 w-full rounded-xl font-solway font-semibold shadow-sm",
+                          gateMode ? "mt-4 sm:mt-5" : "mt-6",
+                          planButton.disabled && planButton.action === "none"
+                            ? "bg-gray-200 text-gray-600 hover:bg-gray-200"
+                            : isPopular
+                              ? "bg-[#0063F7] hover:bg-[#0056d9]"
+                              : "bg-primary hover:bg-primary/90",
+                        )}
+                        disabled={
+                          planButton.disabled || blockOtherActionsWhileBusy
+                        }
+                      >
+                        {planButton.isLoading ? (
+                          <>
+                            <Loader2 className="mr-2 size-4 animate-spin" />
+                            {planButton.label}
+                          </>
+                        ) : (
+                          planButton.label
+                        )}
+                      </Button>
+                    )}
 
-                    {planButton.helperText && (
+                    {!showPaymentChoices && planButton.helperText && (
                       <p className="mt-2 text-center font-inter text-xs text-gray-600">
                         {planButton.helperText}
                       </p>

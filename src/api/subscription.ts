@@ -68,6 +68,28 @@ export type CheckoutRequest = {
   successUrl: string;
   cancelUrl: string;
   country?: string;
+  provider?: "stripe";
+};
+
+export type AlatOneTimeInitRequest = {
+  planKey: string;
+  country?: string;
+};
+
+export type AlatOneTimeInitResponse = {
+  alatKey: string;
+  alatBid: string;
+  amount: number;
+  currency: string;
+  email: string;
+  phone?: string;
+  firstName: string;
+  lastName: string;
+  metadata: Record<string, unknown>;
+};
+
+export type AlatOneTimeConfirmRequest = {
+  transactionId: string;
 };
 
 export type CheckoutResponse = {
@@ -126,6 +148,22 @@ export async function fetchSubscriptionPlans() {
 export async function createCheckoutSession(payload: CheckoutRequest) {
   const res = await axiosInstance.post<ApiEnvelope<CheckoutResponse>>(
     "/parent/subscription/checkout",
+    { ...payload, provider: "stripe" },
+  );
+  return res.data;
+}
+
+export async function initAlatOneTimeCheckout(payload: AlatOneTimeInitRequest) {
+  const res = await axiosInstance.post<ApiEnvelope<AlatOneTimeInitResponse>>(
+    "/parent/subscription/alat-one-time/init",
+    payload,
+  );
+  return res.data;
+}
+
+export async function confirmAlatOneTimeCheckout(payload: AlatOneTimeConfirmRequest) {
+  const res = await axiosInstance.post<ApiEnvelope<unknown>>(
+    "/parent/subscription/alat-one-time/confirm",
     payload,
   );
   return res.data;

@@ -4,9 +4,9 @@ export const FALLBACK_AVATAR_DEFAULTS: Required<AvatarDefaults> = {
   intro_template:
     "Welcome! In this lesson, you will be learning about {{lesson_title}}.",
   continue_prompt: "Tap Continue when you're ready to keep going.",
-  start_questions_prompt: "Great! When you're ready, click Start Questions.",
+  start_questions_prompt: "Great! When you're ready, tap Start Questions.",
   handoff_to_practice:
-    "Now it's your turn! Use the starter in the editor and finish the challenge.",
+    "Now it's your turn! Finish the challenge in the workspace.",
   lesson_complete_template: "In this lesson, you learned about {{lesson_title}}.",
   correct_feedback: "That's correct! Well done.",
   incorrect_feedback: "Not quite — let's look at that again.",

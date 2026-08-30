@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import MathText from "@/components/courses/math/MathText";
 import { RichBody } from "../RichBody";
 import { applySubtitleShow } from "../../subtitleShow";
 import type { Beat, DisplayBeat, MediaBeat, RecapBeat, SpeakBeat } from "../../types";
@@ -29,7 +30,9 @@ export function SpeakBeatView({ beat }: { beat: SpeakBeat }) {
   return (
     <Panel label={meta?.label ?? "Listen"}>
       <p className="text-sm leading-relaxed text-gray-800 sm:text-base">
-        {applySubtitleShow(beat.avatar.text, beat.avatar.show)}
+        <MathText>
+          {applySubtitleShow(beat.avatar.text, beat.avatar.show)}
+        </MathText>
       </p>
     </Panel>
   );
@@ -41,7 +44,7 @@ export function DisplayBeatView({ beat }: { beat: DisplayBeat }) {
     <Panel label={meta?.label ?? "Learn"}>
       {beat.title && (
         <h2 className="mb-2 text-base font-bold text-gray-900 sm:text-lg">
-          {beat.title}
+          <MathText>{beat.title}</MathText>
         </h2>
       )}
       <RichBody text={beat.body} />
@@ -85,7 +88,9 @@ export function RecapBeatView({ beat }: { beat: RecapBeat }) {
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
               {i + 1}
             </span>
-            <span className="pt-0.5">{point}</span>
+            <span className="pt-0.5">
+              <MathText>{point}</MathText>
+            </span>
           </li>
         ))}
       </ul>
@@ -130,7 +135,9 @@ export function DemoIntro({
         {title}
       </p>
       {description && (
-        <p className="mt-1 text-sm text-gray-600">{description}</p>
+        <p className="mt-1 text-sm text-gray-600">
+          <MathText>{description}</MathText>
+        </p>
       )}
     </div>
   );

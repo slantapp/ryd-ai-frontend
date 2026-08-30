@@ -27,6 +27,12 @@ import {
 } from "@/utils/courseProgress";
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
+import {
+  clearV2LessonDraft,
+  loadV2LessonDraft,
+  saveV2LessonDraft,
+  type V2LessonDraft,
+} from "@/features/curriculum-preview/v2/lessonPersist";
 
 /**
  * Paid / enrolled learning environment for schema v2 (flow) curricula.
@@ -59,6 +65,7 @@ export default function CourseDetailsV2() {
   const [progressReady, setProgressReady] = useState(false);
   /** True when returning to an in-progress lesson — gate asks to continue, then speech starts on tap. */
   const [canResume, setCanResume] = useState(false);
+  const [resumeDraft, setResumeDraft] = useState<V2LessonDraft | null>(null);
   const courseCompletionSpeechRef = useRef(false);
 
   const {
@@ -129,9 +136,34 @@ export default function CourseDetailsV2() {
         !!lesson &&
         (stored.status === "ongoing" || stored.status === "completed");
 
+      const draft =
+        exercise && lesson
+          ? loadV2LessonDraft(
+              typeof window !== "undefined" ? window.localStorage : null,
+              exercise,
+              lesson.id,
+            )
+          : null;
+
+      // Prefer API questionIndex as beatIndex; fall back to local draft.
+      const beatFromApi =
+        typeof stored?.questionIndex === "number" ? stored.questionIndex : null;
+      const mergedDraft: V2LessonDraft | null =
+        draft || beatFromApi != null
+          ? {
+              beatIndex: beatFromApi ?? draft?.beatIndex ?? 0,
+              completedBeatIds: draft?.completedBeatIds,
+              code: draft?.code,
+              webCode: draft?.webCode,
+              formulaAnswer: draft?.formulaAnswer,
+              resumePractice: draft?.resumePractice,
+            }
+          : null;
+
       setCurrentLesson(lesson);
       setLessonStarted(false);
       setCanResume(resume);
+      setResumeDraft(mergedDraft);
       setProgressReady(true);
     })();
 
@@ -141,20 +173,34 @@ export default function CourseDetailsV2() {
   }, [allLessons, curriculum, exercise, getCourseProgress]);
 
   const persistLessonPosition = useCallback(
-    (lesson: LessonV2, started: boolean) => {
+    (lesson: LessonV2, started: boolean, beatIndex = 0) => {
       if (!exercise || !curriculum) return;
       const lessonIndex = allLessons.findIndex((l) => l.lesson.id === lesson.id);
       updateCourseProgress(exercise, {
         status: started ? "ongoing" : "not-started",
         currentLessonId: lesson.id,
         lessonIndex: lessonIndex >= 0 ? lessonIndex : undefined,
-        questionIndex: 0,
+        questionIndex: beatIndex,
         lessonStarted: started,
         canStartQuestions: false,
         lastUpdated: Date.now(),
       });
     },
     [allLessons, curriculum, exercise, updateCourseProgress],
+  );
+
+  const handleBeatProgress = useCallback(
+    (draft: V2LessonDraft) => {
+      if (!exercise || !currentLesson) return;
+      saveV2LessonDraft(
+        typeof window !== "undefined" ? window.localStorage : null,
+        exercise,
+        currentLesson.id,
+        draft,
+      );
+      persistLessonPosition(currentLesson, true, draft.beatIndex);
+    },
+    [currentLesson, exercise, persistLessonPosition],
   );
 
   const handleStartLesson = useCallback(() => {
@@ -169,12 +215,15 @@ export default function CourseDetailsV2() {
     setLessonStarted(true);
     setCanResume(false);
     setLessonKey((k) => k + 1);
-    persistLessonPosition(lesson, true);
+    const startBeat = canResume ? resumeDraft?.beatIndex ?? 0 : 0;
+    persistLessonPosition(lesson, true, startBeat);
   }, [
+    canResume,
     clearScheduledAfterSpeech,
     curriculum,
     currentLesson,
     persistLessonPosition,
+    resumeDraft?.beatIndex,
     unlockMobileAudio,
   ]);
 
@@ -185,15 +234,34 @@ export default function CourseDetailsV2() {
       clearScheduledAfterSpeech();
       setCurrentLesson(lesson);
       setLessonStarted(true);
+      setResumeDraft(
+        loadV2LessonDraft(
+          typeof window !== "undefined" ? window.localStorage : null,
+          exercise ?? "",
+          lesson.id,
+        ),
+      );
       setLessonKey((k) => k + 1);
-      persistLessonPosition(lesson, true);
+      persistLessonPosition(lesson, true, 0);
     },
-    [clearScheduledAfterSpeech, persistLessonPosition, stop, unlockMobileAudio],
+    [
+      clearScheduledAfterSpeech,
+      exercise,
+      persistLessonPosition,
+      stop,
+      unlockMobileAudio,
+    ],
   );
 
   const handleLessonComplete = useCallback(
     (lessonId: string) => {
       if (!exercise) return;
+
+      clearV2LessonDraft(
+        typeof window !== "undefined" ? window.localStorage : null,
+        exercise,
+        lessonId,
+      );
 
       const stored = getCourseProgress(exercise);
       const completed = Array.from(
@@ -250,6 +318,21 @@ export default function CourseDetailsV2() {
     clearScheduledAfterSpeech();
     courseCompletionSpeechRef.current = false;
     const first = getFirstLessonV2(curriculum);
+    if (exercise && first) {
+      clearV2LessonDraft(
+        typeof window !== "undefined" ? window.localStorage : null,
+        exercise,
+        first.id,
+      );
+    }
+    for (const entry of allLessons) {
+      if (!exercise) break;
+      clearV2LessonDraft(
+        typeof window !== "undefined" ? window.localStorage : null,
+        exercise,
+        entry.lesson.id,
+      );
+    }
     updateCourseProgress(
       exercise,
       {
@@ -268,8 +351,10 @@ export default function CourseDetailsV2() {
     setCurrentLesson(first);
     setLessonStarted(false);
     setCanResume(false);
+    setResumeDraft(null);
     setLessonKey((k) => k + 1);
   }, [
+    allLessons,
     clearScheduledAfterSpeech,
     curriculum,
     exercise,
@@ -415,6 +500,9 @@ export default function CourseDetailsV2() {
           onMobileAudioUnlock={unlockMobileAudio}
           isInstructorWaiting={isInstructorWaiting}
           suppressMobileWaitBanner
+          initialBeatIndex={resumeDraft?.beatIndex ?? 0}
+          initialDraft={resumeDraft}
+          onBeatProgress={handleBeatProgress}
         />
       )}
     </div>

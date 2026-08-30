@@ -37,6 +37,9 @@ import {
 import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import { isTurtlePythonCode } from "@/utils/codeExecution/turtle";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
+import { formulaProblemOnly } from "@/utils/formulaBoard";
+import MathAnswerWorkspace from "@/components/courses/math/MathAnswerWorkspace";
+import type { V2LessonDraft } from "../lessonPersist";
 import {
   buildWebCodeFromExample,
   defaultWebEditorTab,
@@ -144,6 +147,12 @@ interface LessonPlayerProps {
    * subscribe flow instead of advancing (parent still handles onNextLesson).
    */
   subscribeGateAfterLesson?: boolean;
+  /** Restore mid-lesson progress (beat index). */
+  initialBeatIndex?: number;
+  /** Restore in-progress practice drafts (code / formula). */
+  initialDraft?: V2LessonDraft | null;
+  /** Persist beat position and practice drafts (learn + preview). */
+  onBeatProgress?: (draft: V2LessonDraft) => void;
 }
 
 export function LessonPlayer({
@@ -172,12 +181,17 @@ export function LessonPlayer({
   isInstructorWaiting,
   suppressMobileWaitBanner = false,
   subscribeGateAfterLesson = false,
+  initialBeatIndex = 0,
+  initialDraft = null,
+  onBeatProgress,
 }: LessonPlayerProps) {
   const isLgUp = useMediaQueryMinLg();
   const showInstructorWait = isInstructorWaiting ?? isAvatarLoading;
   const isInstructorActive = isSpeaking && !isPaused;
   const defaults = useMemo(() => resolveAvatarDefaults(curriculum), [curriculum]);
-  const [beatIndex, setBeatIndex] = useState(0);
+  const [beatIndex, setBeatIndex] = useState(() =>
+    Math.max(0, Math.min(initialBeatIndex, Math.max(0, lesson.flow.length - 1))),
+  );
   const [completedBeatIds, setCompletedBeatIds] = useState<Set<string>>(new Set());
   const [canContinue, setCanContinue] = useState(false);
   const [pauseSecondsLeft, setPauseSecondsLeft] = useState(0);
@@ -205,6 +219,7 @@ export function LessonPlayer({
   const typed = useTypedText();
   const beatStartedRef = useRef<string | null>(null);
   const goalSpokenRef = useRef(false);
+  const resumePracticeRef = useRef(!!initialDraft?.resumePractice);
   const advanceRef = useRef<() => void>(() => { });
   /** Active code example when demo/practice uses a multi-pane web workspace. */
   const webExampleContextRef = useRef<WebCodeExampleLike | null>(null);
@@ -371,19 +386,55 @@ export function LessonPlayer({
     [defaults.continue_prompt, enableManualContinue, speakThen],
   );
 
-  // Reset when lesson changes
+  // Reset when lesson changes (restore beat when parent passes a draft)
   useEffect(() => {
     stop();
     clearScheduledAfterSpeech();
-    setBeatIndex(0);
-    setCompletedBeatIds(new Set());
+    const startIdx = Math.max(
+      0,
+      Math.min(initialBeatIndex, Math.max(0, lesson.flow.length - 1)),
+    );
+    setBeatIndex(startIdx);
+    setCompletedBeatIds(new Set(initialDraft?.completedBeatIds ?? []));
     setCanContinue(false);
     setPauseSecondsLeft(0);
     missedPracticeRef.current = false;
+    resumePracticeRef.current = !!initialDraft?.resumePractice;
     resetInteractive();
+    if (initialDraft?.code) setCode(initialDraft.code);
+    if (initialDraft?.webCode) setWebCode(initialDraft.webCode);
+    if (initialDraft?.formulaAnswer) setFormulaAnswer(initialDraft.formulaAnswer);
     beatStartedRef.current = null;
-    goalSpokenRef.current = false;
+    goalSpokenRef.current = startIdx > 0;
   }, [lesson.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist beat position whenever it changes
+  useEffect(() => {
+    onBeatProgress?.({
+      beatIndex,
+      completedBeatIds: Array.from(completedBeatIds),
+      code: demoMode === "practice" ? code : undefined,
+      webCode: demoMode === "practice" ? webCode : undefined,
+      formulaAnswer: demoMode === "practice" ? formulaAnswer : undefined,
+      resumePractice: demoMode === "practice",
+    });
+  }, [beatIndex, completedBeatIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced practice draft persistence
+  useEffect(() => {
+    if (demoMode !== "practice" || !onBeatProgress) return;
+    const t = setTimeout(() => {
+      onBeatProgress({
+        beatIndex,
+        completedBeatIds: Array.from(completedBeatIds),
+        code,
+        webCode,
+        formulaAnswer,
+        resumePractice: true,
+      });
+    }, 500);
+    return () => clearTimeout(t);
+  }, [code, webCode, formulaAnswer, demoMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Speak the lesson goal at most once, on the first beat of the lesson. */
   const takeGoalLine = useCallback((): string | undefined => {
@@ -646,11 +697,26 @@ export function LessonPlayer({
       if (isWebWorkspaceLanguage(example.language)) {
         setWebCode(webCodeForExamplePractice(example));
         setCode("");
+        const hasHtml = !!(example.starterCode?.trim() || example.code?.trim());
+        if (!hasHtml) {
+          setResults([
+            "Tip: start typing in the editor. Tap Run to try your page, then Submit when ready.",
+          ]);
+        } else {
+          setResults([]);
+        }
       } else {
-        setCode(example.starterCode?.trim() ?? "");
+        const starter = example.starterCode?.trim() ?? "";
+        setCode(starter);
         setWebCode(EMPTY_WEB_CODE);
+        if (!starter) {
+          setResults([
+            "Tip: the editor is empty on purpose. Type your code, tap Run to try it, then Submit.",
+          ]);
+        } else {
+          setResults([]);
+        }
       }
-      setResults([]);
     },
     [],
   );
@@ -661,8 +727,25 @@ export function LessonPlayer({
     const show = avatar?.show;
 
     if (q.type === "code_test" && q.code_example) {
-      setDemoMode("demo");
       const example = q.code_example;
+      const resumePractice = resumePracticeRef.current;
+      resumePracticeRef.current = false;
+
+      if (resumePractice) {
+        setDemoMode("practice");
+        webExampleContextRef.current = example;
+        if (initialDraft?.code) setCode(initialDraft.code);
+        else if (initialDraft?.webCode) setWebCode(initialDraft.webCode);
+        else applyStudentStarter(example);
+        speakSequence([
+          goalLine,
+          withShow(avatar?.on_ask ?? q.question, show),
+          "Pick up where you left off in the editor.",
+        ]);
+        return;
+      }
+
+      setDemoMode("demo");
       webExampleContextRef.current = example;
       if (isWebWorkspaceLanguage(example.language)) {
         setWebCode(webCodeForExampleDemoStart(example));
@@ -698,9 +781,26 @@ export function LessonPlayer({
       return;
     }
 
-    if (q.type === "formula_test" && q.formula_example?.formula) {
-      setDemoMode("demo");
+    if (q.type === "formula_test") {
       const example = q.formula_example;
+      const hasWorkedDemo = !!(example?.formula && example.explanation?.trim());
+      const resumePractice = resumePracticeRef.current;
+      resumePracticeRef.current = false;
+
+      if (resumePractice || !hasWorkedDemo) {
+        setDemoMode("practice");
+        if (resumePractice && initialDraft?.formulaAnswer) {
+          setFormulaAnswer(initialDraft.formulaAnswer);
+        }
+        speakSequence([
+          goalLine,
+          withShow(avatar?.on_ask, show),
+          withShow(q.question, show),
+        ]);
+        return;
+      }
+
+      setDemoMode("demo");
       speakSequence(
         [
           goalLine,
@@ -805,6 +905,7 @@ export function LessonPlayer({
             setIsAnswerSubmitted(false);
             setShowCelebration(false);
             if (clearSelection) setSelectedAnswer(null);
+            if (q.type === "formula_test") setFormulaAnswer("");
           },
         );
       }, beat.avatar?.show);
@@ -892,9 +993,7 @@ export function LessonPlayer({
   const showFormulaPanel =
     !!beat &&
     (beat.type === "formula_demo" ||
-      (beat.type === "question" &&
-        beat.question.type === "formula_test" &&
-        (demoMode === "demo" || !!typed.text || !!formulaAnswer)) ||
+      (beat.type === "question" && beat.question.type === "formula_test") ||
       pauseReviewingFormula);
 
   const codeLang = useMemo(() => {
@@ -1026,7 +1125,11 @@ export function LessonPlayer({
   const formulaBoardText = (() => {
     if (typed.text) return typed.text;
     if (beat?.type === "formula_demo") return beat.formula_example.formula;
-    if (beat?.type === "question") {
+    if (beat?.type === "question" && beat.question.type === "formula_test") {
+      // Practice: show the problem only — never the worked answer.
+      if (demoMode === "practice") {
+        return formulaProblemOnly(beat.question.formula_example?.formula);
+      }
       return beat.question.formula_example?.formula ?? "";
     }
     if (pauseReviewingFormula && previousBeat?.type === "formula_demo") {
@@ -1069,7 +1172,15 @@ export function LessonPlayer({
           canSubmit={
             beat?.type === "question" &&
             demoMode === "practice" &&
-            !isAnswerSubmitted
+            !isAnswerSubmitted &&
+            submissionHasContent(
+              {
+                code: "",
+                webCode,
+                language: runLanguage,
+              },
+              beat.question.testCriteria,
+            )
           }
           isRunning={isExecuting}
           results={results}
@@ -1102,7 +1213,6 @@ export function LessonPlayer({
                 : undefined
             }
             language={runLanguage}
-            onLanguageChange={setRunLanguage}
             onToggleFullscreen={() =>
               setFullscreen(fullscreen === "editor" ? null : "editor")
             }
@@ -1175,8 +1285,8 @@ export function LessonPlayer({
       : beat?.type === "question"
         ? questionRetry && questionRetry.max > 0
           ? triesLeft > 0
-            ? `Student flow: you can try again up to ${triesLeft} more time${triesLeft === 1 ? "" : "s"} if this answer is wrong.`
-            : "Last try used — after this wrong answer we'll explain and move on."
+            ? `You can try again up to ${triesLeft} more time${triesLeft === 1 ? "" : "s"} if this is wrong.`
+            : "Last try — after this we'll explain and keep going."
           : "Read the question, then submit your best answer."
         : beat?.type === "recap"
           ? "These are the key takeaways from this lesson."
@@ -1201,14 +1311,81 @@ export function LessonPlayer({
     beat?.type === "question" &&
     beat.question.type === "code_test" &&
     demoMode === "practice";
-  /** Code-test practice: keep the prompt visible and stack the avatar under it. */
+  const isFormulaTestPractice =
+    beat?.type === "question" &&
+    beat.question.type === "formula_test" &&
+    demoMode === "practice";
+  const formulaExpected =
+    beat?.type === "question"
+      ? beat.question.testCriteria?.expectedFormula ?? ""
+      : "";
+  const formulaFeedbackCorrect =
+    isAnswerSubmitted && showCelebration
+      ? true
+      : isAnswerSubmitted
+        ? false
+        : null;
   const showAvatarBelowQuestion =
-    isCodeTestPractice && fillWorkspace;
+    (isCodeTestPractice || isFormulaTestPractice) && fillWorkspace;
   /**
    * Kids stage + workspace: on lg+ the instruction card becomes a full-height
    * side rail beside the board instead of a cramped strip above it.
    */
   const sideBySide = kidsStage && fillWorkspace;
+
+  const formulaWorkspace = showFormulaPanel ? (
+    <div className="flex min-h-0 flex-1 flex-col space-y-3 overflow-y-auto">
+      {(beat?.type === "formula_demo" ||
+        beat?.type === "question" ||
+        pauseReviewingFormula) && (
+        <DemoIntro
+          title={demoIntroTitle}
+          description={demoIntroDescription}
+        />
+      )}
+      <div className="overflow-hidden rounded-xl border border-primary/20 bg-white/80 p-4 shadow-sm">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
+          Formula board
+        </p>
+        <div className="min-h-[120px] rounded-lg bg-primary/5 p-3 font-mono text-base text-gray-900">
+          {formulaBoardText ? (
+            <MathText displayMode forceMath>
+              {formulaBoardText}
+            </MathText>
+          ) : (
+            <p className="text-sm text-gray-500">
+              {isFormulaTestPractice
+                ? "Work out your answer, then type it below."
+                : "Your example will appear here."}
+            </p>
+          )}
+        </div>
+        {isFormulaTestPractice && beat?.type === "question" ? (
+          <div className="mt-4">
+            <MathAnswerWorkspace
+              question={beat.question.question}
+              value={formulaAnswer}
+              onChange={setFormulaAnswer}
+              onSubmit={handleSubmitFormula}
+              canSubmit={
+                !!formulaAnswer.trim() && !isAnswerSubmitted && !isSpeaking
+              }
+              disabled={isAnswerSubmitted}
+              isSubmitted={isAnswerSubmitted}
+              isCorrect={formulaFeedbackCorrect}
+              expectedAnswer={formulaExpected}
+              showExpected={
+                isAnswerSubmitted && triesLeft <= 0 && !showCelebration
+              }
+              triesLeft={triesLeft}
+              speakingWait={isSpeaking && !isAnswerSubmitted}
+              compact
+            />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  ) : null;
 
   const instructionCard = (
     <div
@@ -1691,7 +1868,7 @@ export function LessonPlayer({
               onClick={() => goToBeat(beatIndex - 1)}
               disabled={!canGoPreviousBeat}
               className={cn(
-                "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-sm",
+                "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
                 canGoPreviousBeat
                   ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
                   : "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400",
@@ -1705,7 +1882,7 @@ export function LessonPlayer({
               onClick={() => advance()}
               disabled={!canPrimaryContinue}
               className={cn(
-                "min-w-0 flex-[1.4] rounded-lg px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-sm",
+                "min-w-0 flex-[1.4] rounded-xl px-2 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
                 canPrimaryContinue
                   ? "bg-green-500 text-white shadow hover:bg-green-600"
                   : "cursor-not-allowed bg-gray-200 text-gray-500",
@@ -1957,41 +2134,32 @@ export function LessonPlayer({
               >
               {showCodePanel ? (
                 <div className="flex h-full min-h-0 w-full flex-1 flex-col">
+                  <div className="shrink-0 border-b border-primary/10 bg-white/80 px-3 py-2.5 sm:px-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                      {demoIntroTitle}
+                    </p>
+                    {demoIntroDescription ? (
+                      <p className="mt-0.5 text-sm font-medium text-gray-800">
+                        <MathText>{demoIntroDescription}</MathText>
+                      </p>
+                    ) : null}
+                    {demoMode === "practice" && !editorLocked ? (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Type in the editor. Tap Run to try, then Submit when ready.
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Watch the example — you&apos;ll try it next.
+                      </p>
+                    )}
+                  </div>
                   <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                     {codeWorkspace}
                   </div>
                 </div>
               ) : showFormulaPanel ? (
                 <div className="min-h-0 flex-1 overflow-y-auto border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white p-4 sm:p-6 lg:border-l-2">
-                  <div className="overflow-hidden rounded-xl border border-primary/20 bg-white/60 p-4 shadow-sm backdrop-blur-sm">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
-                      Formula board
-                    </p>
-                    <div className="min-h-[120px] rounded-lg bg-primary/5 p-3 font-mono text-base text-gray-900">
-                      <MathText displayMode forceMath>
-                        {formulaBoardText}
-                      </MathText>
-                    </div>
-                    {beat?.type === "question" && demoMode === "practice" && (
-                      <div className="mt-3 space-y-2.5">
-                        <input
-                          type="text"
-                          value={formulaAnswer}
-                          onChange={(e) => setFormulaAnswer(e.target.value)}
-                          disabled={isAnswerSubmitted}
-                          placeholder="Type your answer…"
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium outline-none focus:border-primary"
-                        />
-                        {!isAnswerSubmitted && (
-                          <ContinueButton
-                            label="Check answer"
-                            onClick={handleSubmitFormula}
-                            disabled={!formulaAnswer.trim() || isSpeaking}
-                          />
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  {formulaWorkspace}
                 </div>
               ) : (
                 classicLessonBoard
@@ -2092,44 +2260,7 @@ export function LessonPlayer({
                 fillWorkspace ? "min-h-0 min-w-0 flex-1 overflow-y-auto" : "",
               )}
             >
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
-                Formula board
-              </p>
-              <div className="min-h-[120px] rounded-lg bg-primary/5 p-3 font-mono text-base text-gray-900">
-                <MathText displayMode forceMath>
-                  {formulaBoardText}
-                </MathText>
-              </div>
-
-              {beat?.type === "question" && demoMode === "practice" && (
-                <div className="mt-3 space-y-2.5">
-                  <input
-                    type="text"
-                    value={formulaAnswer}
-                    onChange={(e) => setFormulaAnswer(e.target.value)}
-                    disabled={isAnswerSubmitted}
-                    placeholder="Type your answer…"
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium outline-none focus:border-primary"
-                  />
-                  {!isAnswerSubmitted && (
-                    <ContinueButton
-                      label="Check answer"
-                      onClick={handleSubmitFormula}
-                      disabled={!formulaAnswer.trim() || isSpeaking}
-                      className={
-                        kidsStage
-                          ? "h-12 w-full text-base sm:h-auto sm:w-auto sm:text-sm"
-                          : undefined
-                      }
-                    />
-                  )}
-                  {showCelebration && (
-                    <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-                      <CheckCircle2 className="h-4 w-4" /> Awesome!
-                    </p>
-                  )}
-                </div>
-              )}
+              {formulaWorkspace}
             </div>
           )}
         </div>
@@ -2183,12 +2314,14 @@ function QuestionPanel({
     q.type === "multiple_choice" || q.type === "true_false";
   const correctTfAnswer =
     typeof q.answer === "boolean" ? q.answer : undefined;
+  const revealAnswer =
+    isSubmitted && (showCelebration || triesLeft === 0);
 
   return (
     <Panel label="Quick check">
       {retryMax > 0 && !showCelebration && (
         <p className="mb-2 text-[0.7rem] font-medium text-gray-500">
-          Wrong tries left before we move on: {triesLeft}
+          Tries left: {triesLeft}
           {retryHint ? " · A hint plays after a wrong answer" : ""}
         </p>
       )}
@@ -2222,7 +2355,7 @@ function QuestionPanel({
               }
               onSelect={onSelectAnswer}
               disabled={isSubmitted || isSpeaking}
-              isSubmitted={isSubmitted}
+              isSubmitted={revealAnswer}
             />
           )}
 
@@ -2233,7 +2366,7 @@ function QuestionPanel({
               }
               onSelect={onSelectAnswer}
               disabled={isSubmitted || isSpeaking}
-              isSubmitted={isSubmitted}
+              isSubmitted={revealAnswer}
               correctAnswer={correctTfAnswer}
             />
           )}
@@ -2246,7 +2379,7 @@ function QuestionPanel({
                 selectedAnswer === null || isSubmitted || isSpeaking
               }
               className={cn(
-                "w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all sm:w-auto sm:py-2.5",
+                "h-12 w-full rounded-xl px-4 text-base font-semibold transition-all sm:h-auto sm:w-auto sm:py-2.5 sm:text-sm",
                 selectedAnswer !== null && !isSubmitted && !isSpeaking
                   ? "bg-primary text-white shadow-md hover:bg-primary/90 active:scale-[0.99]"
                   : "cursor-not-allowed bg-gray-200 text-gray-500",
@@ -2254,19 +2387,24 @@ function QuestionPanel({
             >
               {isSubmitted ? "Answer Submitted" : "Submit Answer"}
             </button>
+            {isSpeaking && !isSubmitted ? (
+              <p className="mt-1.5 text-center text-xs font-medium text-primary sm:text-left">
+                Wait for your instructor…
+              </p>
+            ) : null}
           </div>
 
-          {isSubmitted && q.explanation ? (
+          {revealAnswer && q.explanation ? (
             <div
               className={cn(
                 "mt-4 rounded-lg border-l-4 p-3",
                 selectedAnswer === q.answer
                   ? "border-green-500 bg-green-50"
-                  : "border-red-500 bg-red-50",
+                  : "border-primary/40 bg-primary/5",
               )}
             >
               <p className="text-sm font-semibold text-gray-800">
-                {selectedAnswer === q.answer ? "Correct!" : "Incorrect"}
+                {selectedAnswer === q.answer ? "Correct!" : "Here's the idea"}
               </p>
               <p className="mt-1 text-sm leading-relaxed text-gray-700">
                 <MathText>{q.explanation}</MathText>

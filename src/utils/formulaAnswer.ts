@@ -4,13 +4,17 @@ export function normalizeFormulaAnswer(raw: string): string {
     .trim()
     .toLowerCase()
     .replace(/\$/g, "")
+    .replace(/(\d),(\d)/g, "$1$2")
     .replace(/\s+/g, " ")
     .replace(/\s*([+\-×x*/=:,])\s*/g, "$1")
     .replace(/\s*(km|cm|m|kg|g|ml|l)\b/gi, " $1")
     .trim();
 }
 
-/** Compare student answer to expected — exact normalized match or numeric equality. */
+/**
+ * Compare student answer to expected — exact normalized match or numeric
+ * equality with the same unit. Does not accept partial digit fragments.
+ */
 export function compareFormulaAnswer(student: string, expected: string): boolean {
   const a = normalizeFormulaAnswer(student);
   const b = normalizeFormulaAnswer(expected);
@@ -25,5 +29,5 @@ export function compareFormulaAnswer(student: string, expected: string): boolean
     return unitA === unitB;
   }
 
-  return a.includes(b) || b.includes(a);
+  return false;
 }

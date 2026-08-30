@@ -23,6 +23,12 @@ import {
 import type { CurriculumV2Data, LessonV2 } from "../types";
 import { LessonPlayer } from "./LessonPlayer";
 import { V2Sidebar } from "./V2Sidebar";
+import {
+  clearV2LessonDraft,
+  loadV2LessonDraft,
+  saveV2LessonDraft,
+  type V2LessonDraft,
+} from "../lessonPersist";
 
 interface CurriculumV2PreviewProps {
   curriculum: CurriculumV2Data;
@@ -51,6 +57,12 @@ export function CurriculumV2Preview({
   const [showSidebar, setShowSidebar] = useState(true);
   const [lessonKey, setLessonKey] = useState(0);
   const [lessonStarted, setLessonStarted] = useState(false);
+  const [resumeDraft, setResumeDraft] = useState<V2LessonDraft | null>(null);
+
+  const previewScope = useMemo(
+    () => `preview:${curriculum.title}`,
+    [curriculum.title],
+  );
 
   const {
     renderAvatar,
@@ -99,30 +111,68 @@ export function CurriculumV2Preview({
     if (!currentLesson) return;
     unlockMobileAudio();
     clearScheduledAfterSpeech();
+    const draft = loadV2LessonDraft(
+      typeof window !== "undefined" ? window.sessionStorage : null,
+      previewScope,
+      currentLesson.id,
+    );
+    setResumeDraft(draft);
     setLessonStarted(true);
     setLessonKey((k) => k + 1);
-  }, [clearScheduledAfterSpeech, currentLesson, unlockMobileAudio]);
+  }, [
+    clearScheduledAfterSpeech,
+    currentLesson,
+    previewScope,
+    unlockMobileAudio,
+  ]);
 
   const selectLesson = useCallback(
     (lesson: LessonV2) => {
       unlockMobileAudio();
       stop();
       clearScheduledAfterSpeech();
+      const draft = loadV2LessonDraft(
+        typeof window !== "undefined" ? window.sessionStorage : null,
+        previewScope,
+        lesson.id,
+      );
+      setResumeDraft(draft);
       setCurrentLesson(lesson);
       setLessonStarted(true);
       setLessonKey((k) => k + 1);
       setShowSidebar(false);
     },
-    [clearScheduledAfterSpeech, stop, unlockMobileAudio],
+    [clearScheduledAfterSpeech, previewScope, stop, unlockMobileAudio],
   );
 
-  const handleLessonComplete = useCallback((lessonId: string) => {
-    setCompletedLessons((prev) => {
-      const next = new Set(prev);
-      next.add(lessonId);
-      return next;
-    });
-  }, []);
+  const handleBeatProgress = useCallback(
+    (draft: V2LessonDraft) => {
+      if (!currentLesson) return;
+      saveV2LessonDraft(
+        typeof window !== "undefined" ? window.sessionStorage : null,
+        previewScope,
+        currentLesson.id,
+        draft,
+      );
+    },
+    [currentLesson, previewScope],
+  );
+
+  const handleLessonComplete = useCallback(
+    (lessonId: string) => {
+      clearV2LessonDraft(
+        typeof window !== "undefined" ? window.sessionStorage : null,
+        previewScope,
+        lessonId,
+      );
+      setCompletedLessons((prev) => {
+        const next = new Set(prev);
+        next.add(lessonId);
+        return next;
+      });
+    },
+    [previewScope],
+  );
 
   const handleNextLesson = useCallback(
     (preferredNextId?: string | null) => {
@@ -322,6 +372,9 @@ export function CurriculumV2Preview({
               onMobileAudioUnlock={unlockMobileAudio}
               isInstructorWaiting={isInstructorWaiting}
               suppressMobileWaitBanner
+              initialBeatIndex={resumeDraft?.beatIndex ?? 0}
+              initialDraft={resumeDraft}
+              onBeatProgress={handleBeatProgress}
             />
           )}
         </div>

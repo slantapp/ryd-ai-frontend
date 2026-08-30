@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import MathText from "@/components/courses/math/MathText";
 
 /** Lightweight markdown-ish renderer for display beat bodies (bold, code, newlines). */
 export function RichBody({ text }: { text: string }) {
@@ -47,13 +48,15 @@ function renderInline(text: string): ReactNode[] {
 
   while ((match = re.exec(text)) !== null) {
     if (match.index > last) {
-      parts.push(text.slice(last, match.index));
+      parts.push(
+        <MathText key={key++}>{text.slice(last, match.index)}</MathText>,
+      );
     }
     const token = match[0];
     if (token.startsWith("**")) {
       parts.push(
         <strong key={key++} className="font-bold text-slate-900">
-          {token.slice(2, -2)}
+          <MathText>{token.slice(2, -2)}</MathText>
         </strong>,
       );
     } else {
@@ -62,12 +65,14 @@ function renderInline(text: string): ReactNode[] {
           key={key++}
           className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[0.9em] text-primary"
         >
-          {token.slice(1, -1)}
+          <MathText>{token.slice(1, -1)}</MathText>
         </code>,
       );
     }
     last = match.index + token.length;
   }
-  if (last < text.length) parts.push(text.slice(last));
+  if (last < text.length) {
+    parts.push(<MathText key={key++}>{text.slice(last)}</MathText>);
+  }
   return parts;
 }

@@ -12,6 +12,11 @@ interface MathAnswerWorkspaceProps {
   isSubmitted?: boolean;
   isCorrect?: boolean | null;
   expectedAnswer?: string;
+  /** Show the expected answer on a miss (default true for v1 one-shot checks). */
+  showExpected?: boolean;
+  triesLeft?: number;
+  speakingWait?: boolean;
+  compact?: boolean;
 }
 
 export default function MathAnswerWorkspace({
@@ -24,9 +29,13 @@ export default function MathAnswerWorkspace({
   isSubmitted = false,
   isCorrect = null,
   expectedAnswer,
+  showExpected = true,
+  triesLeft,
+  speakingWait = false,
+  compact = false,
 }: MathAnswerWorkspaceProps) {
   return (
-    <div className="min-w-0 space-y-4 sm:space-y-5">
+    <div className={cn("min-w-0", compact ? "space-y-3" : "space-y-4 sm:space-y-5")}>
       <div className="min-w-0">
         <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-primary/80">
           Your turn
@@ -68,22 +77,34 @@ export default function MathAnswerWorkspace({
         <p className="mt-2 text-xs text-gray-500">
           Enter a number, ratio (e.g. 3:5), expression, or answer with units if needed.
         </p>
+        {typeof triesLeft === "number" && triesLeft > 0 && !isSubmitted ? (
+          <p className="mt-1 text-xs font-medium text-gray-500">
+            {triesLeft} {triesLeft === 1 ? "try" : "tries"} left if this is wrong.
+          </p>
+        ) : null}
       </div>
 
       {!isSubmitted && (
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          className={cn(
-            "w-full rounded-xl py-3 text-base font-bold transition-all sm:text-lg",
-            canSubmit
-              ? "bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary/90"
-              : "cursor-not-allowed bg-gray-200 text-gray-500",
-          )}
-        >
-          Check my answer
-        </button>
+        <div className="space-y-1.5">
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            className={cn(
+              "w-full rounded-xl py-3 text-base font-bold transition-all sm:text-lg",
+              canSubmit
+                ? "bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary/90"
+                : "cursor-not-allowed bg-gray-200 text-gray-500",
+            )}
+          >
+            Check my answer
+          </button>
+          {speakingWait ? (
+            <p className="text-center text-xs font-medium text-primary">
+              Wait for your instructor, then check.
+            </p>
+          ) : null}
+        </div>
       )}
 
       {isSubmitted && isCorrect !== null && (
@@ -107,9 +128,13 @@ export default function MathAnswerWorkspace({
                 isCorrect ? "text-emerald-800" : "text-rose-800",
               )}
             >
-              {isCorrect ? "Correct! Great work." : "Not quite — keep trying next time."}
+              {isCorrect
+                ? "Correct! Great work."
+                : typeof triesLeft === "number" && triesLeft > 0
+                  ? "Not quite — try again."
+                  : "Not quite — let's look at the idea together."}
             </p>
-            {!isCorrect && expectedAnswer && (
+            {!isCorrect && showExpected && expectedAnswer && (
               <p className="mt-1 break-words text-xs text-rose-700 sm:text-sm">
                 Expected answer:{" "}
                 <MathText className="font-semibold">{expectedAnswer}</MathText>

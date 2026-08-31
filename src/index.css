@@ -226,3 +226,14 @@ svg {
     scroll-behavior: auto;
   }
 }
+
+/* ALAT Pay: subscription gate modals sit above the page and can block touches on mobile. */
+body[data-alat-checkout-active="true"] [data-slot="dialog-overlay"] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+body[data-alat-checkout-active="true"] [data-slot="dialog-content"] {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

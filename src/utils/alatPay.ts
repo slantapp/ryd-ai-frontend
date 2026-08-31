@@ -1,4 +1,15 @@
 const ALAT_SCRIPT_SRC = "https://web.alatpay.ng/js/alatpay.js";
+const ALAT_BODY_ATTR = "data-alat-checkout-active";
+
+/** Hide app modals so ALAT overlay receives touches (mobile). */
+export function setAlatCheckoutActive(active: boolean): void {
+  if (typeof document === "undefined") return;
+  if (active) {
+    document.body.setAttribute(ALAT_BODY_ATTR, "true");
+  } else {
+    document.body.removeAttribute(ALAT_BODY_ATTR);
+  }
+}
 
 export type AlatPaySetupOptions = {
   apiKey: string;

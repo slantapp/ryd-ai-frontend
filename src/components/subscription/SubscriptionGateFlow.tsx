@@ -227,6 +227,7 @@ const SubscriptionGateFlow = ({
 
             <div className={scrollPaddingClass}>
               <SubscriptionContentServer
+                key={`subscribe-plans-${subscribeViewBump}`}
                 gateMode
                 onSubscriptionComplete={onSubscriptionComplete}
               />

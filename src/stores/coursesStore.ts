@@ -124,6 +124,17 @@ function apiRecordToEntry(rec: CourseProgressRecord): CourseProgressDataEntry {
   };
 }
 
+function preferNewestProgress(
+  current: CourseProgressDataEntry | undefined,
+  incoming: CourseProgressDataEntry,
+): CourseProgressDataEntry {
+  if (!current) return incoming;
+
+  const currentUpdatedAt = current.lastUpdated ?? 0;
+  const incomingUpdatedAt = incoming.lastUpdated ?? 0;
+  return incomingUpdatedAt >= currentUpdatedAt ? incoming : current;
+}
+
 function entryToPutBody(
   entry: CourseProgressDataEntry,
   clientUpdatedAt: number,
@@ -213,7 +224,7 @@ async function flushProgressToApi(
     set((state) => ({
       courseProgress: {
         ...state.courseProgress,
-        [slug]: merged,
+        [slug]: preferNewestProgress(state.courseProgress[slug], merged),
       },
     }));
   } catch {
@@ -224,7 +235,7 @@ async function flushProgressToApi(
         set((state) => ({
           courseProgress: {
             ...state.courseProgress,
-            [slug]: merged,
+            [slug]: preferNewestProgress(state.courseProgress[slug], merged),
           },
         }));
       }
@@ -276,7 +287,13 @@ export const useCoursesStore = create<CoursesState>()(
           for (const [slug, rec] of Object.entries(res.data)) {
             next[slug] = apiRecordToEntry(rec);
           }
-          set({ courseProgress: next });
+          set((state) => {
+            const merged = { ...state.courseProgress };
+            for (const [slug, incoming] of Object.entries(next)) {
+              merged[slug] = preferNewestProgress(merged[slug], incoming);
+            }
+            return { courseProgress: merged };
+          });
         } catch {
           /* ignore — dashboard still usable */
         }
@@ -326,7 +343,7 @@ export const useCoursesStore = create<CoursesState>()(
           set((state) => ({
             courseProgress: {
               ...state.courseProgress,
-              [slug]: merged,
+              [slug]: preferNewestProgress(state.courseProgress[slug], merged),
             },
           }));
         } catch {

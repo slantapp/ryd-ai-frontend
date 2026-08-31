@@ -145,13 +145,14 @@ export default function CourseDetailsV2() {
             )
           : null;
 
-      // Prefer API questionIndex as beatIndex; fall back to local draft.
+      // Keep the furthest known position. A refresh can happen before the
+      // debounced API write lands, while the local draft is already current.
       const beatFromApi =
         typeof stored?.questionIndex === "number" ? stored.questionIndex : null;
       const mergedDraft: V2LessonDraft | null =
         draft || beatFromApi != null
           ? {
-              beatIndex: beatFromApi ?? draft?.beatIndex ?? 0,
+              beatIndex: Math.max(beatFromApi ?? 0, draft?.beatIndex ?? 0),
               completedBeatIds: draft?.completedBeatIds,
               code: draft?.code,
               webCode: draft?.webCode,
@@ -176,15 +177,19 @@ export default function CourseDetailsV2() {
     (lesson: LessonV2, started: boolean, beatIndex = 0) => {
       if (!exercise || !curriculum) return;
       const lessonIndex = allLessons.findIndex((l) => l.lesson.id === lesson.id);
-      updateCourseProgress(exercise, {
-        status: started ? "ongoing" : "not-started",
-        currentLessonId: lesson.id,
-        lessonIndex: lessonIndex >= 0 ? lessonIndex : undefined,
-        questionIndex: beatIndex,
-        lessonStarted: started,
-        canStartQuestions: false,
-        lastUpdated: Date.now(),
-      });
+      updateCourseProgress(
+        exercise,
+        {
+          status: started ? "ongoing" : "not-started",
+          currentLessonId: lesson.id,
+          lessonIndex: lessonIndex >= 0 ? lessonIndex : undefined,
+          questionIndex: beatIndex,
+          lessonStarted: started,
+          canStartQuestions: false,
+          lastUpdated: Date.now(),
+        },
+        { immediate: true },
+      );
     },
     [allLessons, curriculum, exercise, updateCourseProgress],
   );

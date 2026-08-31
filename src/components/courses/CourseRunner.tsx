@@ -47,7 +47,7 @@ export default function CourseRunner() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackVariant, setFeedbackVariant] =
     useState<CourseFeedbackVariant>("course_complete");
-  const curriculaRevision = useCoursesStore((s) => s.curriculaRevision);
+  useCoursesStore((s) => s.curriculaRevision);
 
   const openFeedback = useCallback((variant: CourseFeedbackVariant) => {
     setFeedbackVariant(variant);
@@ -63,7 +63,7 @@ export default function CourseRunner() {
 
   if (entry && isCurriculumV2(entry)) {
     courseView = (
-      <CourseDetailsV2 key={`v2-${exercise}-${curriculaRevision}`} />
+      <CourseDetailsV2 key={`v2-${exercise}`} />
     );
   } else {
     const curriculum = exercise
@@ -72,11 +72,11 @@ export default function CourseRunner() {
 
     if (isMathematicsCurriculum(curriculum)) {
       courseView = (
-        <MathCourseDetails key={`math-${exercise}-${curriculaRevision}`} />
+        <MathCourseDetails key={`math-${exercise}`} />
       );
     } else {
       courseView = (
-        <CourseDetails key={`v1-${exercise}-${curriculaRevision}`} />
+        <CourseDetails key={`v1-${exercise}`} />
       );
     }
   }

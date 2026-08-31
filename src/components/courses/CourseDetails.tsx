@@ -2,7 +2,16 @@ import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import Split from "react-split";
 import NarratorAvatar from "narrator-avatar";
-import { Volume2, Mic, Play, Pause, RotateCcw, CheckCircle2, XCircle } from "lucide-react";
+import {
+  Volume2,
+  Mic,
+  Play,
+  Pause,
+  RotateCcw,
+  SkipForward,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import {
   type Question,
   type Lesson,
@@ -185,7 +194,9 @@ function CourseDetailInner({
   const location = useLocation();
   const selectedInstructor = useInstructorStore((s) => s.selectedInstructor);
   const instructorConfig = INSTRUCTORS[selectedInstructor];
-  const { updateCourseProgress } = useCoursesStore();
+  const updateCourseProgress = useCoursesStore(
+    (state) => state.updateCourseProgress,
+  );
   const isCourseCompleted = useCoursesStore((state) =>
     exercise ? state.courseProgress[exercise]?.status === "completed" : false
   );
@@ -222,6 +233,9 @@ function CourseDetailInner({
   const courseCompletedNotifiedRef = useRef(false);
   const courseCompletionSpeechRef = useRef(false);
   const introUnlockTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const questionAdvanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
   /** Lesson id waiting for intro unlock (speech end or fallback). */
@@ -338,6 +352,13 @@ function CourseDetailInner({
     }
   }, []);
 
+  const clearQuestionAdvanceTimeout = useCallback(() => {
+    if (questionAdvanceTimeoutRef.current) {
+      clearTimeout(questionAdvanceTimeoutRef.current);
+      questionAdvanceTimeoutRef.current = null;
+    }
+  }, []);
+
   const markIntroReady = useCallback(
     (lesson?: Lesson | null) => {
       clearIntroUnlockTimeout();
@@ -404,6 +425,25 @@ function CourseDetailInner({
     setWebCode(EMPTY_WEB_CODE);
     setResults([]);
     setPreviewRefreshKey(0);
+  }, []);
+
+  const prepareQuestionPractice = useCallback((question: Question) => {
+    const example = question.code_example;
+    setResults([]);
+    setPreviewRefreshKey(0);
+    setIsLessonCodeDemoActive(false);
+
+    if (
+      example &&
+      isWebWorkspaceLanguage(example.language, question.testCriteria)
+    ) {
+      setWebCode(webCodeForExamplePractice(example));
+      setCode("");
+      return;
+    }
+
+    setWebCode(EMPTY_WEB_CODE);
+    setCode(example?.starterCode?.trim() ?? "");
   }, []);
 
   const getCodeSubmission = useCallback(
@@ -719,6 +759,7 @@ function CourseDetailInner({
       pendingTypingStartRef.current = null;
       clearIntroUnlockTimeout();
       pendingIntroUnlockLessonIdRef.current = null;
+      clearQuestionAdvanceTimeout();
 
       isManuallyStopped.current = true;
       stopAvatarSpeech(getAvatar());
@@ -750,6 +791,7 @@ function CourseDetailInner({
     rewindTracker,
     stopSubtitles,
     clearIntroUnlockTimeout,
+    clearQuestionAdvanceTimeout,
     clearPausedState,
   ]);
 
@@ -950,7 +992,7 @@ function CourseDetailInner({
         lessonStarted: progress.lessonStarted,
         canStartQuestions: progress.canStartQuestions,
         lastUpdated: Date.now(),
-      });
+      }, { immediate: true });
     },
     [exercise, updateCourseProgress]
   );
@@ -1013,6 +1055,22 @@ function CourseDetailInner({
   // Ref to hold the moveToNextQuestion function to avoid circular dependency
   const moveToNextQuestionRef = useRef<() => void>(() => { });
 
+  const scheduleQuestionAdvanceFallback = useCallback(
+    (feedbackText: string) => {
+      clearQuestionAdvanceTimeout();
+      questionAdvanceTimeoutRef.current = setTimeout(() => {
+        questionAdvanceTimeoutRef.current = null;
+        if (pendingActionRef.current.type !== "next_question") return;
+
+        // TTS occasionally fails to emit onSpeechEnd. Do not leave a submitted
+        // assessment permanently blocked when that happens.
+        stopSpeaking();
+        moveToNextQuestionRef.current();
+      }, estimateSpeechFallbackMs(feedbackText.length));
+    },
+    [clearQuestionAdvanceTimeout, stopSpeaking],
+  );
+
   // Internal handler that executes the pending action after speech
   const handleSpeechEndInternal = useCallback(() => {
     setIsSpeaking(false);
@@ -1033,6 +1091,7 @@ function CourseDetailInner({
 
     switch (action.type) {
       case "next_question":
+        clearQuestionAdvanceTimeout();
         // Small delay before moving to next question for better UX
         setTimeout(() => {
           moveToNextQuestionRef.current();
@@ -1070,20 +1129,7 @@ function CourseDetailInner({
         }, 300);
         break;
       case "clear_code_and_ask": {
-        const example = action.question.code_example;
-        setResults([]);
-        setPreviewRefreshKey(0);
-        setIsLessonCodeDemoActive(false);
-        if (
-          example &&
-          isWebWorkspaceLanguage(example.language, action.question.testCriteria)
-        ) {
-          setWebCode(webCodeForExamplePractice(example));
-          setCode("");
-        } else {
-          setWebCode(EMPTY_WEB_CODE);
-          setCode(example?.starterCode?.trim() ?? "");
-        }
+        prepareQuestionPractice(action.question);
         setTimeout(() => {
           speak(action.question.question);
         }, 500);
@@ -1139,8 +1185,9 @@ function CourseDetailInner({
     flushNextQueuedSpeech,
     playLessonCodeExample,
     speakLessonCodeOutro,
-    resetCodeState,
+    prepareQuestionPractice,
     markIntroReady,
+    clearQuestionAdvanceTimeout,
     currentLesson,
     curriculum,
   ]);
@@ -1170,6 +1217,15 @@ function CourseDetailInner({
 
     handleSpeechEndInternal();
   }, [handleSpeechEndInternal]);
+
+  const handleSkipNarration = useCallback(() => {
+    isManuallyStopped.current = true;
+    stopAvatarSpeech(getAvatar());
+    handleSpeechEndInternal();
+    window.setTimeout(() => {
+      isManuallyStopped.current = false;
+    }, 300);
+  }, [getAvatar, handleSpeechEndInternal]);
 
   // Chain lesson speech steps after each avatar utterance finishes (e.g. explanation → start questions).
   useEffect(() => {
@@ -1455,6 +1511,11 @@ function CourseDetailInner({
           lessonStarted: true,
           canStartQuestions: true,
         });
+        if (question.type === "code_test") {
+          prepareQuestionPractice(question);
+        } else {
+          resetCodeState();
+        }
         speak(question.question);
         return;
       }
@@ -1496,6 +1557,8 @@ function CourseDetailInner({
     curriculum,
     enterLessonIntro,
     persistCoursePosition,
+    prepareQuestionPractice,
+    resetCodeState,
     speak,
     speakLessonContent,
   ]);
@@ -1914,6 +1977,9 @@ function CourseDetailInner({
     if (isAnswerSubmitted || selectedAnswer === null || !currentQuestion)
       return;
 
+    // A learner who has selected an answer should not be blocked by a long or
+    // stuck question narration.
+    stopSpeaking();
     setIsAnswerSubmitted(true);
 
     let feedbackText = "";
@@ -1938,10 +2004,19 @@ function CourseDetailInner({
     if (isCorrect) {
       setCorrectAnswersCount((prev) => prev + 1);
     }
+    setLastAnswerCorrect(isCorrect);
 
     // Speak feedback, then auto-progress to next question
     speak(feedbackText, { type: "next_question" });
-  }, [isAnswerSubmitted, selectedAnswer, currentQuestion, speak]);
+    scheduleQuestionAdvanceFallback(feedbackText);
+  }, [
+    currentQuestion,
+    isAnswerSubmitted,
+    scheduleQuestionAdvanceFallback,
+    selectedAnswer,
+    speak,
+    stopSpeaking,
+  ]);
 
   const handleSubmitFormula = useCallback(() => {
     if (!currentQuestion || !isFormulaTestQuestion(currentQuestion)) return;
@@ -1961,7 +2036,14 @@ function CourseDetailInner({
       ? `Correct! Well done. ${currentQuestion.explanation ?? ""}`
       : `Not quite. The expected answer is ${expected}. ${currentQuestion.explanation ?? ""}`;
     speak(feedbackText, { type: "next_question" });
-  }, [currentQuestion, isAnswerSubmitted, speak, studentAnswer]);
+    scheduleQuestionAdvanceFallback(feedbackText);
+  }, [
+    currentQuestion,
+    isAnswerSubmitted,
+    scheduleQuestionAdvanceFallback,
+    speak,
+    studentAnswer,
+  ]);
 
   /** Check code against test criteria without recording a final answer. */
   const handleTryCodeTest = useCallback(async () => {
@@ -2042,6 +2124,7 @@ function CourseDetailInner({
       }
 
       speak(feedbackText, { type: "next_question" });
+      scheduleQuestionAdvanceFallback(feedbackText);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -2049,9 +2132,11 @@ function CourseDetailInner({
       setIsAnswerSubmitted(true);
       setTotalQuestionsAnswered((prev) => prev + 1);
 
-      speak(`There was an error running your code: ${errorMessage}`, {
+      const feedbackText = `There was an error running your code: ${errorMessage}`;
+      speak(feedbackText, {
         type: "next_question",
       });
+      scheduleQuestionAdvanceFallback(feedbackText);
     } finally {
       if (!useWebWorkspace) {
         setIsExecutingCode(false);
@@ -2061,6 +2146,7 @@ function CourseDetailInner({
     currentQuestion,
     getCodeSubmission,
     isAnswerSubmitted,
+    scheduleQuestionAdvanceFallback,
     speak,
     useWebWorkspace,
   ]);
@@ -2125,7 +2211,9 @@ function CourseDetailInner({
       pendingResumeRef.current = {
         lesson,
         questionIndex,
-        canStartQuestions: saved.canStartQuestions,
+        // Older/stale records may have a question index without the matching
+        // phase flag. Never send an in-progress assessment back to the intro.
+        canStartQuestions: saved.canStartQuestions || questionIndex > 0,
         lessonComplete,
       };
     })();
@@ -2134,7 +2222,6 @@ function CourseDetailInner({
       cancelled = true;
     };
     // Restore once when curriculum is available; helpers are read from the latest render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curriculum, exercise]);
 
   // Keep phase aligned with question/completion state.
@@ -2189,13 +2276,6 @@ function CourseDetailInner({
     setShowMobileAudioUnlock(false);
   }, [exercise, selectedInstructor, isLgUp]);
 
-  useEffect(() => {
-    if (!isLgUp) return;
-    avatarReadyRef.current = false;
-    setIsAvatarReady(false);
-    setShowMobileAudioUnlock(false);
-  }, [isCodeTestQuestionActive, isLgUp]);
-
   const isInstructorWaiting = isInstructorWaitActive({
     isPaused,
     isAvatarReady,
@@ -2206,6 +2286,10 @@ function CourseDetailInner({
   // Sync progress to store when lesson/question changes
   useEffect(() => {
     if (!currentLesson || !exercise || !curriculum) return;
+    // Hydration parks a saved lesson behind the Continue gate with
+    // lessonStarted=false. Do not rewrite that valid saved progress as
+    // "not-started" before the learner taps Continue.
+    if (!lessonStarted) return;
 
     const allLessons: Lesson[] = [];
     curriculum.modules.forEach((m) => allLessons.push(...m.lessons));
@@ -2407,22 +2491,22 @@ function CourseDetailInner({
           {isLgUp && (
             <>
               {lessonStarted && lessonNav && (
-                <div className="mb-3 flex items-center gap-3">
+                <div className="mb-3">
                   <LessonProgressBar
                     value={progressPct}
                     label={lessonNav.positionLabel}
-                    className="flex-1"
+                    className="w-full"
                   />
                   {(isSpeaking || isPaused) && (
-                    <>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={handleRewindSpeech}
                         title="Rewind 10 seconds"
                         aria-label="Rewind 10 seconds"
-                        className="mt-4 flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                       >
-                        <RotateCcw className="size-3.5" aria-hidden />
+                        <RotateCcw className="size-3" aria-hidden />
                         <span className="hidden min-[420px]:inline">-10s</span>
                       </button>
                       <button
@@ -2433,44 +2517,41 @@ function CourseDetailInner({
                           isPaused ? "Resume the lesson" : "Pause the lesson"
                         }
                         aria-pressed={isPaused}
-                        className="mt-4 flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                       >
                         {isPaused ? (
-                          <Play className="size-3.5" aria-hidden />
+                          <Play className="size-3" aria-hidden />
                         ) : (
-                          <Pause className="size-3.5" aria-hidden />
+                          <Pause className="size-3" aria-hidden />
                         )}
                         {isPaused ? "Resume" : "Pause"}
                       </button>
-                    </>
+                      <button
+                        type="button"
+                        onClick={handleSkipNarration}
+                        title="Skip the current narration"
+                        aria-label="Skip the current narration"
+                        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      >
+                        <SkipForward className="size-3" aria-hidden />
+                        Skip
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
 
               {lessonChromePanel}
 
-              {!isCodeTestQuestionActive && curriculum && (
-                <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                  <div className="flex justify-start items-center w-full h-full min-h-0 min-w-0">
-                    <NarratorAvatar
-                      key={selectedInstructor}
-                      ref={avatarRef}
-                      {...avatarConfig}
-                      onReady={handleAvatarReady}
-                      onError={(error: unknown) =>
-                        console.error("Avatar error:", error)
-                      }
-                      onSpeechStart={handleSpeechStart}
-                      onSpeechEnd={handleSpeechEnd}
-                      onSubtitle={handleSubtitle}
-                      className="w-full h-full min-w-0 min-h-0 max-h-full max-w-full"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {isCodeTestQuestionActive && curriculum && (
-                <div className="pointer-events-none invisible absolute inset-0">
+              {curriculum && (
+                <div
+                  className={cn(
+                    "min-h-0 min-w-0 overflow-hidden",
+                    isCodeTestQuestionActive
+                      ? "pointer-events-none invisible absolute inset-0"
+                      : "mt-4 flex flex-1 flex-col",
+                  )}
+                >
                   <NarratorAvatar
                     key={selectedInstructor}
                     ref={avatarRef}
@@ -2482,7 +2563,7 @@ function CourseDetailInner({
                     onSpeechStart={handleSpeechStart}
                     onSpeechEnd={handleSpeechEnd}
                     onSubtitle={handleSubtitle}
-                    className="h-full w-full"
+                    className="h-full w-full min-h-0 min-w-0 max-h-full max-w-full"
                   />
                 </div>
               )}
@@ -2529,7 +2610,7 @@ function CourseDetailInner({
                       aria-label="Rewind 10 seconds"
                       className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
-                      <RotateCcw className="size-3.5" aria-hidden />
+                      <RotateCcw className="size-3" aria-hidden />
                       <span className="hidden min-[360px]:inline">-10s</span>
                     </button>
                     <button
@@ -2541,13 +2622,23 @@ function CourseDetailInner({
                       className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
                       {isPaused ? (
-                        <Play className="size-3.5" aria-hidden />
+                        <Play className="size-3" aria-hidden />
                       ) : (
-                        <Pause className="size-3.5" aria-hidden />
+                        <Pause className="size-3" aria-hidden />
                       )}
                       <span className="hidden min-[360px]:inline">
                         {isPaused ? "Resume" : "Pause"}
                       </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSkipNarration}
+                      title="Skip the current narration"
+                      aria-label="Skip the current narration"
+                      className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    >
+                      <SkipForward className="size-3" aria-hidden />
+                      <span className="hidden min-[360px]:inline">Skip</span>
                     </button>
                   </>
                 )}
@@ -2834,12 +2925,10 @@ function CourseDetailInner({
                                   onClick={handleSubmitAnswer}
                                   disabled={
                                     selectedAnswer === null ||
-                                    isAnswerSubmitted ||
-                                    isSpeaking
+                                    isAnswerSubmitted
                                   }
                                   className={`w-full transform rounded-xl px-4 py-3 text-base font-semibold transition-all duration-200 sm:py-3.5 sm:text-lg ${selectedAnswer !== null &&
-                                    !isAnswerSubmitted &&
-                                    !isSpeaking
+                                    !isAnswerSubmitted
                                     ? "bg-linear-to-r from-primary via-primary/90 to-primary/80 text-white shadow-lg shadow-primary/40 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/50"
                                     : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-60"
                                     }`}

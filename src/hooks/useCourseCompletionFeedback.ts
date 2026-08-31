@@ -12,6 +12,8 @@ import { useCoursesStore } from "@/stores/coursesStore";
 
 export type CourseFeedbackVariant = "first_module" | "course_complete";
 
+const EMPTY_COMPLETED_LESSONS: string[] = [];
+
 /**
  * Opens feedback after module 1 (multi-module courses) or at course completion.
  * If the learner skips the module-1 prompt, they get another chance at the end.
@@ -24,7 +26,10 @@ export function useCourseCompletionFeedback(
     courseSlug ? s.courseProgress[courseSlug]?.status : undefined,
   );
   const completedLessons = useCoursesStore((s) =>
-    courseSlug ? (s.courseProgress[courseSlug]?.completedLessons ?? []) : [],
+    courseSlug
+      ? (s.courseProgress[courseSlug]?.completedLessons ??
+        EMPTY_COMPLETED_LESSONS)
+      : EMPTY_COMPLETED_LESSONS,
   );
 
   const entry = useMemo(

@@ -46,7 +46,7 @@ import { useLocationDefaultsStore } from "@/stores/locationDefaultsStore";
 import { useAuthStore } from "@/stores/authStore";
 import { getPlanDisplayPricing } from "@/utils/planPricing";
 import { isNigeriaCountry } from "@/utils/billingRegion";
-import { loadAlatPayScript, openAlatPayCheckout } from "@/utils/alatPay";
+import { loadAlatPayScript, openAlatPayCheckout, setAlatCheckoutActive } from "@/utils/alatPay";
 
 type SubscriptionContentServerProps = {
   /** When true, hides settings chrome and notifies parent after successful subscription. */
@@ -416,6 +416,48 @@ export default function SubscriptionContentServer({
     }
   }, [gateMode, onSubscriptionComplete, subscribed]);
 
+  /** Browser back from Stripe (bfcache) can restore stale checkout locks. */
+  useEffect(() => {
+    const releaseCheckoutLocks = () => {
+      setStripeCheckoutPlanKey(null);
+      setAlatCheckoutPlanKey(null);
+      setAlatCheckoutActive(false);
+    };
+
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        releaseCheckoutLocks();
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      if (
+        checkoutMutation.isPending ||
+        initAlatMutation.isPending ||
+        confirmAlatMutation.isPending
+      ) {
+        return;
+      }
+      setStripeCheckoutPlanKey(null);
+      if (!document.body.hasAttribute("data-alat-checkout-active")) {
+        setAlatCheckoutPlanKey(null);
+      }
+    };
+
+    window.addEventListener("pageshow", onPageShow);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      setAlatCheckoutActive(false);
+    };
+  }, [
+    checkoutMutation.isPending,
+    confirmAlatMutation.isPending,
+    initAlatMutation.isPending,
+  ]);
+
   const confirmCancelSubscription = useCallback(() => {
     if (!canCancel) return;
     cancelMutation.mutate(undefined, {
@@ -511,9 +553,11 @@ export default function SubscriptionContentServer({
         if (!res.status || !url) {
           throw new Error(res.message || "Failed to create checkout session");
         }
+        setStripeCheckoutPlanKey(null);
         window.location.assign(url);
       } catch (err: unknown) {
         toast.error(getAxiosishErrorMessage(err) || "Checkout failed");
+      } finally {
         setStripeCheckoutPlanKey(null);
       }
     },
@@ -523,6 +567,17 @@ export default function SubscriptionContentServer({
   const startAlatOneTime = useCallback(
     async (planKey: string) => {
       setAlatCheckoutPlanKey(planKey);
+      let alatSafetyTimer: number | undefined;
+
+      const releaseAlatUi = () => {
+        if (alatSafetyTimer !== undefined) {
+          window.clearTimeout(alatSafetyTimer);
+          alatSafetyTimer = undefined;
+        }
+        setAlatCheckoutPlanKey(null);
+        setAlatCheckoutActive(false);
+      };
+
       try {
         const location = await useLocationDefaultsStore
           .getState()
@@ -536,6 +591,9 @@ export default function SubscriptionContentServer({
 
         await loadAlatPayScript();
         const cfg = init.data;
+        setAlatCheckoutActive(true);
+        alatSafetyTimer = window.setTimeout(releaseAlatUi, 120_000);
+
         const popup = openAlatPayCheckout({
           apiKey: cfg.alatKey,
           businessId: cfg.alatBid,
@@ -576,18 +634,19 @@ export default function SubscriptionContentServer({
                     "We could not confirm your ALAT payment.",
                 );
               } finally {
-                setAlatCheckoutPlanKey(null);
+                releaseAlatUi();
               }
             })();
           },
           onClose: () => {
-            setAlatCheckoutPlanKey(null);
+            releaseAlatUi();
           },
         });
+        setAlatCheckoutPlanKey(null);
         popup.show();
       } catch (err: unknown) {
         toast.error(getAxiosishErrorMessage(err) || "ALAT payment failed");
-        setAlatCheckoutPlanKey(null);
+        releaseAlatUi();
       }
     },
     [confirmAlatMutation, gateMode, initAlatMutation, onSubscriptionComplete, user?.country],
@@ -1007,14 +1066,12 @@ export default function SubscriptionContentServer({
                 (checkoutMutation.isPending ||
                   initAlatMutation.isPending ||
                   confirmAlatMutation.isPending ||
-                  alatCheckoutPlanKey !== null ||
-                  stripeCheckoutPlanKey !== null ||
                   upgradeFlowPlanKey !== null ||
                   resumeMutation.isPending ||
                   upgradeMutation.isPending) &&
                 !planButton.isLoading;
               const stripeBusyForPlan =
-                stripeCheckoutPlanKey === p.key && checkoutMutation.isPending;
+                checkoutMutation.isPending && stripeCheckoutPlanKey === p.key;
               const alatBusyForPlan =
                 alatCheckoutPlanKey === p.key &&
                 (initAlatMutation.isPending || confirmAlatMutation.isPending);

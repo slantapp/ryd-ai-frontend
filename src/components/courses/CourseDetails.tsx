@@ -274,6 +274,10 @@ function CourseDetailInner({
 
   // Track correct answers for the current lesson
   const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
+  // Keep one result per question so retries, review navigation, or rapid
+  // submissions can never inflate the lesson score beyond its question count.
+  const answerResultsRef = useRef<Map<number, boolean>>(new Map());
+  const answerSubmissionInFlightRef = useRef(false);
 
   // Overall course completion %, surfaced as a progress bar in the header.
   const [progressPct, setProgressPct] = useState(0);
@@ -1239,6 +1243,48 @@ function CourseDetailInner({
   // QUESTION NAVIGATION
   // ============================================================================
 
+  const recordAnswerResult = useCallback(
+    (isCorrect: boolean) => {
+      const totalQuestions = currentLesson?.questions?.length ?? 0;
+      if (
+        totalQuestions === 0 ||
+        currentQuestionIndex < 0 ||
+        currentQuestionIndex >= totalQuestions
+      ) {
+        return;
+      }
+
+      answerResultsRef.current.set(currentQuestionIndex, isCorrect);
+      const validResults = Array.from(answerResultsRef.current.entries()).filter(
+        ([index]) => index >= 0 && index < totalQuestions,
+      );
+      setTotalQuestionsAnswered(validResults.length);
+      setCorrectAnswersCount(
+        validResults.reduce(
+          (count, [, correct]) => count + (correct ? 1 : 0),
+          0,
+        ),
+      );
+    },
+    [currentLesson, currentQuestionIndex],
+  );
+
+  useEffect(() => {
+    answerSubmissionInFlightRef.current = false;
+  }, [currentLesson?.id, currentQuestionIndex]);
+
+  useEffect(() => {
+    if (!isAnswerSubmitted) {
+      answerSubmissionInFlightRef.current = false;
+    }
+  }, [isAnswerSubmitted]);
+
+  useEffect(() => {
+    if (totalQuestionsAnswered === 0 && correctAnswersCount === 0) {
+      answerResultsRef.current.clear();
+    }
+  }, [correctAnswersCount, totalQuestionsAnswered]);
+
   const moveToNextQuestion = useCallback(() => {
     if (!currentLesson?.questions) return;
 
@@ -1292,17 +1338,27 @@ function CourseDetailInner({
 
       // Add this lesson's score to module totals
       const totalQuestions = currentLesson.questions.length;
-      const correctCount = correctAnswersCount;
-      const wrongCount = totalQuestionsAnswered - correctCount;
+      const lessonResults = Array.from(
+        answerResultsRef.current.entries(),
+      ).filter(([index]) => index >= 0 && index < totalQuestions);
+      const answeredCount = Math.min(totalQuestions, lessonResults.length);
+      const correctCount = Math.min(
+        answeredCount,
+        lessonResults.reduce(
+          (count, [, correct]) => count + (correct ? 1 : 0),
+          0,
+        ),
+      );
+      const wrongCount = answeredCount - correctCount;
       const newModuleCorrect = moduleCorrectCount + correctCount;
-      const newModuleTotal = moduleTotalAnswered + totalQuestionsAnswered;
+      const newModuleTotal = moduleTotalAnswered + answeredCount;
       setModuleCorrectCount(newModuleCorrect);
       setModuleTotalAnswered(newModuleTotal);
 
       // Build lesson completion message: "In this lesson, you learned about X. You got Y/Z correct."
       const lessonSummary = `In this lesson, you learned about ${currentLesson.title}.`;
       let lessonScore = "";
-      if (totalQuestionsAnswered > 0) {
+      if (answeredCount > 0) {
         lessonScore = ` You got ${correctCount} out of ${totalQuestions} questions correct.`;
         if (wrongCount > 0) {
           lessonScore += ` You got ${wrongCount} question${wrongCount > 1 ? "s" : ""} wrong.`;
@@ -1364,8 +1420,6 @@ function CourseDetailInner({
   }, [
     currentLesson,
     currentQuestionIndex,
-    correctAnswersCount,
-    totalQuestionsAnswered,
     moduleCorrectCount,
     moduleTotalAnswered,
     curriculum,
@@ -1974,8 +2028,14 @@ function CourseDetailInner({
   );
 
   const handleSubmitAnswer = useCallback(() => {
-    if (isAnswerSubmitted || selectedAnswer === null || !currentQuestion)
+    if (
+      isAnswerSubmitted ||
+      answerSubmissionInFlightRef.current ||
+      selectedAnswer === null ||
+      !currentQuestion
+    )
       return;
+    answerSubmissionInFlightRef.current = true;
 
     // A learner who has selected an answer should not be blocked by a long or
     // stuck question narration.
@@ -2000,10 +2060,7 @@ function CourseDetailInner({
     }
 
     // Track the answer result
-    setTotalQuestionsAnswered((prev) => prev + 1);
-    if (isCorrect) {
-      setCorrectAnswersCount((prev) => prev + 1);
-    }
+    recordAnswerResult(isCorrect);
     setLastAnswerCorrect(isCorrect);
 
     // Speak feedback, then auto-progress to next question
@@ -2012,6 +2069,7 @@ function CourseDetailInner({
   }, [
     currentQuestion,
     isAnswerSubmitted,
+    recordAnswerResult,
     scheduleQuestionAdvanceFallback,
     selectedAnswer,
     speak,
@@ -2020,7 +2078,8 @@ function CourseDetailInner({
 
   const handleSubmitFormula = useCallback(() => {
     if (!currentQuestion || !isFormulaTestQuestion(currentQuestion)) return;
-    if (isAnswerSubmitted) return;
+    if (isAnswerSubmitted || answerSubmissionInFlightRef.current) return;
+    answerSubmissionInFlightRef.current = true;
 
     setIsAnswerSubmitted(true);
     const expected =
@@ -2029,8 +2088,7 @@ function CourseDetailInner({
       ? compareFormulaAnswer(studentAnswer, expected)
       : false;
     setLastAnswerCorrect(isCorrect);
-    setTotalQuestionsAnswered((prev) => prev + 1);
-    if (isCorrect) setCorrectAnswersCount((prev) => prev + 1);
+    recordAnswerResult(isCorrect);
 
     const feedbackText = isCorrect
       ? `Correct! Well done. ${currentQuestion.explanation ?? ""}`
@@ -2040,6 +2098,7 @@ function CourseDetailInner({
   }, [
     currentQuestion,
     isAnswerSubmitted,
+    recordAnswerResult,
     scheduleQuestionAdvanceFallback,
     speak,
     studentAnswer,
@@ -2087,7 +2146,8 @@ function CourseDetailInner({
 
   const handleSubmitCodeAnswer = useCallback(async () => {
     if (!currentQuestion || currentQuestion.type !== "code_test") return;
-    if (isAnswerSubmitted) return;
+    if (isAnswerSubmitted || answerSubmissionInFlightRef.current) return;
+    answerSubmissionInFlightRef.current = true;
 
     const submission = getCodeSubmission();
 
@@ -2118,10 +2178,7 @@ function CourseDetailInner({
         ? `Excellent! You passed this coding test. ${passedCount} out of ${totalCount} tests correct. ${currentQuestion.explanation || ""}`
         : `You failed this coding test. ${passedCount} out of ${totalCount} tests passed. ${currentQuestion.explanation || ""}`;
 
-      setTotalQuestionsAnswered((prev) => prev + 1);
-      if (passed) {
-        setCorrectAnswersCount((prev) => prev + 1);
-      }
+      recordAnswerResult(passed);
 
       speak(feedbackText, { type: "next_question" });
       scheduleQuestionAdvanceFallback(feedbackText);
@@ -2130,7 +2187,7 @@ function CourseDetailInner({
         error instanceof Error ? error.message : String(error);
       setResults([`⚠️ Error: ${errorMessage}`]);
       setIsAnswerSubmitted(true);
-      setTotalQuestionsAnswered((prev) => prev + 1);
+      recordAnswerResult(false);
 
       const feedbackText = `There was an error running your code: ${errorMessage}`;
       speak(feedbackText, {
@@ -2146,6 +2203,7 @@ function CourseDetailInner({
     currentQuestion,
     getCodeSubmission,
     isAnswerSubmitted,
+    recordAnswerResult,
     scheduleQuestionAdvanceFallback,
     speak,
     useWebWorkspace,

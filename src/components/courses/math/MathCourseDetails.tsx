@@ -181,6 +181,10 @@ function MathCourseDetailsInner() {
   );
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
   const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
+  // Score each question once by index. This prevents review navigation or
+  // rapid repeated clicks from producing impossible totals such as 4 out of 3.
+  const answerResultsRef = useRef<Map<number, boolean>>(new Map());
+  const answerSubmissionInFlightRef = useRef(false);
   const [progressPct, setProgressPct] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const pausedLiveRef = useRef(false);
@@ -714,6 +718,48 @@ function MathCourseDetailsInner() {
     [speak, typeFormulaExample],
   );
 
+  const recordAnswerResult = useCallback(
+    (isCorrect: boolean) => {
+      const totalQuestions = currentLesson?.questions?.length ?? 0;
+      if (
+        totalQuestions === 0 ||
+        currentQuestionIndex < 0 ||
+        currentQuestionIndex >= totalQuestions
+      ) {
+        return;
+      }
+
+      answerResultsRef.current.set(currentQuestionIndex, isCorrect);
+      const validResults = Array.from(answerResultsRef.current.entries()).filter(
+        ([index]) => index >= 0 && index < totalQuestions,
+      );
+      setTotalQuestionsAnswered(validResults.length);
+      setCorrectAnswersCount(
+        validResults.reduce(
+          (count, [, correct]) => count + (correct ? 1 : 0),
+          0,
+        ),
+      );
+    },
+    [currentLesson, currentQuestionIndex],
+  );
+
+  useEffect(() => {
+    answerSubmissionInFlightRef.current = false;
+  }, [currentLesson?.id, currentQuestionIndex]);
+
+  useEffect(() => {
+    if (!isAnswerSubmitted) {
+      answerSubmissionInFlightRef.current = false;
+    }
+  }, [isAnswerSubmitted]);
+
+  useEffect(() => {
+    if (totalQuestionsAnswered === 0 && correctAnswersCount === 0) {
+      answerResultsRef.current.clear();
+    }
+  }, [correctAnswersCount, totalQuestionsAnswered]);
+
   const moveToNextQuestion = useCallback(() => {
     if (!currentLesson?.questions) return;
     stopFormulaTyping();
@@ -749,16 +795,26 @@ function MathCourseDetailsInner() {
     });
 
     const totalQuestions = currentLesson.questions.length;
-    const correctCount = correctAnswersCount;
-    const wrongCount = totalQuestionsAnswered - correctCount;
+    const lessonResults = Array.from(answerResultsRef.current.entries()).filter(
+      ([index]) => index >= 0 && index < totalQuestions,
+    );
+    const answeredCount = Math.min(totalQuestions, lessonResults.length);
+    const correctCount = Math.min(
+      answeredCount,
+      lessonResults.reduce(
+        (count, [, correct]) => count + (correct ? 1 : 0),
+        0,
+      ),
+    );
+    const wrongCount = answeredCount - correctCount;
     const newModuleCorrect = moduleCorrectCount + correctCount;
-    const newModuleTotal = moduleTotalAnswered + totalQuestionsAnswered;
+    const newModuleTotal = moduleTotalAnswered + answeredCount;
     setModuleCorrectCount(newModuleCorrect);
     setModuleTotalAnswered(newModuleTotal);
 
     const lessonSummary = `In this lesson, you learned about ${currentLesson.title}.`;
     let lessonScore = "";
-    if (totalQuestionsAnswered > 0) {
+    if (answeredCount > 0) {
       lessonScore = ` You got ${correctCount} out of ${totalQuestions} questions correct.`;
       if (wrongCount > 0) {
         lessonScore += ` You got ${wrongCount} question${wrongCount > 1 ? "s" : ""} wrong.`;
@@ -805,7 +861,6 @@ function MathCourseDetailsInner() {
     }, 300);
   }, [
     beginQuestion,
-    correctAnswersCount,
     currentLesson,
     currentQuestionIndex,
     curriculum,
@@ -814,7 +869,6 @@ function MathCourseDetailsInner() {
     persistCoursePosition,
     speak,
     stopFormulaTyping,
-    totalQuestionsAnswered,
   ]);
 
   useEffect(() => {
@@ -1445,7 +1499,14 @@ function MathCourseDetailsInner() {
   );
 
   const handleSubmitMcTf = useCallback(() => {
-    if (isAnswerSubmitted || selectedAnswer === null || !currentQuestion) return;
+    if (
+      isAnswerSubmitted ||
+      answerSubmissionInFlightRef.current ||
+      selectedAnswer === null ||
+      !currentQuestion
+    )
+      return;
+    answerSubmissionInFlightRef.current = true;
     setIsAnswerSubmitted(true);
     let isCorrect = false;
     let feedbackText = "";
@@ -1461,28 +1522,39 @@ function MathCourseDetailsInner() {
         : `Incorrect. The correct answer is ${currentQuestion.answer ? "True" : "False"}. ${currentQuestion.explanation ?? ""}`;
     }
     setLastAnswerCorrect(isCorrect);
-    setTotalQuestionsAnswered((p) => p + 1);
-    if (isCorrect) setCorrectAnswersCount((p) => p + 1);
+    recordAnswerResult(isCorrect);
     speak(feedbackText, { type: "next_question" });
-  }, [currentQuestion, isAnswerSubmitted, selectedAnswer, speak]);
+  }, [
+    currentQuestion,
+    isAnswerSubmitted,
+    recordAnswerResult,
+    selectedAnswer,
+    speak,
+  ]);
 
   const handleSubmitFormula = useCallback(() => {
     if (!currentQuestion || currentQuestion.type !== "formula_test") return;
-    if (isAnswerSubmitted) return;
+    if (isAnswerSubmitted || answerSubmissionInFlightRef.current) return;
+    answerSubmissionInFlightRef.current = true;
     setIsAnswerSubmitted(true);
     const expected = currentQuestion.testCriteria?.expectedFormula?.trim() ?? "";
     const isCorrect = expected
       ? compareFormulaAnswer(studentAnswer, expected)
       : false;
     setLastAnswerCorrect(isCorrect);
-    setTotalQuestionsAnswered((p) => p + 1);
-    if (isCorrect) setCorrectAnswersCount((p) => p + 1);
+    recordAnswerResult(isCorrect);
 
     const feedbackText = isCorrect
       ? `Correct! Well done. ${currentQuestion.explanation ?? ""}`
       : `Not quite. The expected answer is ${expected}. ${currentQuestion.explanation ?? ""}`;
     speak(feedbackText, { type: "next_question" });
-  }, [currentQuestion, isAnswerSubmitted, speak, studentAnswer]);
+  }, [
+    currentQuestion,
+    isAnswerSubmitted,
+    recordAnswerResult,
+    speak,
+    studentAnswer,
+  ]);
 
   // Load saved progress from API when opening or switching courses (deep links included).
   useEffect(() => {

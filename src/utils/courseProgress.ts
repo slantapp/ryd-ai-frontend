@@ -1,5 +1,7 @@
 import type { Curriculum, Lesson } from "@/data/curriculumData";
-import { isLessonMarkedComplete } from "@/utils/lessonNavigation";
+import {
+  isLessonIdMarkedComplete,
+} from "@/utils/lessonNavigation";
 
 import type { CurriculumEntry } from "@/data/curriculumData";
 
@@ -32,8 +34,14 @@ export function isFirstModuleComplete(
 ): boolean {
   const lessonIds = getFirstModuleLessonIds(entry);
   if (lessonIds.length === 0) return false;
-  const completed = new Set(completedLessonIds);
-  return lessonIds.every((id) => completed.has(id));
+  const curriculum = entry?.curriculum as Curriculum["curriculum"] | undefined;
+  if (!curriculum?.modules) {
+    const completed = new Set(completedLessonIds);
+    return lessonIds.every((id) => completed.has(id));
+  }
+  return lessonIds.every((id, indexInModule) =>
+    isLessonIdMarkedComplete(completedLessonIds, id, indexInModule, curriculum),
+  );
 }
 
 /** Avatar line when the learner finishes an entire course. */
@@ -46,13 +54,27 @@ export function buildCourseCompletionSpeech(courseTitle: string): string {
   );
 }
 
-/** Whether the current lesson counts as fully done for progress + course status. */
+/** Whether the current lesson counts as done for progress / course status (includes history). */
 export function isLessonProgressComplete(
   lesson: Lesson,
   completedLessonIds: Set<string>,
   questionIndex: number,
+  preferredFlatIndex?: number,
+  curriculum?: Curriculum["curriculum"],
 ): boolean {
-  return isLessonMarkedComplete(lesson, completedLessonIds, questionIndex);
+  if (
+    isLessonIdMarkedComplete(
+      completedLessonIds,
+      lesson.id,
+      preferredFlatIndex,
+      curriculum,
+    )
+  ) {
+    return true;
+  }
+  const questionCount = lesson.questions?.length ?? 0;
+  if (questionCount === 0) return false;
+  return questionIndex >= questionCount;
 }
 
 /** Whether the learner has finished the final lesson in a v1 curriculum. */
@@ -61,6 +83,7 @@ export function isV1CourseFinished(args: {
   curriculum: Curriculum["curriculum"];
   completedLessonIds: Set<string>;
   questionIndex: number;
+  preferredFlatIndex?: number;
 }): boolean {
   const allLessons = args.curriculum.modules.flatMap((m) => m.lessons);
   if (allLessons.length === 0) return false;
@@ -72,12 +95,21 @@ export function isV1CourseFinished(args: {
       break;
     }
   }
+  if (
+    currentIndex < 0 &&
+    typeof args.preferredFlatIndex === "number" &&
+    args.preferredFlatIndex >= 0
+  ) {
+    currentIndex = args.preferredFlatIndex;
+  }
   if (currentIndex !== allLessons.length - 1) return false;
 
   return isLessonProgressComplete(
     args.lesson,
     args.completedLessonIds,
     args.questionIndex,
+    currentIndex,
+    args.curriculum,
   );
 }
 

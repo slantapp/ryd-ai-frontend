@@ -86,7 +86,9 @@ import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
 import {
   buildLessonNavSnapshot,
   estimateSpeechFallbackMs,
+  isLessonIdMarkedComplete,
   resolveLessonPhase,
+  withLessonMarkedComplete,
   type LessonPhase,
   type PrimaryNavKind,
 } from "@/utils/lessonNavigation";
@@ -371,11 +373,19 @@ function CourseDetailInner({
       const target = lesson ?? currentLesson;
       if (target && !(target.questions?.length > 0)) {
         setLessonPhase("complete");
-        setCompletedLessonIds((prev) => {
-          const next = new Set(prev);
-          next.add(target.id);
-          return next;
-        });
+        setCompletedLessonIds((prev) =>
+          withLessonMarkedComplete(
+            prev,
+            target.id,
+            curriculum
+              ? getLessonIndexInCurriculum(
+                  target,
+                  curriculum,
+                  lessonFlatIndexRef.current,
+                )
+              : lessonFlatIndexRef.current,
+          ),
+        );
       }
       if (target && exercise) {
         updateCourseProgress(exercise, {
@@ -1108,22 +1118,38 @@ function CourseDetailInner({
         markIntroReady(currentLesson);
         setLessonPhase("complete");
         if (currentLesson) {
-          setCompletedLessonIds((prev) => {
-            const next = new Set(prev);
-            next.add(currentLesson.id);
-            return next;
-          });
+          setCompletedLessonIds((prev) =>
+            withLessonMarkedComplete(
+              prev,
+              currentLesson.id,
+              curriculum
+                ? getLessonIndexInCurriculum(
+                    currentLesson,
+                    curriculum,
+                    lessonFlatIndexRef.current,
+                  )
+                : lessonFlatIndexRef.current,
+            ),
+          );
         }
         break;
       case "show_completion":
         markIntroReady(currentLesson);
         setLessonPhase("complete");
         if (currentLesson) {
-          setCompletedLessonIds((prev) => {
-            const next = new Set(prev);
-            next.add(currentLesson.id);
-            return next;
-          });
+          setCompletedLessonIds((prev) =>
+            withLessonMarkedComplete(
+              prev,
+              currentLesson.id,
+              curriculum
+                ? getLessonIndexInCurriculum(
+                    currentLesson,
+                    curriculum,
+                    lessonFlatIndexRef.current,
+                  )
+                : lessonFlatIndexRef.current,
+            ),
+          );
         }
         break;
       case "ask_question":
@@ -1330,11 +1356,19 @@ function CourseDetailInner({
       setIntroReady(true);
 
       // Mark this lesson as completed
-      setCompletedLessonIds((prev) => {
-        const next = new Set(prev);
-        next.add(currentLesson.id);
-        return next;
-      });
+      setCompletedLessonIds((prev) =>
+        withLessonMarkedComplete(
+          prev,
+          currentLesson.id,
+          curriculum
+            ? getLessonIndexInCurriculum(
+                currentLesson,
+                curriculum,
+                lessonFlatIndexRef.current,
+              )
+            : lessonFlatIndexRef.current,
+        ),
+      );
 
       // Add this lesson's score to module totals
       const totalQuestions = currentLesson.questions.length;
@@ -1523,11 +1557,17 @@ function CourseDetailInner({
         setCurrentQuestionIndex(lesson.questions?.length ?? 0);
         setLessonPhase("complete");
         setIntroReady(true);
-        setCompletedLessonIds((prev) => {
-          const next = new Set(prev);
-          next.add(lesson.id);
-          return next;
-        });
+        setCompletedLessonIds((prev) =>
+          withLessonMarkedComplete(
+            prev,
+            lesson.id,
+            getLessonIndexInCurriculum(
+              lesson,
+              curriculum,
+              lessonFlatIndexRef.current,
+            ),
+          ),
+        );
         persistCoursePosition({
           lessonId: lesson.id,
           lessonIndex: getLessonIndexInCurriculum(lesson, curriculum),
@@ -1699,7 +1739,7 @@ function CourseDetailInner({
     }
     resetCodeState();
 
-    // Re-teach even if already completed — keep completion status for nav.
+    // Re-teach with normal intro → Start questions controls, even if already completed.
     enterLessonIntro(prevLesson);
     persistCoursePosition({
       lessonId: prevLesson.id,
@@ -1853,14 +1893,30 @@ function CourseDetailInner({
       handleBackToLessonIntro();
       return;
     }
-    if (lessonPhase === "complete" && (currentLesson.questions?.length ?? 0) > 0) {
-      handleReviewLastQuestion();
-      return;
+    if (lessonPhase === "complete") {
+      // Go back to the previous lesson/module when possible so it can be
+      // replayed with the normal Start questions flow.
+      if (
+        curriculum &&
+        getPreviousLessonInOrder(
+          currentLesson,
+          curriculum,
+          lessonFlatIndexRef.current,
+        )
+      ) {
+        handlePreviousLesson();
+        return;
+      }
+      if ((currentLesson.questions?.length ?? 0) > 0) {
+        handleReviewLastQuestion();
+        return;
+      }
     }
     handlePreviousLesson();
   }, [
     isSpeaking,
     currentLesson,
+    curriculum,
     lessonPhase,
     currentQuestionIndex,
     handlePreviousQuestion,
@@ -1923,10 +1979,11 @@ function CourseDetailInner({
 
   const handleNextLesson = useCallback(() => {
     if (!currentLesson || !curriculum) return;
+    const questionCount = currentLesson.questions?.length ?? 0;
     const lessonComplete =
       lessonPhase === "complete" ||
-      completedLessonIds.has(currentLesson.id) ||
-      ((currentLesson.questions?.length ?? 0) === 0 && introReady);
+      (questionCount > 0 && currentQuestionIndex >= questionCount) ||
+      (questionCount === 0 && introReady);
     if (!lessonComplete) return;
 
     const nextLesson = getNextLessonInOrder(
@@ -1984,7 +2041,7 @@ function CourseDetailInner({
     currentLesson,
     curriculum,
     lessonPhase,
-    completedLessonIds,
+    currentQuestionIndex,
     introReady,
     persistCoursePosition,
     speakLessonContent,
@@ -2257,7 +2314,12 @@ function CourseDetailInner({
       const allQuestionsDone =
         questionCount > 0 && questionIndex >= questionCount;
       const lessonComplete =
-        completed.has(lesson.id) || allQuestionsDone;
+        isLessonIdMarkedComplete(
+          completed,
+          lesson.id,
+          typeof saved.lessonIndex === "number" ? saved.lessonIndex : undefined,
+          curriculum,
+        ) || allQuestionsDone;
 
       // Park the lesson for Continue — do not auto-speak (async hydrate is outside a user gesture).
       if (typeof saved.lessonIndex === "number") {
@@ -2291,6 +2353,8 @@ function CourseDetailInner({
       hasCurrentQuestion: !!currentQuestion,
       introReady,
       completedLessonIds,
+      preferredFlatIndex: lessonFlatIndexRef.current,
+      curriculum: curriculum ?? undefined,
     });
     setLessonPhase((prev) => (prev === nextPhase ? prev : nextPhase));
   }, [
@@ -2300,6 +2364,7 @@ function CourseDetailInner({
     introReady,
     completedLessonIds,
     lessonStarted,
+    curriculum,
   ]);
 
   const lessonNav = useMemo(() => {
@@ -2354,7 +2419,11 @@ function CourseDetailInner({
     if (allLessons.length === 0) return;
 
     // Use lesson index in curriculum (not lesson ID) so progress is correct when IDs repeat across modules
-    const currentIndex = getLessonIndexInCurriculum(currentLesson, curriculum);
+    const currentIndex = getLessonIndexInCurriculum(
+      currentLesson,
+      curriculum,
+      lessonFlatIndexRef.current,
+    );
     if (currentIndex < 0) return;
 
     const totalQuestions = currentLesson.questions?.length ?? 0;
@@ -2362,6 +2431,8 @@ function CourseDetailInner({
       currentLesson,
       completedLessonIds,
       currentQuestionIndex,
+      currentIndex,
+      curriculum,
     );
 
     const progress = calculateProgress(
@@ -2378,6 +2449,7 @@ function CourseDetailInner({
       curriculum,
       completedLessonIds,
       questionIndex: currentQuestionIndex,
+      preferredFlatIndex: currentIndex,
     });
     const finalProgress = isCourseFinished ? 100 : progress;
 

@@ -172,6 +172,9 @@ export function curriculumMathToLatex(raw: string): string {
   s = replaceNumericMultiplicationX(s);
   s = s.replace(/(\d+)\s*:\s*(\d+)/g, "$1 : $2");
 
+  // Multi-statement plain formulas: "x = 1; y = 2" → stacked lines on the board
+  s = s.replace(/\s*;\s*/g, " \\\\ ");
+
   dollarTokens.forEach((replacement, index) => {
     s = s.replace(`__DOLLAR_${index}__`, replacement);
   });

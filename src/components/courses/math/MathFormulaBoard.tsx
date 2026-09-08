@@ -2,6 +2,7 @@ import type { FormulaExample } from "@/data/curriculumData";
 import { Sparkles } from "lucide-react";
 import MathText from "./MathText";
 import { cn } from "@/lib/utils";
+import { formatFormulaBoardText } from "@/utils/formulaBoard";
 
 interface MathFormulaBoardProps {
   example: FormulaExample;
@@ -16,7 +17,7 @@ export default function MathFormulaBoard({
   compact = false,
   className,
 }: MathFormulaBoardProps) {
-  const formula = liveFormula ?? example.formula;
+  const formula = formatFormulaBoardText(liveFormula ?? example.formula);
 
   return (
     <div

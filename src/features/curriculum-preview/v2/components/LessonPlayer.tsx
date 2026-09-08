@@ -37,7 +37,7 @@ import {
 import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import { isTurtlePythonCode } from "@/utils/codeExecution/turtle";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
-import { formulaProblemOnly } from "@/utils/formulaBoard";
+import { formulaProblemOnly, formatFormulaBoardText } from "@/utils/formulaBoard";
 import MathAnswerWorkspace from "@/components/courses/math/MathAnswerWorkspace";
 import type { V2LessonDraft } from "../lessonPersist";
 import {
@@ -1123,24 +1123,28 @@ export function LessonPlayer({
   })();
 
   const formulaBoardText = (() => {
-    if (typed.text) return typed.text;
-    if (beat?.type === "formula_demo") return beat.formula_example.formula;
+    if (typed.text) return formatFormulaBoardText(typed.text);
+    if (beat?.type === "formula_demo") {
+      return formatFormulaBoardText(beat.formula_example.formula);
+    }
     if (beat?.type === "question" && beat.question.type === "formula_test") {
       // Practice: show the problem only — never the worked answer.
       if (demoMode === "practice") {
-        return formulaProblemOnly(beat.question.formula_example?.formula);
+        return formatFormulaBoardText(
+          formulaProblemOnly(beat.question.formula_example?.formula),
+        );
       }
-      return beat.question.formula_example?.formula ?? "";
+      return formatFormulaBoardText(beat.question.formula_example?.formula);
     }
     if (pauseReviewingFormula && previousBeat?.type === "formula_demo") {
-      return previousBeat.formula_example.formula;
+      return formatFormulaBoardText(previousBeat.formula_example.formula);
     }
     if (
       pauseReviewingFormula &&
       previousBeat?.type === "question" &&
       previousBeat.question.formula_example
     ) {
-      return previousBeat.question.formula_example.formula;
+      return formatFormulaBoardText(previousBeat.question.formula_example.formula);
     }
     return "";
   })();

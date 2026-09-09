@@ -15,6 +15,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, PlayCircle } from "lucide-react";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
+import { useAlatCheckoutActive } from "@/utils/alatPay";
 
 type GateView = "instructors" | "subscribe";
 
@@ -62,6 +63,9 @@ const SubscriptionGateFlow = ({
   const [hasPreviewedInstructor, setHasPreviewedInstructor] = useState(true);
   const [speechEnabled, setSpeechEnabled] = useState(true);
   const parentToken = useAuthStore((state) => state.accessToken);
+  /** Fully unmount the Radix dialog while ALAT is open (focus trap / outside-click swallow). */
+  const alatCheckoutActive = useAlatCheckoutActive();
+  const dialogOpen = open && !alatCheckoutActive;
 
   const handleInstructorEngaged = useCallback(() => {
     setHasPreviewedInstructor(true);
@@ -77,6 +81,7 @@ const SubscriptionGateFlow = ({
     navigate(PRIVATE_PATHS.DEMO_SNEAK_PEEK);
   }, [navigate]);
 
+  // Key off gate requirement (`open`), not dialog visibility — ALAT temporarily closes the dialog.
   useEffect(() => {
     if (!open) {
       setView("instructors");
@@ -93,7 +98,7 @@ const SubscriptionGateFlow = ({
 
   return (
     <Dialog
-      open={open}
+      open={dialogOpen}
       onOpenChange={(next) => {
         if (next) return;
       }}

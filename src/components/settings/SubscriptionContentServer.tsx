@@ -22,6 +22,7 @@ import { toast } from "react-toastify";
 import { Check, Loader2, ShieldCheck, TicketPercent, Zap } from "lucide-react";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 import type { SubscriptionPlan } from "@/api/subscription";
+import { confirmAlatOneTimeCheckout } from "@/api/subscription";
 import {
   canManageActiveSubscription,
   canResumeSubscription,
@@ -33,7 +34,6 @@ import {
 import {
   useApplyReferralCode,
   useCancelSubscription,
-  useConfirmAlatOneTimeCheckout,
   useCreateCheckoutSession,
   useInitAlatOneTimeCheckout,
   useResumeSubscription,
@@ -46,7 +46,12 @@ import { useLocationDefaultsStore } from "@/stores/locationDefaultsStore";
 import { useAuthStore } from "@/stores/authStore";
 import { getPlanDisplayPricing } from "@/utils/planPricing";
 import { isNigeriaCountry } from "@/utils/billingRegion";
-import { loadAlatPayScript, openAlatPayCheckout, setAlatCheckoutActive } from "@/utils/alatPay";
+import {
+  loadAlatPayScript,
+  openAlatPayCheckout,
+  setAlatCheckoutActive,
+  waitForAlatHostYield,
+} from "@/utils/alatPay";
 
 type SubscriptionContentServerProps = {
   /** When true, hides settings chrome and notifies parent after successful subscription. */
@@ -325,12 +330,12 @@ export default function SubscriptionContentServer({
   const [alatCheckoutPlanKey, setAlatCheckoutPlanKey] = useState<string | null>(
     null,
   );
+  const [alatConfirmPending, setAlatConfirmPending] = useState(false);
   const plansQuery = useSubscriptionPlans();
   const statusQuery = useSubscriptionStatus();
   const historyQuery = useSubscriptionHistory();
   const checkoutMutation = useCreateCheckoutSession();
   const initAlatMutation = useInitAlatOneTimeCheckout();
-  const confirmAlatMutation = useConfirmAlatOneTimeCheckout();
   const cancelMutation = useCancelSubscription();
   const resumeMutation = useResumeSubscription();
   const upgradeMutation = useUpgradeSubscription();
@@ -435,7 +440,7 @@ export default function SubscriptionContentServer({
       if (
         checkoutMutation.isPending ||
         initAlatMutation.isPending ||
-        confirmAlatMutation.isPending
+        alatConfirmPending
       ) {
         return;
       }
@@ -450,11 +455,11 @@ export default function SubscriptionContentServer({
     return () => {
       window.removeEventListener("pageshow", onPageShow);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      setAlatCheckoutActive(false);
+      // Do not clear ALAT here: gate mode unmounts this component while checkout is open.
     };
   }, [
+    alatConfirmPending,
     checkoutMutation.isPending,
-    confirmAlatMutation.isPending,
     initAlatMutation.isPending,
   ]);
 
@@ -568,8 +573,11 @@ export default function SubscriptionContentServer({
     async (planKey: string) => {
       setAlatCheckoutPlanKey(planKey);
       let alatSafetyTimer: number | undefined;
+      let released = false;
 
       const releaseAlatUi = () => {
+        if (released) return;
+        released = true;
         if (alatSafetyTimer !== undefined) {
           window.clearTimeout(alatSafetyTimer);
           alatSafetyTimer = undefined;
@@ -591,7 +599,10 @@ export default function SubscriptionContentServer({
 
         await loadAlatPayScript();
         const cfg = init.data;
+
+        // Close stacked Radix dialogs (focus trap / outside-click) before ALAT mounts.
         setAlatCheckoutActive(true);
+        await waitForAlatHostYield();
         alatSafetyTimer = window.setTimeout(releaseAlatUi, 120_000);
 
         const popup = openAlatPayCheckout({
@@ -612,7 +623,9 @@ export default function SubscriptionContentServer({
               if (!completed || !id) return;
 
               try {
-                const confirmed = await confirmAlatMutation.mutateAsync({
+                setAlatConfirmPending(true);
+                // Call API directly — gate mode unmounts this tree while ALAT is open.
+                const confirmed = await confirmAlatOneTimeCheckout({
                   transactionId: String(id),
                 });
                 if (!confirmed.status) {
@@ -634,6 +647,7 @@ export default function SubscriptionContentServer({
                     "We could not confirm your ALAT payment.",
                 );
               } finally {
+                setAlatConfirmPending(false);
                 releaseAlatUi();
               }
             })();
@@ -649,7 +663,7 @@ export default function SubscriptionContentServer({
         releaseAlatUi();
       }
     },
-    [confirmAlatMutation, gateMode, initAlatMutation, onSubscriptionComplete, user?.country],
+    [gateMode, initAlatMutation, onSubscriptionComplete, user?.country],
   );
 
   const performUpgrade = useCallback(
@@ -1065,7 +1079,7 @@ export default function SubscriptionContentServer({
               const blockOtherActionsWhileBusy =
                 (checkoutMutation.isPending ||
                   initAlatMutation.isPending ||
-                  confirmAlatMutation.isPending ||
+                  alatConfirmPending ||
                   upgradeFlowPlanKey !== null ||
                   resumeMutation.isPending ||
                   upgradeMutation.isPending) &&
@@ -1074,7 +1088,7 @@ export default function SubscriptionContentServer({
                 checkoutMutation.isPending && stripeCheckoutPlanKey === p.key;
               const alatBusyForPlan =
                 alatCheckoutPlanKey === p.key &&
-                (initAlatMutation.isPending || confirmAlatMutation.isPending);
+                (initAlatMutation.isPending || alatConfirmPending);
               const showPaymentChoices =
                 planButton.action === "subscribe" && !planButton.disabled;
               const meta = PLAN_UI_META[p.key] ?? {

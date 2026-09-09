@@ -1,14 +1,68 @@
+import { useSyncExternalStore } from "react";
+
 const ALAT_SCRIPT_SRC = "https://web.alatpay.ng/js/alatpay.js";
 const ALAT_BODY_ATTR = "data-alat-checkout-active";
 
-/** Hide app modals so ALAT overlay receives touches (mobile). */
-export function setAlatCheckoutActive(active: boolean): void {
+type Listener = () => void;
+
+let alatCheckoutActive = false;
+const listeners = new Set<Listener>();
+
+if (typeof window !== "undefined") {
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted && alatCheckoutActive) {
+      setAlatCheckoutActive(false);
+    }
+  });
+}
+
+function emitAlatCheckoutActive() {
+  listeners.forEach((listener) => listener());
+}
+
+function syncAlatBodyAttr(active: boolean) {
   if (typeof document === "undefined") return;
   if (active) {
     document.body.setAttribute(ALAT_BODY_ATTR, "true");
   } else {
     document.body.removeAttribute(ALAT_BODY_ATTR);
   }
+}
+
+/** Suspend app modals / focus traps so ALAT can receive input. */
+export function setAlatCheckoutActive(active: boolean): void {
+  syncAlatBodyAttr(active);
+  if (alatCheckoutActive === active) return;
+  alatCheckoutActive = active;
+  emitAlatCheckoutActive();
+}
+
+export function getAlatCheckoutActive(): boolean {
+  return alatCheckoutActive;
+}
+
+export function subscribeAlatCheckoutActive(listener: Listener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+export function useAlatCheckoutActive(): boolean {
+  return useSyncExternalStore(
+    subscribeAlatCheckoutActive,
+    getAlatCheckoutActive,
+    () => false,
+  );
+}
+
+/** Wait until React has closed/suspended stacked dialogs before showing ALAT. */
+export function waitForAlatHostYield(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
 }
 
 export type AlatPaySetupOptions = {

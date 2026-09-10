@@ -90,6 +90,8 @@ export type AlatOneTimeInitResponse = {
 
 export type AlatOneTimeConfirmRequest = {
   transactionId: string;
+  /** Sent so we can fulfill even if ALAT drops custom metadata. */
+  planKey?: string;
 };
 
 export type CheckoutResponse = {

@@ -41,7 +41,9 @@ import {
   useSubscriptionPlans,
   useSubscriptionStatus,
   useUpgradeSubscription,
+  subscriptionKeys,
 } from "@/hooks/useSubscription";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocationDefaultsStore } from "@/stores/locationDefaultsStore";
 import { useAuthStore } from "@/stores/authStore";
 import { getPlanDisplayPricing } from "@/utils/planPricing";
@@ -52,6 +54,12 @@ import {
   setAlatCheckoutActive,
   waitForAlatHostYield,
 } from "@/utils/alatPay";
+import {
+  clearPendingAlatConfirm,
+  isAlatClientPaymentCompleted,
+  readPendingAlatConfirm,
+  savePendingAlatConfirm,
+} from "@/utils/alatPendingConfirm";
 
 type SubscriptionContentServerProps = {
   /** When true, hides settings chrome and notifies parent after successful subscription. */
@@ -331,6 +339,7 @@ export default function SubscriptionContentServer({
     null,
   );
   const [alatConfirmPending, setAlatConfirmPending] = useState(false);
+  const queryClient = useQueryClient();
   const plansQuery = useSubscriptionPlans();
   const statusQuery = useSubscriptionStatus();
   const historyQuery = useSubscriptionHistory();
@@ -420,6 +429,54 @@ export default function SubscriptionContentServer({
       onSubscriptionComplete?.();
     }
   }, [gateMode, onSubscriptionComplete, subscribed]);
+
+  /** Retry ALAT confirm if payment succeeded but activation never finished (e.g. closed early). */
+  useEffect(() => {
+    if (subscribed) {
+      clearPendingAlatConfirm();
+      return;
+    }
+    const pending = readPendingAlatConfirm();
+    if (!pending || alatConfirmPending) return;
+
+    let cancelled = false;
+    void (async () => {
+      setAlatConfirmPending(true);
+      try {
+        const confirmed = await confirmAlatOneTimeCheckout({
+          transactionId: pending.transactionId,
+          planKey: pending.planKey,
+        });
+        if (cancelled) return;
+        if (!confirmed.status) {
+          throw new Error(confirmed.message || "Could not confirm ALAT payment");
+        }
+        clearPendingAlatConfirm();
+        toast.success("Payment verified. Activating your access…");
+        void queryClient.invalidateQueries({
+          queryKey: subscriptionKeys.status(),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: subscriptionKeys.history(),
+        });
+        if (gateMode) {
+          onSubscriptionComplete?.();
+        } else {
+          void statusQuery.refetch();
+        }
+      } catch {
+        // Keep pending for a later retry; do not toast on every mount.
+      } finally {
+        if (!cancelled) setAlatConfirmPending(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally once per mount / when unsubscribed gate loads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gateMode, subscribed]);
 
   /** Browser back from Stripe (bfcache) can restore stale checkout locks. */
   useEffect(() => {
@@ -574,6 +631,8 @@ export default function SubscriptionContentServer({
       setAlatCheckoutPlanKey(planKey);
       let alatSafetyTimer: number | undefined;
       let released = false;
+      let confirming = false;
+      let seenTransactionId: string | null = null;
 
       const releaseAlatUi = () => {
         if (released) return;
@@ -584,6 +643,48 @@ export default function SubscriptionContentServer({
         }
         setAlatCheckoutPlanKey(null);
         setAlatCheckoutActive(false);
+      };
+
+      const fulfillAlatPayment = async (transactionId: string) => {
+        if (confirming) return;
+        confirming = true;
+        savePendingAlatConfirm({ transactionId, planKey });
+        try {
+          setAlatConfirmPending(true);
+          const confirmed = await confirmAlatOneTimeCheckout({
+            transactionId: String(transactionId),
+            planKey,
+          });
+          if (!confirmed.status) {
+            throw new Error(
+              confirmed.message || "Could not confirm ALAT payment",
+            );
+          }
+          clearPendingAlatConfirm();
+          toast.success("Payment received. Activating your access…");
+          void queryClient.invalidateQueries({
+            queryKey: subscriptionKeys.status(),
+          });
+          void queryClient.invalidateQueries({
+            queryKey: subscriptionKeys.history(),
+          });
+          if (gateMode) {
+            onSubscriptionComplete?.();
+          } else {
+            window.location.assign(
+              `${window.location.origin}${PRIVATE_PATHS.DASHBOARD}?subscription=success`,
+            );
+          }
+        } catch (err: unknown) {
+          toast.error(
+            getAxiosishErrorMessage(err) ||
+              "We could not confirm your ALAT payment. If you were charged, contact support with your ALAT receipt.",
+          );
+        } finally {
+          setAlatConfirmPending(false);
+          releaseAlatUi();
+          confirming = false;
+        }
       };
 
       try {
@@ -603,7 +704,10 @@ export default function SubscriptionContentServer({
         // Close stacked Radix dialogs (focus trap / outside-click) before ALAT mounts.
         setAlatCheckoutActive(true);
         await waitForAlatHostYield();
-        alatSafetyTimer = window.setTimeout(releaseAlatUi, 120_000);
+        // Keep the gate suspended while ALAT can still be open; only clear busy UI state.
+        alatSafetyTimer = window.setTimeout(() => {
+          setAlatCheckoutPlanKey(null);
+        }, 10 * 60_000);
 
         const popup = openAlatPayCheckout({
           apiKey: cfg.alatKey,
@@ -616,44 +720,20 @@ export default function SubscriptionContentServer({
           currency: cfg.currency,
           amount: cfg.amount,
           onTransaction: (response) => {
-            void (async () => {
-              const completed =
-                response.status && response.transactionStatus === "completed";
-              const id = response.data?.id;
-              if (!completed || !id) return;
-
-              try {
-                setAlatConfirmPending(true);
-                // Call API directly — gate mode unmounts this tree while ALAT is open.
-                const confirmed = await confirmAlatOneTimeCheckout({
-                  transactionId: String(id),
-                });
-                if (!confirmed.status) {
-                  throw new Error(
-                    confirmed.message || "Could not confirm ALAT payment",
-                  );
-                }
-                toast.success("Payment received. Activating your access…");
-                if (gateMode) {
-                  onSubscriptionComplete?.();
-                } else {
-                  window.location.assign(
-                    `${window.location.origin}${PRIVATE_PATHS.DASHBOARD}?subscription=success`,
-                  );
-                }
-              } catch (err: unknown) {
-                toast.error(
-                  getAxiosishErrorMessage(err) ||
-                    "We could not confirm your ALAT payment.",
-                );
-              } finally {
-                setAlatConfirmPending(false);
-                releaseAlatUi();
-              }
-            })();
+            const id = response?.data?.id ? String(response.data.id) : "";
+            if (!id || !isAlatClientPaymentCompleted(response)) return;
+            seenTransactionId = id;
+            void fulfillAlatPayment(id);
           },
           onClose: () => {
-            releaseAlatUi();
+            // ALAT sometimes closes before/without a reliable onTransaction on mobile.
+            if (seenTransactionId && !confirming && !released) {
+              void fulfillAlatPayment(seenTransactionId);
+              return;
+            }
+            if (!confirming) {
+              releaseAlatUi();
+            }
           },
         });
         setAlatCheckoutPlanKey(null);
@@ -663,7 +743,7 @@ export default function SubscriptionContentServer({
         releaseAlatUi();
       }
     },
-    [gateMode, initAlatMutation, onSubscriptionComplete, user?.country],
+    [gateMode, initAlatMutation, onSubscriptionComplete, queryClient, user?.country],
   );
 
   const performUpgrade = useCallback(

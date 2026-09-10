@@ -136,7 +136,10 @@ export function decodeCurriculumCode(segment: string): CurriculumCodePayload {
 }
 
 function getApiBaseUrl(): string {
-  return import.meta.env.VITE_API_URL?.trim().replace(/\/$/, "") || "";
+  return (
+    import.meta.env.VITE_API_URL?.trim().replace(/\/$/, "") ||
+    "https://api-pro.rydlearning.com"
+  );
 }
 
 function encodePreviewKeyForHeader(key: string): string {

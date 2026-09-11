@@ -56,6 +56,7 @@ import {
 } from "@/utils/alatPay";
 import {
   clearPendingAlatConfirm,
+  extractAlatClientTxnId,
   isAlatClientPaymentCompleted,
   readPendingAlatConfirm,
   savePendingAlatConfirm,
@@ -651,14 +652,28 @@ export default function SubscriptionContentServer({
         savePendingAlatConfirm({ transactionId, planKey });
         try {
           setAlatConfirmPending(true);
-          const confirmed = await confirmAlatOneTimeCheckout({
-            transactionId: String(transactionId),
-            planKey,
-          });
-          if (!confirmed.status) {
-            throw new Error(
-              confirmed.message || "Could not confirm ALAT payment",
-            );
+          let confirmed: Awaited<ReturnType<typeof confirmAlatOneTimeCheckout>> | null =
+            null;
+          let lastError: unknown = null;
+          for (let attempt = 0; attempt < 5; attempt += 1) {
+            try {
+              confirmed = await confirmAlatOneTimeCheckout({
+                transactionId: String(transactionId),
+                planKey,
+              });
+              if (confirmed.status) break;
+              lastError = new Error(
+                confirmed.message || "Could not confirm ALAT payment",
+              );
+            } catch (err: unknown) {
+              lastError = err;
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 1500));
+          }
+          if (!confirmed?.status) {
+            throw lastError instanceof Error
+              ? lastError
+              : new Error("Could not confirm ALAT payment");
           }
           clearPendingAlatConfirm();
           toast.success("Payment received. Activating your access…");
@@ -720,7 +735,7 @@ export default function SubscriptionContentServer({
           currency: cfg.currency,
           amount: cfg.amount,
           onTransaction: (response) => {
-            const id = response?.data?.id ? String(response.data.id) : "";
+            const id = extractAlatClientTxnId(response);
             if (!id || !isAlatClientPaymentCompleted(response)) return;
             seenTransactionId = id;
             void fulfillAlatPayment(id);

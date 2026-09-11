@@ -51,17 +51,38 @@ export function clearPendingAlatConfirm(): void {
   }
 }
 
+export function extractAlatClientTxnId(response: {
+  status?: boolean | string;
+  transactionStatus?: string;
+  id?: string;
+  Id?: string;
+  transactionId?: string;
+  data?: { id?: string; Id?: string; status?: string };
+}): string {
+  return String(
+    response?.data?.id ||
+      response?.data?.Id ||
+      response?.id ||
+      response?.Id ||
+      response?.transactionId ||
+      "",
+  ).trim();
+}
+
 /** ALAT callback shapes vary; treat presence of a completed txn id as success. */
 export function isAlatClientPaymentCompleted(response: {
   status?: boolean | string;
   transactionStatus?: string;
-  data?: { id?: string; status?: string };
+  id?: string;
+  Id?: string;
+  transactionId?: string;
+  data?: { id?: string; Id?: string; status?: string };
 }): boolean {
-  const id = response?.data?.id;
+  const id = extractAlatClientTxnId(response);
   if (!id) return false;
   if (response.status === true) return true;
   const status = String(response.status || "").trim().toLowerCase();
-  if (["completed", "successful", "success", "paid", "approved"].includes(status)) {
+  if (["completed", "successful", "success", "paid", "approved", "true"].includes(status)) {
     return true;
   }
   const txStatus = String(

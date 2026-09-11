@@ -77,21 +77,10 @@ export type AlatOneTimeInitRequest = {
 };
 
 export type AlatOneTimeInitResponse = {
-  alatKey: string;
-  alatBid: string;
-  amount: number;
-  currency: string;
-  email: string;
-  phone?: string;
-  firstName: string;
-  lastName: string;
-  metadata: Record<string, unknown>;
-};
-
-export type AlatOneTimeConfirmRequest = {
-  transactionId: string;
-  /** Sent so we can fulfill even if ALAT drops custom metadata. */
-  planKey?: string;
+  /** Hosted API checkout page — open in a new tab. */
+  checkoutUrl: string;
+  successRedirectUrl?: string;
+  cancelRedirectUrl?: string;
 };
 
 export type CheckoutResponse = {
@@ -158,14 +147,6 @@ export async function createCheckoutSession(payload: CheckoutRequest) {
 export async function initAlatOneTimeCheckout(payload: AlatOneTimeInitRequest) {
   const res = await axiosInstance.post<ApiEnvelope<AlatOneTimeInitResponse>>(
     "/parent/subscription/alat-one-time/init",
-    payload,
-  );
-  return res.data;
-}
-
-export async function confirmAlatOneTimeCheckout(payload: AlatOneTimeConfirmRequest) {
-  const res = await axiosInstance.post<ApiEnvelope<unknown>>(
-    "/parent/subscription/alat-one-time/confirm",
     payload,
   );
   return res.data;

@@ -226,11 +226,3 @@ svg {
     scroll-behavior: auto;
   }
 }
-
-/* ALAT Pay: hide any leftover Radix layers if a dialog remains mounted. */
-body[data-alat-checkout-active="true"] [data-slot="dialog-overlay"],
-body[data-alat-checkout-active="true"] [data-slot="dialog-content"] {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-}

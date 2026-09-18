@@ -585,6 +585,10 @@ export default function TermsOfServicePage() {
                   ]}
                 />
                 <p>RYD does not sell children’s personal information.</p>
+                <p>
+                  No mobile information will be shared with third parties or
+                  affiliates for marketing or promotional purposes.
+                </p>
               </Section>
 
               <Section title="22. International Data Transfers">

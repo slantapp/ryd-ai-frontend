@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Play } from "lucide-react";
 import { usePreviewAvatar } from "@/features/curriculum-preview/components/PreviewAvatar";
 import { LessonPlayer } from "@/features/curriculum-preview/v2/components/LessonPlayer";
 import {
@@ -9,7 +8,9 @@ import {
   flattenLessonsV2,
   getFirstLessonV2,
   getNextLessonV2,
+  isModuleCompleteAfterLesson,
 } from "@/features/curriculum-preview/v2/navigation";
+import { playLearningSfx } from "@/features/curriculum-preview/v2/learningSfx";
 import {
   extractCurriculumV2Data,
   isCurriculumV2,
@@ -27,6 +28,7 @@ import {
 } from "@/utils/courseProgress";
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
+import { LessonStartGate } from "@/components/courses/LessonStartGate";
 import {
   clearV2LessonDraft,
   loadV2LessonDraft,
@@ -280,6 +282,13 @@ export default function CourseDetailsV2() {
         completedLessonIds: completed,
       });
 
+      if (
+        curriculum &&
+        isModuleCompleteAfterLesson(curriculum, lessonId, completed)
+      ) {
+        playLearningSfx("moduleComplete");
+      }
+
       updateCourseProgress(
         exercise,
         {
@@ -295,7 +304,14 @@ export default function CourseDetailsV2() {
         done ? { immediate: true } : undefined,
       );
     },
-    [allLessons, exercise, getCourseProgress, lessonTotal, updateCourseProgress],
+    [
+      allLessons,
+      curriculum,
+      exercise,
+      getCourseProgress,
+      lessonTotal,
+      updateCourseProgress,
+    ],
   );
 
   const handleNextLesson = useCallback(
@@ -401,78 +417,42 @@ export default function CourseDetailsV2() {
   }
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[20px] bg-white shadow-lg">
-      <PageLoadWaitBanner
-        isLoading={isInstructorWaiting && !showMobileAudioUnlock}
-        mobileOnly={false}
-      />
+    <div className="relative h-full w-full min-h-0 flex-1 overflow-hidden">
+      <div className="absolute inset-x-0 top-0 z-20">
+        <PageLoadWaitBanner
+          isLoading={isInstructorWaiting && !showMobileAudioUnlock}
+          mobileOnly={false}
+        />
+      </div>
 
       {!lessonStarted ? (
-        <div className="flex h-full min-h-0 flex-col overflow-hidden border-l-0 border-primary/20 bg-linear-to-br from-[#F3ECFE] via-[#F8F4FF] to-white lg:border-l-2">
-          {isLgUp ? (
-            <div className="flex min-h-0 flex-1 items-center justify-center p-6">
-              <div className="aspect-square h-full max-h-80 w-full max-w-sm overflow-hidden rounded-2xl border border-primary/15 bg-linear-to-b from-primary/10 to-white shadow-inner">
-                {avatarSlot}
-              </div>
-            </div>
-          ) : (
-            <div
-              className="pointer-events-none fixed bottom-0 right-0 z-0 h-[280px] w-[320px] translate-x-8 translate-y-12 opacity-0"
-              aria-hidden
-            >
-              {avatarSlot}
-            </div>
-          )}
-          <div className="flex min-h-[280px] flex-1 items-center justify-center px-4 py-8 sm:px-6">
-            <div className="mx-auto max-w-md text-center">
-              <div className="relative mb-6 inline-flex items-center justify-center">
-                <div className="absolute h-20 w-20 animate-ping rounded-full bg-primary/10" />
-                <div className="absolute h-16 w-16 animate-pulse rounded-full bg-primary/20" />
-                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-primary to-primary/80 shadow-lg shadow-primary/30">
-                  <Play className="size-8 fill-white text-white" aria-hidden />
-                </div>
-              </div>
-              <h2 className="mb-2 font-solway text-2xl font-bold text-gray-800">
-                {canResume ? "Continue your lesson?" : "Ready to Learn?"}
-              </h2>
-              <p className="mb-2 font-inter text-sm font-medium text-gray-700">
-                {canResume && currentLesson
-                  ? currentLesson.title
-                  : curriculum.title}
-              </p>
-              <p className="mb-6 font-inter leading-relaxed text-gray-500">
-                {canResume
-                  ? "Pick up where you left off. Tap below and your instructor will start teaching this lesson again."
-                  : "Your learning adventure awaits! Tap below to begin your lesson and start building amazing things."}
-              </p>
-              <button
-                type="button"
-                onClick={handleStartLesson}
-                className="group mx-auto flex w-full max-w-xs shrink-0 items-center justify-center gap-3 whitespace-nowrap rounded-full bg-linear-to-r from-primary via-primary to-primary/90 px-10 py-4 font-solway text-base font-bold tracking-tight text-white shadow-lg shadow-primary/35 ring-2 ring-primary/20 transition-all duration-200 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98] sm:max-w-none sm:px-12"
-              >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
-                  <Play className="size-5 fill-white text-white" aria-hidden />
-                </span>
-                <span className="pr-1">
-                  {canResume ? "Continue learning" : MOBILE_INSTRUCTOR_AUDIO_BUTTON}
-                </span>
-              </button>
-              {canResume ? (
-                <CourseProgressResetLink onReset={handleRestartCourse} />
-              ) : null}
-              <div className="mt-8 flex items-center justify-center gap-2 font-inter text-xs text-gray-400">
-                <span className="h-1 w-1 rounded-full bg-primary/40" />
-                <span>Interactive lessons</span>
-                <span className="h-1 w-1 rounded-full bg-primary/40" />
-                <span>Fun quizzes</span>
-                <span className="h-1 w-1 rounded-full bg-primary/40" />
-                <span>Hands-on coding</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <LessonStartGate
+          heading={canResume ? "Continue your lesson?" : "Ready to Learn?"}
+          courseOrLessonTitle={
+            canResume && currentLesson
+              ? currentLesson.title
+              : curriculum.title
+          }
+          description={
+            canResume
+              ? "Pick up where you left off. Tap below and your instructor will start teaching this lesson again."
+              : "Your learning adventure awaits! Tap below to begin your lesson and start building amazing things."
+          }
+          ctaLabel={
+            canResume ? "Continue learning" : MOBILE_INSTRUCTOR_AUDIO_BUTTON
+          }
+          onStart={handleStartLesson}
+          avatarSlot={avatarSlot}
+          showAvatar={isLgUp}
+          footer={
+            canResume ? (
+              <CourseProgressResetLink onReset={handleRestartCourse} />
+            ) : null
+          }
+        />
       ) : isCourseCompleted && currentLesson ? (
         <CourseCompletionCelebration
+          className="h-full w-full rounded-none"
           courseTitle={curriculum.title}
           instructorMessage={buildCourseCompletionSpeech(curriculum.title)}
           currentSubtitle={currentSubtitle}
@@ -481,34 +461,36 @@ export default function CourseDetailsV2() {
           onRestart={handleRestartCourse}
         />
       ) : (
-        <LessonPlayer
-          key={`${currentLesson.id}-${lessonKey}`}
-          curriculum={curriculum}
-          lesson={currentLesson}
-          lessonOrdinal={lessonOrdinal}
-          lessonTotal={lessonTotal}
-          speak={speak}
-          stop={stop}
-          scheduleAfterSpeech={scheduleAfterSpeech}
-          clearScheduledAfterSpeech={clearScheduledAfterSpeech}
-          isSpeaking={isSpeaking}
-          isPaused={isPaused}
-          onTogglePause={togglePause}
-          onRewind={rewindSpeaking}
-          currentSubtitle={currentSubtitle}
-          avatarSlot={avatarSlot}
-          onLessonComplete={handleLessonComplete}
-          onNextLesson={handleNextLesson}
-          hideFlowChrome
-          classicLayout
-          showMobileAudioUnlock={showMobileAudioUnlock}
-          onMobileAudioUnlock={unlockMobileAudio}
-          isInstructorWaiting={isInstructorWaiting}
-          suppressMobileWaitBanner
-          initialBeatIndex={resumeDraft?.beatIndex ?? 0}
-          initialDraft={resumeDraft}
-          onBeatProgress={handleBeatProgress}
-        />
+        <div className="h-full w-full min-h-0">
+          <LessonPlayer
+            key={`${currentLesson.id}-${lessonKey}`}
+            curriculum={curriculum}
+            lesson={currentLesson}
+            lessonOrdinal={lessonOrdinal}
+            lessonTotal={lessonTotal}
+            speak={speak}
+            stop={stop}
+            scheduleAfterSpeech={scheduleAfterSpeech}
+            clearScheduledAfterSpeech={clearScheduledAfterSpeech}
+            isSpeaking={isSpeaking}
+            isPaused={isPaused}
+            onTogglePause={togglePause}
+            onRewind={rewindSpeaking}
+            currentSubtitle={currentSubtitle}
+            avatarSlot={avatarSlot}
+            onLessonComplete={handleLessonComplete}
+            onNextLesson={handleNextLesson}
+            hideFlowChrome
+            classicLayout
+            showMobileAudioUnlock={showMobileAudioUnlock}
+            onMobileAudioUnlock={unlockMobileAudio}
+            isInstructorWaiting={isInstructorWaiting}
+            suppressMobileWaitBanner
+            initialBeatIndex={resumeDraft?.beatIndex ?? 0}
+            initialDraft={resumeDraft}
+            onBeatProgress={handleBeatProgress}
+          />
+        </div>
       )}
     </div>
   );

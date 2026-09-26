@@ -6,9 +6,11 @@ import AuthLayout from "@/layout/AuthLayout";
 import DashboardLayout from "@/layout/dashboardLayout";
 import { ContactMessageWidget } from "@/components/contact/ContactMessageWidget";
 import { CurriculumPreviewPage, CurriculumEditPage } from "@/features/curriculum-preview";
-import { PRIVATE_PATHS } from "@/utils/routePaths";
+import { PRIVATE_PATHS, PUBLIC_PATHS } from "@/utils/routePaths";
+import { TeacherPlaygroundPage } from "@/features/teacher-playground";
 
 const STANDALONE_ROUTES: Record<string, React.ReactNode> = {
+  [PUBLIC_PATHS.TEACHER_PLAYGROUND]: <TeacherPlaygroundPage />,
   [PRIVATE_PATHS.CURRICULUM_PREVIEW]: <CurriculumPreviewPage />,
   [PRIVATE_PATHS.CURRICULUM_EDIT]: <CurriculumEditPage />,
 };

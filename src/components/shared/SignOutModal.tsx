@@ -69,10 +69,10 @@ const SignOutModal = ({
             <LogOut className="size-7 text-primary" strokeWidth={2} />
           </div>
           <DialogHeader className="mt-5 space-y-2 text-center sm:text-center">
-            <DialogTitle className="font-solway text-xl font-bold text-[#0A090B]">
+            <DialogTitle className="app-type-page-title text-xl sm:text-xl">
               Sign out?
             </DialogTitle>
-            <DialogDescription className="font-inter text-sm leading-relaxed text-[#4F4D55]">
+            <DialogDescription className="app-type-body">
               You&apos;ll need to sign in again to access your dashboard, courses,
               and progress.
             </DialogDescription>

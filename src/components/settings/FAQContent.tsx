@@ -28,21 +28,21 @@ const FAQContent = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-bold font-solway">Help and Support</h2>
+      <h2 className="app-type-section-title">Help and Support</h2>
       <div className="relative flex flex-col justify-center">
         <Search size={20} className="absolute left-3" />
         <Input
           placeholder="Search the help center"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 focus-visible:ring-1 focus-visible:ring-primary w-full max-w-md bg-[#F3ECFE] py-6 border-primary"
+          className="h-9 w-full max-w-md border-primary bg-[#F3ECFE] pl-9 font-inter text-sm focus-visible:ring-1 focus-visible:ring-primary"
         />
       </div>
 
       {filteredFaqs.length > 0 ? (
         filteredFaqs.map((group) => (
           <div key={group.section} className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-500">
+            <h3 className="app-type-eyebrow text-[#666666]">
               {group.section}
             </h3>
             <div className="space-y-4">
@@ -56,8 +56,8 @@ const FAQContent = () => {
                     open={isOpen}
                     onOpenChange={() => setOpenItem(isOpen ? null : key)}
                   >
-                    <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border-none p-6 text-left font-medium transition bg-gray-50 hover:bg-gray-50">
-                      <span>{item.q}</span>
+                    <CollapsibleTrigger className="app-type-nav flex w-full items-center justify-between rounded-lg border-none bg-gray-50 p-4 text-left font-medium transition hover:bg-gray-100 sm:p-5">
+                      <span className="font-inter">{item.q}</span>
                       <ChevronRight
                         className={cn(
                           "h-4 w-4 text-gray-400 transition-transform",
@@ -65,7 +65,7 @@ const FAQContent = () => {
                         )}
                       />
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="whitespace-pre-line px-3 pb-3 pt-2 text-sm text-gray-600">
+                    <CollapsibleContent className="app-type-body whitespace-pre-line px-3 pb-3 pt-2">
                       {item.a}
                     </CollapsibleContent>
                   </Collapsible>
@@ -75,7 +75,7 @@ const FAQContent = () => {
           </div>
         ))
       ) : (
-        <p className="text-sm text-gray-600">No matching questions found.</p>
+        <p className="app-type-body">No matching questions found.</p>
       )}
     </div>
   );

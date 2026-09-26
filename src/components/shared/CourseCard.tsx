@@ -45,22 +45,22 @@ const CourseCard = ({
     switch (status) {
       case "ongoing":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-            <Clock className="w-3 h-3" />
+          <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
+            <Clock className="size-3" />
             Ongoing
           </span>
         );
       case "completed":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-            <CheckCircle2 className="w-3 h-3" />
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
+            <CheckCircle2 className="size-3" />
             Completed
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-            <BookOpen className="w-3 h-3" />
+          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
+            <BookOpen className="size-3" />
             Not Started
           </span>
         );
@@ -84,8 +84,8 @@ const CourseCard = ({
 
   const ageLabel =
     showAgeClassMeta &&
-      typeof course.minAge === "number" &&
-      Number.isFinite(course.minAge)
+    typeof course.minAge === "number" &&
+    Number.isFinite(course.minAge)
       ? `${course.minAge}+`
       : null;
 
@@ -96,45 +96,44 @@ const CourseCard = ({
     }
   };
 
+  const showProgress =
+    course.status === "ongoing" && course.progress !== undefined;
+
   return (
-    <Card className="group relative overflow-hidden rounded-2xl border bg-white shadow-none transition-all duration-300 hover:shadow-md">
+    <Card className="group relative flex h-full flex-col overflow-hidden rounded-lg border bg-white shadow-none transition-all duration-300 hover:shadow-md">
       {/* Image Container */}
-      <div className="relative h-40 overflow-hidden sm:h-48">
+      <div className="relative h-36 shrink-0 overflow-hidden sm:h-40">
         <img
           src={imgSrc}
           alt={course.title}
           onError={handleImageError}
-          className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
-        {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
 
-        {/* Status Badge */}
         <div className="absolute left-3 top-3 sm:left-4 sm:top-4">
           {getStatusBadge(course.status)}
         </div>
 
-        {/* Wishlist Button */}
         {showWishlistButton && onWishlistToggle && (
           <Button
             onClick={handleWishlistClick}
             size="icon"
             variant="ghost"
-            className="absolute right-3 top-3 size-8 rounded-full bg-white/90 p-0 shadow-md transition-colors hover:bg-white sm:right-4 sm:top-4 sm:size-9"
+            className="absolute right-2.5 top-2.5 size-7 rounded-full bg-white/90 p-0 shadow-md transition-colors hover:bg-white sm:right-3 sm:top-3 sm:size-8"
           >
             <Heart
               className={cn(
-                "w-4 h-4 transition-all",
+                "size-4 transition-all",
                 wishlistButtonVariant === "remove" || isInWishlist
-                  ? "text-red-500 fill-red-500"
-                  : "text-gray-600"
+                  ? "fill-red-500 text-red-500"
+                  : "text-gray-600",
               )}
             />
           </Button>
         )}
 
-        {/* Progress Bar for Ongoing Courses */}
-        {course.status === "ongoing" && course.progress !== undefined && (
+        {showProgress && (
           <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/20">
             <div
               className="h-full bg-primary transition-all duration-500"
@@ -144,100 +143,98 @@ const CourseCard = ({
         )}
       </div>
 
-      {/* Content */}
-      <CardContent className="px-3 pb-4 pt-0 sm:px-4 sm:pb-4">
-        {/* Level Badge */}
-        {(course.level || ageLabel) && (
-          <div className="mb-2 flex flex-wrap gap-2">
-            {course.level && (
-              <span
-                className={cn(
-                  "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium",
-                  getLevelColor(course.level),
-                )}
-              >
-                {course.level}
-              </span>
-            )}
-            {ageLabel && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-700">
-                {ageLabel}
-              </span>
-            )}
-          </div>
-        )}
+      <CardContent className="flex flex-1 flex-col px-3 pb-3 pt-2.5 sm:px-3.5">
+        {/* Top: badges + title + meta (+ reserved progress slot) */}
+        <div className="flex min-h-5 flex-wrap gap-1.5">
+          {course.level ? (
+            <span
+              className={cn(
+                "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
+                getLevelColor(course.level),
+              )}
+            >
+              {course.level}
+            </span>
+          ) : null}
+          {ageLabel ? (
+            <span className="inline-flex items-center rounded-md bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+              {ageLabel}
+            </span>
+          ) : null}
+        </div>
 
-        {/* Title */}
-        <h3 className="font-bold text-base font-solway text-gray-900 mb-1.5 line-clamp-1">
+        <h3 className="app-type-card-title mt-1.5 line-clamp-2 min-h-10 text-sm leading-snug">
           {course.title}
         </h3>
 
-        {/* Description */}
-        <p className="text-xs text-gray-600 mb-3 line-clamp-2 font-sans-serifbookflf">
-          {course.desc}
-        </p>
-
-        {/* Course Meta */}
-        <div className="flex items-center justify-between mb-3 text-xs text-gray-500">
-          {course.duration && (
-            <div className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              <span>{course.duration}</span>
+        <div className="app-type-meta mt-1.5 flex min-h-4 items-center justify-between gap-2">
+          {course.duration ? (
+            <div className="flex min-w-0 items-center gap-1">
+              <Clock className="size-3 shrink-0" />
+              <span className="truncate">{course.duration}</span>
             </div>
+          ) : (
+            <span />
           )}
-          {course.rating && (
-            <div className="flex items-center gap-1">
-              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+          {course.rating ? (
+            <div className="flex shrink-0 items-center gap-1">
+              <Star className="size-3 fill-yellow-400 text-yellow-400" />
               <span className="font-semibold">{course.rating}</span>
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Progress for Ongoing */}
-        {course.status === "ongoing" && course.progress !== undefined && (
-          <div className="mb-3">
-            <div className="flex items-center justify-between text-xs text-gray-600 mb-1.5">
-              <span>Progress</span>
-              <span className="font-semibold">{course.progress}%</span>
-            </div>
-            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full transition-all duration-500"
-                style={{ width: `${course.progress}%` }}
-              />
-            </div>
-          </div>
-        )}
+        {/* Reserve progress height so all cards match */}
+        <div className="mt-1.5 min-h-8">
+          {showProgress ? (
+            <>
+              <div className="app-type-meta mb-1.5 flex items-center justify-between">
+                <span>Progress</span>
+                <span className="font-semibold">{course.progress}%</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  style={{ width: `${course.progress}%` }}
+                />
+              </div>
+            </>
+          ) : null}
+        </div>
 
-        {/* Action Button */}
-        <Button
-          onClick={() => navigate(`/courses/${course.slug}`)}
-          className={cn(
-            "h-11 w-full text-xs font-semibold transition-all sm:h-12 sm:text-sm",
-            course.status === "completed"
-              ? "bg-green-600 hover:bg-green-700"
-              : course.status === "ongoing"
-                ? "bg-primary hover:bg-primary/90"
-                : "bg-primary hover:bg-primary/90"
-          )}
-        >
-          {course.status === "completed" ? (
-            <>
-              <CheckCircle2 className="w-5 h-5 mr-2" />
-              Completed Course
-            </>
-          ) : course.status === "ongoing" ? (
-            <>
-              <PlayCircle className="w-5 h-5 mr-2" />
-              Continue Learning
-            </>
-          ) : (
-            <>
-              <PlayCircle className="w-5 h-5 mr-2" />
-              Start Course
-            </>
-          )}
-        </Button>
+        {/* Bottom-pinned: description + action */}
+        <div className="mt-auto flex flex-col gap-2.5 pt-2">
+          <p className="app-type-meta line-clamp-2 min-h-8 leading-relaxed">
+            {course.desc || "\u00A0"}
+          </p>
+
+          <Button
+            onClick={() => navigate(`/courses/${course.slug}`)}
+            className={cn(
+              "h-9 w-full shrink-0 text-sm font-semibold transition-all",
+              course.status === "completed"
+                ? "bg-green-600 hover:bg-green-700"
+                : "bg-primary hover:bg-primary/90",
+            )}
+          >
+            {course.status === "completed" ? (
+              <>
+                <CheckCircle2 className="mr-2 size-5" />
+                Completed Course
+              </>
+            ) : course.status === "ongoing" ? (
+              <>
+                <PlayCircle className="mr-2 size-5" />
+                Continue Learning
+              </>
+            ) : (
+              <>
+                <PlayCircle className="mr-2 size-5" />
+                Start Course
+              </>
+            )}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

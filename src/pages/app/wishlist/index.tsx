@@ -52,14 +52,14 @@ function CourseRequestFormCard({
   const descId = `${formIds}-description`;
 
   return (
-    <Card className={cn("rounded-2xl border border-gray-100 shadow-sm", className)}>
+    <Card className={cn("rounded-lg border border-gray-100 shadow-sm", className)}>
       <CardHeader className="space-y-1.5 px-4 pb-3 pt-5 sm:px-6 sm:pb-4 sm:pt-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-1.5">
-            <CardTitle className="font-solway text-base sm:text-lg">
+            <CardTitle className="app-type-card-title">
               Request a course
             </CardTitle>
-            <CardDescription className="font-sans-serifbookflf text-xs leading-relaxed sm:text-sm">
+            <CardDescription className="app-type-body">
               Don’t see what you need? Tell us which course you’d like and
               we’ll consider adding it.
             </CardDescription>
@@ -83,7 +83,7 @@ function CourseRequestFormCard({
           <div className="space-y-1.5 sm:space-y-2">
             <Label
               htmlFor={nameId}
-              className="text-sm font-medium sm:text-base"
+              className="app-type-label"
             >
               Name
             </Label>
@@ -92,7 +92,7 @@ function CourseRequestFormCard({
               value={courseRequest.name}
               onChange={(e) => onFieldChange("name", e.target.value)}
               placeholder="Your name"
-              className="h-10 rounded-lg text-base sm:h-11 sm:text-sm"
+              className="h-9 rounded-md text-sm"
               aria-invalid={Boolean(errors.name)}
               aria-describedby={errors.name ? `${nameId}-error` : undefined}
               disabled={isSubmitting}
@@ -107,7 +107,7 @@ function CourseRequestFormCard({
           <div className="space-y-1.5 sm:space-y-2">
             <Label
               htmlFor={courseId}
-              className="text-sm font-medium sm:text-base"
+              className="app-type-label"
             >
               Course request
             </Label>
@@ -118,7 +118,7 @@ function CourseRequestFormCard({
                 onFieldChange("courseRequest", e.target.value)
               }
               placeholder="e.g. Advanced React Patterns"
-              className="h-10 rounded-lg text-base sm:h-11 sm:text-sm"
+              className="h-9 rounded-md text-sm"
               aria-invalid={Boolean(errors.courseRequest)}
               aria-describedby={
                 errors.courseRequest ? `${courseId}-error` : undefined
@@ -135,7 +135,7 @@ function CourseRequestFormCard({
           <div className="space-y-1.5 sm:space-y-2">
             <Label
               htmlFor={descId}
-              className="text-sm font-medium sm:text-base"
+              className="app-type-label"
             >
               Description <span className="text-gray-400">(optional)</span>
             </Label>
@@ -144,14 +144,14 @@ function CourseRequestFormCard({
               value={courseRequest.description}
               onChange={(e) => onFieldChange("description", e.target.value)}
               placeholder="Any details about the course you’d like..."
-              className="min-h-[88px] resize-y rounded-lg text-base sm:min-h-[80px] sm:text-sm"
+              className="min-h-20 resize-y rounded-md text-sm sm:min-h-[4.5rem]"
               disabled={isSubmitting}
               rows={3}
             />
           </div>
           <Button
             type="submit"
-            className="h-11 w-full rounded-lg bg-primary font-medium hover:bg-primary/90 sm:h-12"
+            className="h-9 w-full rounded-md bg-primary text-sm font-medium hover:bg-primary/90"
             disabled={isSubmitting}
           >
             <Send className="mr-2 size-4 shrink-0" />
@@ -267,10 +267,13 @@ const WishlistPage = () => {
       <section className="flex min-h-0 min-w-0 flex-1 flex-col space-y-3 sm:space-y-4">
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div className="min-w-0">
-            <h2 className="font-solway text-xl font-bold tracking-tight text-[#0A090B] sm:text-2xl lg:text-3xl">
+            <p className="app-type-eyebrow mb-1">
+              Saved for later
+            </p>
+            <h2 className="app-type-page-title">
               My Wishlist
             </h2>
-            <p className="mt-1 font-sans-serifbookflf text-xs text-gray-600 sm:text-sm">
+            <p className="app-type-meta mt-1.5">
               {wishlistCourses.length} course
               {wishlistCourses.length !== 1 ? "s" : ""} saved
             </p>
@@ -278,7 +281,7 @@ const WishlistPage = () => {
           <Button
             type="button"
             variant={showRequestFormNarrow ? "outline" : "default"}
-            className="w-full shrink-0 gap-2 font-solway sm:w-auto lg:hidden"
+            className="h-9 w-full shrink-0 gap-2 font-solway text-sm sm:w-auto lg:hidden"
             onClick={() => setShowRequestFormNarrow((v) => !v)}
             aria-expanded={showRequestFormNarrow}
             aria-controls="wishlist-request-form-panel"

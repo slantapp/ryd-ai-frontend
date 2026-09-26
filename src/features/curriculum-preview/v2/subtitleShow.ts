@@ -1,9 +1,12 @@
 import type { AvatarShowReplacement } from "./types";
+import type { AvatarGesture, NormalizedAvatarGesture } from "./avatarGesture";
+import { normalizeAvatarGesture } from "./avatarGesture";
 
-/** One queued utterance: TTS string plus optional subtitle phrase swaps. */
+/** One queued utterance: TTS string plus optional subtitle phrase swaps / gesture. */
 export type SpeechUtterance = {
   text: string;
   show?: AvatarShowReplacement[];
+  gesture?: NormalizedAvatarGesture;
 };
 
 export type SpeechPart =
@@ -13,6 +16,7 @@ export type SpeechPart =
   | {
       text?: string | null;
       show?: AvatarShowReplacement[];
+      gesture?: AvatarGesture | NormalizedAvatarGesture | null;
     };
 
 /**
@@ -61,14 +65,22 @@ export function applySubtitleShow(
   return out;
 }
 
-/** Attach `show` to an authored line; generated lines stay plain strings. */
+/** Attach `show` / optional `gesture` to an authored line; generated lines stay plain. */
 export function withShow(
   text: string | undefined | null,
   show?: AvatarShowReplacement[],
+  gesture?: AvatarGesture | null,
 ): SpeechPart {
   const trimmed = text?.trim();
   if (!trimmed) return undefined;
-  if (show && show.length > 0) return { text: trimmed, show };
+  const normalized = normalizeAvatarGesture(gesture ?? null) ?? undefined;
+  if ((show && show.length > 0) || normalized) {
+    return {
+      text: trimmed,
+      show: show && show.length > 0 ? show : undefined,
+      gesture: normalized,
+    };
+  }
   return trimmed;
 }
 
@@ -83,5 +95,6 @@ export function normalizeSpeechPart(part: SpeechPart): SpeechUtterance | null {
   return {
     text,
     show: part.show && part.show.length > 0 ? part.show : undefined,
+    gesture: normalizeAvatarGesture(part.gesture ?? null) ?? undefined,
   };
 }

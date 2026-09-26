@@ -1,3 +1,6 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/api/deepgram/v1/speak", "destination": "https://api.deepgram.com/v1/speak" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

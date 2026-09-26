@@ -74,3 +74,21 @@ export function flattenLessonsV2(
   }
   return out;
 }
+
+/**
+ * True when `lessonId` finishes its module given the completed set
+ * (including that lesson).
+ */
+export function isModuleCompleteAfterLesson(
+  curriculum: CurriculumV2Data,
+  lessonId: string,
+  completedLessonIds: Iterable<string>,
+): boolean {
+  const completed = new Set(completedLessonIds);
+  completed.add(lessonId);
+  const mod = curriculum.modules.find((m) =>
+    m.lessons.some((l) => l.id === lessonId),
+  );
+  if (!mod || mod.lessons.length === 0) return false;
+  return mod.lessons.every((l) => completed.has(l.id));
+}

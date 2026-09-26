@@ -5,8 +5,11 @@ import type {
   CurriculumLevel,
   Question,
 } from "../types";
+import type { AvatarGesture } from "./avatarGesture";
 
 export type { CodeExample, FormulaExample, Question };
+export type { AvatarGesture, AvatarGestureName } from "./avatarGesture";
+export { AVATAR_GESTURE_NAMES } from "./avatarGesture";
 
 export type BeatAdvance = "auto" | "manual" | "on_answer";
 
@@ -53,6 +56,15 @@ export interface BeatAvatarLines {
   on_wrong?: string;
   before_demo?: string;
   handoff?: string;
+  /**
+   * Optional hand gesture when this beat's main avatar line is spoken.
+   * Omit to rely on automatic speech gestures only.
+   */
+  gesture?: AvatarGesture;
+  /** Optional gesture when speaking `on_correct` feedback (questions). */
+  gesture_on_correct?: AvatarGesture;
+  /** Optional gesture when speaking `on_wrong` feedback (questions). */
+  gesture_on_wrong?: AvatarGesture;
 }
 
 interface BeatBase {

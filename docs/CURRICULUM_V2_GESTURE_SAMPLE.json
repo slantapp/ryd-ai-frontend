@@ -1,0 +1,100 @@
+{
+  "slug": "gesture-preview-smoke-test",
+  "schema_version": 2,
+  "curriculum": {
+    "title": "Gesture Preview Smoke Test",
+    "description": "Short v2 lesson to try optional avatar.gesture fields in Curriculum Preview.",
+    "language": "en",
+    "category": "coding",
+    "age": 8,
+    "class": "Primary 3",
+    "grade": 3,
+    "duration": "5 minutes",
+    "level": "Beginner",
+    "rating": 5,
+    "defaults": {
+      "avatar": {
+        "continue_prompt": "Tap Continue when you are ready.",
+        "correct_feedback": "Yes! That is correct.",
+        "incorrect_feedback": "Not quite. Try again."
+      },
+      "question_retry": {
+        "max": 2,
+        "on_exhausted": "continue"
+      }
+    },
+    "modules": [
+      {
+        "id": "module_01",
+        "title": "Gestures",
+        "unlock": null,
+        "lessons": [
+          {
+            "id": "module_01__lesson_01",
+            "title": "Try a few gestures",
+            "goal": "See optional hand gestures while the instructor speaks.",
+            "estimated_minutes": 4,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Hello! Watch my hands — I can wave hello with a gesture.",
+                  "gesture": "welcomeSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "teach",
+                "type": "display",
+                "phase": "teach",
+                "title": "Optional gestures",
+                "body": "Teachers may add a gesture on a beat.\n\nIf they skip it, the lesson still works with light automatic gestures.",
+                "speak_body": false,
+                "avatar": {
+                  "text": "This tip is important. I will point so you notice it.",
+                  "gesture": "index",
+                  "timing": "with_display"
+                },
+                "advance": "manual"
+              },
+              {
+                "id": "q1",
+                "type": "question",
+                "phase": "assess",
+                "advance": "on_answer",
+                "avatar": {
+                  "on_ask": "Quick check. Are gestures required in every beat?",
+                  "gesture": "guidedQuestionSequence",
+                  "on_correct": "Correct! Gestures are optional.",
+                  "on_wrong": "Remember — you can leave gestures out.",
+                  "gesture_on_correct": "celebrateSequence",
+                  "gesture_on_wrong": "gentleCorrectionSequence"
+                },
+                "question": {
+                  "id": "q1_tf",
+                  "type": "true_false",
+                  "question": "Gestures are optional in a curriculum beat.",
+                  "answer": true,
+                  "explanation": "Yes. Omit gesture fields and the lesson still runs."
+                }
+              },
+              {
+                "id": "end",
+                "type": "bridge",
+                "phase": "reflect",
+                "next": null,
+                "avatar": {
+                  "text": "Nice work testing gestures. You can close this preview whenever you like.",
+                  "gesture": { "name": "goodbyeSequence", "blendMs": 850, "eyeContactMs": 1200 }
+                },
+                "advance": "manual"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

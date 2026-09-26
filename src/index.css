@@ -181,6 +181,56 @@ svg {
   }
 }
 
+/*
+  App chrome / dashboard typography (not lesson player).
+  Keep sizes on this scale so pages stay consistent.
+*/
+@layer components {
+  .app-type-eyebrow {
+    @apply font-inter text-xs font-semibold uppercase tracking-[0.08em] text-primary;
+  }
+
+  .app-type-page-title {
+    @apply font-solway text-xl font-bold tracking-tight text-[#0A090B] sm:text-2xl;
+  }
+
+  .app-type-page-subtitle {
+    @apply font-inter text-sm leading-relaxed text-[#4F4D55];
+  }
+
+  .app-type-section-title {
+    @apply font-solway text-lg font-bold text-[#0A090B] sm:text-xl;
+  }
+
+  .app-type-card-title {
+    @apply font-solway text-base font-semibold text-[#0A090B];
+  }
+
+  .app-type-body {
+    @apply font-inter text-sm leading-relaxed text-[#4F4D55];
+  }
+
+  .app-type-meta {
+    @apply font-inter text-xs text-[#666666];
+  }
+
+  .app-type-label {
+    @apply font-inter text-xs font-medium text-gray-600;
+  }
+
+  .app-type-link {
+    @apply font-inter text-sm font-medium text-primary transition-colors hover:text-primary/80;
+  }
+
+  .app-type-nav {
+    @apply font-inter text-sm;
+  }
+
+  .app-type-stat {
+    @apply font-solway text-xl font-bold leading-none tabular-nums text-[#0A090B] sm:text-2xl;
+  }
+}
+
 .custom-flag-button:hover {
   background-color: transparent !important;
 }

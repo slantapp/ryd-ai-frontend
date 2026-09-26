@@ -1,3 +1,8 @@
+import {
+  AVATAR_GESTURE_NAMES,
+  resolveAvatarGestureName,
+} from "./avatarGesture";
+
 const BEAT_TYPES = new Set([
   "speak",
   "display",
@@ -13,6 +18,12 @@ const BEAT_TYPES = new Set([
 const ADVANCE_MODES = new Set(["auto", "manual", "on_answer"]);
 
 const VALID_LEVELS = ["Beginner", "Intermediate", "Advanced"];
+
+const AVATAR_GESTURE_KEYS = [
+  "gesture",
+  "gesture_on_correct",
+  "gesture_on_wrong",
+] as const;
 
 function validateCodeExample(
   value: unknown,
@@ -150,6 +161,84 @@ export function validateAvatarShow(
   });
 }
 
+/**
+ * Optional avatar gestures. Missing is fine; invalid names/shapes are errors.
+ * Allowed names come from the package's hand poses and teaching beats/sequences.
+ * Object form: `{ name, dur?, mirror?, ms?, blendMs?, eyeContactMs?, mood? }`.
+ */
+export function validateAvatarGestures(
+  avatar: Record<string, unknown> | undefined,
+  label: string,
+  errors: string[],
+): void {
+  if (!avatar) return;
+
+  for (const key of AVATAR_GESTURE_KEYS) {
+    if (avatar[key] === undefined) continue;
+    validateOneGesture(avatar[key], `${label}: avatar.${key}`, errors);
+  }
+}
+
+function validateOneGesture(
+  value: unknown,
+  entry: string,
+  errors: string[],
+): void {
+  const allowed = AVATAR_GESTURE_NAMES.join(", ");
+  if (typeof value === "string") {
+    if (!resolveAvatarGestureName(value)) {
+      errors.push(`${entry}: unknown gesture '${value}' (allowed: ${allowed})`);
+    }
+    return;
+  }
+  if (!value || typeof value !== "object") {
+    errors.push(
+      `${entry}: must be a gesture name string or { name, dur?, mirror?, ms?, blendMs?, eyeContactMs?, mood? }`,
+    );
+    return;
+  }
+  const row = value as Record<string, unknown>;
+  if (typeof row.name !== "string" || !row.name.trim()) {
+    errors.push(`${entry}: object form requires a 'name' string`);
+  } else if (!resolveAvatarGestureName(row.name)) {
+    errors.push(
+      `${entry}: unknown gesture '${row.name}' (allowed: ${allowed})`,
+    );
+  }
+  if (
+    row.dur !== undefined &&
+    (typeof row.dur !== "number" || !Number.isFinite(row.dur) || row.dur <= 0)
+  ) {
+    errors.push(`${entry}: dur must be a positive number when provided`);
+  }
+  if (row.mirror !== undefined && typeof row.mirror !== "boolean") {
+    errors.push(`${entry}: mirror must be a boolean when provided`);
+  }
+  if (
+    row.ms !== undefined &&
+    (typeof row.ms !== "number" || !Number.isFinite(row.ms) || row.ms < 0)
+  ) {
+    errors.push(`${entry}: ms must be a non-negative number when provided`);
+  }
+  if (
+    row.blendMs !== undefined &&
+    (typeof row.blendMs !== "number" || !Number.isFinite(row.blendMs) || row.blendMs < 0)
+  ) {
+    errors.push(`${entry}: blendMs must be a non-negative number when provided`);
+  }
+  if (
+    row.eyeContactMs !== undefined &&
+    (typeof row.eyeContactMs !== "number" ||
+      !Number.isFinite(row.eyeContactMs) ||
+      row.eyeContactMs <= 0)
+  ) {
+    errors.push(`${entry}: eyeContactMs must be a positive number when provided`);
+  }
+  if (row.mood !== undefined && typeof row.mood !== "string") {
+    errors.push(`${entry}: mood must be a string when provided`);
+  }
+}
+
 function validateBeat(
   beat: unknown,
   label: string,
@@ -191,6 +280,11 @@ function validateBeat(
         label,
         errors,
         extraSpoken,
+      );
+      validateAvatarGestures(
+        b.avatar as Record<string, unknown>,
+        label,
+        errors,
       );
     }
   }

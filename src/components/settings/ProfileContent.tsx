@@ -23,7 +23,7 @@ const ProfileContent = () => {
   return (
     <div className="space-y-8">
       {/* Profile Section */}
-      <h2 className="mb-6 text-lg font-semibold font-solway text-gray-900">
+      <h2 className="mb-6 app-type-section-title">
         Update Profile
       </h2>
       <Card className="rounded-2xl shadow-none border-none mt-16">
@@ -36,10 +36,10 @@ const ProfileContent = () => {
 
             {/* Profile Info */}
             <div className="mt-14 text-center">
-              <h3 className="text-[32px] font-sans-serifbookflf text-gray-900">
+              <h3 className="app-type-page-title">
                 {fullName || user?.email || "Your profile"}
               </h3>
-              <div className="mt-2 flex flex-col items-center text-sm text-gray-600">
+              <div className="app-type-meta mt-2 flex flex-col items-center">
                 <div className="mt-1 flex items-center gap-1">
                   <Mail className="h-4 w-4 text-gray-400" />
                   <span>{user?.email || "—"}</span>
@@ -53,7 +53,7 @@ const ProfileContent = () => {
       {/* Subscription history */}
       <Card className="rounded-2xl shadow-none border-none">
         <CardContent className="p-0">
-          <h2 className="mb-6 text-lg font-semibold font-solway text-gray-900">
+          <h2 className="mb-6 app-type-section-title">
             Subscription History
           </h2>
 
@@ -75,7 +75,7 @@ const ProfileContent = () => {
                   >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <p className="font-solway text-base font-bold text-gray-900">
+                        <p className="app-type-card-title">
                           {item.plan?.name || item.planKey}
                         </p>
                         <p className="mt-1 text-sm text-gray-600">

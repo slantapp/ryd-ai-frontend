@@ -257,6 +257,121 @@ Rules for authors:
 
 ---
 
+### Optional avatar gestures (`avatar.gesture`)
+
+Gestures are **optional**. Leave them out and the instructor still uses light automatic gestures while speaking.
+
+Open the public **teacher playground** at `/teacher-playground` (for example, `http://localhost:3000/teacher-playground`) to see each gesture on both avatars, compare voices, and copy a JSON example. It does not require a login or curriculum preview code. A gesture is a short cue that starts when its authored line starts; it does not animate the entire spoken paragraph. Combined sequences play several cues in order. The current package uses rig-safe hand poses, eye contact, and small facial/head reactions—not full-body motion capture. The exact result can vary slightly with the selected avatar rig.
+
+Available names (case-insensitive in JSON; sequence names are shown in their canonical camelCase form):
+
+- Hand poses: `handup`, `index`, `ok`, `thumbup`, `thumbdown`, `side`, `shrug`, `namaste`.
+- Teaching beats: `greet`, `invite`, `explain`, `count`, `emphasize`, `celebrate`, `encourage`, `think`, `caution`, `thanks`, `recap`, `transition`.
+- Reactions: `wave`, `bow`, `nod`, `disagree`, `present`, `whiteboard`.
+- Combined sequences: `welcomeSequence`, `boardExplainSequence`, `guidedQuestionSequence`, `celebrateSequence`, `gentleCorrectionSequence`, `recapSequence`, `goodbyeSequence`.
+
+Hand poses use the package's `playGesture` method. Teaching beats, reactions, and sequences use `playTeachingGesture`; the curriculum player selects the right method automatically. These gestures use the package's rig-safe motions, not arbitrary FBX clips.
+
+#### What each hand pose does
+
+| JSON name | What the avatar does | Good lesson moment |
+|---|---|---|
+| `handup` | Raises one hand with an open palm. | Greeting; getting attention. |
+| `index` | Points with an index finger. | One important detail or numbered step. |
+| `ok` | Makes an OK hand sign. | Confirming a correct step. |
+| `thumbup` | Shows a thumbs-up. | Positive feedback. |
+| `thumbdown` | Shows a thumbs-down. | Strong negative cue; use sparingly with children. |
+| `side` | Opens an arm to the side. | Presenting something on the board. |
+| `shrug` | Lifts shoulders/hands in a questioning pose. | Asking for a guess. |
+| `namaste` | Brings the hands together. | Thanks or respectful sign-off. |
+
+#### Teaching beats
+
+| JSON name | What the avatar does | Good lesson moment |
+|---|---|---|
+| `greet` | Raises a hand, then opens to the side. | Lesson opening. |
+| `invite` | Raises a hand and holds eye contact. | Inviting participation. |
+| `explain` | Presents to the side, then points. | Explaining a concept. |
+| `count` | Points with one finger, then lifts a hand. | Numbered steps. |
+| `emphasize` | Points, then gives an OK sign. | Key takeaway. |
+| `celebrate` | Gives a thumbs-up with a happy expression. | Correct answer or milestone. |
+| `encourage` | Gives an OK sign and friendly smile. | Reassuring a learner. |
+| `think` | Shrugs with a thoughtful cue. | Reflective question. |
+| `caution` | Opens an arm with a concerned cue. | Common mistake or warning. |
+| `thanks` | Brings hands together and smiles. | Thanking the class. |
+| `recap` | Raises a hand, then gives a thumbs-up. | Reviewing a lesson. |
+| `transition` | Opens an arm with a light smile. | Moving to the next activity. |
+
+#### Reactions
+
+| JSON name | What the avatar does | Good lesson moment |
+|---|---|---|
+| `wave` | Uses a raised-hand greeting pose and cheerful face cue. | Hello or goodbye. |
+| `bow` | Uses the hands-together thankful pose; **not** a full-body bow. | Polite close. |
+| `nod` | Uses an OK sign with an affirmative face/head cue. | Agreement. |
+| `disagree` | Presents to the side with a negative face/head cue. | Gentle correction. |
+| `present` | Opens an arm and directs attention outward. | Showing an example. |
+| `whiteboard` | Points with an index finger and attentive face cue. | Calling out a diagram or text. |
+
+#### Combined sequences
+
+| JSON name | Motion order | Good lesson moment |
+|---|---|---|
+| `welcomeSequence` | Hand up → present → affirmative cue. | Welcoming learners. |
+| `boardExplainSequence` | Present → point to board → present again. | Guided board explanation. |
+| `guidedQuestionSequence` | Hand up → present question → affirmative cue. | Asking for an answer. |
+| `celebrateSequence` | Thumbs-up → affirmative cue → raised-hand greeting. | Celebrating a correct answer. |
+| `gentleCorrectionSequence` | Present → mild negative cue → present next idea. | Feedback after an incorrect answer. |
+| `recapSequence` | Point → point to board → affirmative cue. | Summarizing key points. |
+| `goodbyeSequence` | Hand up → greeting cue → hands together. | Ending a lesson. |
+
+Choose gestures sparingly: a single cue on an important line is easier to follow than one on every sentence. Use `gesture_on_correct` and `gesture_on_wrong` on question beats for feedback. If you omit all gesture fields, the package's light automatic tutor gestures still run while speaking.
+
+```json
+{
+  "id": "hook",
+  "type": "speak",
+  "avatar": {
+    "text": "Welcome! Let's learn something new today.",
+    "gesture": "welcomeSequence"
+  },
+  "advance": "auto"
+}
+```
+
+On question beats you can also set feedback gestures:
+
+```json
+"avatar": {
+  "on_correct": "Yes! That's right.",
+  "on_wrong": "Not quite — try again.",
+  "gesture_on_correct": "celebrateSequence",
+  "gesture_on_wrong": "gentleCorrectionSequence"
+}
+```
+
+Object form (all fields except `name` optional):
+
+```json
+"gesture": { "name": "index", "dur": 2, "mirror": false, "eyeContactMs": 1500, "mood": "happy" }
+```
+
+`dur` is in seconds. `ms` controls a hand-pose transition; `blendMs` controls a teaching gesture or sequence transition. You can also use `mirror`, `eyeContactMs`, and `mood` with either kind. For example:
+
+```json
+"gesture": { "name": "boardExplainSequence", "blendMs": 850, "eyeContactMs": 1200 }
+```
+
+### Choosing the instructor voice
+
+The teacher playground also offers five feminine and five masculine Deepgram Aura-2 English voices: `aura-2-aurora-en`, `aura-2-thalia-en`, `aura-2-helena-en`, `aura-2-athena-en`, `aura-2-vesta-en`, `aura-2-mars-en`, `aura-2-arcas-en`, `aura-2-aries-en`, `aura-2-hermes-en`, and `aura-2-draco-en`. Teachers can compare them on a short script without changing a lesson. Voice choice is **not** a per-beat curriculum JSON field; after the demo, the app owner sets the chosen `ttsVoice` in the learning environment. Keep `avatar.text` as the actual words to be spoken, independent of which voice reads them.
+
+To enable voice previews, set `VITE_DEEPGRAM_API_KEY` in the app's environment and restart the local Vite server (or redeploy after setting it on Vercel). Gestures still work without a key. The playground calls `/api/deepgram/v1/speak`; the local Vite proxy and Vercel rewrite forward that request to Deepgram so the browser does not call Deepgram cross-origin.
+
+This temporary demo key is **browser-visible**, even though the audio request uses a same-origin proxy. Use a separate, short-lived, tightly limited key and rotate it after the demo. Do not put a production secret in a `VITE_` variable on a public deployment; use a protected server-side TTS endpoint for a long-lived public demo.
+
+---
+
 ### `display` — read on screen
 
 **You write:** `body` (required), optional `title`, optional `avatar.text`, optional `speak_body`, optional `avatar.timing`

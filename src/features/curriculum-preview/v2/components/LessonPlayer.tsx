@@ -64,6 +64,15 @@ import {
   withShow,
   type SpeechPart,
 } from "../subtitleShow";
+import {
+  normalizeAvatarGesture,
+  type AvatarGesture,
+} from "../avatarGesture";
+import {
+  createLearningStreakState,
+  notifyLearningAnswerOutcome,
+  resetLearningAnswerStreak,
+} from "../learningSfx";
 import type {
   AvatarShowReplacement,
   Beat,
@@ -206,6 +215,8 @@ export function LessonPlayer({
   const [showCelebration, setShowCelebration] = useState(false);
   /** Wrong attempts used on the current question beat (student retry simulation). */
   const [wrongAttempts, setWrongAttempts] = useState(0);
+  /** Consecutive correct answers across this lesson (resets on wrong; each beat counts once). */
+  const correctStreakRef = useRef(createLearningStreakState());
   /**
    * True when any question in this lesson exhausted retries without a correct
    * answer — used so recap/bridge speech does not celebrate a failed attempt.
@@ -316,14 +327,23 @@ export function LessonPlayer({
   advanceRef.current = advance;
 
   const speakThen = useCallback(
-    (text: string | undefined, then?: () => void, show?: AvatarShowReplacement[]) => {
+    (
+      text: string | undefined,
+      then?: () => void,
+      show?: AvatarShowReplacement[],
+      gesture?: AvatarGesture | null,
+    ) => {
       const trimmed = text?.trim();
       if (!trimmed) {
         then?.();
         return;
       }
       if (then) scheduleAfterSpeech(then);
-      speak(trimmed, show?.length ? { show } : undefined);
+      const normalized = normalizeAvatarGesture(gesture ?? null);
+      speak(trimmed, {
+        ...(show?.length ? { show } : {}),
+        ...(normalized ? { gesture: normalized } : {}),
+      });
     },
     [scheduleAfterSpeech, speak],
   );
@@ -351,7 +371,7 @@ export function LessonPlayer({
           return;
         }
         const item = queue[index];
-        speakThen(item.text, () => run(index + 1), item.show);
+        speakThen(item.text, () => run(index + 1), item.show, item.gesture);
       };
       run(0);
     },
@@ -400,6 +420,7 @@ export function LessonPlayer({
     setPauseSecondsLeft(0);
     missedPracticeRef.current = false;
     resumePracticeRef.current = !!initialDraft?.resumePractice;
+    resetLearningAnswerStreak(correctStreakRef.current);
     resetInteractive();
     if (initialDraft?.code) setCode(initialDraft.code);
     if (initialDraft?.webCode) setWebCode(initialDraft.webCode);
@@ -461,14 +482,23 @@ export function LessonPlayer({
 
     switch (beat.type) {
       case "speak": {
-        speakSequence([goalLine, withShow(beat.avatar.text, beat.avatar.show)], () =>
-          finishAutoOrManual(beat),
+        speakSequence(
+          [
+            goalLine,
+            withShow(
+              beat.avatar.text,
+              beat.avatar.show,
+              beat.avatar.gesture,
+            ),
+          ],
+          () => finishAutoOrManual(beat),
         );
         break;
       }
       case "display": {
         const timing = beat.avatar?.timing ?? "with_display";
         const show = beat.avatar?.show;
+        const gesture = beat.avatar?.gesture;
         const titleLine = beat.title
           ? `Let's look at this: ${beat.title}.`
           : undefined;
@@ -477,7 +507,7 @@ export function LessonPlayer({
           speakBody && beat.body
             ? withShow(stripMarkdownForSpeech(beat.body), show)
             : undefined;
-        const avatarLine = withShow(beat.avatar?.text, show);
+        const avatarLine = withShow(beat.avatar?.text, show, gesture);
 
         if (timing === "before_display") {
           speakSequence([goalLine, avatarLine, titleLine, bodyLine], () =>
@@ -494,7 +524,11 @@ export function LessonPlayer({
         speakSequence(
           [
             goalLine,
-            withShow(beat.avatar?.text, beat.avatar?.show),
+            withShow(
+              beat.avatar?.text,
+              beat.avatar?.show,
+              beat.avatar?.gesture,
+            ),
             beat.media.alt
               ? `Here's a picture: ${beat.media.alt}.`
               : "Take a look at this on the screen.",
@@ -509,7 +543,7 @@ export function LessonPlayer({
         speakSequence(
           [
             goalLine,
-            withShow(beat.avatar?.text, beat.avatar?.show),
+            withShow(beat.avatar?.text, beat.avatar?.show, beat.avatar?.gesture),
             "Take a moment to look at the screen. When you're ready, continue.",
           ],
           () => {
@@ -533,10 +567,11 @@ export function LessonPlayer({
           )
           : pointLines;
         const show = beat.avatar?.show;
+        const gesture = beat.avatar?.gesture;
         speakSequence(
           [
             goalLine,
-            withShow(recapLead, missed ? undefined : show),
+            withShow(recapLead, missed ? undefined : show, missed ? undefined : gesture),
             "Here are the key takeaways.",
             ...(spokenPoints.length > 0 ? spokenPoints : pointLines).map((line) =>
               withShow(line, show),
@@ -565,7 +600,7 @@ export function LessonPlayer({
         speakSequence(
           [
             goalLine,
-            withShow(bridgeText, beat.avatar?.show),
+            withShow(bridgeText, beat.avatar?.show, beat.avatar?.gesture),
             endLine,
           ],
           () => enableManualContinue(),
@@ -652,7 +687,11 @@ export function LessonPlayer({
     speakSequence(
       [
         goalLine,
-        withShow(demoBeat.avatar?.text, demoBeat.avatar?.show),
+        withShow(
+          demoBeat.avatar?.text,
+          demoBeat.avatar?.show,
+          demoBeat.avatar?.gesture,
+        ),
         example.description ?? "Watch carefully as I type this example.",
       ],
       () => {
@@ -674,7 +713,11 @@ export function LessonPlayer({
     speakSequence(
       [
         goalLine,
-        withShow(demoBeat.avatar?.text, demoBeat.avatar?.show),
+        withShow(
+          demoBeat.avatar?.text,
+          demoBeat.avatar?.show,
+          demoBeat.avatar?.gesture,
+        ),
         example.description ?? "Let's work through this step by step.",
       ],
       () => {
@@ -725,6 +768,7 @@ export function LessonPlayer({
     const q = qBeat.question;
     const avatar = qBeat.avatar;
     const show = avatar?.show;
+    const gesture = avatar?.gesture;
 
     if (q.type === "code_test" && q.code_example) {
       const example = q.code_example;
@@ -739,7 +783,7 @@ export function LessonPlayer({
         else applyStudentStarter(example);
         speakSequence([
           goalLine,
-          withShow(avatar?.on_ask ?? q.question, show),
+          withShow(avatar?.on_ask ?? q.question, show, gesture),
           "Pick up where you left off in the editor.",
         ]);
         return;
@@ -768,7 +812,7 @@ export function LessonPlayer({
               [
                 example.explanation,
                 withShow(avatar?.handoff ?? defaults.handoff_to_practice, show),
-                withShow(avatar?.on_ask ?? q.question, show),
+                withShow(avatar?.on_ask ?? q.question, show, gesture),
               ],
               () => {
                 applyStudentStarter(example);
@@ -794,7 +838,7 @@ export function LessonPlayer({
         }
         speakSequence([
           goalLine,
-          withShow(avatar?.on_ask, show),
+          withShow(avatar?.on_ask, show, gesture),
           withShow(q.question, show),
         ]);
         return;
@@ -813,7 +857,7 @@ export function LessonPlayer({
               [
                 example.explanation,
                 withShow(avatar?.handoff ?? defaults.handoff_to_practice, show),
-                withShow(avatar?.on_ask ?? q.question, show),
+                withShow(avatar?.on_ask ?? q.question, show, gesture),
               ],
               () => {
                 typed.reset();
@@ -829,7 +873,7 @@ export function LessonPlayer({
     setDemoMode("practice");
     speakSequence([
       goalLine,
-      withShow(avatar?.on_ask, show),
+      withShow(avatar?.on_ask, show, gesture),
       withShow(q.question, show),
       q.type === "multiple_choice"
         ? "Pick the best answer."
@@ -857,11 +901,19 @@ export function LessonPlayer({
       setShowCelebration(correct);
 
       if (correct) {
+        notifyLearningAnswerOutcome(true, correctStreakRef.current, beat.id);
         // Solved it — they understood the task, so don't re-explain it.
         const feedback =
           beat.avatar?.on_correct ?? defaults.correct_feedback;
         speakSequence(
-          [withShow(feedback, beat.avatar?.show), "Let's keep going!"],
+          [
+            withShow(
+              feedback,
+              beat.avatar?.show,
+              beat.avatar?.gesture_on_correct ?? beat.avatar?.gesture,
+            ),
+            "Let's keep going!",
+          ],
           () => {
             setTimeout(() => advanceRef.current(), 600);
           },
@@ -869,24 +921,32 @@ export function LessonPlayer({
         return;
       }
 
+      notifyLearningAnswerOutcome(false, correctStreakRef.current, beat.id);
       const nextWrong = wrongAttempts + 1;
       setWrongAttempts(nextWrong);
       const exhausted = nextWrong >= retry.max;
       const feedback =
         beat.avatar?.on_wrong ?? defaults.incorrect_feedback;
+      const wrongGesture =
+        beat.avatar?.gesture_on_wrong ?? beat.avatar?.gesture;
 
       if (exhausted) {
         // Do not speak success-phrased question.explanation after a failed attempt.
         missedPracticeRef.current = true;
         const teachingLines = resolveExhaustedWrongTeachingLines(q);
-        speakThen(feedback, () => {
-          speakSequence(
-            [...teachingLines, "Let's move on and keep learning."],
-            () => {
-              setTimeout(() => advanceRef.current(), 600);
-            },
-          );
-        }, beat.avatar?.show);
+        speakThen(
+          feedback,
+          () => {
+            speakSequence(
+              [...teachingLines, "Let's move on and keep learning."],
+              () => {
+                setTimeout(() => advanceRef.current(), 600);
+              },
+            );
+          },
+          beat.avatar?.show,
+          wrongGesture,
+        );
         return;
       }
 
@@ -895,20 +955,25 @@ export function LessonPlayer({
         q.type === "code_test" || q.type === "formula_test"
           ? beat.avatar?.on_ask ?? q.question
           : undefined;
-      speakThen(feedback, () => {
-        speakSequence(
-          [
-            withShow(reAskInstruction, beat.avatar?.show),
-            retry.hint,
-          ],
-          () => {
-            setIsAnswerSubmitted(false);
-            setShowCelebration(false);
-            if (clearSelection) setSelectedAnswer(null);
-            if (q.type === "formula_test") setFormulaAnswer("");
-          },
-        );
-      }, beat.avatar?.show);
+      speakThen(
+        feedback,
+        () => {
+          speakSequence(
+            [
+              withShow(reAskInstruction, beat.avatar?.show),
+              retry.hint,
+            ],
+            () => {
+              setIsAnswerSubmitted(false);
+              setShowCelebration(false);
+              if (clearSelection) setSelectedAnswer(null);
+              if (q.type === "formula_test") setFormulaAnswer("");
+            },
+          );
+        },
+        beat.avatar?.show,
+        wrongGesture,
+      );
     },
     [
       beat,
@@ -1458,23 +1523,23 @@ export function LessonPlayer({
                     <PageLoadWaitBanner isLoading={showInstructorWait} />
                   ) : null}
                   {showMobileAudioUnlock ? (
-                    <div className="rounded-xl border border-primary/20 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
-                      <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
+                    <div className="rounded-lg border border-primary/20 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-2.5">
+                      <p className="mb-2 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
                         {MOBILE_INSTRUCTOR_AUDIO_HINT}
                       </p>
                       <button
                         type="button"
                         onClick={onMobileAudioUnlock}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
+                        className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 active:scale-[0.99]"
                       >
-                        <Volume2 className="h-5 w-5 shrink-0" aria-hidden />
+                        <Volume2 className="size-4 shrink-0" aria-hidden />
                         <span>{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
                       </button>
                     </div>
                   ) : (
-                    <div className="flex w-full items-center gap-3">
+                    <div className="flex w-full items-center gap-2.5">
                       <div
-                        className="relative flex size-11 shrink-0 items-center justify-center sm:size-12"
+                        className="relative flex size-9 shrink-0 items-center justify-center"
                         aria-hidden={!isInstructorActive}
                         aria-label={
                           isInstructorActive ? "Instructor is speaking" : undefined
@@ -1489,15 +1554,15 @@ export function LessonPlayer({
                         ) : null}
                         <div
                           className={cn(
-                            "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md transition-all duration-300 sm:size-10",
+                            "relative flex size-7 items-center justify-center rounded-lg border-2 bg-white shadow-sm transition-all duration-300",
                             isInstructorActive
-                              ? "scale-105 border-primary shadow-lg shadow-primary/25"
+                              ? "scale-105 border-primary shadow-md shadow-primary/20"
                               : "border-primary/25",
                           )}
                         >
                           <Mic
                             className={cn(
-                              "size-[1.15rem] text-primary sm:size-5",
+                              "size-3.5 text-primary",
                               isInstructorActive && "animate-pulse",
                             )}
                             aria-hidden
@@ -1810,8 +1875,8 @@ export function LessonPlayer({
 
     const classicChrome = (
       <div className="relative z-10 w-full min-w-0 shrink-0">
-        <div className="mb-3 shrink-0 rounded-xl border border-primary/10 bg-white/70 p-2.5 shadow-sm backdrop-blur">
-          <div className="mb-2 flex items-center gap-2">
+        <div className="mb-3 shrink-0 rounded-lg border border-primary/10 bg-white/70 p-2 shadow-sm backdrop-blur">
+          <div className="mb-2 flex items-center gap-1.5">
             <LessonProgressBar
               value={classicProgressPct}
               label={`Lesson ${lessonOrdinal} of ${lessonTotal}`}
@@ -1826,9 +1891,9 @@ export function LessonPlayer({
                     onClick={onRewind}
                     title="Rewind 10 seconds"
                     aria-label="Rewind 10 seconds"
-                    className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-[0.7rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
+                    className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
                   >
-                    <RotateCcw className="size-3.5" aria-hidden />
+                    <RotateCcw className="size-3" aria-hidden />
                     <span className="hidden min-[420px]:inline">-10s</span>
                   </button>
                 ) : null}
@@ -1838,12 +1903,12 @@ export function LessonPlayer({
                   title={isPaused ? "Resume the lesson" : "Pause the lesson"}
                   aria-label={isPaused ? "Resume the lesson" : "Pause the lesson"}
                   aria-pressed={isPaused}
-                  className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-[0.7rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
+                  className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
                 >
                   {isPaused ? (
-                    <Play className="size-3.5" aria-hidden />
+                    <Play className="size-3" aria-hidden />
                   ) : (
-                    <Pause className="size-3.5" aria-hidden />
+                    <Pause className="size-3" aria-hidden />
                   )}
                   <span className="hidden min-[360px]:inline">
                     {isPaused ? "Resume" : "Pause"}
@@ -1872,7 +1937,7 @@ export function LessonPlayer({
               onClick={() => goToBeat(beatIndex - 1)}
               disabled={!canGoPreviousBeat}
               className={cn(
-                "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                "flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-sm",
                 canGoPreviousBeat
                   ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
                   : "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400",
@@ -1886,9 +1951,9 @@ export function LessonPlayer({
               onClick={() => advance()}
               disabled={!canPrimaryContinue}
               className={cn(
-                "min-w-0 flex-[1.4] rounded-xl px-2 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                "h-9 min-w-0 flex-[1.4] rounded-lg px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-sm",
                 canPrimaryContinue
-                  ? "bg-green-500 text-white shadow hover:bg-green-600"
+                  ? "bg-green-500 text-white shadow-sm hover:bg-green-600"
                   : "cursor-not-allowed bg-gray-200 text-gray-500",
               )}
             >
@@ -2006,7 +2071,7 @@ export function LessonPlayer({
     );
 
     return (
-      <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-white">
+      <div className="relative h-full w-full min-h-0 overflow-hidden bg-white">
         {!hideFlowChrome ? (
           <V2SkipPanel
             lesson={lesson}
@@ -2016,7 +2081,7 @@ export function LessonPlayer({
         ) : null}
 
         <Split
-          className="flex h-full min-h-0"
+          className="flex h-full min-h-0 w-full"
           sizes={isLgUp ? [35, 65] : [0, 100]}
           minSize={isLgUp ? 200 : 0}
           gutterSize={isLgUp ? 8 : 0}
@@ -2033,14 +2098,14 @@ export function LessonPlayer({
           <div
             className={cn(
               "relative box-border flex h-full min-h-0 flex-col overflow-y-auto scrollbar-hide",
-              isLgUp ? "px-5 py-4 sm:px-6 sm:py-5" : "min-w-0",
+              isLgUp ? "p-3 sm:p-4" : "min-w-0",
             )}
           >
             {isLgUp ? (
               <>
                 {classicChrome}
                 {avatarSlot && !isCodeTestQuestionActive ? (
-                  <div className="mt-2 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden sm:mt-4">
+                  <div className="mt-2 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                     <div className="flex h-full min-h-0 min-w-0 w-full items-center justify-center sm:justify-start">
                       {avatarSlot}
                     </div>
@@ -2063,8 +2128,8 @@ export function LessonPlayer({
                 {!suppressMobileWaitBanner ? (
                   <PageLoadWaitBanner isLoading={showInstructorWait} />
                 ) : null}
-                <div className="flex items-center gap-3 px-4 py-2 sm:px-5">
-                  <div className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
+                <div className="flex items-center gap-2.5 px-3 py-2 sm:px-4">
+                  <div className="relative flex size-9 shrink-0 items-center justify-center">
                     {isInstructorActive ? (
                       <>
                         <span className="absolute inline-flex size-[120%] animate-ping rounded-full bg-primary/30" />
@@ -2073,15 +2138,15 @@ export function LessonPlayer({
                     ) : null}
                     <div
                       className={cn(
-                        "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md transition-all duration-300 sm:size-10",
+                        "relative flex size-7 items-center justify-center rounded-lg border-2 bg-white shadow-sm transition-all duration-300",
                         isInstructorActive
-                          ? "scale-105 border-primary shadow-lg shadow-primary/25"
+                          ? "scale-105 border-primary shadow-md shadow-primary/20"
                           : "border-primary/25",
                       )}
                     >
                       <Mic
                         className={cn(
-                          "size-[1.15rem] text-primary sm:size-5",
+                          "size-3.5 text-primary",
                           isInstructorActive && "animate-pulse",
                         )}
                         aria-hidden
@@ -2092,7 +2157,7 @@ export function LessonPlayer({
                     <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/80">
                       Instructor audio
                     </p>
-                    <p className="truncate text-xs text-gray-600 sm:text-sm">
+                    <p className="truncate text-xs text-gray-600">
                       {isInstructorActive
                         ? currentSubtitle || "Speaking…"
                         : isPaused
@@ -2102,21 +2167,21 @@ export function LessonPlayer({
                   </div>
                 </div>
                 {showMobileAudioUnlock ? (
-                  <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-4 py-3 sm:px-5">
-                    <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
+                  <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-2.5 sm:px-4">
+                    <p className="mb-2 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
                       {MOBILE_INSTRUCTOR_AUDIO_HINT}
                     </p>
                     <button
                       type="button"
                       onClick={onMobileAudioUnlock}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
+                      className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 active:scale-[0.99]"
                     >
-                      <Volume2 className="h-5 w-5 shrink-0" aria-hidden />
+                      <Volume2 className="size-4 shrink-0" aria-hidden />
                       <span>{MOBILE_INSTRUCTOR_AUDIO_BUTTON}</span>
                     </button>
                   </div>
                 ) : null}
-                <div className="px-4 pb-4 sm:px-5">{classicChrome}</div>
+                <div className="px-3 pb-3 sm:px-4">{classicChrome}</div>
               </div>
             )}
 

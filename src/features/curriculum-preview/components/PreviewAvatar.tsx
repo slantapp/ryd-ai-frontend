@@ -1,5 +1,5 @@
 import { useRef, useMemo, useCallback, useState, useEffect, type RefObject } from "react";
-import NarratorAvatar from "narrator-avatar";
+import NarratorAvatar, { type NarratorAvatarRef as PackageNarratorAvatarRef } from "@thattobi/narrator-avatar";
 import { Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -18,22 +18,21 @@ import {
   type SpeechUtterance,
 } from "@/features/curriculum-preview/v2/subtitleShow";
 import type { AvatarShowReplacement } from "@/features/curriculum-preview/v2/types";
+import type { NormalizedAvatarGesture } from "@/features/curriculum-preview/v2/avatarGesture";
+import { playAvatarGesture } from "@/features/curriculum-preview/v2/avatarGesture";
 import {
   createSpeechRewindTracker,
   REWIND_RESPEAK_DELAY_MS,
   REWIND_SECONDS,
 } from "@/utils/speechRewind";
 
-type NarratorAvatarRef = {
-  speakText: (text: string, options?: Record<string, unknown>) => void;
-  stopSpeaking: () => void;
-  pauseSpeaking: () => void;
-  resumeSpeaking: () => void;
+type NarratorAvatarRef = PackageNarratorAvatarRef & {
   resumeAudioContext?: () => Promise<void>;
 };
 
 export type SpeakOptions = {
   show?: AvatarShowReplacement[];
+  gesture?: NormalizedAvatarGesture | null;
 };
 
 export interface PreviewAvatarHandle {
@@ -172,6 +171,9 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
       lipsyncLang: "en",
       speechRate: 0.9,
       accurateLipSync: true,
+      // Sparse auto gestures; curriculum `gesture` fields add explicit cues.
+      speechGestures: true,
+      speechGestureStyle: "tutor" as const,
     }),
     [instructorConfig],
   );
@@ -211,6 +213,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
         activeShowRef.current = utterance.show ?? defaultShowRef.current;
         rewindTracker.beginUtterance(utterance.text);
         setAwaitingSpeech(true);
+        playAvatarGesture(avatarRef.current, utterance.gesture);
         avatarRef.current!.speakText(utterance.text);
       } catch (error) {
         console.warn("Error speaking text:", error);
@@ -223,7 +226,11 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   const speak = useCallback(
     (text: string, options?: SpeakOptions) => {
       if (!text) return;
-      const utterance: SpeechUtterance = { text, show: options?.show };
+      const utterance: SpeechUtterance = {
+        text,
+        show: options?.show,
+        gesture: options?.gesture ?? undefined,
+      };
 
       // Queue when the 3D avatar is still loading or was remounted (stale ready flag).
       if (!avatarReadyRef.current || !isAvatarLive()) {

@@ -15,6 +15,7 @@ import {
 } from "@/hooks/useCourseCompletionFeedback";
 import { useCourseLearningSession } from "@/hooks/useCourseLearningSession";
 import { CourseCompletionFeedbackDialog } from "./CourseCompletionFeedbackDialog";
+import { LearningStreakPopup } from "./LearningStreakPopup";
 import CourseDetails from "./CourseDetails";
 import CourseDetailsV2 from "./CourseDetailsV2";
 import MathCourseDetails from "./math/MathCourseDetails";
@@ -83,7 +84,10 @@ export default function CourseRunner() {
 
   return (
     <>
-      {courseView}
+      <div className="h-full min-h-0 w-full flex-1 overflow-hidden">
+        {courseView}
+      </div>
+      <LearningStreakPopup />
       {exercise ? (
         <CourseCompletionFeedbackDialog
           open={feedbackOpen}

@@ -5,11 +5,77 @@ import ProfileContent from "@/components/settings/ProfileContent";
 import InstructorContent from "@/components/settings/InstructorContent";
 import SubscriptionContentServer from "@/components/settings/SubscriptionContentServer";
 import { cn } from "@/lib/utils";
-import { User, Lock, HelpCircle, CreditCard, GraduationCap } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  User,
+  Lock,
+  HelpCircle,
+  CreditCard,
+  GraduationCap,
+  type LucideIcon,
+} from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 
-// type TabKey = "profile" | "password" | "difficulty" | "faq";
+type SettingsNavItem = {
+  key: string;
+  label: string;
+  desc: string;
+  icon: LucideIcon;
+  content: ReactNode;
+};
+
+function SettingsNavButton({
+  item,
+  isActive,
+  onSelect,
+}: {
+  item: SettingsNavItem;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  const Icon = item.icon;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "flex w-full min-w-0 items-center gap-2.5 rounded-lg border p-2.5 text-left transition-all sm:gap-3 sm:p-3",
+        isActive
+          ? "border-primary/30 bg-primary/10"
+          : "border-transparent bg-transparent hover:border-[#EDEAF3] hover:bg-[#F5F4F7]",
+      )}
+    >
+      <div
+        className={cn(
+          "flex size-9 shrink-0 items-center justify-center rounded-md sm:size-10",
+          isActive ? "bg-primary/15" : "bg-[#F5F4F7]",
+        )}
+      >
+        <Icon className="size-4 text-primary" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            "font-solway text-sm font-semibold",
+            isActive ? "text-primary" : "text-[#0A090B]",
+          )}
+        >
+          {item.label}
+        </p>
+        <p
+          className={cn(
+            "mt-0.5 font-inter text-xs leading-snug",
+            isActive ? "text-primary/75" : "text-[#666666]",
+          )}
+        >
+          {item.desc}
+        </p>
+      </div>
+    </button>
+  );
+}
 
 const SettingsPage = () => {
   const location = useLocation();
@@ -34,7 +100,7 @@ const SettingsPage = () => {
     }
   }, [tabFromUrl]);
 
-  const items = [
+  const items: SettingsNavItem[] = [
     {
       key: "profile",
       label: "Update Profile",
@@ -51,7 +117,7 @@ const SettingsPage = () => {
     },
   ];
 
-  const billingItems = [
+  const billingItems: SettingsNavItem[] = [
     {
       key: "subscription",
       label: "Subscription",
@@ -61,7 +127,7 @@ const SettingsPage = () => {
     },
   ];
 
-  const otherItems = [
+  const otherItems: SettingsNavItem[] = [
     {
       key: "instructor",
       label: "Change Instructor",
@@ -78,112 +144,59 @@ const SettingsPage = () => {
     },
   ];
 
-  const navButtonClass = (isActive: boolean) =>
-    cn(
-      "flex w-full min-w-0 items-center gap-3 rounded-xl p-3 text-left transition sm:gap-4 sm:p-4 lg:p-6 lg:pl-4",
-      isActive ? "bg-primary text-white" : "bg-gray-50 hover:bg-gray-100",
-    );
-
   return (
     <div className="mx-auto flex min-h-0 min-w-0 max-w-full flex-col gap-4 sm:gap-6">
+      <header className="min-w-0">
+        <p className="app-type-eyebrow mb-1">Account</p>
+        <h1 className="app-type-page-title">Settings</h1>
+        <p className="app-type-page-subtitle mt-1.5">
+          Manage your profile, billing, and learning preferences
+        </p>
+      </header>
+
       <div className="flex w-full flex-col gap-5 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
         <nav
-          className="w-full shrink-0 space-y-2 sm:space-y-3 lg:w-[min(100%,20rem)] xl:w-88"
+          className="w-full shrink-0 space-y-2 rounded-lg border border-[#EDEAF3] bg-white p-2.5 shadow-[0_2px_12px_rgba(19,32,80,0.03)] sm:space-y-2.5 sm:p-3 lg:w-[min(100%,20rem)] xl:w-88"
           aria-label="Settings sections"
         >
-          <div className="space-y-2 pt-1 lg:my-4 lg:pt-0 xl:my-6">
-            <h3 className="font-sans-serifbookfl text-xs font-semibold uppercase tracking-wide text-[#081A28] sm:text-sm">
-              Account
-            </h3>
+          <div className="space-y-2 pt-0.5">
+            <h3 className="app-type-eyebrow px-1 text-[#132050]/40">Account</h3>
           </div>
-          {items.map(({ key, label, desc, icon: Icon }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setActiveTab(key)}
-              className={navButtonClass(activeTab === key)}
-            >
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-md bg-white sm:size-[52px]">
-                <Icon className="size-4.5 text-primary sm:size-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-solway text-sm font-bold sm:text-base">
-                  {label}
-                </p>
-                <p
-                  className={cn(
-                    "mt-0.5 font-sans-serifbookflf text-xs leading-snug sm:text-sm",
-                    activeTab === key ? "text-white/80" : "text-gray-500",
-                  )}
-                >
-                  {desc}
-                </p>
-              </div>
-            </button>
+          {items.map((item) => (
+            <SettingsNavButton
+              key={item.key}
+              item={item}
+              isActive={activeTab === item.key}
+              onSelect={() => setActiveTab(item.key)}
+            />
           ))}
-          <div className="space-y-2 pt-2 sm:space-y-3 lg:my-4 lg:pt-0 xl:my-6">
-            <h3 className="font-sans-serifbookfl text-xs font-semibold uppercase tracking-wide text-[#081A28] sm:text-sm">
-              Billing
-            </h3>
+
+          <div className="space-y-2 pt-2.5 sm:pt-3">
+            <h3 className="app-type-eyebrow px-1 text-[#132050]/40">Billing</h3>
           </div>
-          {billingItems.map(({ key, label, desc, icon: Icon }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setActiveTab(key)}
-              className={navButtonClass(activeTab === key)}
-            >
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-md bg-white sm:size-[52px]">
-                <Icon className="size-4.5 text-primary sm:size-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-solway text-sm font-bold sm:text-base">
-                  {label}
-                </p>
-                <p
-                  className={cn(
-                    "mt-0.5 font-sans-serifbookflf text-xs leading-snug sm:text-sm",
-                    activeTab === key ? "text-white/80" : "text-gray-500",
-                  )}
-                >
-                  {desc}
-                </p>
-              </div>
-            </button>
+          {billingItems.map((item) => (
+            <SettingsNavButton
+              key={item.key}
+              item={item}
+              isActive={activeTab === item.key}
+              onSelect={() => setActiveTab(item.key)}
+            />
           ))}
-          <div className="space-y-1 pt-2 sm:space-y-2 lg:my-4 xl:my-6">
-            <h3 className="font-sans-serifbookfl text-xs font-semibold uppercase tracking-wide text-[#081A28] sm:text-sm">
-              Others
-            </h3>
+
+          <div className="space-y-1 pt-2.5 sm:pt-3">
+            <h3 className="app-type-eyebrow px-1 text-[#132050]/40">Others</h3>
           </div>
-          {otherItems.map(({ key, label, desc, icon: Icon }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setActiveTab(key)}
-              className={navButtonClass(activeTab === key)}
-            >
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-md bg-white sm:size-[52px]">
-                <Icon className="size-4.5 text-primary sm:size-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-solway text-sm font-bold sm:text-base">
-                  {label}
-                </p>
-                <p
-                  className={cn(
-                    "mt-0.5 font-sans-serifbookflf text-xs leading-snug sm:text-sm",
-                    activeTab === key ? "text-white/80" : "text-gray-500",
-                  )}
-                >
-                  {desc}
-                </p>
-              </div>
-            </button>
+          {otherItems.map((item) => (
+            <SettingsNavButton
+              key={item.key}
+              item={item}
+              isActive={activeTab === item.key}
+              onSelect={() => setActiveTab(item.key)}
+            />
           ))}
         </nav>
 
-        <div className="min-w-0 flex-1 rounded-2xl bg-white p-4 shadow-xs sm:p-5 lg:p-6">
+        <div className="min-w-0 flex-1 rounded-lg border border-[#EDEAF3] bg-white p-3.5 shadow-[0_2px_12px_rgba(19,32,80,0.03)] sm:p-4 lg:p-5">
           {items.find((item) => item.key === activeTab)?.content}
           {billingItems.find((item) => item.key === activeTab)?.content}
           {otherItems.find((item) => item.key === activeTab)?.content}

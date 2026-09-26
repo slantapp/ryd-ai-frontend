@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import Split from "react-split";
-import NarratorAvatar from "narrator-avatar";
+import NarratorAvatar, { type NarratorAvatarRef } from "@thattobi/narrator-avatar";
 import {
   Volume2,
   Mic,
@@ -99,10 +99,17 @@ import {
 } from "@/utils/courseProgress";
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
+import { LessonStartGate } from "@/components/courses/LessonStartGate";
+import {
+  createLearningStreakState,
+  notifyLearningAnswerOutcome,
+  playLearningSfx,
+  resetLearningAnswerStreak,
+} from "@/features/curriculum-preview/v2/learningSfx";
 
 function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
   return (
-    <div className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
+    <div className="relative flex size-9 shrink-0 items-center justify-center">
       {isSpeaking && (
         <>
           <span className="absolute inline-flex size-[120%] animate-ping rounded-full bg-primary/30" />
@@ -116,15 +123,15 @@ function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
       )}
       <div
         className={cn(
-          "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md transition-all duration-300 sm:size-10",
+          "relative flex size-7 items-center justify-center rounded-lg border-2 bg-white shadow-sm transition-all duration-300",
           isSpeaking
-            ? "scale-105 border-primary shadow-lg shadow-primary/25"
+            ? "scale-105 border-primary shadow-md shadow-primary/20"
             : "border-primary/25",
         )}
       >
         <Mic
           className={cn(
-            "size-[1.15rem] text-primary sm:size-5",
+            "size-3.5 text-primary",
             isSpeaking && "animate-pulse",
           )}
           aria-hidden
@@ -137,13 +144,6 @@ function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
 // ============================================================================
 // TYPES
 // ============================================================================
-
-interface NarratorAvatarRef {
-  speakText: (text: string, options?: Record<string, unknown>) => void;
-  pauseSpeaking: () => void;
-  resumeSpeaking: () => void;
-  stopSpeaking: () => void;
-}
 
 interface CourseProgress {
   lessonId: string | null;
@@ -280,6 +280,8 @@ function CourseDetailInner({
   // submissions can never inflate the lesson score beyond its question count.
   const answerResultsRef = useRef<Map<number, boolean>>(new Map());
   const answerSubmissionInFlightRef = useRef(false);
+  /** Consecutive correct answers (each question counts once toward streak). */
+  const correctStreakRef = useRef(createLearningStreakState());
 
   // Overall course completion %, surfaced as a progress bar in the header.
   const [progressPct, setProgressPct] = useState(0);
@@ -428,6 +430,7 @@ function CourseDetailInner({
     setLessonPhase("intro");
     setIntroReady(false);
     setIsLessonCodeDemoActive(false);
+    resetLearningAnswerStreak(correctStreakRef.current);
   }, []);
 
   useEffect(() => {
@@ -1417,6 +1420,7 @@ function CourseDetailInner({
 
       let completionMessage = "";
       if (isLastLessonInModule) {
+        playLearningSfx("moduleComplete");
         completionMessage = `Congratulations! You've completed this module. ${lessonSummary}${lessonScore}`;
         if (newModuleTotal > 0) {
           completionMessage += ` Across all lessons in this module, you answered ${newModuleCorrect} out of ${newModuleTotal} questions correctly.`;
@@ -2119,12 +2123,19 @@ function CourseDetailInner({
     // Track the answer result
     recordAnswerResult(isCorrect);
     setLastAnswerCorrect(isCorrect);
+    notifyLearningAnswerOutcome(
+      isCorrect,
+      correctStreakRef.current,
+      `${currentLesson?.id ?? "lesson"}:q:${currentQuestionIndex}`,
+    );
 
     // Speak feedback, then auto-progress to next question
     speak(feedbackText, { type: "next_question" });
     scheduleQuestionAdvanceFallback(feedbackText);
   }, [
+    currentLesson?.id,
     currentQuestion,
+    currentQuestionIndex,
     isAnswerSubmitted,
     recordAnswerResult,
     scheduleQuestionAdvanceFallback,
@@ -2146,6 +2157,11 @@ function CourseDetailInner({
       : false;
     setLastAnswerCorrect(isCorrect);
     recordAnswerResult(isCorrect);
+    notifyLearningAnswerOutcome(
+      isCorrect,
+      correctStreakRef.current,
+      `${currentLesson?.id ?? "lesson"}:q:${currentQuestionIndex}`,
+    );
 
     const feedbackText = isCorrect
       ? `Correct! Well done. ${currentQuestion.explanation ?? ""}`
@@ -2153,7 +2169,9 @@ function CourseDetailInner({
     speak(feedbackText, { type: "next_question" });
     scheduleQuestionAdvanceFallback(feedbackText);
   }, [
+    currentLesson?.id,
     currentQuestion,
+    currentQuestionIndex,
     isAnswerSubmitted,
     recordAnswerResult,
     scheduleQuestionAdvanceFallback,
@@ -2236,6 +2254,11 @@ function CourseDetailInner({
         : `You failed this coding test. ${passedCount} out of ${totalCount} tests passed. ${currentQuestion.explanation || ""}`;
 
       recordAnswerResult(passed);
+      notifyLearningAnswerOutcome(
+        passed,
+        correctStreakRef.current,
+        `${currentLesson?.id ?? "lesson"}:q:${currentQuestionIndex}`,
+      );
 
       speak(feedbackText, { type: "next_question" });
       scheduleQuestionAdvanceFallback(feedbackText);
@@ -2245,6 +2268,11 @@ function CourseDetailInner({
       setResults([`⚠️ Error: ${errorMessage}`]);
       setIsAnswerSubmitted(true);
       recordAnswerResult(false);
+      notifyLearningAnswerOutcome(
+        false,
+        correctStreakRef.current,
+        `${currentLesson?.id ?? "lesson"}:q:${currentQuestionIndex}`,
+      );
 
       const feedbackText = `There was an error running your code: ${errorMessage}`;
       speak(feedbackText, {
@@ -2257,7 +2285,9 @@ function CourseDetailInner({
       }
     }
   }, [
+    currentLesson?.id,
     currentQuestion,
+    currentQuestionIndex,
     getCodeSubmission,
     isAnswerSubmitted,
     recordAnswerResult,
@@ -2615,7 +2645,7 @@ function CourseDetailInner({
         <div
           className={cn(
             "relative flex min-h-0 flex-col overflow-y-auto scrollbar-hide",
-            isLgUp ? "pr-4" : "min-w-0 overflow-hidden",
+            isLgUp ? "p-3 sm:p-4" : "min-w-0 overflow-hidden",
           )}
         >
           {isLgUp && (
@@ -2628,13 +2658,13 @@ function CourseDetailInner({
                     className="w-full"
                   />
                   {(isSpeaking || isPaused) && (
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       <button
                         type="button"
                         onClick={handleRewindSpeech}
                         title="Rewind 10 seconds"
                         aria-label="Rewind 10 seconds"
-                        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                        className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
                       >
                         <RotateCcw className="size-3" aria-hidden />
                         <span className="hidden min-[420px]:inline">-10s</span>
@@ -2647,7 +2677,7 @@ function CourseDetailInner({
                           isPaused ? "Resume the lesson" : "Pause the lesson"
                         }
                         aria-pressed={isPaused}
-                        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                        className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
                       >
                         {isPaused ? (
                           <Play className="size-3" aria-hidden />
@@ -2661,7 +2691,7 @@ function CourseDetailInner({
                         onClick={handleSkipNarration}
                         title="Skip the current narration"
                         aria-label="Skip the current narration"
-                        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                        className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
                       >
                         <SkipForward className="size-3" aria-hidden />
                         Skip
@@ -2708,14 +2738,14 @@ function CourseDetailInner({
             <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
               <PageLoadWaitBanner isLoading={isInstructorWaiting} />
               {/* Instructor audio indicator */}
-              <div className="flex items-center gap-3 px-3 py-2">
+              <div className="flex items-center gap-2.5 px-3 py-2">
                 <InstructorSpeakingIndicator isSpeaking={isSpeaking} />
                 <div className="min-w-0 flex-1">
                   <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/80">
                     Instructor audio
                   </p>
                   <p
-                    className="truncate text-xs text-gray-600 sm:text-sm"
+                    className="truncate text-xs text-gray-600"
                     title={
                       isPaused
                         ? currentSubtitle || "Paused"
@@ -2738,7 +2768,7 @@ function CourseDetailInner({
                       onClick={handleRewindSpeech}
                       title="Rewind 10 seconds"
                       aria-label="Rewind 10 seconds"
-                      className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
                     >
                       <RotateCcw className="size-3" aria-hidden />
                       <span className="hidden min-[360px]:inline">-10s</span>
@@ -2749,7 +2779,7 @@ function CourseDetailInner({
                       title={isPaused ? "Resume the lesson" : "Pause the lesson"}
                       aria-label={isPaused ? "Resume the lesson" : "Pause the lesson"}
                       aria-pressed={isPaused}
-                      className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
                     >
                       {isPaused ? (
                         <Play className="size-3" aria-hidden />
@@ -2765,7 +2795,7 @@ function CourseDetailInner({
                       onClick={handleSkipNarration}
                       title="Skip the current narration"
                       aria-label="Skip the current narration"
-                      className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
                     >
                       <SkipForward className="size-3" aria-hidden />
                       <span className="hidden min-[360px]:inline">Skip</span>
@@ -2783,16 +2813,16 @@ function CourseDetailInner({
               )}
               {/* Mobile WebKit: first speech after avatar loads must run inside a tap (see handleAvatarReady). */}
               {showMobileAudioUnlock && (
-                <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
-                  <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
+                <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-2.5">
+                  <p className="mb-2 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
                     {MOBILE_INSTRUCTOR_AUDIO_HINT}
                   </p>
                   <button
                     type="button"
                     onClick={handleMobileAudioUnlock}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
+                    className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 active:scale-[0.99]"
                   >
-                    <Volume2 className="h-5 w-5 shrink-0" aria-hidden />
+                    <Volume2 className="size-4 shrink-0" aria-hidden />
                     <span className="whitespace-nowrap">
                       {MOBILE_INSTRUCTOR_AUDIO_BUTTON}
                     </span>
@@ -3261,58 +3291,33 @@ function CourseDetailInner({
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-full min-h-[300px]">
-                      <div className="text-center max-w-md mx-auto px-6">
-                        {/* Animated icon */}
-                        <div className="relative inline-flex items-center justify-center mb-6">
-                          <div className="absolute h-20 w-20 rounded-full bg-primary/10 animate-ping"></div>
-                          <div className="absolute h-16 w-16 rounded-full bg-primary/20 animate-pulse"></div>
-                          <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-br from-primary to-primary/80 shadow-lg shadow-primary/30">
-                            <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                        </div>
-
-                        {/* Welcome text */}
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                          {canResume ? "Continue your lesson?" : "Ready to Learn?"}
-                        </h2>
-                        <p className="text-gray-500 mb-6 leading-relaxed">
-                          {canResume && currentLesson
-                            ? `Resume “${currentLesson.title}”. Tap below and your instructor will start speaking again.`
-                            : "Your learning adventure awaits! Click the button below to begin your lesson and start building amazing things."}
-                        </p>
-
-                        {/* Start course — same action as former StartLessonButton; label stays on one line */}
-                        <button
-                          type="button"
-                          onClick={handleStartLesson}
-                          className="group mx-auto flex w-full max-w-xs shrink-0 items-center justify-center gap-3 whitespace-nowrap rounded-full bg-linear-to-r from-primary via-primary to-primary/90 px-10 py-4 text-base font-bold tracking-tight text-white shadow-lg shadow-primary/35 ring-2 ring-primary/20 transition-all duration-200 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98] sm:max-w-none sm:px-12"
-                        >
-                          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
-                            <Play className="size-5 fill-white text-white" aria-hidden />
-                          </span>
-                          <span className="pr-1">
-                            {canResume ? "Continue learning" : "Start learning"}
-                          </span>
-                        </button>
-                        {canResume ? (
-                          <CourseProgressResetLink onReset={handleRestartCourse} />
-                        ) : null}
-
-                        {/* Decorative elements */}
-                        <div className="mt-8 flex items-center justify-center gap-2 text-xs text-gray-400">
-                          <span className="h-1 w-1 rounded-full bg-primary/40"></span>
-                          <span>Interactive lessons</span>
-                          <span className="h-1 w-1 rounded-full bg-primary/40"></span>
-                          <span>Fun quizzes</span>
-                          <span className="h-1 w-1 rounded-full bg-primary/40"></span>
-                          <span>Hands-on coding</span>
-                        </div>
-                      </div>
-                    </div>
+                    <LessonStartGate
+                      className="min-h-[min(100%,22rem)] rounded-none bg-transparent lg:bg-linear-to-br lg:from-[#F3ECFE] lg:via-[#F8F4FF] lg:to-white"
+                      heading={
+                        canResume ? "Continue your lesson?" : "Ready to Learn?"
+                      }
+                      courseOrLessonTitle={
+                        canResume && currentLesson
+                          ? currentLesson.title
+                          : curriculum?.title ?? "Your course"
+                      }
+                      description={
+                        canResume && currentLesson
+                          ? `Resume “${currentLesson.title}”. Tap below and your instructor will start speaking again.`
+                          : "Your learning adventure awaits! Tap below to begin your lesson and start building amazing things."
+                      }
+                      ctaLabel={
+                        canResume ? "Continue learning" : "Start learning"
+                      }
+                      onStart={handleStartLesson}
+                      footer={
+                        canResume ? (
+                          <CourseProgressResetLink
+                            onReset={handleRestartCourse}
+                          />
+                        ) : null
+                      }
+                    />
                   )}
                 </div>
               </div>

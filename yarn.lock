@@ -899,10 +899,10 @@
   resolved "https://registry.npmjs.org/@dimforge/rapier3d-compat/-/rapier3d-compat-0.12.0.tgz"
   integrity sha512-uekIGetywIgopfD97oDL5PfeezkFpNhwlzlaEYNOA0N6ghdsOvh/HYjSMek5Q2O1PYvRSDFcqFVJl4r4ZBwOow==
 
-"@esbuild/darwin-arm64@0.27.2":
+"@esbuild/win32-x64@0.27.2":
   version "0.27.2"
-  resolved "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.27.2.tgz"
-  integrity sha512-davCD2Zc80nzDVRwXTcQP/28fiJbcOwvdolL0sOiOsbwBa72kegmVU0Wrh1MYrbuCL98Omp5dVhQFWRKR2ZAlg==
+  resolved "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.27.2.tgz"
+  integrity sha512-sRdU18mcKf7F+YgheI/zGf5alZatMUTKj/jNS6l744f9u3WFu4v7twcUI9vu4mknF4Y9aDlblIie0IM+5xxaqQ==
 
 "@eslint-community/eslint-utils@^4.7.0", "@eslint-community/eslint-utils@^4.8.0":
   version "4.9.0"
@@ -1084,6 +1084,11 @@
   version "0.10.17"
   resolved "https://registry.npmjs.org/@mediapipe/tasks-vision/-/tasks-vision-0.10.17.tgz"
   integrity sha512-CZWV/q6TTe8ta61cZXjfnnHsfWIdFhms03M9T7Cnd5y2mdpylJM0rF1qRq+wsQVRMLz1OYPVEBU9ph2Bx8cxrg==
+
+"@met4citizen/headaudio@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.npmjs.org/@met4citizen/headaudio/-/headaudio-0.1.0.tgz"
+  integrity sha512-94n+82/gYJ1kxisfEgAJcnx1fDbZjB/HDMCCXLh3QsNqJNZmOVzybgiJ5ctYEHlYdWkXS3je84do7wrHwzAlMQ==
 
 "@met4citizen/talkinghead@^1.7.0":
   version "1.7.0"
@@ -1555,10 +1560,15 @@
     estree-walker "^2.0.2"
     picomatch "^4.0.2"
 
-"@rollup/rollup-darwin-arm64@4.53.5":
+"@rollup/rollup-win32-x64-gnu@4.53.5":
   version "4.53.5"
-  resolved "https://registry.npmjs.org/@rollup/rollup-darwin-arm64/-/rollup-darwin-arm64-4.53.5.tgz"
-  integrity sha512-S87zZPBmRO6u1YXQLwpveZm4JfPpAa6oHBX7/ghSiGH3rz/KDgAu1rKdGutV+WUI6tKDMbaBJomhnT30Y2t4VQ==
+  resolved "https://registry.npmjs.org/@rollup/rollup-win32-x64-gnu/-/rollup-win32-x64-gnu-4.53.5.tgz"
+  integrity sha512-2NqKgZSuLH9SXBBV2dWNRCZmocgSOx8OJSdpRaEcRlIfX8YrKxUT6z0F1NpvDVhOsl190UFTRh2F2WDWWCYp3A==
+
+"@rollup/rollup-win32-x64-msvc@4.53.5":
+  version "4.53.5"
+  resolved "https://registry.npmjs.org/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.53.5.tgz"
+  integrity sha512-JRpZUhCfhZ4keB5v0fe02gQJy05GqboPOaxvjugW04RLSYYoB/9t2lx2u/tMs/Na/1NXfY8QYjgRljRpN+MjTQ==
 
 "@sage-rsc/narrator-avatar@^1.0.2":
   version "1.0.2"
@@ -1685,10 +1695,10 @@
     "@svgr/plugin-jsx" "8.1.0"
     "@svgr/plugin-svgo" "8.1.0"
 
-"@swc/core-darwin-arm64@1.15.7":
+"@swc/core-win32-x64-msvc@1.15.7":
   version "1.15.7"
-  resolved "https://registry.npmjs.org/@swc/core-darwin-arm64/-/core-darwin-arm64-1.15.7.tgz"
-  integrity sha512-+hNVUfezUid7LeSHqnhoC6Gh3BROABxjlDNInuZ/fie1RUxaEX4qzDwdTgozJELgHhvYxyPIg1ro8ibnKtgO4g==
+  resolved "https://registry.npmjs.org/@swc/core-win32-x64-msvc/-/core-win32-x64-msvc-1.15.7.tgz"
+  integrity sha512-4BK06EGdPnuplgcNhmSbOIiLdRgHYX3v1nl4HXo5uo4GZMfllXaCyBUes+0ePRfwbn9OFgVhCWPcYYjMT6hycQ==
 
 "@swc/core@^1.13.5":
   version "1.15.7"
@@ -1734,10 +1744,10 @@
     source-map-js "^1.2.1"
     tailwindcss "4.1.18"
 
-"@tailwindcss/oxide-darwin-arm64@4.1.18":
+"@tailwindcss/oxide-win32-x64-msvc@4.1.18":
   version "4.1.18"
-  resolved "https://registry.npmjs.org/@tailwindcss/oxide-darwin-arm64/-/oxide-darwin-arm64-4.1.18.tgz"
-  integrity sha512-Gc2q4Qhs660bhjyBSKgq6BYvwDz4G+BuyJ5H1xfhmDR3D8HnHCmT/BSkvSL0vQLy/nkMLY20PQ2OoYMO15Jd0A==
+  resolved "https://registry.npmjs.org/@tailwindcss/oxide-win32-x64-msvc/-/oxide-win32-x64-msvc-4.1.18.tgz"
+  integrity sha512-bJWbyYpUlqamC8dpR7pfjA0I7vdF6t5VpUGMWRkXVE3AXgIZjYUYAK7II1GNaxR8J1SSrSrppRar8G++JekE3Q==
 
 "@tailwindcss/oxide@4.1.18":
   version "4.1.18"
@@ -1777,6 +1787,15 @@
   integrity sha512-graRZspg7EoEaw0a8faiUASCyJrqjKPdqJ9EwuDRUF9mEYJ1YPczI9H+/agJ0mOJkPCJDk0lsz5QTrLZ/jQ2rg==
   dependencies:
     "@tanstack/query-core" "5.90.12"
+
+"@thattobi/narrator-avatar@^1.1.10":
+  version "1.1.10"
+  resolved "https://registry.npmjs.org/@thattobi/narrator-avatar/-/narrator-avatar-1.1.10.tgz"
+  integrity sha512-AskOwYEpaw0nawZvhQlNKx1LqyUw1MT3aUTvGVb9bqaDXtW8lubvrrh6O0KRt4UZgRpRah6/yjl5+OtPuvGYCA==
+  dependencies:
+    "@met4citizen/headaudio" "^0.1.0"
+    "@met4citizen/talkinghead" "^1.7.0"
+    three "^0.183.0"
 
 "@trysound/sax@0.2.0":
   version "0.2.0"
@@ -2968,10 +2987,10 @@ lie@^3.0.2:
   dependencies:
     immediate "~3.0.5"
 
-lightningcss-darwin-arm64@1.30.2:
+lightningcss-win32-x64-msvc@1.30.2:
   version "1.30.2"
-  resolved "https://registry.npmjs.org/lightningcss-darwin-arm64/-/lightningcss-darwin-arm64-1.30.2.tgz"
-  integrity sha512-ylTcDJBN3Hp21TdhRT5zBOIi73P6/W0qwvlFEk22fkdXchtNTOU4Qc37SkzV+EKYxLouZ6M4LG9NfZ1qkhhBWA==
+  resolved "https://registry.npmjs.org/lightningcss-win32-x64-msvc/-/lightningcss-win32-x64-msvc-1.30.2.tgz"
+  integrity sha512-5g1yc73p+iAkid5phb4oVFMB45417DkRevRbt/El/gKXJk4jid+vPFF/AXbxn05Aky8PapwzZrdJShv5C0avjw==
 
 lightningcss@1.30.2:
   version "1.30.2"
@@ -3122,14 +3141,6 @@ nanoid@^3.3.11:
   version "3.3.11"
   resolved "https://registry.npmjs.org/nanoid/-/nanoid-3.3.11.tgz"
   integrity sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==
-
-narrator-avatar@^1.1.9:
-  version "1.1.9"
-  resolved "https://registry.npmjs.org/narrator-avatar/-/narrator-avatar-1.1.9.tgz"
-  integrity sha512-XkCQOdK9K+kAhhpRshzJQ938nhz/WsBUSfp1PVVsMKMF2o/jHihX0AfW4h8nHypXzmnJkZp/ac7CSO8EjBnwSg==
-  dependencies:
-    "@met4citizen/talkinghead" "^1.7.0"
-    three "^0.183.0"
 
 natural-compare@^1.4.0:
   version "1.4.0"

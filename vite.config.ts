@@ -31,5 +31,12 @@ export default defineConfig({
   },
   server: {
     port: 3000, // 👈 Set desired port here
+    proxy: {
+      "/api/deepgram/v1/speak": {
+        target: "https://api.deepgram.com",
+        changeOrigin: true,
+        rewrite: (url) => url.replace(/^\/api\/deepgram/, ""),
+      },
+    },
   },
 });

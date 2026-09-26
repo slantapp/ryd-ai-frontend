@@ -12,6 +12,7 @@ export const PUBLIC_PATHS = {
   FORGOT_PASSWORD: "/auth/forgot-password",
   RESET_PASSWORD: "/auth/reset-password",
   TERMS: "/legal/terms",
+  TEACHER_PLAYGROUND: "/teacher-playground",
 };
 
 export const PRIVATE_PATHS = {

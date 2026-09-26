@@ -23,6 +23,7 @@ import CourseRunner from "@/components/courses/CourseRunner";
 import DemoSneakPeekPage from "@/pages/app/demo/DemoSneakPeekPage";
 import { CurriculumPreviewPage, CurriculumEditPage } from "@/features/curriculum-preview";
 import { MarketingToolPage } from "@/features/marketing-tool";
+import { TeacherPlaygroundPage } from "@/features/teacher-playground";
 
 interface AppRoute {
   path: string;
@@ -48,6 +49,7 @@ const {
   FORGOT_PASSWORD,
   RESET_PASSWORD,
   TERMS,
+  TEACHER_PLAYGROUND,
 } = PUBLIC_PATHS;
 
 export const PUBLIC_ROUTES: AppRoute[] = [
@@ -78,6 +80,10 @@ export const PUBLIC_ROUTES: AppRoute[] = [
   {
     path: TERMS,
     element: <TermsOfServicePage />,
+  },
+  {
+    path: TEACHER_PLAYGROUND,
+    element: <TeacherPlaygroundPage />,
   },
   {
     path: SELECT_PROFILE,

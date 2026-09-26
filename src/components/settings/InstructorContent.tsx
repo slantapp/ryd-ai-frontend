@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from "react";
-import NarratorAvatar from "narrator-avatar";
+import NarratorAvatar, { type NarratorAvatarRef } from "@thattobi/narrator-avatar";
 import {
   useInstructorStore,
   INSTRUCTORS,
@@ -8,13 +8,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface NarratorAvatarRef {
-  speakText: (text: string, options?: Record<string, unknown>) => void;
-  pauseSpeaking: () => void;
-  resumeSpeaking: () => void;
-  stopSpeaking: () => void;
-}
 
 // Preview text for settings / profile (how they look & sound)
 const getPreviewText = (instructor: InstructorType): string => {
@@ -110,8 +103,7 @@ const InstructorContent = ({
       ttsService: "deepgram" as const,
       ttsVoice: manConfig.ttsVoice,
       ttsApiKey:
-        import.meta.env?.VITE_DEEPGRAM_API_KEY ||
-        "aa197cc0f30583ce6bf225517d5d8e0cdce506a7",
+        import.meta.env?.VITE_DEEPGRAM_API_KEY,
       lipsyncModules: ["en"] as const,
       lipsyncLang: "en",
       speechRate: 0.9,
@@ -307,7 +299,7 @@ const InstructorContent = ({
     <div className="space-y-8">
       {!hideHeader && (
         <div>
-          <h2 className="mb-2 text-lg font-semibold font-solway text-gray-900">
+          <h2 className="mb-2 app-type-section-title">
             Change Instructor
           </h2>
           <p className="text-sm text-gray-600 font-sans-serifbookflf">

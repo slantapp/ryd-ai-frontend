@@ -152,7 +152,7 @@ function SubscriptionPlansSkeleton({ gateMode }: { gateMode: boolean }) {
 
             <div
               className={cn(
-                "mt-5 h-11 w-full animate-pulse rounded-xl bg-gray-900/10 sm:mt-6",
+                "mt-4 h-9 w-full animate-pulse rounded-md bg-gray-900/10 sm:mt-5",
                 gateMode && "sm:mt-5",
               )}
             />
@@ -837,10 +837,10 @@ export default function SubscriptionContentServer({
     <div className={cn("space-y-4 sm:space-y-6", gateMode && "sm:space-y-5")}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
-          <h2 className="font-solway text-2xl font-bold text-gray-900">
+          <h2 className="app-type-section-title text-xl sm:text-2xl">
             {gateMode ? "Choose a plan to continue" : "Subscription"}
           </h2>
-          <p className="font-inter text-sm text-gray-600">
+          <p className="app-type-body">
             {gateMode
               ? "Complete your subscription to unlock the dashboard."
               : "Your access is determined by your server subscription status."}
@@ -1346,7 +1346,7 @@ export default function SubscriptionContentServer({
                           type="button"
                           onClick={() => void startCheckout(p.key)}
                           className={cn(
-                            "h-11 w-full rounded-xl font-solway font-semibold shadow-sm",
+                            "h-9 w-full rounded-md font-solway text-sm font-semibold shadow-sm",
                             isPopular
                               ? "bg-[#0063F7] hover:bg-[#0056d9]"
                               : "bg-primary hover:bg-primary/90",
@@ -1367,7 +1367,7 @@ export default function SubscriptionContentServer({
                             type="button"
                             variant="outline"
                             onClick={() => void startAlatOneTime(p.key)}
-                            className="h-11 w-full rounded-xl border-[#DDB5D2]/80 bg-white/80 font-solway font-semibold text-primary hover:bg-white"
+                            className="h-9 w-full rounded-md border-[#DDB5D2]/80 bg-white/80 font-solway text-sm font-semibold text-primary hover:bg-white"
                             disabled={blockOtherActionsWhileBusy}
                           >
                             {alatBusyForPlan ? (
@@ -1383,7 +1383,7 @@ export default function SubscriptionContentServer({
                           <Button
                             type="button"
                             variant="outline"
-                            className="h-11 w-full rounded-xl border-gray-200 bg-white/70 font-solway font-semibold text-gray-400"
+                            className="h-9 w-full rounded-md border-gray-200 bg-white/70 font-solway text-sm font-semibold text-gray-400"
                             disabled
                             title="Paystack one-time checkout is coming soon"
                           >
@@ -1403,7 +1403,7 @@ export default function SubscriptionContentServer({
                           handlePlanAction(p, planButton.action)
                         }
                         className={cn(
-                          "h-11 w-full rounded-xl font-solway font-semibold shadow-sm",
+                          "h-9 w-full rounded-md font-solway text-sm font-semibold shadow-sm",
                           gateMode ? "mt-4 sm:mt-5" : "mt-6",
                           planButton.disabled && planButton.action === "none"
                             ? "bg-gray-200 text-gray-600 hover:bg-gray-200"

@@ -1,6 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LessonNavSnapshot, PrimaryNavKind } from "@/utils/lessonNavigation";
+import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
 
 interface LessonNavControlsProps {
   nav: LessonNavSnapshot;
@@ -24,7 +25,7 @@ export default function LessonNavControls({
       nav.primary.kind === "next_module");
 
   return (
-    <div className="shrink-0 rounded-xl border border-primary/10 bg-white/70 p-2 shadow-sm backdrop-blur sm:p-2.5">
+    <div className="shrink-0 rounded-lg border border-primary/10 bg-white/70 p-2 shadow-sm backdrop-blur">
       {nav.statusHint ? (
         <p className="mb-1.5 line-clamp-1 px-0.5 text-[0.7rem] text-gray-500 sm:text-xs">
           {nav.statusHint}
@@ -37,7 +38,7 @@ export default function LessonNavControls({
           onClick={onPrevious}
           disabled={!nav.canGoPrevious}
           className={cn(
-            "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-sm",
+            "flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-sm",
             nav.canGoPrevious
               ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
               : "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400",
@@ -54,11 +55,11 @@ export default function LessonNavControls({
           }}
           disabled={!primaryClickable}
           className={cn(
-            "min-w-0 flex-[1.4] rounded-lg px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-sm",
+            "h-9 min-w-0 flex-[1.4] rounded-lg px-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-sm",
             primaryClickable
               ? nav.primary.kind === "start_questions"
-                ? "bg-primary text-white shadow hover:bg-primary/90"
-                : "bg-green-500 text-white shadow hover:bg-green-600"
+                ? "bg-primary text-white shadow-sm hover:bg-primary/90"
+                : "bg-green-500 text-white shadow-sm hover:bg-green-600"
               : "cursor-not-allowed bg-gray-200 text-gray-500",
           )}
         >
@@ -67,13 +68,13 @@ export default function LessonNavControls({
       </div>
 
       {showRestart && onRestart ? (
-        <button
-          type="button"
-          onClick={onRestart}
-          className="mt-2 w-full font-inter text-xs text-gray-400 underline-offset-2 transition-colors hover:text-gray-600 hover:underline"
-        >
-          Reset progress and start over
-        </button>
+        <div className="mt-1 flex justify-center">
+          <CourseProgressResetLink
+            variant="completed"
+            onReset={onRestart}
+            className="mt-1"
+          />
+        </div>
       ) : null}
     </div>
   );

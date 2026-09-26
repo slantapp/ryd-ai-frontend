@@ -141,19 +141,22 @@ const SupportPage = () => {
 
   const quickCardClass = (active: boolean) =>
     cn(
-      "flex min-w-0 items-center gap-3 rounded-xl border-2 p-4 text-left transition-all sm:gap-4 sm:p-5",
+      "flex min-w-0 items-center gap-2.5 rounded-lg border p-3 text-left transition-all sm:gap-3 sm:p-3.5",
       active
-        ? "border-primary bg-primary/5 shadow-md"
-        : "border-transparent bg-white shadow-md hover:border-primary/30 hover:shadow-lg",
+        ? "border-primary/30 bg-primary/5 shadow-[0_6px_20px_rgba(170,70,142,0.12)]"
+        : "border-[#EDEAF3] bg-white shadow-[0_2px_12px_rgba(19,32,80,0.03)] hover:border-primary/20 hover:shadow-[0_8px_24px_rgba(19,32,80,0.06)]",
     );
 
   return (
     <div className="mx-auto min-h-0 min-w-0 max-w-full space-y-4 sm:space-y-6">
       <header className="min-w-0">
-        <h1 className="font-solway text-xl font-bold tracking-tight text-[#081A28] sm:text-2xl lg:text-3xl">
+        <p className="app-type-eyebrow mb-1">
+          Help
+        </p>
+        <h1 className="app-type-page-title">
           Support Center
         </h1>
-        <p className="mt-1 font-sans-serifbookflf text-sm text-gray-500 sm:text-base">
+        <p className="app-type-page-subtitle mt-1.5">
           Get help, find answers, and reach our team
         </p>
       </header>
@@ -164,14 +167,14 @@ const SupportPage = () => {
           onClick={() => setActiveSection("contact")}
           className={quickCardClass(activeSection === "contact")}
         >
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 sm:size-12">
-            <MessageCircle className="size-5 text-primary sm:size-6" />
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 sm:size-10">
+            <MessageCircle className="size-4 text-primary sm:size-4.5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-solway text-sm font-bold text-[#081A28] sm:text-base">
+            <p className="app-type-card-title text-sm">
               Contact Us
             </p>
-            <p className="font-sans-serifbookflf text-xs text-gray-500 sm:text-sm">
+            <p className="app-type-meta">
               Send a message to our team
             </p>
           </div>
@@ -183,14 +186,14 @@ const SupportPage = () => {
           onClick={() => setActiveSection("faq")}
           className={quickCardClass(activeSection === "faq")}
         >
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 sm:size-12">
-            <BookOpen className="size-5 text-primary sm:size-6" />
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 sm:size-10">
+            <BookOpen className="size-4 text-primary sm:size-4.5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-solway text-sm font-bold text-[#081A28] sm:text-base">
+            <p className="app-type-card-title text-sm">
               FAQ
             </p>
-            <p className="font-sans-serifbookflf text-xs text-gray-500 sm:text-sm">
+            <p className="app-type-meta">
               Find quick answers
             </p>
           </div>
@@ -201,14 +204,14 @@ const SupportPage = () => {
           href="mailto:learning@rydlearning.com"
           className={cn(quickCardClass(false), "no-underline")}
         >
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 sm:size-12">
-            <Headphones className="size-5 text-primary sm:size-6" />
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 sm:size-10">
+            <Headphones className="size-4 text-primary sm:size-4.5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-solway text-sm font-bold text-[#081A28] sm:text-base">
+            <p className="app-type-card-title text-sm">
               Direct Email
             </p>
-            <p className="break-all font-sans-serifbookflf text-xs text-gray-500 sm:break-normal sm:text-sm">
+            <p className="app-type-meta break-all sm:break-normal">
               learning@rydlearning.com
             </p>
           </div>
@@ -217,10 +220,10 @@ const SupportPage = () => {
       </div>
 
       <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
-        <div className="min-w-0 flex-1 rounded-2xl bg-white p-4 shadow-md sm:p-5 lg:p-6">
+        <div className="min-w-0 flex-1 rounded-lg bg-white p-3.5 shadow-sm sm:p-4 lg:p-5">
           {activeSection === "contact" ? (
             <div>
-              <h2 className="mb-4 font-solway text-base font-bold text-[#081A28] sm:mb-6 sm:text-lg">
+              <h2 className="app-type-section-title mb-4 sm:mb-6">
                 Send us a message
               </h2>
               {isSubmitted ? (
@@ -228,10 +231,10 @@ const SupportPage = () => {
                   <div className="mb-4 inline-flex size-14 items-center justify-center rounded-full bg-primary/10 sm:size-16">
                     <Send className="size-7 text-primary sm:size-8" />
                   </div>
-                  <p className="font-solway text-base font-bold text-[#081A28] sm:text-lg">
+                  <p className="app-type-card-title">
                     Message sent successfully!
                   </p>
-                  <p className="mt-2 font-sans-serifbookflf text-sm text-gray-500">
+                  <p className="app-type-body mt-2">
                     We will back to you shortly.
                   </p>
                   <Button
@@ -249,7 +252,7 @@ const SupportPage = () => {
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                   <div>
-                    <label className="mb-1.5 block font-sans-serifbookflf text-sm font-medium text-gray-700 sm:mb-2">
+                    <label className="app-type-label mb-1.5 block text-sm text-gray-700 sm:mb-2">
                       Your name
                     </label>
                     <Input
@@ -263,7 +266,7 @@ const SupportPage = () => {
                       }
                       disabled={isSubmitting}
                       required
-                      className="h-11 rounded-lg border-gray-200 bg-[#F8F8FA] text-base sm:h-12 sm:text-sm"
+                      className="h-9 rounded-md border-gray-200 bg-[#F8F8FA] text-sm"
                     />
                     {formErrors.name && (
                       <p
@@ -275,7 +278,7 @@ const SupportPage = () => {
                     )}
                   </div>
                   <div>
-                    <label className="mb-1.5 block font-sans-serifbookflf text-sm font-medium text-gray-700 sm:mb-2">
+                    <label className="app-type-label mb-1.5 block text-sm text-gray-700 sm:mb-2">
                       Email address
                     </label>
                     <Input
@@ -290,7 +293,7 @@ const SupportPage = () => {
                       }
                       disabled={isSubmitting}
                       required
-                      className="h-11 rounded-lg border-gray-200 bg-[#F8F8FA] text-base sm:h-12 sm:text-sm"
+                      className="h-9 rounded-md border-gray-200 bg-[#F8F8FA] text-sm"
                     />
                     {formErrors.email && (
                       <p
@@ -302,7 +305,7 @@ const SupportPage = () => {
                     )}
                   </div>
                   <div>
-                    <label className="mb-1.5 block font-sans-serifbookflf text-sm font-medium text-gray-700 sm:mb-2">
+                    <label className="app-type-label mb-1.5 block text-sm text-gray-700 sm:mb-2">
                       Subject
                     </label>
                     <Input
@@ -316,7 +319,7 @@ const SupportPage = () => {
                       }
                       disabled={isSubmitting}
                       required
-                      className="h-11 rounded-lg border-gray-200 bg-[#F8F8FA] text-base sm:h-12 sm:text-sm"
+                      className="h-9 rounded-md border-gray-200 bg-[#F8F8FA] text-sm"
                     />
                     {formErrors.subject && (
                       <p
@@ -328,7 +331,7 @@ const SupportPage = () => {
                     )}
                   </div>
                   <div>
-                    <label className="mb-1.5 block font-sans-serifbookflf text-sm font-medium text-gray-700 sm:mb-2">
+                    <label className="app-type-label mb-1.5 block text-sm text-gray-700 sm:mb-2">
                       Message
                     </label>
                     <textarea
@@ -343,7 +346,7 @@ const SupportPage = () => {
                         formErrors.message ? "contact-message-error" : undefined
                       }
                       disabled={isSubmitting}
-                      className="w-full rounded-lg border border-gray-200 bg-[#F8F8FA] px-3 py-2.5 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 sm:text-sm"
+                      className="w-full rounded-md border border-gray-200 bg-[#F8F8FA] px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0"
                     />
                     {formErrors.message && (
                       <p
@@ -356,7 +359,7 @@ const SupportPage = () => {
                   </div>
                   <Button
                     type="submit"
-                    className="h-11 w-full rounded-lg font-solway sm:h-12"
+                    className="h-9 w-full rounded-md font-solway text-sm"
                     disabled={isSubmitting}
                   >
                     <Send className="mr-2 size-4 shrink-0" />
@@ -367,7 +370,7 @@ const SupportPage = () => {
             </div>
           ) : (
             <div>
-              <h2 className="mb-3 font-solway text-base font-bold text-[#081A28] sm:mb-4 sm:text-lg">
+              <h2 className="app-type-section-title mb-3 sm:mb-4">
                 Frequently asked questions
               </h2>
               <div className="relative mb-4 sm:mb-6">
@@ -379,14 +382,14 @@ const SupportPage = () => {
                   placeholder="Search FAQ..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-11 rounded-lg border-primary/20 bg-[#F3ECFE] pl-10 text-base focus-visible:ring-1 focus-visible:ring-primary sm:h-12 sm:text-sm"
+                  className="h-9 rounded-md border-primary/20 bg-[#F3ECFE] pl-9 text-sm focus-visible:ring-1 focus-visible:ring-primary"
                 />
               </div>
               {filteredFaqs.length > 0 ? (
                 <div className="space-y-4 sm:space-y-5">
                   {filteredFaqs.map((group) => (
                     <div key={group.section} className="space-y-2 sm:space-y-3">
-                      <h3 className="text-[0.65rem] font-semibold uppercase tracking-wider text-gray-500 sm:text-xs">
+                      <h3 className="app-type-eyebrow text-[#666666]">
                         {group.section}
                       </h3>
                       <div className="space-y-2">
@@ -401,8 +404,8 @@ const SupportPage = () => {
                                 setOpenFaq(isOpen ? null : key)
                               }
                             >
-                              <CollapsibleTrigger className="flex w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-transparent bg-gray-50 p-3 text-left text-sm font-medium transition hover:border-primary/20 hover:bg-gray-100 sm:gap-3 sm:p-4 sm:text-base">
-                                <span className="min-w-0 font-sans-serifbookflf">
+                              <CollapsibleTrigger className="app-type-nav flex w-full min-w-0 items-center justify-between gap-2 rounded-md border border-transparent bg-gray-50 p-2.5 text-left font-medium transition hover:border-primary/20 hover:bg-gray-100 sm:gap-3 sm:p-3">
+                                <span className="min-w-0 font-inter">
                                   {item.q}
                                 </span>
                                 <ChevronRight
@@ -424,7 +427,7 @@ const SupportPage = () => {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center px-2 py-10 text-center sm:py-12">
-                  <FileQuestion className="mb-3 size-11 text-gray-300 sm:size-12" />
+                  <FileQuestion className="mb-3 size-9 text-gray-300 sm:size-10" />
                   <p className="font-medium text-gray-600">
                     No matching questions
                   </p>
@@ -438,8 +441,8 @@ const SupportPage = () => {
         </div>
 
         <div className="w-full shrink-0 space-y-3 sm:space-y-4 lg:w-80 lg:shrink-0 xl:w-[20rem]">
-          <div className="rounded-2xl border border-primary/10 bg-linear-to-br from-[#F3ECFE] to-primary/5 p-4 sm:p-6">
-            <h3 className="mb-3 font-solway text-base font-bold text-[#081A28] sm:mb-4 sm:text-lg">
+          <div className="rounded-lg border border-primary/10 bg-linear-to-br from-[#F3ECFE] to-primary/5 p-3.5 sm:p-4">
+            <h3 className="app-type-section-title mb-3 sm:mb-4">
               Support channels
             </h3>
             <div className="space-y-3 sm:space-y-4">
@@ -454,10 +457,10 @@ const SupportPage = () => {
                       <IconComponent className="size-4 text-primary sm:size-5" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-sans-serifbookflf text-xs font-semibold text-[#081A28] sm:text-sm">
+                      <p className="app-type-meta font-semibold text-[#0A090B]">
                         {channel.title}
                       </p>
-                      <p className="text-sm font-medium text-primary sm:text-base">
+                      <p className="app-type-body font-medium text-primary">
                         {channel.desc}
                       </p>
                       <p className="mt-0.5 text-xs text-gray-500">
@@ -470,17 +473,17 @@ const SupportPage = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl border bg-white p-4 shadow-md sm:p-6">
-            <h3 className="mb-2 font-solway text-base font-bold text-[#081A28] sm:mb-3 sm:text-lg">
+          <div className="rounded-lg border bg-white p-3.5 shadow-sm sm:p-4">
+            <h3 className="app-type-section-title mb-2 sm:mb-3">
               Need urgent help?
             </h3>
-            <p className="mb-3 font-sans-serifbookflf text-sm text-gray-600 sm:mb-4">
+            <p className="app-type-body mb-3 sm:mb-4">
               For critical issues, email us directly with "Urgent" in the subject
               line.
             </p>
             <Button
               variant="outline"
-              className="h-11 w-full rounded-lg sm:h-12"
+              className="h-9 w-full rounded-md text-sm"
               onClick={() => {
                 setActiveSection("contact");
                 setFormData((prev) => ({ ...prev, subject: "Urgent - " }));

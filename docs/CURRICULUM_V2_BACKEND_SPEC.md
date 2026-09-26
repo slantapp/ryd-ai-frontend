@@ -214,6 +214,7 @@ Every beat object:
 | `advance` | **`on_answer`** |
 | `retry` | No |
 | `avatar.on_ask`, `on_correct`, `on_wrong`, `before_demo`, `handoff`, `show` | No — fall back to `defaults.avatar` |
+| `avatar.gesture`, `gesture_on_correct`, `gesture_on_wrong` | No — omit for auto speech gestures only |
 
 ### `pause`
 
@@ -399,6 +400,7 @@ Entire `defaults` object is **optional**.
 14. `recap`: non-empty `points[]`.
 15. `bridge`: `next` is string or `null`.
 16. If `avatar.show` present: validate `say` / `as` shape; warn if `say` not in spoken text.
+17. If `avatar.gesture` / `gesture_on_correct` / `gesture_on_wrong` present: must be an allowed name (`handup`, `index`, `ok`, `thumbup`, `thumbdown`, `side`, `shrug`) or `{ name, … }`.
 17. `formula_test`: `testCriteria.expectedFormula` required.
 18. Optional string fields (`starterCode`, `supportingCode`, etc.): if key exists, value must be string.
 

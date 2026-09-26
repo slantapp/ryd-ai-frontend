@@ -64,6 +64,11 @@ const DashboardLayout = ({ children }: DashboardProps) => {
   const isDemoSneakPeek =
     location.pathname === PRIVATE_PATHS.DEMO_SNEAK_PEEK ||
     location.pathname.startsWith(`${PRIVATE_PATHS.DEMO_SNEAK_PEEK}/`);
+  /** Live lesson player needs a fixed-height flex shell (same as sneak peek). */
+  const isCourseLearning =
+    location.pathname.startsWith(`${PRIVATE_PATHS.COURSES}/`) &&
+    location.pathname !== PRIVATE_PATHS.COURSES;
+  const fillLearningShell = isDemoSneakPeek || isCourseLearning;
 
   /** Forced password change takes priority over subscription / profile gates. */
   const showPasswordResetGate = !isDemoSneakPeek && mustResetPassword;
@@ -232,39 +237,53 @@ const DashboardLayout = ({ children }: DashboardProps) => {
 
   return (
     <div
-      className="flex h-screen flex-col items-stretch gap-4 overflow-hidden bg-white bg-[url('/images/auth-bg.png')] bg-cover bg-center bg-no-repeat"
+      className="relative flex h-screen overflow-hidden bg-[#F7F5FA] bg-[url('/images/auth-bg.png')] bg-cover bg-center bg-no-repeat"
       inert={alatCheckoutActive ? true : undefined}
     >
-      <TopNav
-        onOpenMobileNav={
-          isDemoSneakPeek ? undefined : () => setMobileNavOpen(true)
-        }
-        hideMobileMenu={isDemoSneakPeek}
+      <div
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/40 via-[#F7F5FA]/55 to-[#F7F5FA]/85"
+        aria-hidden
       />
+
+      <SideNav
+        mobileNavOpen={mobileNavOpen && !isDemoSneakPeek}
+        onMobileNavClose={closeMobileNav}
+        locked={isDemoSneakPeek}
+      />
+
       <div
         className={cn(
-          "relative mx-auto flex h-full min-h-0 w-full max-w-[1440px] gap-4 overflow-hidden rounded-t-2xl transition-all duration-300 ease-in-out md:mt-24 mt-20",
-          isDemoSneakPeek
-            ? "px-2 pb-2 sm:px-3 sm:pb-3"
-            : "px-3 pb-6 sm:px-4 sm:pb-4",
+          "relative mx-auto flex h-full min-h-0 w-full max-w-[1440px] flex-1 flex-col",
+          // Offset for full-height sidebar on desktop
+          "lg:pl-60",
         )}
       >
-        <SideNav
-          mobileNavOpen={mobileNavOpen && !isDemoSneakPeek}
-          onMobileNavClose={closeMobileNav}
-          locked={isDemoSneakPeek}
-        />
         <div
           className={cn(
-            "min-h-0 w-full min-w-0 flex-1 rounded-[20px] bg-white shadow-lg",
-            isDemoSneakPeek
-              ? "flex flex-col overflow-hidden p-2 sm:p-3 lg:ml-76"
-              : "overflow-y-auto scrollbar-hide p-3 sm:p-4 lg:ml-76",
+            "flex min-h-0 flex-1 flex-col overflow-hidden",
+            "max-lg:m-2 max-lg:rounded-lg max-lg:border max-lg:border-[#E8E6EC] sm:max-lg:m-3",
+            "lg:my-0 lg:mr-0 lg:rounded-none lg:border-0",
             mobileNavOpen && "max-lg:overflow-hidden",
           )}
           inert={blockDashboardAccess ? true : undefined}
         >
-          {children}
+          <TopNav
+            onOpenMobileNav={
+              isDemoSneakPeek ? undefined : () => setMobileNavOpen(true)
+            }
+            hideMobileMenu={isDemoSneakPeek}
+          />
+          <div
+            className={cn(
+              "min-h-0 min-w-0 flex-1",
+              fillLearningShell
+                ? "flex flex-col overflow-hidden bg-white"
+                : // Soft neutral canvas so white cards / chrome actually separate
+                  "overflow-y-auto bg-[#F5F4F7] scrollbar-hide p-3 sm:p-4 md:p-5",
+            )}
+          >
+            {children}
+          </div>
         </div>
       </div>
 
@@ -274,7 +293,7 @@ const DashboardLayout = ({ children }: DashboardProps) => {
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
-          className="max-w-md rounded-2xl"
+          className="max-w-md rounded-lg"
         >
           <DialogHeader>
             <DialogTitle className="font-solway">

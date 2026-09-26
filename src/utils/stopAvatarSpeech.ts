@@ -22,6 +22,8 @@ export function stopAvatarSpeech(avatar?: AvatarSpeechRef) {
 
   try {
     document.querySelectorAll("audio").forEach((el) => {
+      // Keep learning feedback SFX playing under instructor TTS cleanup.
+      if (el.hasAttribute("data-ryd-learning-sfx")) return;
       el.pause();
       el.currentTime = 0;
       el.src = "";

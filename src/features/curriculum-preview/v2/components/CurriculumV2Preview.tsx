@@ -19,10 +19,13 @@ import {
   findLessonV2ById,
   getFirstLessonV2,
   getNextLessonV2,
+  isModuleCompleteAfterLesson,
 } from "../navigation";
+import { playLearningSfx } from "../learningSfx";
 import type { CurriculumV2Data, LessonV2 } from "../types";
 import { LessonPlayer } from "./LessonPlayer";
 import { V2Sidebar } from "./V2Sidebar";
+import { LearningStreakPopup } from "@/components/courses/LearningStreakPopup";
 import {
   clearV2LessonDraft,
   loadV2LessonDraft,
@@ -168,10 +171,13 @@ export function CurriculumV2Preview({
       setCompletedLessons((prev) => {
         const next = new Set(prev);
         next.add(lessonId);
+        if (isModuleCompleteAfterLesson(curriculum, lessonId, next)) {
+          playLearningSfx("moduleComplete");
+        }
         return next;
       });
     },
-    [previewScope],
+    [curriculum, previewScope],
   );
 
   const handleNextLesson = useCallback(
@@ -199,6 +205,7 @@ export function CurriculumV2Preview({
   }
 
   return (
+    <>
     <div className="flex h-screen min-h-0 bg-[#f4f6f8]">
       <button
         type="button"
@@ -380,5 +387,7 @@ export function CurriculumV2Preview({
         </div>
       </div>
     </div>
+    <LearningStreakPopup />
+    </>
   );
 }

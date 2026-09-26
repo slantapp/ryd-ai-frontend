@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import Split from "react-split";
-import NarratorAvatar from "narrator-avatar";
+import NarratorAvatar, { type NarratorAvatarRef } from "@thattobi/narrator-avatar";
 import { Calculator, CheckCircle2, Mic, Pause, Play, RotateCcw, Volume2, XCircle } from "lucide-react";
 import {
   type Question,
@@ -61,13 +61,13 @@ import {
 } from "@/utils/courseProgress";
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
-
-interface NarratorAvatarRef {
-  speakText: (text: string, options?: Record<string, unknown>) => void;
-  pauseSpeaking: () => void;
-  resumeSpeaking: () => void;
-  stopSpeaking: () => void;
-}
+import { LessonStartGate } from "@/components/courses/LessonStartGate";
+import {
+  createLearningStreakState,
+  notifyLearningAnswerOutcome,
+  playLearningSfx,
+  resetLearningAnswerStreak,
+} from "@/features/curriculum-preview/v2/learningSfx";
 
 interface CourseProgress {
   lessonId: string | null;
@@ -103,7 +103,7 @@ type PendingAction =
 
 function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
   return (
-    <div className="relative flex size-11 shrink-0 items-center justify-center sm:size-12">
+    <div className="relative flex size-9 shrink-0 items-center justify-center">
       {isSpeaking && (
         <>
           <span className="absolute inline-flex size-[120%] animate-ping rounded-full bg-primary/30" />
@@ -112,15 +112,15 @@ function InstructorSpeakingIndicator({ isSpeaking }: { isSpeaking: boolean }) {
       )}
       <div
         className={cn(
-          "relative flex size-9 items-center justify-center rounded-xl border-2 bg-white shadow-md transition-all duration-300 sm:size-10",
+          "relative flex size-7 items-center justify-center rounded-lg border-2 bg-white shadow-sm transition-all duration-300",
           isSpeaking
-            ? "scale-105 border-primary shadow-lg shadow-primary/25"
+            ? "scale-105 border-primary shadow-md shadow-primary/20"
             : "border-primary/25",
         )}
       >
         <Mic
           className={cn(
-            "size-[1.15rem] text-primary sm:size-5",
+            "size-3.5 text-primary",
             isSpeaking && "animate-pulse",
           )}
           aria-hidden
@@ -187,6 +187,8 @@ function MathCourseDetailsInner() {
   // rapid repeated clicks from producing impossible totals such as 4 out of 3.
   const answerResultsRef = useRef<Map<number, boolean>>(new Map());
   const answerSubmissionInFlightRef = useRef(false);
+  /** Consecutive correct answers (each question counts once toward streak). */
+  const correctStreakRef = useRef(createLearningStreakState());
   const [progressPct, setProgressPct] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const pausedLiveRef = useRef(false);
@@ -300,6 +302,7 @@ function MathCourseDetailsInner() {
     setIsAnswerSubmitted(false);
     setStudentAnswer("");
     setLastAnswerCorrect(null);
+    resetLearningAnswerStreak(correctStreakRef.current);
   }, []);
 
   const getAvatar = useCallback(() => avatarRef.current, []);
@@ -849,6 +852,7 @@ function MathCourseDetailsInner() {
 
     let completionMessage = "";
     if (isLastLessonInModule) {
+      playLearningSfx("moduleComplete");
       completionMessage = `Congratulations! You've completed this module. ${lessonSummary}${lessonScore}`;
       if (newModuleTotal > 0) {
         completionMessage += ` Across all lessons in this module, you answered ${newModuleCorrect} out of ${newModuleTotal} questions correctly.`;
@@ -1564,9 +1568,16 @@ function MathCourseDetailsInner() {
     }
     setLastAnswerCorrect(isCorrect);
     recordAnswerResult(isCorrect);
+    notifyLearningAnswerOutcome(
+      isCorrect,
+      correctStreakRef.current,
+      `${currentLesson?.id ?? "lesson"}:q:${currentQuestionIndex}`,
+    );
     speak(feedbackText, { type: "next_question" });
   }, [
+    currentLesson?.id,
     currentQuestion,
+    currentQuestionIndex,
     isAnswerSubmitted,
     recordAnswerResult,
     selectedAnswer,
@@ -1584,13 +1595,20 @@ function MathCourseDetailsInner() {
       : false;
     setLastAnswerCorrect(isCorrect);
     recordAnswerResult(isCorrect);
+    notifyLearningAnswerOutcome(
+      isCorrect,
+      correctStreakRef.current,
+      `${currentLesson?.id ?? "lesson"}:q:${currentQuestionIndex}`,
+    );
 
     const feedbackText = isCorrect
       ? `Correct! Well done. ${currentQuestion.explanation ?? ""}`
       : `Not quite. The expected answer is ${expected}. ${currentQuestion.explanation ?? ""}`;
     speak(feedbackText, { type: "next_question" });
   }, [
+    currentLesson?.id,
     currentQuestion,
+    currentQuestionIndex,
     isAnswerSubmitted,
     recordAnswerResult,
     speak,
@@ -1977,20 +1995,20 @@ function MathCourseDetailsInner() {
         <div
           className={cn(
             "relative flex min-h-0 min-w-0 flex-col overflow-hidden",
-            isLgUp ? "pr-4" : "",
+            isLgUp ? "p-3 sm:p-4" : "",
           )}
         >
           {isLgUp && (
             <>
-              <div className="mb-3 flex shrink-0 items-center gap-2 text-primary">
-                <Calculator className="size-5 shrink-0" aria-hidden />
-                <span className="text-xs font-bold uppercase tracking-wide sm:text-sm">
+              <div className="mb-3 flex shrink-0 items-center gap-1.5 text-primary">
+                <Calculator className="size-4 shrink-0" aria-hidden />
+                <span className="text-[0.65rem] font-bold uppercase tracking-wide sm:text-xs">
                   Math classroom
                 </span>
               </div>
               {lessonStarted && lessonNav && (
                 <>
-                  <div className="mb-3 flex items-center gap-3">
+                  <div className="mb-3 flex items-center gap-1.5">
                     <LessonProgressBar
                       value={progressPct}
                       label={lessonNav.positionLabel}
@@ -2003,9 +2021,9 @@ function MathCourseDetailsInner() {
                           onClick={handleRewindSpeech}
                           title="Rewind 10 seconds"
                           aria-label="Rewind 10 seconds"
-                          className="mt-4 flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                          className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
                         >
-                          <RotateCcw className="size-3.5" aria-hidden />
+                          <RotateCcw className="size-3" aria-hidden />
                           <span className="hidden min-[420px]:inline">-10s</span>
                         </button>
                         <button
@@ -2016,12 +2034,12 @@ function MathCourseDetailsInner() {
                             isPaused ? "Resume the lesson" : "Pause the lesson"
                           }
                           aria-pressed={isPaused}
-                          className="mt-4 flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                          className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
                         >
                           {isPaused ? (
-                            <Play className="size-3.5" aria-hidden />
+                            <Play className="size-3" aria-hidden />
                           ) : (
-                            <Pause className="size-3.5" aria-hidden />
+                            <Pause className="size-3" aria-hidden />
                           )}
                           {isPaused ? "Resume" : "Pause"}
                         </button>
@@ -2060,17 +2078,17 @@ function MathCourseDetailsInner() {
           {!isLgUp && (
             <div className="shrink-0 border-b border-primary/10 bg-white/95 shadow-sm backdrop-blur-md supports-backdrop-filter:bg-white/80">
               <PageLoadWaitBanner isLoading={isInstructorWaiting} />
-              <div className="flex items-center gap-3 px-3 py-2">
+              <div className="flex items-center gap-2.5 px-3 py-2">
                 <InstructorSpeakingIndicator isSpeaking={isSpeaking} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <Calculator className="size-3.5 shrink-0 text-primary sm:size-4" aria-hidden />
+                    <Calculator className="size-3 shrink-0 text-primary" aria-hidden />
                     <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/80">
                       Math instructor
                     </p>
                   </div>
                   <p
-                    className="truncate text-xs text-gray-600 sm:text-sm"
+                    className="truncate text-xs text-gray-600"
                     title={
                       isPaused
                         ? currentSubtitle || "Paused"
@@ -2093,9 +2111,9 @@ function MathCourseDetailsInner() {
                       onClick={handleRewindSpeech}
                       title="Rewind 10 seconds"
                       aria-label="Rewind 10 seconds"
-                      className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
                     >
-                      <RotateCcw className="size-3.5" aria-hidden />
+                      <RotateCcw className="size-3" aria-hidden />
                       <span className="hidden min-[360px]:inline">-10s</span>
                     </button>
                     <button
@@ -2104,12 +2122,12 @@ function MathCourseDetailsInner() {
                       title={isPaused ? "Resume the lesson" : "Pause the lesson"}
                       aria-label={isPaused ? "Resume the lesson" : "Pause the lesson"}
                       aria-pressed={isPaused}
-                      className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
                     >
                       {isPaused ? (
-                        <Play className="size-3.5" aria-hidden />
+                        <Play className="size-3" aria-hidden />
                       ) : (
-                        <Pause className="size-3.5" aria-hidden />
+                        <Pause className="size-3" aria-hidden />
                       )}
                       <span className="hidden min-[360px]:inline">
                         {isPaused ? "Resume" : "Pause"}
@@ -2119,16 +2137,16 @@ function MathCourseDetailsInner() {
                 )}
               </div>
               {showMobileAudioUnlock && (
-                <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-3">
-                  <p className="mb-2.5 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
+                <div className="border-t border-primary/15 bg-linear-to-b from-primary/10 to-primary/5 px-3 py-2.5">
+                  <p className="mb-2 text-center text-[0.7rem] leading-snug text-gray-600 sm:text-xs">
                     {MOBILE_INSTRUCTOR_AUDIO_HINT}
                   </p>
                   <button
                     type="button"
                     onClick={handleMobileAudioUnlock}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary/90 active:scale-[0.99]"
+                    className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 active:scale-[0.99]"
                   >
-                    <Volume2 className="size-5 shrink-0" aria-hidden />
+                    <Volume2 className="size-4 shrink-0" aria-hidden />
                     <span className="whitespace-nowrap">
                       {MOBILE_INSTRUCTOR_AUDIO_BUTTON}
                     </span>
@@ -2249,31 +2267,37 @@ function MathCourseDetailsInner() {
                 )}
               </div>
             ) : (
-              <div className="flex flex-1 items-center justify-center px-2 py-8 sm:py-12">
-                <div className="w-full max-w-md text-center">
-                  <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg sm:mb-6 sm:size-16">
-                    <Calculator className="size-7 sm:size-8" />
-                  </div>
-                  <h2 className="mb-2 text-xl font-bold text-gray-900 sm:text-2xl">
-                    {canResume ? "Continue your lesson?" : "Ready for math?"}
-                  </h2>
-                  <p className="mb-6 text-sm leading-relaxed text-gray-600 sm:text-base">
-                    {canResume && currentLesson
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <LessonStartGate
+                  className="min-h-[min(100%,22rem)] bg-transparent"
+                  heading={
+                    canResume ? "Continue your lesson?" : "Ready for math?"
+                  }
+                  courseOrLessonTitle={
+                    canResume && currentLesson
+                      ? currentLesson.title
+                      : curriculum?.title ?? "Mathematics"
+                  }
+                  description={
+                    canResume && currentLesson
                       ? `Resume “${currentLesson.title}”. Tap below and your instructor will start speaking again.`
-                      : "Your instructor will guide you through formulas, examples, and practice questions — built for learning mathematics."}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleStartLesson}
-                    className="mx-auto flex w-full max-w-xs items-center justify-center gap-3 rounded-full bg-primary px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 active:scale-[0.98] sm:max-w-none sm:px-10 sm:py-4"
-                  >
-                    <Play className="size-5 shrink-0 fill-white" />
-                    {canResume ? "Continue learning" : "Start learning"}
-                  </button>
-                  {canResume ? (
-                    <CourseProgressResetLink onReset={handleRestartCourse} />
-                  ) : null}
-                </div>
+                      : "Your instructor will guide you through formulas, examples, and practice questions — built for learning mathematics."
+                  }
+                  ctaLabel={
+                    canResume ? "Continue learning" : "Start learning"
+                  }
+                  onStart={handleStartLesson}
+                  chips={[
+                    "Formula demos",
+                    "Guided practice",
+                    "Check your work",
+                  ]}
+                  footer={
+                    canResume ? (
+                      <CourseProgressResetLink onReset={handleRestartCourse} />
+                    ) : null
+                  }
+                />
               </div>
             )}
           </div>

@@ -87,11 +87,11 @@ const PasswordContent = () => {
   };
 
   const inputClass =
-    "h-12 rounded-xl border-[#E8E8EC] bg-[#F8F8FA] px-4 font-inter text-[#0A090B] placeholder:text-[#4F4D55]/70";
+    "h-9 rounded-md border-[#E8E8EC] bg-[#F8F8FA] px-3 font-inter text-sm text-[#0A090B] placeholder:text-[#4F4D55]/70";
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold font-solway text-gray-900">
+      <h2 className="app-type-section-title">
         Change password
       </h2>
       <p className="text-sm text-gray-600">
@@ -195,7 +195,7 @@ const PasswordContent = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="h-12 w-full max-w-xs rounded-xl font-solway text-base font-semibold"
+              className="h-9 w-full max-w-xs rounded-md font-solway text-sm font-semibold"
             >
               {loading ? "Updating…" : "Update password"}
             </Button>

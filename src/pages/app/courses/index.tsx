@@ -231,10 +231,10 @@ const CoursesPage = () => {
   ]);
 
   const tabTriggerClass = cn(
-    "shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-all sm:px-4 sm:py-2 sm:text-sm md:px-6",
+    "h-8 shrink-0 rounded-md px-2.5 py-1 text-xs font-semibold transition-all sm:px-3",
     "font-solway whitespace-nowrap",
-    "data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md",
-    "data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-900"
+    "data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm",
+    "data-[state=inactive]:text-[#132050]/65 data-[state=inactive]:hover:text-[#132050]",
   );
 
   const activeCategoryMeta = selectedCategoryId
@@ -252,10 +252,13 @@ const CoursesPage = () => {
       <section className="flex min-h-0 flex-1 flex-col space-y-3 sm:space-y-4">
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <h2 className="font-solway text-xl font-bold tracking-tight text-[#0A090B] sm:text-2xl lg:text-3xl">
+            <p className="app-type-eyebrow mb-1">
+              Library
+            </p>
+            <h2 className="app-type-page-title">
               Courses Collection
             </h2>
-            <p className="mt-1 font-inter text-sm text-gray-600 sm:text-base">
+            <p className="app-type-page-subtitle mt-1.5">
               {selectedCategoryId
                 ? `Courses in ${activeCategoryMeta?.title ?? "this category"}.`
                 : isSearching
@@ -265,7 +268,7 @@ const CoursesPage = () => {
           </div>
           <div className="relative w-full sm:max-w-xs lg:max-w-sm">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400"
+              className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[#132050]/35"
               aria-hidden
             />
             <Input
@@ -273,7 +276,7 @@ const CoursesPage = () => {
               placeholder="Search courses..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-10 rounded-lg border-primary/20 bg-white pl-9 font-inter text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-9 rounded-md border border-[#EDEAF3] bg-[#F8F8FA] pl-8 font-inter text-sm shadow-none transition-colors focus-visible:border-primary/25 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-primary/30"
               aria-label="Search courses"
             />
           </div>
@@ -286,7 +289,7 @@ const CoursesPage = () => {
         >
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] scrollbar-hide">
-              <TabsList className="inline-flex h-auto min-w-min gap-1 rounded-xl bg-gray-100/50 p-1 sm:w-fit">
+              <TabsList className="inline-flex h-9 min-w-min gap-0.5 rounded-md border border-[#EDEAF3] bg-[#F8F8FA] p-0.5 sm:w-fit">
                 <TabsTrigger className={tabTriggerClass} value="all">
                   All ({getAllCourses().length})
                 </TabsTrigger>
@@ -302,7 +305,7 @@ const CoursesPage = () => {
             {showAgeClassFilters && (
               <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="flex items-center justify-between gap-2 sm:justify-end">
-                  <label className="font-inter text-xs font-medium text-gray-600">
+                  <label className="app-type-label">
                     Learner age
                   </label>
                   <div className="min-w-[min(100%,11rem)] sm:min-w-[10rem]">
@@ -314,7 +317,7 @@ const CoursesPage = () => {
                         )
                       }
                     >
-                      <SelectTrigger className="h-10 shadow-none">
+                      <SelectTrigger className="h-9 shadow-none">
                         <SelectValue placeholder="All ages" />
                       </SelectTrigger>
                       <SelectContent>
@@ -330,12 +333,12 @@ const CoursesPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center justify-between gap-2 sm:justify-end">
-                  <label className="font-inter text-xs font-medium text-gray-600">
+                  <label className="app-type-label">
                     Class
                   </label>
                   <div className="min-w-[min(100%,11rem)] sm:min-w-[12rem]">
                     <Select value={classFilter} onValueChange={setClassFilter}>
-                      <SelectTrigger className="h-10 shadow-none">
+                      <SelectTrigger className="h-9 shadow-none">
                         <SelectValue placeholder="All classes" />
                       </SelectTrigger>
                       <SelectContent>
@@ -354,7 +357,7 @@ const CoursesPage = () => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-10 shrink-0 font-inter shadow-none"
+                    className="h-9 shrink-0 font-inter shadow-none"
                     onClick={resetFilters}
                   >
                     Reset filters
@@ -366,7 +369,7 @@ const CoursesPage = () => {
             {showLevelFilter && (
               <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="flex items-center justify-between gap-2 sm:justify-end">
-                  <label className="font-inter text-xs font-medium text-gray-600">
+                  <label className="app-type-label">
                     Level
                   </label>
                   <div className="min-w-[min(100%,11rem)] sm:min-w-[12rem]">
@@ -376,7 +379,7 @@ const CoursesPage = () => {
                         setLevelFilter(v as "all" | CourseLevelFilter)
                       }
                     >
-                      <SelectTrigger className="h-10 shadow-none">
+                      <SelectTrigger className="h-9 shadow-none">
                         <SelectValue placeholder="All levels" />
                       </SelectTrigger>
                       <SelectContent>
@@ -395,7 +398,7 @@ const CoursesPage = () => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-10 shrink-0 font-inter shadow-none"
+                    className="h-9 shrink-0 font-inter shadow-none"
                     onClick={resetFilters}
                   >
                     Reset filters
@@ -409,17 +412,17 @@ const CoursesPage = () => {
             {curriculaLoading && !curriculaFetched ? (
               <div className="flex flex-col items-center justify-center px-2 py-16 text-center">
                 <Loader2 className="mb-3 size-10 animate-spin text-primary" />
-                <p className="font-inter text-sm text-gray-600">
+                <p className="app-type-body">
                   Loading courses…
                 </p>
               </div>
             ) : filteredCourses.length === 0 ? (
               <div className="flex flex-col items-center justify-center px-2 py-12 text-center sm:py-16">
                 <BookOpen className="mb-3 size-14 text-gray-300 sm:mb-4 sm:size-16" />
-                <h3 className="mb-2 text-base font-semibold text-gray-700 sm:text-lg">
+                <h3 className="app-type-card-title mb-2">
                   No courses found
                 </h3>
-                <p className="max-w-sm text-sm text-gray-500 sm:text-base">
+                <p className="app-type-body max-w-sm">
                   {isSearching
                     ? "Nothing matches your search. Try a different title or keyword."
                     : activeTab === "ongoing"
@@ -442,7 +445,7 @@ const CoursesPage = () => {
               </div>
             ) : !selectedCategoryId && isSearching ? (
               <div className="space-y-4 pb-4 sm:space-y-5">
-                <p className="font-inter text-sm font-medium text-gray-800">
+                <p className="app-type-body font-medium text-[#0A090B]">
                   {filteredCourses.length}{" "}
                   {filteredCourses.length === 1 ? "result" : "results"}
                 </p>
@@ -461,7 +464,7 @@ const CoursesPage = () => {
               </div>
             ) : !selectedCategoryId ? (
               <div className="space-y-4 pb-4 sm:space-y-5">
-                <p className="font-inter text-sm font-medium text-gray-800">
+                <p className="app-type-body font-medium text-[#0A090B]">
                   Categories
                 </p>
                 <div className="grid auto-rows-fr grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:gap-4">
@@ -491,10 +494,10 @@ const CoursesPage = () => {
                   </Button>
                   {activeCategoryMeta && (
                     <div>
-                      <h3 className="font-solway text-lg font-bold text-[#0A090B] sm:text-xl">
+                      <h3 className="app-type-section-title">
                         {activeCategoryMeta.title}
                       </h3>
-                      <p className="mt-0.5 font-inter text-sm text-gray-600">
+                      <p className="app-type-body mt-0.5">
                         {activeCategoryMeta.subtitle}
                       </p>
                     </div>
@@ -504,10 +507,10 @@ const CoursesPage = () => {
                 {coursesInCategory.length === 0 ? (
                   <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-12 text-center">
                     <BookOpen className="mb-3 size-12 text-gray-300" />
-                    <h4 className="font-solway text-base font-semibold text-gray-800">
+                    <h4 className="app-type-card-title">
                       No courses found
                     </h4>
-                    <p className="mt-1 max-w-sm font-inter text-sm text-gray-600">
+                    <p className="app-type-body mt-1 max-w-sm">
                       {isSearching
                         ? "Nothing in this category matches your search."
                         : hasActiveFilters

@@ -1,14 +1,7 @@
 import { useRef, useMemo, useCallback, useState } from "react";
-import NarratorAvatar from "narrator-avatar";
+import NarratorAvatar, { type NarratorAvatarRef } from "@thattobi/narrator-avatar";
 import { Volume2 } from "lucide-react";
 import type { InstructorType } from "../types";
-
-type NarratorAvatarRef = {
-  speakText: (text: string, options?: Record<string, unknown>) => void;
-  stopSpeaking: () => void;
-  pauseSpeaking: () => void;
-  resumeSpeaking: () => void;
-};
 
 const INSTRUCTORS = {
   woman: {

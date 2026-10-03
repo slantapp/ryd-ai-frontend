@@ -1788,10 +1788,10 @@
   dependencies:
     "@tanstack/query-core" "5.90.12"
 
-"@thattobi/narrator-avatar@^1.1.10":
-  version "1.1.10"
-  resolved "https://registry.npmjs.org/@thattobi/narrator-avatar/-/narrator-avatar-1.1.10.tgz"
-  integrity sha512-AskOwYEpaw0nawZvhQlNKx1LqyUw1MT3aUTvGVb9bqaDXtW8lubvrrh6O0KRt4UZgRpRah6/yjl5+OtPuvGYCA==
+"@thattobi/narrator-avatar@1.1.11":
+  version "1.1.11"
+  resolved "https://registry.npmjs.org/@thattobi/narrator-avatar/-/narrator-avatar-1.1.11.tgz"
+  integrity sha512-OSUBviW2rs/oMdAteAMNk8K15e0l49ynkUhZ99RpiiaETSEIU2zojkfRE4a1cbsjK47jVWkyertDKpdqIgX+iw==
   dependencies:
     "@met4citizen/headaudio" "^0.1.0"
     "@met4citizen/talkinghead" "^1.7.0"

@@ -3,7 +3,7 @@ import { AVATAR_HAND_GESTURE_NAMES, AVATAR_TEACHING_GESTURE_NAMES } from "@/feat
 
 type GestureDetail = { label: string; motion: string; useWhen: string };
 
-/** Descriptions match the rig-safe poses and sequences in narrator-avatar 1.1.10. */
+/** Descriptions match the rig-safe poses and sequences in narrator-avatar 1.1.11. */
 export const GESTURE_DETAILS: Record<AvatarGestureName, GestureDetail> = {
   handup: { label: "Hand up", motion: "Raises one hand with an open palm.", useWhen: "Greeting or inviting attention." },
   index: { label: "Point", motion: "Raises an index finger to point out a detail.", useWhen: "Directing attention to one idea or step." },

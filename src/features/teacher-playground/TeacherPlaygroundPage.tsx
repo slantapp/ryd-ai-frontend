@@ -133,8 +133,7 @@ export default function TeacherPlaygroundPage() {
                 cameraY={-0.32}
                 visualQuality="auto"
                 ttsService="deepgram"
-                // The installed package rebuilds WebGL when this prop changes.
-                // Speak passes the selected voice per request, without remounting the avatar.
+                // Keep the base voice stable; Speak auditions another model per request.
                 ttsVoice={instructorConfig.ttsVoice}
                 ttsApiKey={DEMO_KEY || undefined}
                 deepgramEndpoint={DEEPGRAM_DEMO_ENDPOINT}

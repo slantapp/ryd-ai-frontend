@@ -15,6 +15,15 @@ const STANDALONE_ROUTES: Record<string, React.ReactNode> = {
   [PRIVATE_PATHS.CURRICULUM_EDIT]: <CurriculumEditPage />,
 };
 
+/** Match standalone routes regardless of trailing slash or casing, so they never fall through to the auth/subscription-gated layouts. */
+const getStandaloneRoute = (pathname: string) => {
+  const normalized = (pathname.replace(/\/+$/, "") || "/").toLowerCase();
+  const key = Object.keys(STANDALONE_ROUTES).find(
+    (path) => path.toLowerCase() === normalized,
+  );
+  return key ? STANDALONE_ROUTES[key] : null;
+};
+
 const PublicRouteWrapper = () => {
   const routes = useRoutes(PUBLIC_ROUTES);
   return routes;
@@ -28,10 +37,11 @@ const Pages = () => {
   const location = useLocation();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
-  if (location.pathname in STANDALONE_ROUTES) {
+  const standaloneRoute = getStandaloneRoute(location.pathname);
+  if (standaloneRoute) {
     return (
       <>
-        {STANDALONE_ROUTES[location.pathname]}
+        {standaloneRoute}
         <ContactMessageWidget />
       </>
     );

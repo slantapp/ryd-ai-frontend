@@ -27,7 +27,6 @@ import { Loader2 } from "lucide-react";
 import { devSkipSubscriptionGate } from "@/utils/devSubscriptionBypass";
 import { stopAvatarSpeech } from "@/utils/stopAvatarSpeech";
 import { ContactMessageWidget } from "@/components/contact/ContactMessageWidget";
-import { useAlatCheckoutActive } from "@/utils/alatPay";
 
 interface DashboardProps {
   children?: ReactNode;
@@ -46,7 +45,6 @@ const DashboardLayout = ({ children }: DashboardProps) => {
   const [subscribeViewBump, setSubscribeViewBump] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
-  const alatCheckoutActive = useAlatCheckoutActive();
   const navigate = useNavigate();
   const location = useLocation();
   const logout = useAuthStore((s) => s.logout);
@@ -238,7 +236,6 @@ const DashboardLayout = ({ children }: DashboardProps) => {
   return (
     <div
       className="relative flex h-screen overflow-hidden bg-[#F7F5FA] bg-[url('/images/auth-bg.png')] bg-cover bg-center bg-no-repeat"
-      inert={alatCheckoutActive ? true : undefined}
     >
       <div
         className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/40 via-[#F7F5FA]/55 to-[#F7F5FA]/85"

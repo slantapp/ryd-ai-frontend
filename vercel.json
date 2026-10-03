@@ -2,5 +2,13 @@
   "rewrites": [
     { "source": "/api/deepgram/v1/speak", "destination": "https://api.deepgram.com/v1/speak" },
     { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/avatars/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    }
   ]
 }

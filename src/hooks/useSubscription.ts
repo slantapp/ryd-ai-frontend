@@ -1,7 +1,6 @@
 import {
   applyReferralCode,
   cancelSubscription,
-  confirmAlatOneTimeCheckout,
   createCheckoutSession,
   fetchSubscriptionHistory,
   fetchSubscriptionPlans,
@@ -12,7 +11,6 @@ import {
   type CheckoutRequest,
   type ApplyReferralCodeRequest,
   type AlatOneTimeInitRequest,
-  type AlatOneTimeConfirmRequest,
   type UpgradeSubscriptionRequest,
 } from "@/api/subscription";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -73,18 +71,6 @@ export function useInitAlatOneTimeCheckout() {
   });
 }
 
-export function useConfirmAlatOneTimeCheckout() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: AlatOneTimeConfirmRequest) =>
-      confirmAlatOneTimeCheckout(payload),
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: subscriptionKeys.status() });
-      void queryClient.invalidateQueries({ queryKey: subscriptionKeys.history() });
-    },
-  });
-}
-
 export function useCancelSubscription() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -118,4 +104,3 @@ export function useUpgradeSubscription() {
     },
   });
 }
-

@@ -22,7 +22,6 @@ import { toast } from "react-toastify";
 import { Check, Loader2, ShieldCheck, TicketPercent, Zap } from "lucide-react";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 import type { SubscriptionPlan } from "@/api/subscription";
-import { confirmAlatOneTimeCheckout } from "@/api/subscription";
 import {
   canManageActiveSubscription,
   canResumeSubscription,
@@ -48,19 +47,6 @@ import { useLocationDefaultsStore } from "@/stores/locationDefaultsStore";
 import { useAuthStore } from "@/stores/authStore";
 import { getPlanDisplayPricing } from "@/utils/planPricing";
 import { isNigeriaCountry } from "@/utils/billingRegion";
-import {
-  loadAlatPayScript,
-  openAlatPayCheckout,
-  setAlatCheckoutActive,
-  waitForAlatHostYield,
-} from "@/utils/alatPay";
-import {
-  clearPendingAlatConfirm,
-  isAlatClientPaymentCompleted,
-  readPendingAlatConfirm,
-  savePendingAlatConfirm,
-} from "@/utils/alatPendingConfirm";
-
 type SubscriptionContentServerProps = {
   /** When true, hides settings chrome and notifies parent after successful subscription. */
   gateMode?: boolean;
@@ -338,7 +324,6 @@ export default function SubscriptionContentServer({
   const [alatCheckoutPlanKey, setAlatCheckoutPlanKey] = useState<string | null>(
     null,
   );
-  const [alatConfirmPending, setAlatConfirmPending] = useState(false);
   const queryClient = useQueryClient();
   const plansQuery = useSubscriptionPlans();
   const statusQuery = useSubscriptionStatus();
@@ -430,60 +415,19 @@ export default function SubscriptionContentServer({
     }
   }, [gateMode, onSubscriptionComplete, subscribed]);
 
-  /** Retry ALAT confirm if payment succeeded but activation never finished (e.g. closed early). */
-  useEffect(() => {
-    if (subscribed) {
-      clearPendingAlatConfirm();
-      return;
-    }
-    const pending = readPendingAlatConfirm();
-    if (!pending || alatConfirmPending) return;
-
-    let cancelled = false;
-    void (async () => {
-      setAlatConfirmPending(true);
-      try {
-        const confirmed = await confirmAlatOneTimeCheckout({
-          transactionId: pending.transactionId,
-          planKey: pending.planKey,
-        });
-        if (cancelled) return;
-        if (!confirmed.status) {
-          throw new Error(confirmed.message || "Could not confirm ALAT payment");
-        }
-        clearPendingAlatConfirm();
-        toast.success("Payment verified. Activating your access…");
-        void queryClient.invalidateQueries({
-          queryKey: subscriptionKeys.status(),
-        });
-        void queryClient.invalidateQueries({
-          queryKey: subscriptionKeys.history(),
-        });
-        if (gateMode) {
-          onSubscriptionComplete?.();
-        } else {
-          void statusQuery.refetch();
-        }
-      } catch {
-        // Keep pending for a later retry; do not toast on every mount.
-      } finally {
-        if (!cancelled) setAlatConfirmPending(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // Intentionally once per mount / when unsubscribed gate loads.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gateMode, subscribed]);
-
   /** Browser back from Stripe (bfcache) can restore stale checkout locks. */
   useEffect(() => {
+    let pollId: number | null = null;
+    const stopPoll = () => {
+      if (pollId != null) {
+        window.clearInterval(pollId);
+        pollId = null;
+      }
+    };
+
     const releaseCheckoutLocks = () => {
       setStripeCheckoutPlanKey(null);
       setAlatCheckoutPlanKey(null);
-      setAlatCheckoutActive(false);
     };
 
     const onPageShow = (event: PageTransitionEvent) => {
@@ -494,31 +438,30 @@ export default function SubscriptionContentServer({
 
     const onVisibilityChange = () => {
       if (document.visibilityState !== "visible") return;
-      if (
-        checkoutMutation.isPending ||
-        initAlatMutation.isPending ||
-        alatConfirmPending
-      ) {
+      if (checkoutMutation.isPending || initAlatMutation.isPending) {
         return;
       }
       setStripeCheckoutPlanKey(null);
-      if (!document.body.hasAttribute("data-alat-checkout-active")) {
-        setAlatCheckoutPlanKey(null);
-      }
+      setAlatCheckoutPlanKey(null);
+      // Returning from ALAT checkout tab — poll briefly in case fulfillment is still settling.
+      stopPoll();
+      void queryClient.invalidateQueries({ queryKey: subscriptionKeys.status() });
+      let ticks = 0;
+      pollId = window.setInterval(() => {
+        ticks += 1;
+        void queryClient.invalidateQueries({ queryKey: subscriptionKeys.status() });
+        if (ticks >= 5) stopPoll();
+      }, 2500);
     };
 
     window.addEventListener("pageshow", onPageShow);
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
+      stopPoll();
       window.removeEventListener("pageshow", onPageShow);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      // Do not clear ALAT here: gate mode unmounts this component while checkout is open.
     };
-  }, [
-    alatConfirmPending,
-    checkoutMutation.isPending,
-    initAlatMutation.isPending,
-  ]);
+  }, [checkoutMutation.isPending, initAlatMutation.isPending, queryClient]);
 
   const confirmCancelSubscription = useCallback(() => {
     if (!canCancel) return;
@@ -629,64 +572,6 @@ export default function SubscriptionContentServer({
   const startAlatOneTime = useCallback(
     async (planKey: string) => {
       setAlatCheckoutPlanKey(planKey);
-      let alatSafetyTimer: number | undefined;
-      let released = false;
-      let confirming = false;
-      let seenTransactionId: string | null = null;
-
-      const releaseAlatUi = () => {
-        if (released) return;
-        released = true;
-        if (alatSafetyTimer !== undefined) {
-          window.clearTimeout(alatSafetyTimer);
-          alatSafetyTimer = undefined;
-        }
-        setAlatCheckoutPlanKey(null);
-        setAlatCheckoutActive(false);
-      };
-
-      const fulfillAlatPayment = async (transactionId: string) => {
-        if (confirming) return;
-        confirming = true;
-        savePendingAlatConfirm({ transactionId, planKey });
-        try {
-          setAlatConfirmPending(true);
-          const confirmed = await confirmAlatOneTimeCheckout({
-            transactionId: String(transactionId),
-            planKey,
-          });
-          if (!confirmed.status) {
-            throw new Error(
-              confirmed.message || "Could not confirm ALAT payment",
-            );
-          }
-          clearPendingAlatConfirm();
-          toast.success("Payment received. Activating your access…");
-          void queryClient.invalidateQueries({
-            queryKey: subscriptionKeys.status(),
-          });
-          void queryClient.invalidateQueries({
-            queryKey: subscriptionKeys.history(),
-          });
-          if (gateMode) {
-            onSubscriptionComplete?.();
-          } else {
-            window.location.assign(
-              `${window.location.origin}${PRIVATE_PATHS.DASHBOARD}?subscription=success`,
-            );
-          }
-        } catch (err: unknown) {
-          toast.error(
-            getAxiosishErrorMessage(err) ||
-              "We could not confirm your ALAT payment. If you were charged, contact support with your ALAT receipt.",
-          );
-        } finally {
-          setAlatConfirmPending(false);
-          releaseAlatUi();
-          confirming = false;
-        }
-      };
-
       try {
         const location = await useLocationDefaultsStore
           .getState()
@@ -694,56 +579,26 @@ export default function SubscriptionContentServer({
         const country =
           user?.country?.trim() || location.country?.trim() || undefined;
         const init = await initAlatMutation.mutateAsync({ planKey, country });
-        if (!init.status || !init.data) {
+        if (!init.status || !init.data?.checkoutUrl) {
           throw new Error(init.message || "Could not start ALAT payment");
         }
 
-        await loadAlatPayScript();
-        const cfg = init.data;
-
-        // Close stacked Radix dialogs (focus trap / outside-click) before ALAT mounts.
-        setAlatCheckoutActive(true);
-        await waitForAlatHostYield();
-        // Keep the gate suspended while ALAT can still be open; only clear busy UI state.
-        alatSafetyTimer = window.setTimeout(() => {
-          setAlatCheckoutPlanKey(null);
-        }, 10 * 60_000);
-
-        const popup = openAlatPayCheckout({
-          apiKey: cfg.alatKey,
-          businessId: cfg.alatBid,
-          email: cfg.email,
-          phone: cfg.phone,
-          firstName: cfg.firstName,
-          lastName: cfg.lastName,
-          metadata: cfg.metadata,
-          currency: cfg.currency,
-          amount: cfg.amount,
-          onTransaction: (response) => {
-            const id = response?.data?.id ? String(response.data.id) : "";
-            if (!id || !isAlatClientPaymentCompleted(response)) return;
-            seenTransactionId = id;
-            void fulfillAlatPayment(id);
-          },
-          onClose: () => {
-            // ALAT sometimes closes before/without a reliable onTransaction on mobile.
-            if (seenTransactionId && !confirming && !released) {
-              void fulfillAlatPayment(seenTransactionId);
-              return;
-            }
-            if (!confirming) {
-              releaseAlatUi();
-            }
-          },
-        });
+        // Open hosted checkout on the API (same pattern as parent LMS invoice).
+        // That tab runs ALAT → verifies on /payment-status-alat-ai → redirects back here.
+        const opened = window.open(init.data.checkoutUrl, "_blank", "noopener,noreferrer");
+        if (!opened) {
+          // Popup blocked — fall back to same-tab navigation.
+          window.location.assign(init.data.checkoutUrl);
+          return;
+        }
+        toast.info("Complete payment in the ALAT tab. Status updates when you return.");
         setAlatCheckoutPlanKey(null);
-        popup.show();
       } catch (err: unknown) {
         toast.error(getAxiosishErrorMessage(err) || "ALAT payment failed");
-        releaseAlatUi();
+        setAlatCheckoutPlanKey(null);
       }
     },
-    [gateMode, initAlatMutation, onSubscriptionComplete, queryClient, user?.country],
+    [initAlatMutation, user?.country],
   );
 
   const performUpgrade = useCallback(
@@ -1159,7 +1014,6 @@ export default function SubscriptionContentServer({
               const blockOtherActionsWhileBusy =
                 (checkoutMutation.isPending ||
                   initAlatMutation.isPending ||
-                  alatConfirmPending ||
                   upgradeFlowPlanKey !== null ||
                   resumeMutation.isPending ||
                   upgradeMutation.isPending) &&
@@ -1167,8 +1021,7 @@ export default function SubscriptionContentServer({
               const stripeBusyForPlan =
                 checkoutMutation.isPending && stripeCheckoutPlanKey === p.key;
               const alatBusyForPlan =
-                alatCheckoutPlanKey === p.key &&
-                (initAlatMutation.isPending || alatConfirmPending);
+                alatCheckoutPlanKey === p.key && initAlatMutation.isPending;
               const showPaymentChoices =
                 planButton.action === "subscribe" && !planButton.disabled;
               const meta = PLAN_UI_META[p.key] ?? {
@@ -1373,7 +1226,7 @@ export default function SubscriptionContentServer({
                             {alatBusyForPlan ? (
                               <>
                                 <Loader2 className="mr-2 size-4 animate-spin" />
-                                Opening ALAT…
+                                Opening checkout…
                               </>
                             ) : (
                               "Pay once with ALAT"

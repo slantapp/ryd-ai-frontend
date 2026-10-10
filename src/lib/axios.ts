@@ -20,6 +20,13 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Learner's timezone so the API counts streaks and the daily goal by their local day.
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (timezone) config.headers["X-Timezone"] = timezone;
+    } catch {
+      // Older browsers: the API falls back to the profile timezone, then UTC.
+    }
     return config;
   },
   (error) => Promise.reject(error)

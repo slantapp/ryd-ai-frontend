@@ -1,0 +1,123 @@
+/* Learning pathways — "constellation journey" visuals.
+   Global prefers-reduced-motion rules in index.css already neutralise motion here. */
+
+:root {
+  --lp-plum: #aa468e;
+  --lp-plum-deep: #7e2f68;
+  --lp-lilac: #f3ecfe;
+  --lp-orchid: #dda5d2;
+  --lp-navy: #132050;
+  --lp-night: #0d1638;
+  --lp-blue: #0063f7;
+  --lp-gold: #f5c04a;
+}
+
+@keyframes lp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes lp-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes lp-glow {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.12); }
+}
+
+@keyframes lp-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes lp-rise {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes lp-shine {
+  0% { transform: translateX(-120%) skewX(-20deg); }
+  60%, 100% { transform: translateX(260%) skewX(-20deg); }
+}
+
+@keyframes lp-flicker {
+  0%, 100% { transform: scale(1) rotate(-3deg); }
+  50% { transform: scale(1.1) rotate(3deg); }
+}
+
+@keyframes lp-twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes lp-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(24px, -18px) scale(1.08); }
+}
+
+@keyframes lp-trail {
+  to { stroke-dashoffset: -48; }
+}
+
+@keyframes lp-confetti {
+  0% { transform: translate3d(0, -10vh, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate3d(var(--lp-drift, 0px), 105vh, 0) rotate(var(--lp-spin, 720deg)); opacity: 0.9; }
+}
+
+.lp-float { animation: lp-float 6s ease-in-out infinite; }
+.lp-spin { animation: lp-spin 14s linear infinite; }
+.lp-spin-fast { animation: lp-spin 5s linear infinite; }
+.lp-glow { animation: lp-glow 2.4s ease-in-out infinite; }
+.lp-pop { animation: lp-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.lp-rise { animation: lp-rise 0.55s ease-out both; }
+.lp-flicker { animation: lp-flicker 1.3s ease-in-out infinite; transform-origin: 50% 90%; }
+.lp-twinkle { animation: lp-twinkle 3s ease-in-out infinite; }
+.lp-drift { animation: lp-drift 16s ease-in-out infinite; }
+.lp-trail-flow { animation: lp-trail 1.6s linear infinite; }
+
+.lp-shine {
+  position: relative;
+  overflow: hidden;
+}
+.lp-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  animation: lp-shine 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.lp-confetti-piece {
+  position: absolute;
+  top: 0;
+  border-radius: 2px;
+  animation: lp-confetti var(--lp-duration, 2.6s) cubic-bezier(0.2, 0.6, 0.4, 1) var(--lp-delay, 0s) forwards;
+}
+
+/* Deep-navy night sky with two layers of tiny stars. */
+.lp-sky {
+  background-color: var(--lp-night);
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, 0.55), transparent 60%),
+    radial-gradient(1px 1px at 90px 120px, rgba(243, 236, 254, 0.45), transparent 60%),
+    radial-gradient(1.5px 1.5px at 150px 60px, rgba(221, 165, 210, 0.5), transparent 60%),
+    radial-gradient(1px 1px at 60px 170px, rgba(255, 255, 255, 0.35), transparent 60%),
+    radial-gradient(1px 1px at 180px 190px, rgba(255, 255, 255, 0.4), transparent 60%),
+    linear-gradient(180deg, #132050 0%, #0d1638 45%, #160f33 100%);
+  background-size: 210px 210px, 210px 210px, 210px 210px, 210px 210px, 210px 210px, 100% 100%;
+}
+
+/* Frosted glass surface for chips on the night sky. */
+.lp-glass {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+}
+
+/* Diamond + hexagon silhouettes for special nodes. */
+.lp-diamond { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.lp-hex { clip-path: polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0 50%); }

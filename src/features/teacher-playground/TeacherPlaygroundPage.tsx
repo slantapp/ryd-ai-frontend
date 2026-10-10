@@ -18,6 +18,8 @@ const DEFAULT_SCRIPT =
 const MAX_SCRIPT_LENGTH = 320;
 const DEMO_KEY = import.meta.env.VITE_DEEPGRAM_API_KEY?.trim() ?? "";
 const DEEPGRAM_DEMO_ENDPOINT = "/api/deepgram/v1/speak";
+/** Anchor the teacher app deep-links to (`/teacher-playground#gestures`). */
+const GESTURE_CATALOG_ID = "gestures";
 
 export default function TeacherPlaygroundPage() {
   const avatarRef = useRef<NarratorAvatarRef | null>(null);
@@ -41,6 +43,13 @@ export default function TeacherPlaygroundPage() {
   );
 
   useEffect(() => () => avatarRef.current?.stopSpeaking(), []);
+
+  // The teacher app links here with #gestures; the SPA renders after the browser's own
+  // anchor jump, so scroll to the catalog once it exists.
+  useEffect(() => {
+    if (window.location.hash !== `#${GESTURE_CATALOG_ID}`) return;
+    document.getElementById(GESTURE_CATALOG_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const selectInstructor = (next: InstructorType) => {
     avatarRef.current?.stopSpeaking();
@@ -228,7 +237,7 @@ export default function TeacherPlaygroundPage() {
             <p className="text-xs leading-5 text-slate-500">Voice previews use the temporary browser-side demo key. Keep the script short; this page is not a production TTS proxy.</p>
           </section>
 
-          <section className="lg:col-span-2" aria-label="Gesture catalog">
+          <section id={GESTURE_CATALOG_ID} className="scroll-mt-6 lg:col-span-2" aria-label="Gesture catalog">
             <div className="mb-4">
               <h2 className="font-solway text-2xl font-bold">Explore all 33 gestures</h2>
               <p className="mt-1 text-sm text-slate-600">Tap any card to see it on the avatar. The descriptions explain what the current rig-safe animation actually does.</p>

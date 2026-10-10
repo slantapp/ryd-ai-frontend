@@ -129,6 +129,8 @@ This is intentionally session-scoped (clears when the browser/tab session ends).
 
 - **Nav config**: `src/utils/constants.ts` (`navItems`)
 - **SideNav UI**: `src/layout/dashboardLayout/SideNav.tsx`
+- **Order**: Dashboard → Learning Path → Courses → Curriculum preview (admin/teacher only) → Wishlists → Support → Settings
+- **Learning Path**: `PRIVATE_PATHS.LEARNING_PATH` (`/learning-path`, old `/pathways` redirects there). The page is `src/features/learning-pathways/` and currently runs on mock data.
 
 ### 3) Authentication flow
 

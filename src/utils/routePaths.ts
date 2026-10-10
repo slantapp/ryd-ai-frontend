@@ -19,6 +19,10 @@ export const PRIVATE_PATHS = {
   DASHBOARD: "/dashboard",
   COURSES: "/courses",
   COURSE_QUIZ: "/courses/:exercise",
+  /** Duolingo-style learning path (mock data for now). */
+  LEARNING_PATH: "/learning-path",
+  /** Old URL of the learning path; redirects to LEARNING_PATH. */
+  LEGACY_PATHWAYS: "/pathways",
   /** Free sneak-peek lesson for unsubscribed users (uses bundled demo curriculum). */
   DEMO_SNEAK_PEEK: "/demo/sneak-peek",
   WISHLISTS: "/wishlists",

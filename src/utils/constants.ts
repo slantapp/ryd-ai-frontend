@@ -4,6 +4,7 @@ import preview from "/icons/navItems/preview.svg";
 import wishlists from "/icons/navItems/wishlists.svg";
 import settings from "/icons/navItems/user.svg";
 import support from "/icons/navItems/support.svg";
+import learningPath from "/icons/navItems/pathways.svg";
 import { CURRICULUM_PREVIEW_USER_TYPES } from "@/auth";
 import { PRIVATE_PATHS } from "./routePaths";
 
@@ -20,6 +21,11 @@ export const navItems: NavItem[] = [
     name: "Dashboard",
     icon: dashboard,
     path: PRIVATE_PATHS.DASHBOARD,
+  },
+  {
+    name: "Learning Path",
+    icon: learningPath,
+    path: PRIVATE_PATHS.LEARNING_PATH,
   },
   {
     name: "Courses",

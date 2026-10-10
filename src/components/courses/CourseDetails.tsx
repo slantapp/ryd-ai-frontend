@@ -2490,12 +2490,15 @@ function CourseDetailInner({
       : isCourseFinished
         ? "completed"
         : "ongoing";
+    // A finished course stays finished when revisited; only "Restart course" resets it.
+    const wasCompleted =
+      useCoursesStore.getState().getCourseProgress(exercise)?.status === "completed";
 
     updateCourseProgress(
       exercise,
       {
-        status,
-        progress: finalProgress,
+        status: wasCompleted ? "completed" : status,
+        progress: wasCompleted ? 100 : finalProgress,
         currentLessonId: currentLesson.id,
         completedLessons: Array.from(completedLessonIds),
       },

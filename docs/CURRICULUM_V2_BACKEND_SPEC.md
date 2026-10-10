@@ -77,6 +77,12 @@ If `schema_version` is omitted but lessons use `flow[]`, treat as v2 when all le
 | **`question` (code_test)** | `type`, `question` | `id`, `options`, `answer`, `explanation`, `code_example`, `formula_example`, `testCriteria` |
 | **`avatar` on beat** | Depends on beat type | Most lines optional except `speak` requires `avatar.text` |
 
+**Avatar gestures (optional, every beat).** The API (`ryd-learning-api-v2/utils/curriculumValidation.js`) accepts `avatar.gesture`, `avatar.gesture_on_correct` and `avatar.gesture_on_wrong` on any beat.
+- **Value:** either a gesture name (case-insensitive; one of the 33 names in `src/features/curriculum-preview/v2/avatarGesture.ts`) or `{ name, dur?, mirror?, ms?, blendMs?, eyeContactMs?, mood? }`.
+- **Validation:** unknown names and unknown option keys are rejected. Leaving gestures out is always valid.
+- **`avatar.timing`** also accepts `before_display`.
+- **Keep the name list in both repos in sync.**
+
 ---
 
 ## Root & curriculum metadata

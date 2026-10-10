@@ -179,10 +179,12 @@ export default function CourseDetailsV2() {
     (lesson: LessonV2, started: boolean, beatIndex = 0) => {
       if (!exercise || !curriculum) return;
       const lessonIndex = allLessons.findIndex((l) => l.lesson.id === lesson.id);
+      // A finished course stays finished when revisited; only "Restart course" resets it.
+      const wasCompleted = getCourseProgress(exercise)?.status === "completed";
       updateCourseProgress(
         exercise,
         {
-          status: started ? "ongoing" : "not-started",
+          status: wasCompleted ? "completed" : started ? "ongoing" : "not-started",
           currentLessonId: lesson.id,
           lessonIndex: lessonIndex >= 0 ? lessonIndex : undefined,
           questionIndex: beatIndex,
@@ -193,7 +195,7 @@ export default function CourseDetailsV2() {
         { immediate: true },
       );
     },
-    [allLessons, curriculum, exercise, updateCourseProgress],
+    [allLessons, curriculum, exercise, getCourseProgress, updateCourseProgress],
   );
 
   const handleBeatProgress = useCallback(
@@ -292,8 +294,8 @@ export default function CourseDetailsV2() {
       updateCourseProgress(
         exercise,
         {
-          status: done ? "completed" : "ongoing",
-          progress,
+          status: done || stored?.status === "completed" ? "completed" : "ongoing",
+          progress: stored?.status === "completed" ? 100 : progress,
           completedLessons: completed,
           currentLessonId: lessonId,
           lessonIndex: lessonIndex >= 0 ? lessonIndex : stored?.lessonIndex,

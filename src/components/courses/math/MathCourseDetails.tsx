@@ -1767,11 +1767,15 @@ function MathCourseDetailsInner() {
     });
     const finalProgress = isCourseFinished ? 100 : progress;
     setProgressPct(finalProgress);
+    // A finished course stays finished when revisited; only "Restart course" resets it.
+    const wasCompleted =
+      useCoursesStore.getState().getCourseProgress(exercise)?.status === "completed";
     updateCourseProgress(
       exercise,
       {
-        progress: finalProgress,
-        status: isCourseFinished ? "completed" : finalProgress >= 100 ? "completed" : "ongoing",
+        progress: wasCompleted ? 100 : finalProgress,
+        status:
+          wasCompleted || isCourseFinished || finalProgress >= 100 ? "completed" : "ongoing",
         currentLessonId: currentLesson.id,
         lessonIndex: currentIndex,
         questionIndex: currentQuestionIndex,

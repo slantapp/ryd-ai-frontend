@@ -24,6 +24,7 @@ import DemoSneakPeekPage from "@/pages/app/demo/DemoSneakPeekPage";
 import { CurriculumPreviewPage, CurriculumEditPage } from "@/features/curriculum-preview";
 import { MarketingToolPage } from "@/features/marketing-tool";
 import { TeacherPlaygroundPage } from "@/features/teacher-playground";
+import { LearningPathwaysPage } from "@/features/learning-pathways";
 
 interface AppRoute {
   path: string;
@@ -36,7 +37,7 @@ interface AppRoute {
   ];
 }
 
-const { DASHBOARD, COURSES, COURSE_QUIZ, DEMO_SNEAK_PEEK, SETTINGS, WISHLISTS, SUPPORT, CURRICULUM_PREVIEW, CURRICULUM_EDIT, MARKETING_TOOL } =
+const { DASHBOARD, COURSES, COURSE_QUIZ, LEARNING_PATH, LEGACY_PATHWAYS, DEMO_SNEAK_PEEK, SETTINGS, WISHLISTS, SUPPORT, CURRICULUM_PREVIEW, CURRICULUM_EDIT, MARKETING_TOOL } =
   PRIVATE_PATHS;
 
 const {
@@ -119,6 +120,14 @@ export const PRIVATE_ROUTES: AppRoute[] = [
   {
     path: COURSE_QUIZ,
     element: <CourseRunner />,
+  },
+  {
+    path: LEARNING_PATH,
+    element: <LearningPathwaysPage />,
+  },
+  {
+    path: LEGACY_PATHWAYS,
+    element: <Navigate to={LEARNING_PATH} replace />,
   },
   {
     path: DEMO_SNEAK_PEEK,

@@ -73,7 +73,7 @@ export function PathwaySwitcher({ pathways, activeId, percents, onSelect }: Path
                 className="mt-1 inline-block font-inter text-[11px] font-bold tabular-nums"
                 style={{ color: active ? p.palette.accent : p.palette.base }}
               >
-                {percent}% · {p.level}
+                {percent}% complete
               </span>
             </span>
           </button>

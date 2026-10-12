@@ -1,5 +1,5 @@
 import type { ApiLearningPath } from "@/api/learningPaths";
-import { PALETTES } from "./mockData";
+import { PALETTES } from "./palettes";
 import { buildCourseOutline, type CourseOutline } from "./lessonProgress";
 import type { PathNode, PathUnit, Pathway, UnitPalette } from "./types";
 
@@ -64,7 +64,6 @@ export function buildPathway(api: ApiLearningPath, getCurriculumJson: (slug: str
           step.description?.trim() ||
           `${outline.moduleCount} module${outline.moduleCount === 1 ? "" : "s"} · ${lessonCount} lesson${lessonCount === 1 ? "" : "s"}`,
         palette: paletteAt(color, outlines.length - 1),
-        guide: apiUnit.guide ?? [],
         nodes,
         sectionTitle: `Unit ${unitIndex + 1} · ${apiUnit.title}`,
         courseSlug: outline.slug,
@@ -77,9 +76,7 @@ export function buildPathway(api: ApiLearningPath, getCurriculumJson: (slug: str
     pathway: {
       id: pathwayId(api.id),
       title: api.title,
-      tagline: api.tagline || api.description || "",
       language: firstLanguage || "en",
-      level: api.level,
       icon: api.icon,
       palette: PALETTES[color],
       units,

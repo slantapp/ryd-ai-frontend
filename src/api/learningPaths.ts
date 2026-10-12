@@ -18,8 +18,6 @@ export type ApiLearningPathStep = {
 export type ApiLearningPathUnit = {
   id: number;
   title: string;
-  description: string | null;
-  guide: string[];
   steps: ApiLearningPathStep[];
 };
 
@@ -27,9 +25,6 @@ export type ApiLearningPath = {
   id: number;
   title: string;
   slug: string;
-  tagline: string | null;
-  description: string | null;
-  level: "Beginner" | "Intermediate" | "Advanced";
   icon: "python" | "web" | "game" | "ai";
   color: "plum" | "iris" | "royal" | "rose";
   units: ApiLearningPathUnit[];

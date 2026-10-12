@@ -1,4 +1,3 @@
-import { Lightbulb } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { PathUnit } from "../types";
 import { NODE_ICONS } from "./icons";
@@ -22,17 +21,6 @@ export function GuidebookDialog({ unit, onClose }: GuidebookDialogProps) {
             <DialogDescription className="mt-1 font-inter text-sm text-white/85">{unit.description}</DialogDescription>
           </div>
           <div className="space-y-5 p-6">
-            <div>
-              <h4 className="mb-2 font-solway text-sm font-bold text-[#132050]">Key ideas</h4>
-              <ul className="space-y-2">
-                {unit.guide.map((g) => (
-                  <li key={g} className="flex items-start gap-2.5 rounded-xl p-3" style={{ background: unit.palette.soft }}>
-                    <Lightbulb className="mt-0.5 size-4 shrink-0" style={{ color: unit.palette.base }} />
-                    <span className="font-inter text-sm text-[#132050]">{g}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
             <div>
               <h4 className="mb-2 font-solway text-sm font-bold text-[#132050]">In this unit</h4>
               <ul className="space-y-1.5">

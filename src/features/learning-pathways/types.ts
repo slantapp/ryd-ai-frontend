@@ -48,8 +48,6 @@ export type PathUnit = {
   title: string;
   description: string;
   palette: UnitPalette;
-  /** Key ideas shown in the unit guidebook. */
-  guide: string[];
   nodes: PathNode[];
   /** Admin unit this course belongs to, shown above the course banner. */
   sectionTitle?: string;
@@ -60,9 +58,7 @@ export type PathUnit = {
 export type Pathway = {
   id: string;
   title: string;
-  tagline: string;
   language: string;
-  level: "Beginner" | "Intermediate" | "Advanced";
   /** Emoji-free icon key, resolved in the UI. */
   icon: "python" | "web" | "game" | "ai";
   palette: UnitPalette;

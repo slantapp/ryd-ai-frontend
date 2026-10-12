@@ -344,7 +344,7 @@ function PathwayJourney({
                 </p>
                 <h2 className="mt-0.5 truncate font-solway text-xl font-bold text-white sm:text-2xl">{pathway.title}</h2>
                 <p className="mt-0.5 truncate font-inter text-sm text-[#F3ECFE]/70">
-                  {finished ? "Every lesson complete. You're a legend!" : currentNode ? `Up next: ${currentNode.title}` : pathway.tagline}
+                  {finished ? "Every lesson complete. You're a legend!" : currentNode ? `Up next: ${currentNode.title}` : "Pick a lesson below to get started."}
                 </p>
               </div>
               {!finished && currentNodeId && (

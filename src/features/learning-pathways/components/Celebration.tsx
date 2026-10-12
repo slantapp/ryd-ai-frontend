@@ -89,36 +89,20 @@ export function CelebrationModal({ data, onContinue }: CelebrationModalProps) {
     <>
       {open && <Confetti count={isCheckpoint || stars === 3 ? 120 : 70} />}
       <Dialog open={open} onOpenChange={(o) => !o && onContinue()}>
-        <DialogContent showCloseButton={false} className="max-w-sm overflow-hidden rounded-[28px] border-0 p-0">
-          <div className="lp-sky relative flex flex-col items-center overflow-hidden px-6 pb-7 pt-10 text-center">
-            <span
-              className="lp-drift pointer-events-none absolute -left-16 -top-20 size-56 rounded-full opacity-50 blur-3xl"
-              style={{ background: palette.base }}
-              aria-hidden
-            />
-            <span
-              className="lp-drift pointer-events-none absolute -bottom-24 -right-16 size-56 rounded-full bg-[#0063F7] opacity-30 blur-3xl"
-              style={{ animationDelay: "-6s" }}
-              aria-hidden
-            />
-
+        <DialogContent
+          showCloseButton={false}
+          className="max-w-sm gap-0 overflow-hidden rounded-[28px] border border-[#E7E5EE] bg-white p-0 shadow-lg"
+        >
+          <div
+            className="relative flex flex-col items-center border-t-4 px-6 pb-6 pt-9 text-center"
+            style={{ borderTopColor: palette.base }}
+          >
             <div className="relative">
-              <span
-                className="lp-glow absolute -inset-5 rounded-full blur-2xl"
-                style={{ background: golden ? GOLD.base : palette.base }}
-                aria-hidden
-              />
-              <span className="lp-spin absolute -inset-4 rounded-full border-[1.5px] border-dashed border-[#F3ECFE]/40" aria-hidden />
               <div
                 className="lp-pop relative flex size-24 items-center justify-center rounded-full"
-                style={{
-                  background: golden
-                    ? `radial-gradient(circle at 32% 26%, ${GOLD.light}, ${GOLD.base} 50%, ${GOLD.deep})`
-                    : `radial-gradient(circle at 32% 26%, ${palette.accent}, ${palette.base} 50%, ${palette.shade})`,
-                  boxShadow: "inset 0 -8px 16px rgba(0,0,0,0.25), inset 0 4px 8px rgba(255,255,255,0.4)",
-                }}
+                style={{ background: golden ? "#FDF3DC" : palette.soft }}
               >
-                <HeroIcon className="size-11 text-white drop-shadow" strokeWidth={2} />
+                <HeroIcon className="size-11" style={{ color: golden ? GOLD.deep : palette.base }} strokeWidth={2} />
               </div>
             </div>
 
@@ -130,9 +114,8 @@ export function CelebrationModal({ data, onContinue }: CelebrationModalProps) {
                     className={i === 2 ? "lp-pop size-11" : "lp-pop size-8"}
                     style={{
                       animationDelay: `${0.25 + i * 0.18}s`,
-                      color: i <= stars ? GOLD.base : "rgba(243,236,254,0.25)",
+                      color: i <= stars ? GOLD.base : "#D6D3DF",
                       fill: i <= stars ? GOLD.base : "transparent",
-                      filter: i <= stars ? `drop-shadow(0 0 10px ${GOLD.base})` : undefined,
                     }}
                     strokeWidth={1.6}
                   />
@@ -140,13 +123,13 @@ export function CelebrationModal({ data, onContinue }: CelebrationModalProps) {
               </div>
             )}
 
-            <DialogTitle className="relative mt-4 font-solway text-2xl font-bold text-white">{heading}</DialogTitle>
-            <DialogDescription className="relative mt-1 font-inter text-sm text-[#F3ECFE]/70">
+            <DialogTitle className="relative mt-4 font-solway text-2xl font-bold text-[#132050]">{heading}</DialogTitle>
+            <DialogDescription className="relative mt-1 font-inter text-sm text-[#5B6478]">
               {node.title}
             </DialogDescription>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 bg-white p-5">
+          <div className="grid grid-cols-2 gap-3 border-t border-[#F0EEF4] bg-white p-5">
             <StatTile
               icon={<Star className="size-5" fill="currentColor" />}
               color="#AA468E"
@@ -155,7 +138,7 @@ export function CelebrationModal({ data, onContinue }: CelebrationModalProps) {
               value={`${stars} / 3`}
             />
             <StatTile
-              icon={<Flame className={result.streakExtended ? "lp-flicker size-5" : "size-5"} fill="currentColor" />}
+              icon={<Flame className="size-5" fill="currentColor" />}
               color="#0063F7"
               tint="#E6F0FF"
               label={result.streakExtended ? "Streak extended" : "Day streak"}
@@ -163,11 +146,11 @@ export function CelebrationModal({ data, onContinue }: CelebrationModalProps) {
             />
             {result.dailyGoalReached && (
               <div
-                className="lp-rise col-span-2 flex items-center gap-3 rounded-2xl bg-[#132050] px-4 py-3 text-left"
+                className="lp-rise col-span-2 flex items-center gap-3 rounded-2xl border border-[#F5C04A]/60 bg-[#FDF3DC] px-4 py-3 text-left"
                 style={{ animationDelay: "0.6s" }}
               >
-                <Target className="size-5 shrink-0" style={{ color: GOLD.base }} />
-                <p className="font-inter text-sm font-semibold text-white">Daily goal reached — brilliant work!</p>
+                <Target className="size-5 shrink-0" style={{ color: GOLD.deep }} />
+                <p className="font-inter text-sm font-semibold text-[#132050]">Daily goal reached — brilliant work!</p>
               </div>
             )}
 
@@ -175,8 +158,8 @@ export function CelebrationModal({ data, onContinue }: CelebrationModalProps) {
               type="button"
               onClick={onContinue}
               autoFocus
-              className="col-span-2 mt-1 h-12 rounded-2xl font-solway text-sm font-bold text-white transition-all duration-200 hover:shadow-[0_12px_28px_-10px_#AA468E] active:scale-[0.98]"
-              style={{ background: "linear-gradient(120deg, #AA468E 0%, #7E2F68 100%)" }}
+              className="col-span-2 mt-1 h-12 rounded-2xl bg-(--lp-cta) font-solway text-sm font-bold text-white transition-colors duration-200 hover:bg-(--lp-cta-hover) active:scale-[0.98]"
+              style={{ "--lp-cta": palette.base, "--lp-cta-hover": palette.shade } as React.CSSProperties}
             >
               Continue the journey
             </button>
@@ -209,7 +192,7 @@ function StatTile({
         {icon}
         {value}
       </span>
-      <span className="mt-0.5 font-inter text-xs font-semibold text-[#4F4D55]">{label}</span>
+      <span className="mt-0.5 font-inter text-xs font-semibold text-[#5B6478]">{label}</span>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { Pathway } from "../types";
-import { PATHWAY_ICONS } from "./icons";
+import { pathwayIcon } from "./icons";
 
 type PathwaySwitcherProps = {
   pathways: Pathway[];
@@ -14,7 +14,7 @@ export function PathwaySwitcher({ pathways, activeId, percents, onSelect }: Path
   return (
     <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2 pt-1 scrollbar-hide">
       {pathways.map((p) => {
-        const Icon = PATHWAY_ICONS[p.icon];
+        const Icon = pathwayIcon(p.icon);
         const active = p.id === activeId;
         const percent = percents[p.id] ?? 0;
         const r = 22;
@@ -26,28 +26,20 @@ export function PathwaySwitcher({ pathways, activeId, percents, onSelect }: Path
             onClick={() => onSelect(p.id)}
             aria-pressed={active}
             className={cn(
-              "group relative flex w-[232px] shrink-0 snap-start items-center gap-3 overflow-hidden rounded-[20px] p-3 text-left transition-all duration-300",
-              active
-                ? "lp-sky shadow-[0_14px_30px_-14px_rgba(19,32,80,0.7)]"
-                : "border border-[#EDEAF3] bg-white hover:-translate-y-0.5 hover:border-[#DDB5D2] hover:shadow-[0_10px_24px_-14px_rgba(170,70,142,0.45)]",
+              "group relative flex w-[232px] shrink-0 snap-start items-center gap-3 overflow-hidden rounded-[20px] border bg-white p-3 text-left transition-colors duration-200",
+              !active && "border-[#E7E5EE] hover:border-[#D6D3DF] hover:bg-[#FAFAFC]",
             )}
+            style={active ? { borderColor: p.palette.base, boxShadow: `inset 0 0 0 1px ${p.palette.base}, 0 1px 2px rgba(19,32,80,0.06)` } : undefined}
           >
-            {active && (
-              <span
-                className="pointer-events-none absolute -right-8 -top-10 size-28 rounded-full opacity-60 blur-2xl"
-                style={{ background: p.palette.base }}
-                aria-hidden
-              />
-            )}
             <span className="relative flex size-14 shrink-0 items-center justify-center">
               <svg viewBox="0 0 52 52" className="absolute inset-0 size-14 -rotate-90" aria-hidden>
-                <circle cx="26" cy="26" r={r} fill="none" stroke={active ? "rgba(243,236,254,0.15)" : "#F3ECFE"} strokeWidth="3" />
+                <circle cx="26" cy="26" r={r} fill="none" stroke="#EEEDF3" strokeWidth="3" />
                 <circle
                   cx="26"
                   cy="26"
                   r={r}
                   fill="none"
-                  stroke={active ? p.palette.accent : p.palette.base}
+                  stroke={p.palette.base}
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeDasharray={c}
@@ -56,23 +48,16 @@ export function PathwaySwitcher({ pathways, activeId, percents, onSelect }: Path
                 />
               </svg>
               <span
-                className="flex size-10 items-center justify-center rounded-full text-white"
-                style={{ background: `radial-gradient(circle at 32% 26%, ${p.palette.accent}, ${p.palette.base} 55%, ${p.palette.shade})` }}
+                className="flex size-10 items-center justify-center rounded-full"
+                style={{ background: p.palette.soft, color: p.palette.base }}
               >
                 <Icon className="size-5" strokeWidth={2.2} />
               </span>
             </span>
             <span className="relative min-w-0">
-              <span className={cn("block truncate font-solway text-sm font-bold", active ? "text-white" : "text-[#0A090B]")}>
-                {p.title}
-              </span>
-              <span className={cn("block truncate font-inter text-xs", active ? "text-[#F3ECFE]/70" : "text-[#4F4D55]")}>
-                {p.language}
-              </span>
-              <span
-                className="mt-1 inline-block font-inter text-[11px] font-bold tabular-nums"
-                style={{ color: active ? p.palette.accent : p.palette.base }}
-              >
+              <span className="block truncate font-solway text-sm font-bold text-[#132050]">{p.title}</span>
+              <span className="block truncate font-inter text-xs text-[#5B6478]">{p.language}</span>
+              <span className="mt-1 inline-block font-inter text-[11px] font-bold tabular-nums" style={{ color: p.palette.base }}>
                 {percent}% complete
               </span>
             </span>

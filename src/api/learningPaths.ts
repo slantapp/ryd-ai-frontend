@@ -25,7 +25,8 @@ export type ApiLearningPath = {
   id: number;
   title: string;
   slug: string;
-  icon: "python" | "web" | "game" | "ai";
+  /** Icon key; the app draws it with PATHWAY_ICONS (components/icons.ts). */
+  icon: string;
   color: "plum" | "iris" | "royal" | "rose";
   units: ApiLearningPathUnit[];
 };

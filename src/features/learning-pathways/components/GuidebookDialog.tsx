@@ -11,14 +11,19 @@ export function GuidebookDialog({ unit, onClose }: GuidebookDialogProps) {
   return (
     <Dialog open={unit !== null} onOpenChange={(o) => !o && onClose()}>
       {unit && (
-        <DialogContent className="max-w-md overflow-hidden rounded-3xl border-0 p-0">
+        <DialogContent className="max-w-md gap-0 overflow-hidden rounded-3xl border border-[#E7E5EE] bg-white p-0 shadow-lg">
           <div
-            className="px-6 pb-5 pt-6 text-white"
-            style={{ background: `linear-gradient(120deg, ${unit.palette.base}, ${unit.palette.accent})` }}
+            className="border-b border-t-4 border-b-[#F0EEF4] px-6 pb-5 pt-6"
+            style={{ borderTopColor: unit.palette.base }}
           >
-            <p className="font-inter text-[11px] font-bold uppercase tracking-[0.14em] text-white/80">Guidebook</p>
-            <DialogTitle className="mt-1 font-solway text-xl font-bold text-white">{unit.title}</DialogTitle>
-            <DialogDescription className="mt-1 font-inter text-sm text-white/85">{unit.description}</DialogDescription>
+            <p
+              className="font-inter text-[11px] font-bold uppercase tracking-[0.14em]"
+              style={{ color: unit.palette.base }}
+            >
+              Guidebook
+            </p>
+            <DialogTitle className="mt-1 font-solway text-xl font-bold text-[#132050]">{unit.title}</DialogTitle>
+            <DialogDescription className="mt-1 font-inter text-sm text-[#5B6478]">{unit.description}</DialogDescription>
           </div>
           <div className="space-y-5 p-6">
             <div>
@@ -27,10 +32,10 @@ export function GuidebookDialog({ unit, onClose }: GuidebookDialogProps) {
                 {unit.nodes.map((n) => {
                   const Icon = NODE_ICONS[n.type];
                   return (
-                    <li key={n.id} className="flex items-center gap-2.5 font-inter text-sm text-[#4F4D55]">
+                    <li key={n.id} className="flex items-center gap-2.5 font-inter text-sm text-[#5B6478]">
                       <Icon className="size-4 shrink-0" style={{ color: unit.palette.base }} />
                       <span className="flex-1 truncate">{n.title}</span>
-                      <span className="text-xs font-semibold text-[#9C96A8]">~{n.minutes} min</span>
+                      <span className="text-xs font-semibold text-[#6B7280]">~{n.minutes} min</span>
                     </li>
                   );
                 })}

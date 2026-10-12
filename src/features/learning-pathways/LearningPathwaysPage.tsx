@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowDown, ArrowUp, Flag, Loader2, Map as MapIcon, Play, Trophy } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { fetchVisibleLearningPaths, type ApiLearningPath } from "@/api/learningPaths";
 import { fetchLearningStats, type LearningStats } from "@/api/learningStats";
 import { getCurriculumEntryBySlug } from "@/data/curriculumData";
@@ -16,7 +15,7 @@ import { UnitSection } from "./components/UnitSection";
 import { PathwaySwitcher } from "./components/PathwaySwitcher";
 import { CelebrationModal, type CelebrationData } from "./components/Celebration";
 import { GuidebookDialog } from "./components/GuidebookDialog";
-import { PATHWAY_ICONS } from "./components/icons";
+import { pathwayIcon } from "./components/icons";
 import { BadgesCard, DailyGoalCard, StatChips, StreakCard } from "./components/SideRail";
 import "./pathways.css";
 
@@ -285,7 +284,7 @@ function PathwayJourney({
     [stats, progressByPath],
   );
 
-  const PathIcon = PATHWAY_ICONS[pathway.icon];
+  const PathIcon = pathwayIcon(pathway.icon);
 
   return (
     <div className="min-h-full">
@@ -312,38 +311,22 @@ function PathwayJourney({
             />
           </div>
 
-          {/* The journey — one immersive night-sky canvas */}
+          {/* The journey — one calm white canvas */}
           <div
             key={pathway.id}
-            className="lp-rise lp-sky relative mt-5 overflow-clip rounded-[32px] px-4 pb-12 pt-5 sm:px-8 sm:pt-7"
+            className="lp-rise relative mt-5 overflow-clip rounded-[32px] border border-[#E7E5EE] bg-white px-4 pb-12 pt-5 shadow-sm sm:px-8 sm:pt-7"
           >
-            <span
-              className="lp-drift pointer-events-none absolute -left-24 top-10 size-80 rounded-full opacity-40 blur-3xl"
-              style={{ background: pathway.palette.base }}
-              aria-hidden
-            />
-            <span
-              className="lp-drift pointer-events-none absolute -right-24 top-[38%] size-80 rounded-full bg-[#0063F7] opacity-25 blur-3xl"
-              style={{ animationDelay: "-8s" }}
-              aria-hidden
-            />
-            <span
-              className="lp-drift pointer-events-none absolute -left-10 bottom-20 size-72 rounded-full bg-[#AA468E] opacity-25 blur-3xl"
-              style={{ animationDelay: "-4s" }}
-              aria-hidden
-            />
-
             {/* Journey header */}
-            <div className="lp-glass relative flex flex-wrap items-center gap-4 rounded-[22px] p-4 sm:p-5">
+            <div className="relative flex flex-wrap items-center gap-4 rounded-[22px] border border-[#E7E5EE] bg-[#F7F7FA] p-4 sm:p-5">
               <JourneyRing percent={progress.percent} palette={pathway.palette}>
-                <PathIcon className="size-6 text-white" strokeWidth={2.1} />
+                <PathIcon className="size-6" style={{ color: pathway.palette.base }} strokeWidth={2.1} />
               </JourneyRing>
               <div className="min-w-0 flex-1">
-                <p className="font-inter text-[10px] font-bold uppercase tracking-[0.2em] text-[#DDA5D2]">
+                <p className="font-inter text-[10px] font-bold uppercase tracking-[0.2em] text-[#5B6478]">
                   Your journey · {progress.completedCount}/{progress.totalCount} lessons · {progress.percent}%
                 </p>
-                <h2 className="mt-0.5 truncate font-solway text-xl font-bold text-white sm:text-2xl">{pathway.title}</h2>
-                <p className="mt-0.5 truncate font-inter text-sm text-[#F3ECFE]/70">
+                <h2 className="mt-0.5 truncate font-solway text-xl font-bold text-[#132050] sm:text-2xl">{pathway.title}</h2>
+                <p className="mt-0.5 truncate font-inter text-sm text-[#5B6478]">
                   {finished ? "Every lesson complete. You're a legend!" : currentNode ? `Up next: ${currentNode.title}` : "Pick a lesson below to get started."}
                 </p>
               </div>
@@ -351,13 +334,16 @@ function PathwayJourney({
                 <button
                   type="button"
                   onClick={continueCurrent}
-                  className="lp-shine group flex h-11 items-center gap-2 rounded-full bg-white pl-5 pr-2.5 font-solway text-sm font-bold text-[#132050] shadow-[0_10px_30px_-10px_rgba(221,165,210,0.9)] transition-transform duration-200 hover:scale-[1.03] active:scale-95 max-sm:w-full max-sm:justify-center"
+                  className="group flex h-11 items-center gap-2 rounded-full bg-(--lp-cta) pl-5 pr-2.5 font-solway text-sm font-bold text-white transition-colors duration-200 hover:bg-(--lp-cta-hover) active:scale-[0.98] max-sm:w-full max-sm:justify-center"
+                  style={
+                    {
+                      "--lp-cta": pathway.palette.base,
+                      "--lp-cta-hover": pathway.palette.shade,
+                    } as React.CSSProperties
+                  }
                 >
                   {progress.completedCount === 0 ? "Begin journey" : "Continue"}
-                  <span
-                    className="flex size-7 items-center justify-center rounded-full text-white transition-transform group-hover:translate-x-0.5"
-                    style={{ background: `linear-gradient(135deg, ${pathway.palette.accent}, ${pathway.palette.base})` }}
-                  >
+                  <span className="flex size-7 items-center justify-center rounded-full bg-white/20 text-white transition-transform group-hover:translate-x-0.5">
                     <Play className="size-3" fill="currentColor" />
                   </span>
                 </button>
@@ -400,7 +386,7 @@ function PathwayJourney({
                 <button
                   type="button"
                   onClick={() => scrollToNode(currentNodeId)}
-                  className="lp-pop lp-glass pointer-events-auto flex h-11 items-center gap-2 rounded-full pl-3 pr-4 font-inter text-xs font-bold text-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] transition-transform hover:scale-105 active:scale-95"
+                  className="lp-pop pointer-events-auto flex h-11 items-center gap-2 rounded-full border border-[#E7E5EE] bg-white pl-3 pr-4 font-inter text-xs font-bold text-[#132050] shadow-sm transition-colors hover:bg-[#F7F7FA] active:scale-95"
                   aria-label="Jump to your current lesson"
                 >
                   {jumpDirection === "up" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
@@ -447,28 +433,21 @@ function JourneyRing({
   return (
     <div className="relative flex size-16 shrink-0 items-center justify-center">
       <svg viewBox="0 0 64 64" className="absolute inset-0 size-16 -rotate-90" aria-hidden>
-        <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(243,236,254,0.14)" strokeWidth="4" />
+        <circle cx="32" cy="32" r={r} fill="none" stroke="#E7E5EE" strokeWidth="4" />
         <circle
           cx="32"
           cy="32"
           r={r}
           fill="none"
-          stroke={palette.accent}
+          stroke={palette.base}
           strokeWidth="4"
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={c * (1 - percent / 100)}
           className="transition-[stroke-dashoffset] duration-1000 ease-out"
-          style={{ filter: `drop-shadow(0 0 6px ${palette.accent})` }}
         />
       </svg>
-      <span
-        className="flex size-11 items-center justify-center rounded-full"
-        style={{
-          background: `radial-gradient(circle at 32% 26%, ${palette.accent}, ${palette.base} 55%, ${palette.shade})`,
-          boxShadow: "inset 0 -4px 8px rgba(0,0,0,0.25), inset 0 2px 4px rgba(255,255,255,0.35)",
-        }}
-      >
+      <span className="flex size-11 items-center justify-center rounded-full" style={{ background: palette.soft }}>
         {children}
       </span>
     </div>
@@ -479,24 +458,15 @@ function FinishLine({ finished, title }: { finished: boolean; title: string }) {
   return (
     <div className="relative mt-16 flex flex-col items-center text-center">
       <div className="relative">
-        {finished && <span className="lp-glow absolute -inset-6 rounded-full bg-[#F5C04A] blur-2xl" aria-hidden />}
         <div
-          className={cn("lp-hex relative flex size-24 items-center justify-center", finished && "lp-float")}
-          style={{
-            background: finished
-              ? "radial-gradient(circle at 32% 26%, #FCE3A0, #F5C04A 50%, #D9902A)"
-              : "rgba(243,236,254,0.08)",
-          }}
+          className="lp-hex relative flex size-24 items-center justify-center"
+          style={{ background: finished ? "#F5C04A" : "#F1F0F5" }}
         >
-          {finished ? (
-            <Trophy className="size-11 text-white drop-shadow" />
-          ) : (
-            <Flag className="size-9 text-[#F3ECFE]/35" />
-          )}
+          {finished ? <Trophy className="size-11 text-[#132050]" /> : <Flag className="size-9 text-[#9C96A8]" />}
         </div>
       </div>
-      <p className="mt-4 font-solway text-lg font-bold text-white">{finished ? `${title} complete!` : "The summit"}</p>
-      <p className="mt-1 max-w-xs font-inter text-sm text-[#F3ECFE]/60">
+      <p className="mt-4 font-solway text-lg font-bold text-[#132050]">{finished ? `${title} complete!` : "The summit"}</p>
+      <p className="mt-1 max-w-xs font-inter text-sm text-[#5B6478]">
         {finished
           ? "You earned the Graduate badge. Choose a new learning path to keep your flame glowing."
           : `Finish every lesson and its practice to earn your ${title} Graduate badge.`}

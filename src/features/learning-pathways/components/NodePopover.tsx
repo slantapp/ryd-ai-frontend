@@ -21,8 +21,8 @@ function ProgressRow({ label, value, fraction, color }: { label: string; value: 
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2 font-inter text-xs">
-        <span className="font-semibold text-[#4F4D55]">{label}</span>
-        <span className="font-semibold tabular-nums text-[#0A090B]">{value}</span>
+        <span className="font-semibold text-[#5B6478]">{label}</span>
+        <span className="font-semibold tabular-nums text-[#132050]">{value}</span>
       </div>
       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#F0EEF4]">
         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.round(Math.min(1, fraction) * 100)}%`, background: color }} />
@@ -71,19 +71,17 @@ export function NodePopover({
       onClick={(e) => e.stopPropagation()}
     >
       <span
-        className="absolute -top-1.5 size-3.5 -translate-x-1/2 rotate-45 rounded-[3px] bg-white"
+        className="absolute -top-1.5 z-10 size-3.5 -translate-x-1/2 rotate-45 rounded-[3px] border-l border-t border-[#E7E5EE] bg-white"
         style={{ left: `calc(50% + ${arrowOffset}px)` }}
         aria-hidden
       />
-      <div className="relative overflow-hidden rounded-[20px] bg-white shadow-[0_24px_60px_-18px_rgba(10,9,11,0.6)]">
-        <div
-          className="relative flex items-center gap-3 px-4 pb-3 pt-4"
-          style={{ background: locked ? "#F8F8FA" : `linear-gradient(135deg, ${palette.soft} 0%, #F3ECFE 100%)` }}
-        >
+      <div className="relative overflow-hidden rounded-[20px] border border-[#E7E5EE] bg-white shadow-[0_12px_32px_-12px_rgba(19,32,80,0.18)]">
+        <div className="relative flex items-center gap-3 border-b border-[#F0EEF4] px-4 pb-3 pt-4">
           <span
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl text-white"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl"
             style={{
-              background: locked ? "#CFCBD8" : `linear-gradient(135deg, ${palette.accent}, ${palette.base})`,
+              background: locked ? "#F1F0F5" : palette.soft,
+              color: locked ? "#8E89A0" : palette.base,
             }}
           >
             {locked ? <Lock className="size-4" /> : <Icon className="size-5" strokeWidth={2.2} />}
@@ -91,16 +89,16 @@ export function NodePopover({
           <div className="min-w-0">
             <p
               className="font-inter text-[10px] font-bold uppercase tracking-[0.16em]"
-              style={{ color: locked ? "#9C96A8" : palette.base }}
+              style={{ color: locked ? "#5B6478" : palette.base }}
             >
               {node.kindLabel ?? NODE_LABELS[node.type]}
             </p>
-            <h3 className="truncate font-solway text-base font-bold text-[#0A090B]">{node.title}</h3>
+            <h3 className="truncate font-solway text-base font-bold text-[#132050]">{node.title}</h3>
           </div>
         </div>
 
         <div className="px-4 pb-4 pt-3">
-          <p className="font-inter text-sm leading-relaxed text-[#4F4D55]">
+          <p className="font-inter text-sm leading-relaxed text-[#5B6478]">
             {locked
               ? "Finish the earlier lessons on the trail to unlock this one."
               : state === "learned"
@@ -129,9 +127,9 @@ export function NodePopover({
             </div>
           )}
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 font-inter text-xs font-semibold text-[#4F4D55]">
+          <div className="mt-3 flex flex-wrap items-center gap-2 font-inter text-xs font-semibold text-[#5B6478]">
             {!isChest && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#F8F8FA] px-2.5 py-1">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#F7F7FA] px-2.5 py-1">
                 <Clock className="size-3.5" /> {node.minutes} min
               </span>
             )}
@@ -145,14 +143,14 @@ export function NodePopover({
               "group mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl font-solway text-sm font-bold transition-all duration-200",
               locked || spentChest
                 ? "cursor-not-allowed bg-[#F0EEF4] text-[#9C96A8]"
-                : "text-white hover:shadow-[0_10px_24px_-8px_var(--lp-cta)] active:scale-[0.98]",
+                : "bg-(--lp-cta) text-white hover:bg-(--lp-cta-hover) active:scale-[0.98]",
             )}
             style={
               locked || spentChest
                 ? undefined
                 : ({
-                    background: `linear-gradient(120deg, ${palette.base} 0%, ${palette.shade} 100%)`,
                     "--lp-cta": palette.base,
+                    "--lp-cta-hover": palette.shade,
                   } as React.CSSProperties)
             }
           >
@@ -167,7 +165,7 @@ export function NodePopover({
             )}
           </button>
           {node.slug && !locked && (
-            <p className="mt-2 text-center font-inter text-[11px] text-[#9C96A8]">Opens the course where you left off.</p>
+            <p className="mt-2 text-center font-inter text-[11px] text-[#6B7280]">Opens the course where you left off.</p>
           )}
         </div>
       </div>

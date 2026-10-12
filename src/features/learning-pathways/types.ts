@@ -60,7 +60,8 @@ export type Pathway = {
   title: string;
   language: string;
   /** Emoji-free icon key, resolved in the UI. */
-  icon: "python" | "web" | "game" | "ai";
+  /** Icon key (see components/icons.ts PATHWAY_ICONS). */
+  icon: string;
   palette: UnitPalette;
   units: PathUnit[];
 };

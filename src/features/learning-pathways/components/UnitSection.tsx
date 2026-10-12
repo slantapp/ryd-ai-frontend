@@ -13,16 +13,6 @@ const ROW = 124;
 const ROW_H = 100;
 const STEP_X = 62;
 
-/** Deterministic sparkle positions so stars don't jump between renders. */
-const SPARKLES = [
-  { x: 8, y: 0.12, s: 3 },
-  { x: 88, y: 0.22, s: 2 },
-  { x: 14, y: 0.48, s: 2 },
-  { x: 93, y: 0.6, s: 3 },
-  { x: 6, y: 0.8, s: 2 },
-  { x: 84, y: 0.9, s: 2 },
-];
-
 type UnitSectionProps = {
   unit: PathUnit;
   unitNumber: number;
@@ -72,38 +62,36 @@ export function UnitSection({
   const { palette } = unit;
   const doneCount = unit.nodes.filter((n) => states[n.id] === "completed").length;
   const unitLocked = unit.nodes.every((n) => states[n.id] === "locked");
-  const gradientId = `lp-trail-${unit.id}`;
   const hiddenCount = collapsed ? Math.max(0, unit.nodes.length - COLLAPSED_COUNT) : 0;
   const nodes = hiddenCount > 0 ? unit.nodes.slice(0, COLLAPSED_COUNT) : unit.nodes;
 
   const points = nodes.map((_, i) => ({ x: waveOffset(i) * STEP_X, y: i * ROW + ROW_H / 2 }));
   const height = (nodes.length - 1) * ROW + ROW_H;
-  const planetSide = unitNumber % 2 === 0 ? "left" : "right";
 
   return (
     <section aria-label={`Chapter ${unitNumber}: ${unit.title}`} className="relative">
       {/* Chapter header */}
       <header className={cn("relative flex flex-col items-center px-4 text-center", unitLocked && "opacity-60")}>
         <span
-          className="lp-glass inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-inter text-[10px] font-bold uppercase tracking-[0.22em]"
-          style={{ color: palette.accent }}
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-inter text-[10px] font-bold uppercase tracking-[0.22em]"
+          style={{ background: palette.soft, color: palette.shade }}
         >
           {unitLocked && <Lock className="size-3" />}
           {unit.sectionTitle ?? `Chapter ${String(unitNumber).padStart(2, "0")}`}
         </span>
-        <h2 className="mt-3 font-solway text-2xl font-bold text-white sm:text-[28px]">{unit.title}</h2>
-        <p className="mt-1.5 max-w-sm font-inter text-sm leading-relaxed text-[#F3ECFE]/65">{unit.description}</p>
+        <h2 className="mt-3 font-solway text-2xl font-bold text-[#132050] sm:text-[28px]">{unit.title}</h2>
+        <p className="mt-1.5 max-w-sm font-inter text-sm leading-relaxed text-[#5B6478]">{unit.description}</p>
 
         <div className="mt-4 flex items-center gap-3">
           {unit.nodes.length > MAX_DOTS ? (
             <div className="flex items-center gap-2" aria-label={`${doneCount} of ${unit.nodes.length} lessons done`}>
-              <div className="h-2 w-36 overflow-hidden rounded-full bg-white/15">
+              <div className="h-2 w-36 overflow-hidden rounded-full bg-[#EEEDF3]">
                 <div
                   className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${percent ?? Math.round((doneCount / unit.nodes.length) * 100)}%`, background: `linear-gradient(90deg, ${palette.accent}, ${palette.base})` }}
+                  style={{ width: `${percent ?? Math.round((doneCount / unit.nodes.length) * 100)}%`, background: palette.base }}
                 />
               </div>
-              <span className="font-inter text-xs font-semibold text-[#F3ECFE]/80">
+              <span className="font-inter text-xs font-semibold text-[#5B6478]">
                 {doneCount}/{unit.nodes.length} lessons
               </span>
             </div>
@@ -118,12 +106,11 @@ export function UnitSection({
                     className={cn("rounded-full transition-all duration-500", up ? "h-2 w-5" : "size-2")}
                     style={{
                       background:
-                        s === "locked" ? "rgba(243,236,254,0.18)"
-                          : up ? GOLD.base
-                            : s === "learned" ? `${GOLD.base}AA`
-                              : s === "current" ? `${palette.accent}88`
-                                : palette.accent,
-                      boxShadow: up ? `0 0 10px ${GOLD.base}` : undefined,
+                        s === "locked" ? "#E1DFE8"
+                          : up ? palette.base
+                            : s === "learned" ? GOLD.base
+                              : s === "current" ? `${palette.base}66`
+                                : palette.base,
                     }}
                   />
                 );
@@ -131,13 +118,13 @@ export function UnitSection({
             </div>
           )}
           {typeof percent === "number" && unit.nodes.length <= MAX_DOTS && (
-            <span className="font-inter text-xs font-semibold text-[#F3ECFE]/80">{percent}%</span>
+            <span className="font-inter text-xs font-semibold text-[#5B6478]">{percent}%</span>
           )}
           {!unitLocked && (
             <button
               type="button"
               onClick={() => onOpenGuide(unit)}
-              className="lp-glass inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-inter text-xs font-semibold text-[#F3ECFE] transition-colors hover:bg-white/15"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#E7E5EE] bg-white px-3 py-1.5 font-inter text-xs font-semibold text-[#132050] transition-colors hover:bg-[#F7F7FA]"
             >
               <BookOpen className="size-3.5" />
               Guide
@@ -148,24 +135,6 @@ export function UnitSection({
 
       {/* The trail */}
       <div className="relative mx-auto mt-10 w-full max-w-[460px]" style={{ height }}>
-        {/* Background sparkles & a planet for depth */}
-        {SPARKLES.map((sp, i) => (
-          <span
-            key={i}
-            className="lp-twinkle pointer-events-none absolute rounded-full bg-white"
-            style={{
-              left: `${sp.x}%`,
-              top: sp.y * height,
-              width: sp.s,
-              height: sp.s,
-              animationDelay: `${i * 0.7}s`,
-              boxShadow: `0 0 6px ${palette.accent}`,
-            }}
-            aria-hidden
-          />
-        ))}
-        <Planet side={planetSide} top={height * 0.35} palette={palette} dim={unitLocked} />
-
         <svg
           className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 overflow-visible"
           width={400}
@@ -173,12 +142,6 @@ export function UnitSection({
           viewBox={`-200 0 400 ${height}`}
           aria-hidden
         >
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2={height} gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor={palette.accent} />
-              <stop offset="100%" stopColor={palette.base} />
-            </linearGradient>
-          </defs>
           {points.slice(1).map((p, i) => {
             const a = points[i];
             const midY = (a.y + p.y) / 2;
@@ -186,22 +149,21 @@ export function UnitSection({
             const target = states[nodes[i + 1].id];
             if (target === "locked") {
               return (
-                <path key={i} d={d} fill="none" stroke="#F3ECFE" strokeOpacity={0.22} strokeWidth={2.5} strokeLinecap="round" strokeDasharray="1 10" />
+                <path key={i} d={d} fill="none" stroke="#D6D3DF" strokeWidth={2.5} strokeLinecap="round" strokeDasharray="1 10" />
               );
             }
+            const inProgress = target === "current" || target === "learned";
             return (
-              <g key={i}>
-                <path d={d} fill="none" stroke={palette.base} strokeOpacity={0.45} strokeWidth={12} strokeLinecap="round" style={{ filter: "blur(6px)" }} />
-                <path
-                  d={d}
-                  fill="none"
-                  stroke={`url(#${gradientId})`}
-                  strokeWidth={4}
-                  strokeLinecap="round"
-                  strokeDasharray={target === "current" || target === "learned" ? "14 10" : undefined}
-                  className={target === "current" || target === "learned" ? "lp-trail-flow" : undefined}
-                />
-              </g>
+              <path
+                key={i}
+                d={d}
+                fill="none"
+                stroke={palette.base}
+                strokeOpacity={inProgress ? 0.45 : 0.7}
+                strokeWidth={3}
+                strokeLinecap="round"
+                strokeDasharray={inProgress ? "10 8" : undefined}
+              />
             );
           })}
         </svg>
@@ -240,7 +202,7 @@ export function UnitSection({
                   minutes={node.type === "chest" ? null : node.minutes}
                   state={state}
                   upNext={upNext}
-                  accent={palette.accent}
+                  accent={palette.base}
                   side={labelLeft ? "left" : "right"}
                   gap={upNext ? 26 : 14}
                 />
@@ -266,7 +228,7 @@ export function UnitSection({
           <button
             type="button"
             onClick={onExpand}
-            className="lp-glass inline-flex items-center gap-1.5 rounded-full px-4 py-2 font-inter text-xs font-semibold text-[#F3ECFE] transition-colors hover:bg-white/15"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#E7E5EE] bg-white px-4 py-2 font-inter text-xs font-semibold text-[#132050] transition-colors hover:bg-[#F7F7FA]"
           >
             <ChevronDown className="size-3.5" />
             Show all {unit.nodes.length} lessons
@@ -307,70 +269,34 @@ function NodeLabel({
     >
       {current && (
         <span
-          className="mb-1 inline-block rounded-full px-2 py-0.5 font-inter text-[9px] font-extrabold uppercase tracking-[0.18em] text-[#132050]"
-          style={{ background: GOLD.base, boxShadow: `0 0 12px ${GOLD.base}88` }}
+          className="mb-1 inline-block rounded-full px-2 py-0.5 font-inter text-[9px] font-extrabold uppercase tracking-[0.18em] text-white"
+          style={{ background: accent }}
         >
           Up next
         </span>
       )}
       {!current && state === "learned" && (
-        <span className="mb-1 inline-block rounded-full border border-[#F5C04A]/70 px-2 py-0.5 font-inter text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#F5C04A]">
+        <span className="mb-1 inline-block rounded-full border border-[#F5C04A] bg-[#FDF3DC] px-2 py-0.5 font-inter text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#8A5A00]">
           Practice pending
         </span>
       )}
       <p
         className="font-inter text-[10px] font-bold uppercase tracking-[0.14em]"
-        style={{ color: state === "locked" ? "rgba(243,236,254,0.3)" : accent }}
+        style={{ color: state === "locked" ? "#5B6478" : accent }}
       >
         {kind}
         {minutes ? ` · ${minutes}m` : ""}
       </p>
       <p
         className={cn(
-          "mt-0.5 font-solway leading-snug",
-          current ? "text-[15px] font-bold text-white" : "text-[13px] font-semibold",
-          state === "completed" && "text-[#F3ECFE]/80",
-          state === "locked" && "text-[#F3ECFE]/40",
+          "mt-0.5 font-solway leading-snug text-[#132050]",
+          current ? "text-[15px] font-bold" : "text-[13px] font-semibold",
+          state === "completed" && "text-[#5B6478]",
+          state === "locked" && "font-medium text-[#5B6478]",
         )}
       >
         {title}
       </p>
-    </div>
-  );
-}
-
-function Planet({
-  side,
-  top,
-  palette,
-  dim,
-}: {
-  side: "left" | "right";
-  top: number;
-  palette: PathUnit["palette"];
-  dim: boolean;
-}) {
-  return (
-    <div
-      className={cn("pointer-events-none absolute hidden md:block", dim && "opacity-40")}
-      style={{ top, [side]: -150 }}
-      aria-hidden
-    >
-      <div className="lp-float relative size-24">
-        <span
-          className="absolute inset-0 rounded-full"
-          style={{
-            background: `radial-gradient(circle at 30% 28%, ${palette.accent} 0%, ${palette.base} 55%, ${palette.shade} 100%)`,
-            boxShadow: `0 0 40px ${palette.base}66`,
-          }}
-        />
-        <span
-          className="absolute left-1/2 top-1/2 h-7 w-40 -translate-x-1/2 -translate-y-1/2 -rotate-[18deg] rounded-[50%] border-2"
-          style={{ borderColor: `${palette.accent}88` }}
-        />
-        <span className="absolute left-[24%] top-[30%] size-3 rounded-full bg-white/25" />
-        <span className="absolute left-[55%] top-[58%] size-2 rounded-full bg-black/15" />
-      </div>
     </div>
   );
 }

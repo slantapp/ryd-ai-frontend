@@ -8,6 +8,7 @@ import type { LessonProgress } from "../lessonProgress";
 import { NodePopover } from "./NodePopover";
 import { NODE_LABELS } from "./icons";
 import { GOLD } from "./nodeStyle";
+import { PASTEL_CYCLE } from "../palettes";
 
 const ROW = 124;
 const ROW_H = 100;
@@ -15,6 +16,7 @@ const STEP_X = 62;
 
 type UnitSectionProps = {
   unit: PathUnit;
+  /** Position on the page (not shown; units are labelled "Unit N" from the data). */
   unitNumber: number;
   states: Record<string, PathNodeState>;
   stars: Record<string, number>;
@@ -60,6 +62,8 @@ export function UnitSection({
   onExpand,
 }: UnitSectionProps) {
   const { palette } = unit;
+  // Each "Unit N" chip gets its own soft pastel so chapters feel distinct.
+  const chipTone = PASTEL_CYCLE[(unitNumber - 1) % PASTEL_CYCLE.length];
   const doneCount = unit.nodes.filter((n) => states[n.id] === "completed").length;
   const unitLocked = unit.nodes.every((n) => states[n.id] === "locked");
   const hiddenCount = collapsed ? Math.max(0, unit.nodes.length - COLLAPSED_COUNT) : 0;
@@ -69,23 +73,26 @@ export function UnitSection({
   const height = (nodes.length - 1) * ROW + ROW_H;
 
   return (
-    <section aria-label={`Chapter ${unitNumber}: ${unit.title}`} className="relative">
+    <section aria-label={unit.sectionTitle ? `${unit.sectionTitle}: ${unit.title}` : unit.title} className="relative">
       {/* Chapter header */}
       <header className={cn("relative flex flex-col items-center px-4 text-center", unitLocked && "opacity-60")}>
-        <span
-          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-inter text-[10px] font-bold uppercase tracking-[0.22em]"
-          style={{ background: palette.soft, color: palette.shade }}
-        >
-          {unitLocked && <Lock className="size-3" />}
-          {unit.sectionTitle ?? `Chapter ${String(unitNumber).padStart(2, "0")}`}
-        </span>
+        {/* "Unit N" only on the first course of each unit, so it isn't repeated. */}
+        {unit.sectionTitle && (
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 font-inter text-[10px] font-bold uppercase tracking-[0.22em] shadow-[0_3px_10px_-6px_rgba(170,70,142,0.35)]"
+            style={{ background: chipTone.tint, color: chipTone.ink, borderColor: chipTone.line }}
+          >
+            {unitLocked && <Lock className="size-3" />}
+            {unit.sectionTitle}
+          </span>
+        )}
         <h2 className="mt-3 font-solway text-2xl font-bold text-[#132050] sm:text-[28px]">{unit.title}</h2>
         <p className="mt-1.5 max-w-sm font-inter text-sm leading-relaxed text-[#5C5468]">{unit.description}</p>
 
         <div className="mt-4 flex items-center gap-3">
           {unit.nodes.length > MAX_DOTS ? (
             <div className="flex items-center gap-2" aria-label={`${doneCount} of ${unit.nodes.length} lessons done`}>
-              <div className="h-2 w-36 overflow-hidden rounded-full bg-[#EEEDF3]">
+              <div className="h-2.5 w-36 overflow-hidden rounded-full bg-[#F3ECFE]">
                 <div
                   className="h-full rounded-full transition-all duration-700"
                   style={{ width: `${percent ?? Math.round((doneCount / unit.nodes.length) * 100)}%`, background: palette.base }}
@@ -103,7 +110,7 @@ export function UnitSection({
                 return (
                   <span
                     key={n.id}
-                    className={cn("rounded-full transition-all duration-500", up ? "h-2 w-5" : "size-2")}
+                    className={cn("rounded-full transition-all duration-500", up ? "h-2.5 w-6" : "size-2.5")}
                     style={{
                       background:
                         s === "locked" ? "#E1DFE8"
@@ -124,9 +131,9 @@ export function UnitSection({
             <button
               type="button"
               onClick={() => onOpenGuide(unit)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#EADCE8] bg-white px-3 py-1.5 font-inter text-xs font-semibold text-[#132050] transition-colors hover:bg-[#FAF5FB]"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#E4D9FB] bg-[#FAF5FF] px-3 py-1.5 font-inter text-xs font-semibold text-[#132050] shadow-[0_3px_10px_-6px_rgba(106,85,216,0.4)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#F3ECFE]"
             >
-              <BookOpen className="size-3.5" />
+              <BookOpen className="size-3.5 text-[#6A55D8]" />
               Guide
             </button>
           )}
@@ -228,9 +235,9 @@ export function UnitSection({
           <button
             type="button"
             onClick={onExpand}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#EADCE8] bg-white px-4 py-2 font-inter text-xs font-semibold text-[#132050] transition-colors hover:bg-[#FAF5FB]"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#EADCE8] bg-white px-4 py-2 font-inter text-xs font-semibold text-[#132050] shadow-[0_4px_14px_-8px_rgba(170,70,142,0.4)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#FAF5FB]"
           >
-            <ChevronDown className="size-3.5" />
+            <ChevronDown className="size-3.5 text-[#AA468E]" />
             Show all {unit.nodes.length} lessons
           </button>
         </div>
@@ -269,7 +276,7 @@ function NodeLabel({
     >
       {current && (
         <span
-          className="mb-1 inline-block rounded-full px-2 py-0.5 font-inter text-[9px] font-extrabold uppercase tracking-[0.18em] text-white"
+          className="mb-1 inline-block rounded-full px-2.5 py-0.5 font-inter text-[9px] font-extrabold uppercase tracking-[0.18em] text-white shadow-[0_3px_8px_-3px_rgba(170,70,142,0.5)]"
           style={{ background: accent }}
         >
           Up next

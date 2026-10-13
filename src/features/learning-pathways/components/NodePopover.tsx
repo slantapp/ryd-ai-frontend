@@ -24,7 +24,7 @@ function ProgressRow({ label, value, fraction, color }: { label: string; value: 
         <span className="font-semibold text-[#5C5468]">{label}</span>
         <span className="font-semibold tabular-nums text-[#132050]">{value}</span>
       </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#F0EEF4]">
+      <div className="mt-1 h-2 overflow-hidden rounded-full bg-[#F3ECFE]">
         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.round(Math.min(1, fraction) * 100)}%`, background: color }} />
       </div>
     </div>
@@ -71,25 +71,25 @@ export function NodePopover({
       onClick={(e) => e.stopPropagation()}
     >
       <span
-        className="absolute -top-1.5 z-10 size-3.5 -translate-x-1/2 rotate-45 rounded-[3px] border-l border-t border-[#EADCE8] bg-white"
+        className="absolute -top-1.5 z-10 size-3.5 -translate-x-1/2 rotate-45 rounded-[3px] border-l border-t border-[#EADCE8] bg-[#FDF2F8]"
         style={{ left: `calc(50% + ${arrowOffset}px)` }}
         aria-hidden
       />
-      <div className="relative overflow-hidden rounded-[20px] border border-[#EADCE8] bg-white shadow-[0_12px_32px_-12px_rgba(19,32,80,0.18)]">
-        <div className="relative flex items-center gap-3 border-b border-[#F0EEF4] px-4 pb-3 pt-4">
+      <div className="relative overflow-hidden rounded-3xl border border-[#EADCE8] bg-white shadow-[0_14px_34px_-12px_rgba(170,70,142,0.3)]">
+        <div className="relative flex items-center gap-3 border-b border-[#F3E4EF] bg-linear-to-r from-[#FDF2F8] to-[#FAF5FF] px-4 pb-3 pt-4">
           <span
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl"
+            className="flex size-11 shrink-0 items-center justify-center rounded-2xl shadow-[0_3px_8px_-4px_rgba(170,70,142,0.35)]"
             style={{
-              background: locked ? "#F4EEF5" : palette.soft,
+              background: locked ? "#F4EEF5" : "#FFFFFF",
               color: locked ? "#8E89A0" : palette.base,
             }}
           >
-            {locked ? <Lock className="size-4" /> : <Icon className="size-5" strokeWidth={2.2} />}
+            {locked ? <Lock className="size-4.5" /> : <Icon className="size-6" strokeWidth={2.2} />}
           </span>
           <div className="min-w-0">
             <p
               className="font-inter text-[10px] font-bold uppercase tracking-[0.16em]"
-              style={{ color: locked ? "#5C5468" : palette.base }}
+              style={{ color: locked ? "#5C5468" : palette.shade }}
             >
               {node.kindLabel ?? NODE_LABELS[node.type]}
             </p>
@@ -129,7 +129,7 @@ export function NodePopover({
 
           <div className="mt-3 flex flex-wrap items-center gap-2 font-inter text-xs font-semibold text-[#5C5468]">
             {!isChest && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#FAF5FB] px-2.5 py-1">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#F3ECFE] px-2.5 py-1 text-[#6A55D8]">
                 <Clock className="size-3.5" /> {node.minutes} min
               </span>
             )}
@@ -140,10 +140,10 @@ export function NodePopover({
             disabled={disabled}
             onClick={onStart}
             className={cn(
-              "group mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl font-solway text-sm font-bold transition-all duration-200",
+              "group mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-solway text-sm font-bold transition-all duration-200",
               locked || spentChest
                 ? "cursor-not-allowed bg-[#F0EEF4] text-[#9C96A8]"
-                : "bg-(--lp-cta) text-white hover:bg-(--lp-cta-hover) active:scale-[0.98]",
+                : "bg-(--lp-cta) text-white shadow-[0_8px_18px_-8px_rgba(170,70,142,0.6)] hover:-translate-y-0.5 hover:bg-(--lp-cta-hover) active:scale-[0.98]",
             )}
             style={
               locked || spentChest

@@ -49,7 +49,7 @@ export type PathUnit = {
   description: string;
   palette: UnitPalette;
   nodes: PathNode[];
-  /** Admin unit this course belongs to, shown above the course banner. */
+  /** "Unit N": set on the first course of each unit only, so the label isn't repeated. */
   sectionTitle?: string;
   /** Course (curriculum) slug when this unit is a course band. */
   courseSlug?: string;

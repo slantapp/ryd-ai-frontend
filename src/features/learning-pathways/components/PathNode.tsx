@@ -101,12 +101,20 @@ export const PathNode = forwardRef<HTMLButtonElement, PathNodeProps>(function Pa
   const ringColor = locked ? "#D6D3DF" : outlined ? palette.base : `${palette.base}55`;
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-      {/* Calm static ring for the "up next" lesson */}
+    <div
+      className="relative flex items-center justify-center"
+      style={{
+        width: size,
+        height: size,
+        // Soft coloured drop shadow that follows round, diamond and hex silhouettes alike.
+        filter: locked ? undefined : `drop-shadow(0 6px 8px ${golden ? "rgba(217,144,42,0.28)" : "rgba(170,70,142,0.22)"})`,
+      }}
+    >
+      {/* Gently breathing ring for the "up next" lesson (the page's only looping motion) */}
       {outlined && !inProgress && (
         <span
-          className="pointer-events-none absolute rounded-full border-2"
-          style={{ inset: -8, borderColor: `${palette.base}33` }}
+          className="lp-breathe pointer-events-none absolute rounded-full border-[2.5px]"
+          style={{ inset: -9, borderColor: `${palette.base}55`, background: `${palette.soft}80` }}
           aria-hidden
         />
       )}
@@ -140,6 +148,14 @@ export const PathNode = forwardRef<HTMLButtonElement, PathNodeProps>(function Pa
           background,
         }}
       >
+        {/* Little candy-style highlight on the top of unlocked nodes */}
+        {!locked && !outlined && !isChest && (
+          <span
+            className="pointer-events-none absolute left-1/2 top-[11%] h-[16%] w-[42%] -translate-x-1/2 rounded-full"
+            style={{ background: done ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.75)" }}
+            aria-hidden
+          />
+        )}
         {done && !isChest && !isCheckpoint ? (
           <Check className="relative size-7" style={{ color: iconColor }} strokeWidth={3.2} />
         ) : learned ? (

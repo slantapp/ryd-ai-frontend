@@ -291,15 +291,17 @@ function PathwayJourney({
       <div className="mx-auto grid max-w-[1180px] gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
           {/* Header */}
-          <header className="flex flex-wrap items-end justify-between gap-4">
-            <div>
+          <header className="relative flex flex-wrap items-end justify-between gap-4">
+            <div className="relative">
               <p className="app-type-eyebrow">Learning Path</p>
               <h1 className="app-type-page-title mt-1">Chart your course, one lesson at a time.</h1>
               <p className="app-type-page-subtitle mt-1 max-w-lg">
                 Every lesson lights up as you learn it, and glows gold once you&apos;ve finished its practice questions.
               </p>
             </div>
-            <StatChips stats={stats} />
+            <div className="relative">
+              <StatChips stats={stats} />
+            </div>
           </header>
 
           <div className="mt-5">
@@ -314,10 +316,13 @@ function PathwayJourney({
           {/* The journey — one calm white canvas */}
           <div
             key={pathway.id}
-            className="lp-rise relative mt-5 overflow-clip rounded-[32px] border border-[#EADCE8] bg-linear-to-b from-[#FBF3FA] via-white to-white px-4 pb-12 pt-5 shadow-sm sm:px-8 sm:pt-7"
+            className="lp-rise relative mt-5 overflow-clip rounded-[32px] border border-[#EADCE8] bg-linear-to-b from-[#FBF3FA] via-white to-white px-4 pb-12 pt-5 shadow-[0_10px_30px_-14px_rgba(170,70,142,0.22)] sm:px-8 sm:pt-7"
           >
+            {/* Faint polka dots behind the trail */}
+            <div className="lp-dots pointer-events-none absolute inset-0 opacity-[0.06]" aria-hidden />
+
             {/* Journey header */}
-            <div className="relative flex flex-wrap items-center gap-4 rounded-[22px] border border-[#EADCE8] bg-[#FAF5FB] p-4 sm:p-5">
+            <div className="relative flex flex-wrap items-center gap-4 rounded-3xl border border-[#EADCE8] bg-linear-to-r from-[#F8EAF3] via-[#FAF5FF] to-[#F3ECFE] p-4 shadow-[0_6px_20px_-10px_rgba(170,70,142,0.25)] sm:p-5">
               <JourneyRing percent={progress.percent} palette={pathway.palette}>
                 <PathIcon className="size-6" style={{ color: pathway.palette.base }} strokeWidth={2.1} />
               </JourneyRing>
@@ -334,7 +339,7 @@ function PathwayJourney({
                 <button
                   type="button"
                   onClick={continueCurrent}
-                  className="group flex h-11 items-center gap-2 rounded-full bg-(--lp-cta) pl-5 pr-2.5 font-solway text-sm font-bold text-white transition-colors duration-200 hover:bg-(--lp-cta-hover) active:scale-[0.98] max-sm:w-full max-sm:justify-center"
+                  className="group flex h-12 items-center gap-2 rounded-full bg-(--lp-cta) pl-5 pr-2.5 font-solway text-sm font-bold text-white shadow-[0_8px_18px_-8px_rgba(170,70,142,0.6)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-(--lp-cta-hover) active:scale-[0.98] max-sm:w-full max-sm:justify-center"
                   style={
                     {
                       "--lp-cta": pathway.palette.base,
@@ -343,7 +348,7 @@ function PathwayJourney({
                   }
                 >
                   {progress.completedCount === 0 ? "Begin journey" : "Continue"}
-                  <span className="flex size-7 items-center justify-center rounded-full bg-white/20 text-white transition-transform group-hover:translate-x-0.5">
+                  <span className="flex size-8 items-center justify-center rounded-full bg-white/20 text-white transition-transform group-hover:translate-x-0.5">
                     <Play className="size-3" fill="currentColor" />
                   </span>
                 </button>
@@ -386,7 +391,7 @@ function PathwayJourney({
                 <button
                   type="button"
                   onClick={() => scrollToNode(currentNodeId)}
-                  className="lp-pop pointer-events-auto flex h-11 items-center gap-2 rounded-full border border-[#EADCE8] bg-white pl-3 pr-4 font-inter text-xs font-bold text-[#132050] shadow-sm transition-colors hover:bg-[#FAF5FB] active:scale-95"
+                  className="lp-pop pointer-events-auto flex h-11 items-center gap-2 rounded-full border border-[#EADCE8] bg-white pl-3 pr-4 font-inter text-xs font-bold text-[#132050] shadow-[0_6px_20px_-8px_rgba(170,70,142,0.35)] transition-all hover:-translate-y-0.5 hover:bg-[#FAF5FB] active:scale-95"
                   aria-label="Jump to your current lesson"
                 >
                   {jumpDirection === "up" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
@@ -406,7 +411,8 @@ function PathwayJourney({
           </div>
         </div>
 
-        <aside className="hidden flex-col gap-4 xl:flex">
+        {/* Stays in view while the path scrolls; scrolls itself if taller than the screen. */}
+        <aside className="hidden flex-col gap-4 xl:sticky xl:top-2 xl:flex xl:max-h-[calc(100vh-7rem)] xl:self-start xl:overflow-y-auto scrollbar-hide">
           <StreakCard stats={stats} />
           <DailyGoalCard stats={stats} />
           <BadgesCard badges={badges} />
@@ -433,7 +439,7 @@ function JourneyRing({
   return (
     <div className="relative flex size-16 shrink-0 items-center justify-center">
       <svg viewBox="0 0 64 64" className="absolute inset-0 size-16 -rotate-90" aria-hidden>
-        <circle cx="32" cy="32" r={r} fill="none" stroke="#EADCE8" strokeWidth="4" />
+        <circle cx="32" cy="32" r={r} fill="none" stroke="#FFFFFF" strokeOpacity={0.9} strokeWidth="4" />
         <circle
           cx="32"
           cy="32"
@@ -447,7 +453,7 @@ function JourneyRing({
           className="transition-[stroke-dashoffset] duration-1000 ease-out"
         />
       </svg>
-      <span className="flex size-11 items-center justify-center rounded-full" style={{ background: palette.soft }}>
+      <span className="flex size-11 items-center justify-center rounded-full bg-white shadow-[0_2px_6px_-2px_rgba(170,70,142,0.3)]">
         {children}
       </span>
     </div>
@@ -456,13 +462,13 @@ function JourneyRing({
 
 function FinishLine({ finished, title }: { finished: boolean; title: string }) {
   return (
-    <div className="relative mt-16 flex flex-col items-center text-center">
+    <div className="relative mx-auto mt-16 flex max-w-md flex-col items-center rounded-3xl border border-[#F8E2A0] bg-linear-to-b from-[#FFFBEB] to-white px-6 pb-7 pt-8 text-center shadow-[0_6px_20px_-10px_rgba(217,144,42,0.3)]">
       <div className="relative">
         <div
           className="lp-hex relative flex size-24 items-center justify-center"
-          style={{ background: finished ? "#F5C04A" : "#F4EEF5" }}
+          style={{ background: finished ? "#F5C04A" : "#FEF3C7" }}
         >
-          {finished ? <Trophy className="size-11 text-[#132050]" /> : <Flag className="size-9 text-[#9C96A8]" />}
+          {finished ? <Trophy className="size-11 text-[#132050]" /> : <Flag className="size-10 text-[#92400E]" />}
         </div>
       </div>
       <p className="mt-4 font-solway text-lg font-bold text-[#132050]">{finished ? `${title} complete!` : "The summit"}</p>

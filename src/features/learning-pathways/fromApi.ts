@@ -3,8 +3,6 @@ import { PALETTES } from "./palettes";
 import { buildCourseOutline, type CourseOutline } from "./lessonProgress";
 import type { PathNode, PathUnit, Pathway } from "./types";
 
-const PALETTE_ORDER = ["plum", "iris", "royal", "rose"] as const;
-type PaletteKey = (typeof PALETTE_ORDER)[number];
 
 /** Rough lesson time: a few minutes of content plus about a minute per practice question. */
 const BASE_LESSON_MINUTES = 4;
@@ -24,11 +22,16 @@ export type BuiltPathway = {
  * Courses whose curriculum JSON isn't available are left out.
  */
 export function buildPathway(api: ApiLearningPath, getCurriculumJson: (slug: string) => unknown): BuiltPathway {
-  const color: PaletteKey = PALETTE_ORDER.includes(api.color) ? api.color : "plum";
+  // Every path uses the app's primary plum.
+  const palette = PALETTES.plum;
   const units: PathUnit[] = [];
   const outlines: CourseOutline[] = [];
 
-  api.units.forEach((apiUnit, unitIndex) => {
+  // Units are named by position ("Unit 1", "Unit 2"…), counting only units that have a course
+  // to show, and the label appears once: on the first course band of each unit.
+  let shownUnits = 0;
+  api.units.forEach((apiUnit) => {
+    let unitLabel: string | undefined;
     for (const step of apiUnit.steps) {
       const outline = buildCourseOutline(step.slug, step.title, getCurriculumJson(step.slug));
       if (!outline) continue;
@@ -52,16 +55,16 @@ export function buildPathway(api: ApiLearningPath, getCurriculumJson: (slug: str
       });
 
       const lessonCount = outline.lessons.length;
+      const sectionTitle = unitLabel === undefined ? (unitLabel = `Unit ${++shownUnits}`) : undefined;
       units.push({
         id: `course-${step.id}`,
         title: step.title,
         description:
           step.description?.trim() ||
           `${outline.moduleCount} module${outline.moduleCount === 1 ? "" : "s"} · ${lessonCount} lesson${lessonCount === 1 ? "" : "s"}`,
-        // One colour for the whole path (the admin's choice), so the page stays calm.
-        palette: PALETTES[color],
+        palette,
         nodes,
-        sectionTitle: `Unit ${unitIndex + 1} · ${apiUnit.title}`,
+        sectionTitle,
         courseSlug: outline.slug,
       });
     }
@@ -74,7 +77,7 @@ export function buildPathway(api: ApiLearningPath, getCurriculumJson: (slug: str
       title: api.title,
       language: firstLanguage || "en",
       icon: api.icon,
-      palette: PALETTES[color],
+      palette,
       units,
     },
     outlines,

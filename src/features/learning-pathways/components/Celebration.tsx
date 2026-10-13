@@ -91,15 +91,15 @@ export function CelebrationModal({ data, onContinue }: CelebrationModalProps) {
       <Dialog open={open} onOpenChange={(o) => !o && onContinue()}>
         <DialogContent
           showCloseButton={false}
-          className="max-w-sm gap-0 overflow-hidden rounded-[28px] border border-[#EADCE8] bg-white p-0 shadow-lg"
+          className="max-w-sm gap-0 overflow-hidden rounded-[28px] border border-[#EADCE8] bg-white p-0 shadow-[0_24px_60px_-20px_rgba(170,70,142,0.45)]"
         >
           <div
-            className="relative flex flex-col items-center border-t-4 px-6 pb-6 pt-9 text-center"
+            className="relative flex flex-col items-center border-t-4 bg-linear-to-b from-[#FDF2F8] via-[#FAF5FF] to-white px-6 pb-6 pt-9 text-center"
             style={{ borderTopColor: palette.base }}
           >
             <div className="relative">
               <div
-                className="lp-pop relative flex size-24 items-center justify-center rounded-full"
+                className="lp-pop relative flex size-24 items-center justify-center rounded-full shadow-[0_8px_20px_-8px_rgba(170,70,142,0.4)] ring-4 ring-white"
                 style={{ background: golden ? "#FDF3DC" : palette.soft }}
               >
                 <HeroIcon className="size-11" style={{ color: golden ? GOLD.deep : palette.base }} strokeWidth={2} />
@@ -132,15 +132,15 @@ export function CelebrationModal({ data, onContinue }: CelebrationModalProps) {
           <div className="grid grid-cols-2 gap-3 border-t border-[#F0EEF4] bg-white p-5">
             <StatTile
               icon={<Star className="size-5" fill="currentColor" />}
-              color="#AA468E"
-              tint="#F3ECFE"
+              color="#92400E"
+              tint="#FEF3C7"
               label="Stars"
               value={`${stars} / 3`}
             />
             <StatTile
               icon={<Flame className="size-5" fill="currentColor" />}
-              color="#0063F7"
-              tint="#E6F0FF"
+              color="#9A3412"
+              tint="#FFEDD5"
               label={result.streakExtended ? "Streak extended" : "Day streak"}
               value={`${result.streak}`}
             />
@@ -158,7 +158,7 @@ export function CelebrationModal({ data, onContinue }: CelebrationModalProps) {
               type="button"
               onClick={onContinue}
               autoFocus
-              className="col-span-2 mt-1 h-12 rounded-2xl bg-(--lp-cta) font-solway text-sm font-bold text-white transition-colors duration-200 hover:bg-(--lp-cta-hover) active:scale-[0.98]"
+              className="col-span-2 mt-1 h-12 rounded-2xl bg-(--lp-cta) font-solway text-sm font-bold text-white shadow-[0_8px_18px_-8px_rgba(170,70,142,0.6)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-(--lp-cta-hover) active:scale-[0.98]"
               style={{ "--lp-cta": palette.base, "--lp-cta-hover": palette.shade } as React.CSSProperties}
             >
               Continue the journey

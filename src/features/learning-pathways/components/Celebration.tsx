@@ -91,7 +91,7 @@ export function CelebrationModal({ data, onContinue }: CelebrationModalProps) {
       <Dialog open={open} onOpenChange={(o) => !o && onContinue()}>
         <DialogContent
           showCloseButton={false}
-          className="max-w-sm gap-0 overflow-hidden rounded-[28px] border border-[#E7E5EE] bg-white p-0 shadow-lg"
+          className="max-w-sm gap-0 overflow-hidden rounded-[28px] border border-[#EADCE8] bg-white p-0 shadow-lg"
         >
           <div
             className="relative flex flex-col items-center border-t-4 px-6 pb-6 pt-9 text-center"
@@ -124,7 +124,7 @@ export function CelebrationModal({ data, onContinue }: CelebrationModalProps) {
             )}
 
             <DialogTitle className="relative mt-4 font-solway text-2xl font-bold text-[#132050]">{heading}</DialogTitle>
-            <DialogDescription className="relative mt-1 font-inter text-sm text-[#5B6478]">
+            <DialogDescription className="relative mt-1 font-inter text-sm text-[#5C5468]">
               {node.title}
             </DialogDescription>
           </div>
@@ -192,7 +192,7 @@ function StatTile({
         {icon}
         {value}
       </span>
-      <span className="mt-0.5 font-inter text-xs font-semibold text-[#5B6478]">{label}</span>
+      <span className="mt-0.5 font-inter text-xs font-semibold text-[#5C5468]">{label}</span>
     </div>
   );
 }

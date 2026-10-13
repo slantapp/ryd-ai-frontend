@@ -80,7 +80,7 @@ export function UnitSection({
           {unit.sectionTitle ?? `Chapter ${String(unitNumber).padStart(2, "0")}`}
         </span>
         <h2 className="mt-3 font-solway text-2xl font-bold text-[#132050] sm:text-[28px]">{unit.title}</h2>
-        <p className="mt-1.5 max-w-sm font-inter text-sm leading-relaxed text-[#5B6478]">{unit.description}</p>
+        <p className="mt-1.5 max-w-sm font-inter text-sm leading-relaxed text-[#5C5468]">{unit.description}</p>
 
         <div className="mt-4 flex items-center gap-3">
           {unit.nodes.length > MAX_DOTS ? (
@@ -91,7 +91,7 @@ export function UnitSection({
                   style={{ width: `${percent ?? Math.round((doneCount / unit.nodes.length) * 100)}%`, background: palette.base }}
                 />
               </div>
-              <span className="font-inter text-xs font-semibold text-[#5B6478]">
+              <span className="font-inter text-xs font-semibold text-[#5C5468]">
                 {doneCount}/{unit.nodes.length} lessons
               </span>
             </div>
@@ -118,13 +118,13 @@ export function UnitSection({
             </div>
           )}
           {typeof percent === "number" && unit.nodes.length <= MAX_DOTS && (
-            <span className="font-inter text-xs font-semibold text-[#5B6478]">{percent}%</span>
+            <span className="font-inter text-xs font-semibold text-[#5C5468]">{percent}%</span>
           )}
           {!unitLocked && (
             <button
               type="button"
               onClick={() => onOpenGuide(unit)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#E7E5EE] bg-white px-3 py-1.5 font-inter text-xs font-semibold text-[#132050] transition-colors hover:bg-[#F7F7FA]"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#EADCE8] bg-white px-3 py-1.5 font-inter text-xs font-semibold text-[#132050] transition-colors hover:bg-[#FAF5FB]"
             >
               <BookOpen className="size-3.5" />
               Guide
@@ -228,7 +228,7 @@ export function UnitSection({
           <button
             type="button"
             onClick={onExpand}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#E7E5EE] bg-white px-4 py-2 font-inter text-xs font-semibold text-[#132050] transition-colors hover:bg-[#F7F7FA]"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#EADCE8] bg-white px-4 py-2 font-inter text-xs font-semibold text-[#132050] transition-colors hover:bg-[#FAF5FB]"
           >
             <ChevronDown className="size-3.5" />
             Show all {unit.nodes.length} lessons
@@ -282,7 +282,7 @@ function NodeLabel({
       )}
       <p
         className="font-inter text-[10px] font-bold uppercase tracking-[0.14em]"
-        style={{ color: state === "locked" ? "#5B6478" : accent }}
+        style={{ color: state === "locked" ? "#5C5468" : accent }}
       >
         {kind}
         {minutes ? ` · ${minutes}m` : ""}
@@ -291,8 +291,8 @@ function NodeLabel({
         className={cn(
           "mt-0.5 font-solway leading-snug text-[#132050]",
           current ? "text-[15px] font-bold" : "text-[13px] font-semibold",
-          state === "completed" && "text-[#5B6478]",
-          state === "locked" && "font-medium text-[#5B6478]",
+          state === "completed" && "text-[#5C5468]",
+          state === "locked" && "font-medium text-[#5C5468]",
         )}
       >
         {title}

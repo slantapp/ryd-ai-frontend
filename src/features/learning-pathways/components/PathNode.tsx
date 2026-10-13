@@ -43,7 +43,7 @@ function ProgressRing({ size, progress, palette }: { size: number; progress: Les
       aria-hidden
     >
       <g transform={`rotate(-90 ${box / 2} ${box / 2})`}>
-        <circle cx={box / 2} cy={box / 2} r={r} fill="none" stroke="#E7E5EE" strokeWidth={4} />
+        <circle cx={box / 2} cy={box / 2} r={r} fill="none" stroke="#EADCE8" strokeWidth={4} />
         {/* learn: first half, clockwise from the top */}
         <circle
           cx={box / 2} cy={box / 2} r={r} fill="none" stroke={palette.base} strokeWidth={4} strokeLinecap="round"
@@ -87,7 +87,7 @@ export const PathNode = forwardRef<HTMLButtonElement, PathNodeProps>(function Pa
   const outlined = current && !done && !locked;
   const tinted = !locked && !done && !outlined;
   const background = locked
-    ? "#F1F0F5"
+    ? "#F4EEF5"
     : golden
       ? GOLD.base
       : spentChest || tinted
@@ -156,7 +156,7 @@ export const PathNode = forwardRef<HTMLButtonElement, PathNodeProps>(function Pa
 
       {locked && (
         <span className="pointer-events-none absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-white ring-1 ring-[#D6D3DF]">
-          <Lock className="size-2.5 text-[#5B6478]" strokeWidth={3} />
+          <Lock className="size-2.5 text-[#5C5468]" strokeWidth={3} />
         </span>
       )}
 

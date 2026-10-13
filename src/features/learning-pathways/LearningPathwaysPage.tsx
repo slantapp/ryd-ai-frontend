@@ -314,19 +314,19 @@ function PathwayJourney({
           {/* The journey — one calm white canvas */}
           <div
             key={pathway.id}
-            className="lp-rise relative mt-5 overflow-clip rounded-[32px] border border-[#E7E5EE] bg-white px-4 pb-12 pt-5 shadow-sm sm:px-8 sm:pt-7"
+            className="lp-rise relative mt-5 overflow-clip rounded-[32px] border border-[#EADCE8] bg-linear-to-b from-[#FBF3FA] via-white to-white px-4 pb-12 pt-5 shadow-sm sm:px-8 sm:pt-7"
           >
             {/* Journey header */}
-            <div className="relative flex flex-wrap items-center gap-4 rounded-[22px] border border-[#E7E5EE] bg-[#F7F7FA] p-4 sm:p-5">
+            <div className="relative flex flex-wrap items-center gap-4 rounded-[22px] border border-[#EADCE8] bg-[#FAF5FB] p-4 sm:p-5">
               <JourneyRing percent={progress.percent} palette={pathway.palette}>
                 <PathIcon className="size-6" style={{ color: pathway.palette.base }} strokeWidth={2.1} />
               </JourneyRing>
               <div className="min-w-0 flex-1">
-                <p className="font-inter text-[10px] font-bold uppercase tracking-[0.2em] text-[#5B6478]">
+                <p className="font-inter text-[10px] font-bold uppercase tracking-[0.2em] text-[#5C5468]">
                   Your journey · {progress.completedCount}/{progress.totalCount} lessons · {progress.percent}%
                 </p>
                 <h2 className="mt-0.5 truncate font-solway text-xl font-bold text-[#132050] sm:text-2xl">{pathway.title}</h2>
-                <p className="mt-0.5 truncate font-inter text-sm text-[#5B6478]">
+                <p className="mt-0.5 truncate font-inter text-sm text-[#5C5468]">
                   {finished ? "Every lesson complete. You're a legend!" : currentNode ? `Up next: ${currentNode.title}` : "Pick a lesson below to get started."}
                 </p>
               </div>
@@ -386,7 +386,7 @@ function PathwayJourney({
                 <button
                   type="button"
                   onClick={() => scrollToNode(currentNodeId)}
-                  className="lp-pop pointer-events-auto flex h-11 items-center gap-2 rounded-full border border-[#E7E5EE] bg-white pl-3 pr-4 font-inter text-xs font-bold text-[#132050] shadow-sm transition-colors hover:bg-[#F7F7FA] active:scale-95"
+                  className="lp-pop pointer-events-auto flex h-11 items-center gap-2 rounded-full border border-[#EADCE8] bg-white pl-3 pr-4 font-inter text-xs font-bold text-[#132050] shadow-sm transition-colors hover:bg-[#FAF5FB] active:scale-95"
                   aria-label="Jump to your current lesson"
                 >
                   {jumpDirection === "up" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
@@ -433,7 +433,7 @@ function JourneyRing({
   return (
     <div className="relative flex size-16 shrink-0 items-center justify-center">
       <svg viewBox="0 0 64 64" className="absolute inset-0 size-16 -rotate-90" aria-hidden>
-        <circle cx="32" cy="32" r={r} fill="none" stroke="#E7E5EE" strokeWidth="4" />
+        <circle cx="32" cy="32" r={r} fill="none" stroke="#EADCE8" strokeWidth="4" />
         <circle
           cx="32"
           cy="32"
@@ -460,13 +460,13 @@ function FinishLine({ finished, title }: { finished: boolean; title: string }) {
       <div className="relative">
         <div
           className="lp-hex relative flex size-24 items-center justify-center"
-          style={{ background: finished ? "#F5C04A" : "#F1F0F5" }}
+          style={{ background: finished ? "#F5C04A" : "#F4EEF5" }}
         >
           {finished ? <Trophy className="size-11 text-[#132050]" /> : <Flag className="size-9 text-[#9C96A8]" />}
         </div>
       </div>
       <p className="mt-4 font-solway text-lg font-bold text-[#132050]">{finished ? `${title} complete!` : "The summit"}</p>
-      <p className="mt-1 max-w-xs font-inter text-sm text-[#5B6478]">
+      <p className="mt-1 max-w-xs font-inter text-sm text-[#5C5468]">
         {finished
           ? "You earned the Graduate badge. Choose a new learning path to keep your flame glowing."
           : `Finish every lesson and its practice to earn your ${title} Graduate badge.`}

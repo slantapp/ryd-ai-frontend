@@ -21,7 +21,7 @@ function ProgressRow({ label, value, fraction, color }: { label: string; value: 
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2 font-inter text-xs">
-        <span className="font-semibold text-[#5B6478]">{label}</span>
+        <span className="font-semibold text-[#5C5468]">{label}</span>
         <span className="font-semibold tabular-nums text-[#132050]">{value}</span>
       </div>
       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#F0EEF4]">
@@ -71,16 +71,16 @@ export function NodePopover({
       onClick={(e) => e.stopPropagation()}
     >
       <span
-        className="absolute -top-1.5 z-10 size-3.5 -translate-x-1/2 rotate-45 rounded-[3px] border-l border-t border-[#E7E5EE] bg-white"
+        className="absolute -top-1.5 z-10 size-3.5 -translate-x-1/2 rotate-45 rounded-[3px] border-l border-t border-[#EADCE8] bg-white"
         style={{ left: `calc(50% + ${arrowOffset}px)` }}
         aria-hidden
       />
-      <div className="relative overflow-hidden rounded-[20px] border border-[#E7E5EE] bg-white shadow-[0_12px_32px_-12px_rgba(19,32,80,0.18)]">
+      <div className="relative overflow-hidden rounded-[20px] border border-[#EADCE8] bg-white shadow-[0_12px_32px_-12px_rgba(19,32,80,0.18)]">
         <div className="relative flex items-center gap-3 border-b border-[#F0EEF4] px-4 pb-3 pt-4">
           <span
             className="flex size-10 shrink-0 items-center justify-center rounded-xl"
             style={{
-              background: locked ? "#F1F0F5" : palette.soft,
+              background: locked ? "#F4EEF5" : palette.soft,
               color: locked ? "#8E89A0" : palette.base,
             }}
           >
@@ -89,7 +89,7 @@ export function NodePopover({
           <div className="min-w-0">
             <p
               className="font-inter text-[10px] font-bold uppercase tracking-[0.16em]"
-              style={{ color: locked ? "#5B6478" : palette.base }}
+              style={{ color: locked ? "#5C5468" : palette.base }}
             >
               {node.kindLabel ?? NODE_LABELS[node.type]}
             </p>
@@ -98,7 +98,7 @@ export function NodePopover({
         </div>
 
         <div className="px-4 pb-4 pt-3">
-          <p className="font-inter text-sm leading-relaxed text-[#5B6478]">
+          <p className="font-inter text-sm leading-relaxed text-[#5C5468]">
             {locked
               ? "Finish the earlier lessons on the trail to unlock this one."
               : state === "learned"
@@ -127,9 +127,9 @@ export function NodePopover({
             </div>
           )}
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 font-inter text-xs font-semibold text-[#5B6478]">
+          <div className="mt-3 flex flex-wrap items-center gap-2 font-inter text-xs font-semibold text-[#5C5468]">
             {!isChest && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#F7F7FA] px-2.5 py-1">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#FAF5FB] px-2.5 py-1">
                 <Clock className="size-3.5" /> {node.minutes} min
               </span>
             )}
@@ -165,7 +165,7 @@ export function NodePopover({
             )}
           </button>
           {node.slug && !locked && (
-            <p className="mt-2 text-center font-inter text-[11px] text-[#6B7280]">Opens the course where you left off.</p>
+            <p className="mt-2 text-center font-inter text-[11px] text-[#736A80]">Opens the course where you left off.</p>
           )}
         </div>
       </div>

@@ -27,7 +27,7 @@ export function PathwaySwitcher({ pathways, activeId, percents, onSelect }: Path
             aria-pressed={active}
             className={cn(
               "group relative flex w-[232px] shrink-0 snap-start items-center gap-3 overflow-hidden rounded-[20px] border bg-white p-3 text-left transition-colors duration-200",
-              !active && "border-[#E7E5EE] hover:border-[#D6D3DF] hover:bg-[#FAFAFC]",
+              !active && "border-[#EADCE8] hover:border-[#D6D3DF] hover:bg-[#FAFAFC]",
             )}
             style={active ? { borderColor: p.palette.base, boxShadow: `inset 0 0 0 1px ${p.palette.base}, 0 1px 2px rgba(19,32,80,0.06)` } : undefined}
           >
@@ -56,7 +56,7 @@ export function PathwaySwitcher({ pathways, activeId, percents, onSelect }: Path
             </span>
             <span className="relative min-w-0">
               <span className="block truncate font-solway text-sm font-bold text-[#132050]">{p.title}</span>
-              <span className="block truncate font-inter text-xs text-[#5B6478]">{p.language}</span>
+              <span className="block truncate font-inter text-xs text-[#5C5468]">{p.language}</span>
               <span className="mt-1 inline-block font-inter text-[11px] font-bold tabular-nums" style={{ color: p.palette.base }}>
                 {percent}% complete
               </span>

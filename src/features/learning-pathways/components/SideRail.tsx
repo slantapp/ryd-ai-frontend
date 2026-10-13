@@ -14,7 +14,7 @@ function weekdayLetter(isoDate: string): string {
 
 function Card({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div className={cn("rounded-[22px] border border-[#E7E5EE] bg-white p-5 shadow-sm", className)}>
+    <div className={cn("rounded-[22px] border border-[#EADCE8] bg-white p-5 shadow-sm", className)}>
       {children}
     </div>
   );
@@ -44,12 +44,12 @@ export function StreakCard({ stats }: { stats: LearningStats | null }) {
         </div>
         <div>
           <p className="font-solway text-4xl font-bold leading-none tabular-nums text-[#132050]">{streak}</p>
-          <p className="mt-1 font-inter text-xs font-semibold uppercase tracking-[0.14em] text-[#5B6478]">
+          <p className="mt-1 font-inter text-xs font-semibold uppercase tracking-[0.14em] text-[#5C5468]">
             day streak{stats && stats.longestStreak > streak ? ` · best ${stats.longestStreak}` : ""}
           </p>
         </div>
       </div>
-      <p className="relative mt-4 font-inter text-sm text-[#5B6478]">
+      <p className="relative mt-4 font-inter text-sm text-[#5C5468]">
         {activeToday
           ? "Your flame is lit for today. See you tomorrow ✦"
           : "Finish a lesson (or learn for 5 minutes) today to keep your flame glowing."}
@@ -59,11 +59,11 @@ export function StreakCard({ stats }: { stats: LearningStats | null }) {
           const isTodayCell = d.date === todayDate;
           return (
             <div key={d.date} className="flex flex-col items-center gap-1.5" title={`${d.date}: ${d.lessons} lesson(s), ${d.minutes} min`}>
-              <span className={cn("font-inter text-[10px] font-bold", isTodayCell ? "text-[#132050]" : "text-[#6B7280]")}>{weekdayLetter(d.date)}</span>
+              <span className={cn("font-inter text-[10px] font-bold", isTodayCell ? "text-[#132050]" : "text-[#736A80]")}>{weekdayLetter(d.date)}</span>
               <span
                 className={cn(
                   "flex size-7 items-center justify-center rounded-full",
-                  !d.active && "bg-[#F1F0F5]",
+                  !d.active && "bg-[#F4EEF5]",
                   isTodayCell && !d.active && "ring-1 ring-[#AA468E]/60",
                 )}
                 style={d.active ? { background: PLUM } : undefined}
@@ -118,15 +118,15 @@ export function DailyGoalCard({ stats }: { stats: LearningStats | null }) {
         <div>
           <p className="font-solway text-2xl font-bold tabular-nums text-[#132050]">
             {lessonsToday}
-            <span className="text-base font-semibold text-[#6B7280]"> / {goal} lessons</span>
+            <span className="text-base font-semibold text-[#736A80]"> / {goal} lessons</span>
           </p>
-          <p className="mt-0.5 font-inter text-xs text-[#5B6478]">
+          <p className="mt-0.5 font-inter text-xs text-[#5C5468]">
             {pct >= 1
               ? "Goal reached — anything extra is a bonus."
               : `${left} more lesson${left === 1 ? "" : "s"} to reach today's goal`}
           </p>
           {stats && stats.today.minutes > 0 && (
-            <p className="mt-0.5 font-inter text-xs text-[#6B7280]">{stats.today.minutes} min of learning today</p>
+            <p className="mt-0.5 font-inter text-xs text-[#736A80]">{stats.today.minutes} min of learning today</p>
           )}
         </div>
       </div>
@@ -147,7 +147,7 @@ export function BadgesCard({ badges }: { badges: Badge[] }) {
               <div
                 className={cn(
                   "relative flex size-14 items-center justify-center rounded-2xl transition-transform duration-200 group-hover:-translate-y-0.5",
-                  b.unlocked ? "bg-[#F8EAF3]" : "border border-dashed border-[#D6D3DF] bg-[#F7F7FA]",
+                  b.unlocked ? "bg-[#F8EAF3]" : "border border-dashed border-[#D6D3DF] bg-[#FAF5FB]",
                 )}
               >
                 <Icon className={cn("size-6", b.unlocked ? "text-[#AA468E]" : "text-[#A8A3B5]")} strokeWidth={2} />
@@ -158,7 +158,7 @@ export function BadgesCard({ badges }: { badges: Badge[] }) {
               <span
                 className={cn(
                   "mt-2 font-inter text-[11px] font-semibold leading-tight",
-                  b.unlocked ? "text-[#132050]" : "text-[#6B7280]",
+                  b.unlocked ? "text-[#132050]" : "text-[#736A80]",
                 )}
               >
                 {b.title}
@@ -179,7 +179,7 @@ export function StatChips({ stats }: { stats: LearningStats | null }) {
       <Chip title={`${streak} day streak`}>
         <Flame className="size-4.5" color={PLUM} fill={streak > 0 ? "#DDA5D2" : "none"} />
         <span className="text-[#AA468E]">{streak}</span>
-        <span className="font-inter text-xs font-semibold text-[#6B7280]">day streak</span>
+        <span className="font-inter text-xs font-semibold text-[#736A80]">day streak</span>
       </Chip>
     </div>
   );
@@ -189,7 +189,7 @@ function Chip({ title, children }: { title: string; children: React.ReactNode })
   return (
     <span
       title={title}
-      className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#E7E5EE] bg-white px-3.5 font-solway text-sm font-bold tabular-nums shadow-sm"
+      className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#EADCE8] bg-white px-3.5 font-solway text-sm font-bold tabular-nums shadow-sm"
     >
       {children}
     </span>

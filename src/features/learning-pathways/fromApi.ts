@@ -1,7 +1,7 @@
 import type { ApiLearningPath } from "@/api/learningPaths";
 import { PALETTES } from "./palettes";
 import { buildCourseOutline, type CourseOutline } from "./lessonProgress";
-import type { PathNode, PathUnit, Pathway, UnitPalette } from "./types";
+import type { PathNode, PathUnit, Pathway } from "./types";
 
 const PALETTE_ORDER = ["plum", "iris", "royal", "rose"] as const;
 type PaletteKey = (typeof PALETTE_ORDER)[number];
@@ -10,11 +10,6 @@ type PaletteKey = (typeof PALETTE_ORDER)[number];
 const BASE_LESSON_MINUTES = 4;
 
 export const pathwayId = (apiId: number) => `path-${apiId}`;
-
-function paletteAt(start: PaletteKey, offset: number): UnitPalette {
-  const i = (PALETTE_ORDER.indexOf(start) + offset) % PALETTE_ORDER.length;
-  return PALETTES[PALETTE_ORDER[i]];
-}
 
 export type BuiltPathway = {
   pathway: Pathway;
@@ -63,7 +58,8 @@ export function buildPathway(api: ApiLearningPath, getCurriculumJson: (slug: str
         description:
           step.description?.trim() ||
           `${outline.moduleCount} module${outline.moduleCount === 1 ? "" : "s"} · ${lessonCount} lesson${lessonCount === 1 ? "" : "s"}`,
-        palette: paletteAt(color, outlines.length - 1),
+        // One colour for the whole path (the admin's choice), so the page stays calm.
+        palette: PALETTES[color],
         nodes,
         sectionTitle: `Unit ${unitIndex + 1} · ${apiUnit.title}`,
         courseSlug: outline.slug,

@@ -142,6 +142,11 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
   const rewindTracker = useMemo(() => createSpeechRewindTracker(), []);
   /** Drops the speech-end event that stopping mid-utterance triggers. */
   const suppressSpeechEndUntilRef = useRef(0);
+  const skipTimerRef = useRef<number | null>(null);
+  /** Identifies the utterance currently handed to the avatar. 0 means a stop/skip invalidated it. */
+  const utteranceGenRef = useRef(0);
+  const activeUtteranceRef = useRef(0);
+  const endedUtteranceRef = useRef(0);
   const [showMobileAudioUnlock, setShowMobileAudioUnlock] = useState(false);
   const [isAvatarReady, setIsAvatarReady] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -212,6 +217,8 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
 
         activeShowRef.current = utterance.show ?? defaultShowRef.current;
         rewindTracker.beginUtterance(utterance.text);
+        const gen = ++utteranceGenRef.current;
+        activeUtteranceRef.current = gen;
         setAwaitingSpeech(true);
         playAvatarGesture(avatarRef.current, utterance.gesture);
         avatarRef.current!.speakText(utterance.text);
@@ -288,8 +295,14 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     const avatar = avatarRef.current;
     if (!avatar || typeof avatar.speakText !== "function") return;
 
+    if (skipTimerRef.current != null) {
+      window.clearTimeout(skipTimerRef.current);
+      skipTimerRef.current = null;
+    }
+
     // Stopping mid-utterance makes the avatar report speech-end; letting that
     // through would flush the queue and jump the lesson forward.
+    activeUtteranceRef.current = 0;
     suppressSpeechEndUntilRef.current = Date.now() + REWIND_RESPEAK_DELAY_MS * 3;
     stopAvatarSpeech(avatar);
     rewindTracker.beginChunk(slice.startIndex);
@@ -311,6 +324,8 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
         return;
       }
       try {
+        const gen = ++utteranceGenRef.current;
+        activeUtteranceRef.current = gen;
         live.speakText(slice.text);
       } catch (error) {
         console.warn("Error rewinding speech:", error);
@@ -329,6 +344,11 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
 
   const stop = useCallback(() => {
     try {
+      if (skipTimerRef.current != null) {
+        window.clearTimeout(skipTimerRef.current);
+        skipTimerRef.current = null;
+      }
+      activeUtteranceRef.current = 0;
       pendingSpeechQueueRef.current = [];
       afterSpeechRef.current = null;
       setHasPendingSpeech(false);
@@ -392,11 +412,11 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     setAwaitingSpeech(false);
   }, [rewindTracker]);
 
-  const handleSpeechEnd = useCallback(() => {
-    if (Date.now() < suppressSpeechEndUntilRef.current) return;
+  const runSpeechFollowUp = useCallback(() => {
     setIsSpeaking(false);
     setIsPaused(false);
     setCurrentSubtitle("");
+    rewindTracker.reset();
     const hadQueuedSpeech = pendingSpeechQueueRef.current.length > 0;
     flushNextQueuedSpeech();
     if (hadQueuedSpeech) return;
@@ -406,7 +426,46 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
       afterSpeechRef.current = null;
       fn();
     }
-  }, [flushNextQueuedSpeech]);
+  }, [flushNextQueuedSpeech, rewindTracker]);
+
+  const handleSpeechEnd = useCallback(() => {
+    if (Date.now() < suppressSpeechEndUntilRef.current) return;
+    const gen = activeUtteranceRef.current;
+    // Skip and rewind set this to 0 before stopping, so the extra end from
+    // stopSpeaking cannot run the follow-up. A real line can end before the
+    // start event, and that end still has to advance.
+    if (gen === 0 || gen === endedUtteranceRef.current) return;
+    endedUtteranceRef.current = gen;
+    runSpeechFollowUp();
+  }, [runSpeechFollowUp]);
+
+  /**
+   * End the current spoken line and run the same follow-up a natural
+   * speech-end would (next line, or the beat's continue / advance step).
+   * The short delay lets the speech-end from stopSpeaking arrive first
+   * and be ignored, so the follow-up does not run twice.
+   */
+  const skipSpeaking = useCallback(() => {
+    if (!isSpeaking && !isPaused) return;
+    if (skipTimerRef.current != null) return;
+
+    activeUtteranceRef.current = 0;
+    suppressSpeechEndUntilRef.current = Date.now() + REWIND_RESPEAK_DELAY_MS * 3;
+    try {
+      stopAvatarSpeech(avatarRef.current);
+    } catch (error) {
+      console.warn("Error skipping speech:", error);
+    }
+    setIsSpeaking(false);
+    setIsPaused(false);
+    setCurrentSubtitle("");
+
+    skipTimerRef.current = window.setTimeout(() => {
+      skipTimerRef.current = null;
+      suppressSpeechEndUntilRef.current = 0;
+      runSpeechFollowUp();
+    }, REWIND_RESPEAK_DELAY_MS);
+  }, [isPaused, isSpeaking, runSpeechFollowUp]);
 
   const handleSubtitle = useCallback(
     (text: string) => {
@@ -520,6 +579,7 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
     isPaused,
     togglePause,
     rewindSpeaking,
+    skipSpeaking,
     currentSubtitle,
     selectedInstructor,
     setSelectedInstructor,

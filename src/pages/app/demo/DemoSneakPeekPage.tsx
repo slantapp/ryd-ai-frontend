@@ -69,6 +69,7 @@ export default function DemoSneakPeekPage() {
     isSpeaking,
     isPaused,
     togglePause,
+    skipSpeaking,
     currentSubtitle,
     isInstructorWaiting,
     showMobileAudioUnlock,
@@ -281,6 +282,7 @@ export default function DemoSneakPeekPage() {
             isSpeaking={isSpeaking}
             isPaused={isPaused}
             onTogglePause={togglePause}
+            onSkip={skipSpeaking}
             currentSubtitle={currentSubtitle}
             avatarSlot={avatarSlot}
             onLessonComplete={handleLessonComplete}

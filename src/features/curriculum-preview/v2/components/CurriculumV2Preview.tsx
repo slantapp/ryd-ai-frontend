@@ -76,6 +76,7 @@ export function CurriculumV2Preview({
     isSpeaking,
     isPaused,
     togglePause,
+    skipSpeaking,
     currentSubtitle,
     isInstructorWaiting,
     showMobileAudioUnlock,
@@ -370,6 +371,7 @@ export function CurriculumV2Preview({
               isSpeaking={isSpeaking}
               isPaused={isPaused}
               onTogglePause={togglePause}
+              onSkip={skipSpeaking}
               currentSubtitle={currentSubtitle}
               avatarSlot={renderAvatar("h-full w-full", false)}
               onLessonComplete={handleLessonComplete}

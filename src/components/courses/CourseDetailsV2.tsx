@@ -80,6 +80,7 @@ export default function CourseDetailsV2() {
     isPaused,
     togglePause,
     rewindSpeaking,
+    skipSpeaking,
     currentSubtitle,
     isInstructorWaiting,
     showMobileAudioUnlock,
@@ -478,6 +479,7 @@ export default function CourseDetailsV2() {
             isPaused={isPaused}
             onTogglePause={togglePause}
             onRewind={rewindSpeaking}
+            onSkip={skipSpeaking}
             currentSubtitle={currentSubtitle}
             avatarSlot={avatarSlot}
             onLessonComplete={handleLessonComplete}

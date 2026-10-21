@@ -1,3 +1,5 @@
+import { resolveGradedLanguage } from "./codeExecution/languages";
+
 export type CodeTestCriteria = {
   expectedVariable?: string;
   expectedValue?: unknown;
@@ -102,12 +104,283 @@ function normalizeJsCodeForMatch(value: string): string {
  * Plain code snippets (e.g. `if (score > 50)`) use literal substring matching so
  * regex metacharacters like `(`, `+`, and `{` do not cause false failures.
  */
-export function matchExpectedCode(code: string, expectedCode: string): boolean {
-  const pattern = expectedCode.startsWith("regex:")
+const HASH_COMMENT_LANGUAGES = new Set(["python", "ruby", "bash", "perl"]);
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function stripUnquotedMarker(line: string, marker: string): string {
+  let quote: string | null = null;
+  for (let index = 0; index < line.length; index += 1) {
+    const ch = line[index];
+    if (quote) {
+      if (ch === "\\") {
+        index += 1;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      quote = ch;
+      continue;
+    }
+    if (line.startsWith(marker, index)) return line.slice(0, index);
+  }
+  return line;
+}
+
+function stripComments(source: string, language: string): string {
+  const hashComments = HASH_COMMENT_LANGUAGES.has(language);
+  const withoutBlock = hashComments
+    ? source
+    : source.replace(/\/\*[\s\S]*?\*\//g, "");
+  return withoutBlock
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line) => stripUnquotedMarker(line, hashComments ? "#" : "//"))
+    .join("\n");
+}
+
+function compactOutsideStrings(value: string): string {
+  let out = "";
+  let quote: string | null = null;
+  for (let index = 0; index < value.length; index += 1) {
+    const ch = value[index];
+    if (quote) {
+      out += ch;
+      if (ch === "\\") {
+        const next = value[index + 1];
+        if (next !== undefined) {
+          out += next;
+          index += 1;
+        }
+        continue;
+      }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      quote = ch;
+      out += ch;
+      continue;
+    }
+    if (/\s/.test(ch)) continue;
+    out += ch;
+  }
+  return out;
+}
+
+function matchProgramSource(
+  code: string,
+  expected: string,
+  language: string,
+): boolean {
+  const needle = compactOutsideStrings(stripComments(expected, language));
+  if (!needle) return false;
+  const haystack = compactOutsideStrings(stripComments(code, language));
+  return haystack.includes(needle);
+}
+
+function hasIdentifier(code: string, name: string): boolean {
+  if (!name.trim()) return false;
+  return new RegExp(`\\b${escapeRegExp(name)}\\b`).test(code);
+}
+
+function windowHasValue(window: string, form: string): boolean {
+  if (!form) return false;
+  if (/^-?\d+(?:\.\d+)?$/.test(form)) {
+    return new RegExp(`(^|[^\\d.])${escapeRegExp(form)}([^\\d]|$)`).test(window);
+  }
+  return window.includes(form);
+}
+
+function valueAssigned(
+  code: string,
+  name: string,
+  value: unknown,
+  language: string,
+): boolean {
+  if (!hasIdentifier(code, name)) return false;
+  const compact = compactOutsideStrings(stripComments(code, language));
+  const forms =
+    typeof value === "string"
+      ? [value, `"${value}"`, `'${value}'`]
+      : [String(value)];
+  const start = compact.indexOf(name);
+  if (start < 0) return false;
+  const window = compact.slice(start, start + name.length + 48);
+  return forms.some((form) =>
+    windowHasValue(window, compactOutsideStrings(form)),
+  );
+}
+
+function functionDefined(
+  code: string,
+  name: string,
+  language: string,
+): boolean {
+  const src = stripComments(code, language);
+  const n = escapeRegExp(name);
+  if (language === "python" || language === "ruby") {
+    return new RegExp(`\\bdef\\s+${n}\\b`).test(src);
+  }
+  if (language === "go") {
+    return new RegExp(`\\bfunc\\s+(?:\\([^)]*\\)\\s*)?${n}\\b`).test(src);
+  }
+  if (language === "rust") return new RegExp(`\\bfn\\s+${n}\\b`).test(src);
+  if (language === "kotlin" || language === "scala") {
+    return new RegExp(`\\bfun\\s+${n}\\b`).test(src);
+  }
+  if (language === "swift") return new RegExp(`\\bfunc\\s+${n}\\b`).test(src);
+  if (language === "lua" || language === "php" || language === "javascript") {
+    return new RegExp(`\\bfunction\\s+${n}\\b`).test(src);
+  }
+  if (language === "perl") return new RegExp(`\\bsub\\s+${n}\\b`).test(src);
+  if (language === "bash") {
+    return new RegExp(`(?:\\bfunction\\s+)?${n}\\s*\\(\\s*\\)`).test(src);
+  }
+  return new RegExp(`\\b${n}\\s*\\([^;{}]*\\)\\s*\\{`).test(src);
+}
+
+function formatProbeArg(value: unknown, language: string): string {
+  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "boolean") {
+    if (language === "python") return value ? "True" : "False";
+    return value ? "true" : "false";
+  }
+  if (typeof value === "number") return String(value);
+  return "null";
+}
+
+export function expectedStdout(value: unknown, language: string): string {
+  if (typeof value === "boolean") {
+    if (language === "python") return value ? "True" : "False";
+    return value ? "true" : "false";
+  }
+  if (value === null) return language === "python" ? "None" : "null";
+  return String(value);
+}
+
+export function stdoutMatches(
+  actual: string,
+  expected: unknown,
+  language: string,
+): boolean {
+  if (actual === expectedStdout(expected, language)) return true;
+  if (
+    typeof expected === "boolean" &&
+    (language === "c" || language === "cpp" || language === "java")
+  ) {
+    return actual === (expected ? "1" : "0");
+  }
+  return false;
+}
+
+/** Extra program that prints each expectedFunction test case. Null when it cannot be built. */
+export function buildFunctionProbe(
+  code: string,
+  criteria: CodeTestCriteria | undefined,
+  language: string,
+): string | null {
+  if (!criteria?.expectedFunction || !criteria.testCases?.length) return null;
+  if (/\bmain\s*\(/.test(code)) return null;
+  const calls = criteria.testCases.map((testCase) => {
+    const args = testCase.input
+      .map((value) => formatProbeArg(value, language))
+      .join(", ");
+    return `${criteria.expectedFunction}(${args})`;
+  });
+  if (language === "python") {
+    return `${code}\n${calls.map((call) => `print(${call})`).join("\n")}\n`;
+  }
+  if (language === "ruby") {
+    return `${code}\n${calls.map((call) => `puts(${call})`).join("\n")}\n`;
+  }
+  if (language === "lua") {
+    return `${code}\n${calls.map((call) => `print(${call})`).join("\n")}\n`;
+  }
+  if (language === "php" && !code.includes("<?")) {
+    return `<?php\n${code}\n${calls.map((call) => `echo ${call}, "\\n";`).join("\n")}\n`;
+  }
+  if (language === "cpp") {
+    const prints = calls
+      .map((call) => `std::cout << (${call}) << "\\n";`)
+      .join("\n");
+    return `#include <iostream>\n${code}\nint main() {\n${prints}\nreturn 0;\n}\n`;
+  }
+  if (
+    language === "c" &&
+    criteria.testCases.every((testCase) => typeof testCase.expected === "number")
+  ) {
+    const prints = calls
+      .map((call) => `printf("%g\\n", (double)(${call}));`)
+      .join("\n");
+    return `#include <stdio.h>\n${code}\nint main(void) {\n${prints}\nreturn 0;\n}\n`;
+  }
+  return null;
+}
+
+function extractStringLiterals(source: string): string[] {
+  const literals: string[] = [];
+  const pattern = /"([^"\\]|\\.)*"|'([^'\\]|\\.)*'/g;
+  for (const match of source.matchAll(pattern)) {
+    try {
+      literals.push(JSON.parse(`"${match[0].slice(1, -1).replace(/"/g, '\\"')}"`));
+    } catch {
+      literals.push(match[0].slice(1, -1));
+    }
+  }
+  return literals;
+}
+
+/** True when a finished program printed the text the expected source asks for. */
+export function outputAgreesWithExpected(
+  runLines: string[] | undefined,
+  criteria: CodeTestCriteria | undefined,
+): boolean {
+  if (!runLines?.length || !criteria) return false;
+  if (
+    runLines.some(
+      (line) => line.startsWith("Error:") || line.startsWith("⚠️"),
+    )
+  ) {
+    return false;
+  }
+  const stdout = runLines
+    .filter((line) => line !== "(No output)")
+    .join("\n")
+    .trim();
+  if (!stdout) return false;
+  if (criteria.expectedCode && !criteria.expectedCode.startsWith("regex:")) {
+    const literals = extractStringLiterals(criteria.expectedCode)
+      .map((literal) => literal.trim())
+      .filter(Boolean);
+    if (literals.some((literal) => literal === stdout)) return true;
+    if (literals.join("\n") === stdout || literals.join("") === stdout) return true;
+  }
+  if (
+    criteria.expectedValue !== undefined &&
+    criteria.expectedValue !== null &&
+    stdout === String(criteria.expectedValue)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function matchExpectedCode(
+  code: string,
+  expectedCode: string,
+  language = "javascript",
+): boolean {
+  const explicitRegex = expectedCode.startsWith("regex:");
+  const pattern = explicitRegex
     ? expectedCode.slice("regex:".length)
     : expectedCode;
 
-  if (isRegexExpectedCode(pattern)) {
+  if (explicitRegex) {
     try {
       return new RegExp(pattern, "i").test(code);
     } catch {
@@ -115,14 +388,22 @@ export function matchExpectedCode(code: string, expectedCode: string): boolean {
     }
   }
 
-  const normalizedCode = normalizeJsCodeForMatch(code);
-  const literal = normalizeJsCodeForMatch(pattern);
-  return normalizedCode.includes(literal);
+  const lang = language.toLowerCase();
+  if (lang === "html" || lang === "css") {
+    return normalizeCodeForMatch(code).includes(normalizeCodeForMatch(pattern));
+  }
+  if (lang === "javascript" || lang === "typescript") {
+    const normalizedCode = normalizeJsCodeForMatch(code);
+    const literal = normalizeJsCodeForMatch(pattern);
+    return normalizedCode.includes(literal);
+  }
+  return matchProgramSource(code, pattern, lang);
 }
 
-export function evaluateCodeTest(
+function evaluateJavaScriptCodeTest(
   code: string,
   criteria: CodeTestCriteria | undefined,
+  language: string,
 ): { passed: boolean; testResults: CodeTestResult[] } {
   let passed = false;
   const testResults: CodeTestResult[] = [];
@@ -204,7 +485,7 @@ export function evaluateCodeTest(
       expected: criteria.expectedJS,
     });
   } else if (criteria?.expectedCode) {
-    passed = matchExpectedCode(code, criteria.expectedCode);
+    passed = matchExpectedCode(code, criteria.expectedCode, language);
     testResults.push({
       test: passed
         ? "Your code matches the expected solution"
@@ -265,6 +546,149 @@ export function evaluateCodeTest(
   }
 
   return { passed, testResults };
+}
+
+function evaluateProgramSourceTest(
+  code: string,
+  criteria: CodeTestCriteria | undefined,
+  language: string,
+): { passed: boolean; testResults: CodeTestResult[] } {
+  let passed = false;
+  const testResults: CodeTestResult[] = [];
+
+  if (criteria?.expectedVariable && criteria.expectedValues) {
+    passed =
+      hasIdentifier(code, criteria.expectedVariable) &&
+      criteria.expectedValues.every((value) =>
+        valueAssigned(code, criteria.expectedVariable!, value, language),
+      );
+    testResults.push({
+      test: passed
+        ? `Variable '${criteria.expectedVariable}' matches expected values`
+        : `Variable '${criteria.expectedVariable}' does not match expected values`,
+      passed,
+      actual: code.trim() || "(empty)",
+      expected: criteria.expectedValues,
+    });
+  } else if (criteria?.expectedVariable) {
+    passed =
+      criteria.expectedValue !== undefined
+        ? valueAssigned(code, criteria.expectedVariable, criteria.expectedValue, language)
+        : hasIdentifier(code, criteria.expectedVariable);
+    testResults.push({
+      test: passed
+        ? `Variable '${criteria.expectedVariable}' matches the expected answer`
+        : `Variable '${criteria.expectedVariable}' does not match the expected answer`,
+      passed,
+      actual: code.trim() || "(empty)",
+      expected: criteria.expectedValue,
+    });
+  } else if (criteria?.expectedHTML) {
+    passed = matchExpectedCode(code, criteria.expectedHTML, "html");
+    testResults.push({
+      test: passed
+        ? "Code contains the expected HTML"
+        : "Code does not contain the expected HTML",
+      passed,
+      actual: code.trim() || "(empty)",
+      expected: criteria.expectedHTML,
+    });
+  } else if (criteria?.expectedCSS !== undefined) {
+    passed = matchExpectedCode(code, criteria.expectedCSS, "css");
+    testResults.push({
+      test: passed
+        ? "Code contains the expected CSS"
+        : "Code does not contain the expected CSS",
+      passed,
+      actual: code.trim() || "(empty)",
+      expected: criteria.expectedCSS,
+    });
+  } else if (criteria?.expectedJS !== undefined) {
+    passed = matchExpectedCode(code, criteria.expectedJS, "javascript");
+    testResults.push({
+      test: passed
+        ? "Code includes the required JavaScript"
+        : "Code does not include the required JavaScript",
+      passed,
+      actual: code.trim() || "(empty)",
+      expected: criteria.expectedJS,
+    });
+  } else if (criteria?.expectedCode) {
+    passed = matchExpectedCode(code, criteria.expectedCode, language);
+    testResults.push({
+      test: passed
+        ? "Your code matches the expected solution"
+        : "Your code does not match the expected solution",
+      passed,
+      actual: code.trim() || "(empty)",
+      expected: criteria.expectedCode,
+    });
+  } else if (criteria?.expectedFunction) {
+    const defined = functionDefined(code, criteria.expectedFunction, language);
+    if (!defined) {
+      testResults.push({
+        test: `Function '${criteria.expectedFunction}' was not found`,
+        passed: false,
+      });
+    } else if (criteria.testCases?.length) {
+      testResults.push({
+        test: `Function '${criteria.expectedFunction}' did not pass its test cases`,
+        passed: false,
+      });
+    } else {
+      passed = true;
+      testResults.push({
+        test: `Function '${criteria.expectedFunction}' exists`,
+        passed: true,
+      });
+    }
+  }
+
+  if (testResults.length === 0) {
+    testResults.push({ test: "Code test execution", passed: false });
+    passed = false;
+  }
+
+  return { passed, testResults };
+}
+
+export function evaluateCodeTest(
+  code: string,
+  criteria: CodeTestCriteria | undefined,
+  language?: string,
+): { passed: boolean; testResults: CodeTestResult[] } {
+  const graded =
+    language === undefined || !language.trim()
+      ? "javascript"
+      : resolveGradedLanguage(language);
+  if (!graded) {
+    return {
+      passed: false,
+      testResults: [
+        {
+          test: `Cannot check answers for "${language}".`,
+          passed: false,
+        },
+      ],
+    };
+  }
+  if (graded !== "javascript" && graded !== "html" && graded !== "css") {
+    return evaluateProgramSourceTest(code, criteria, graded);
+  }
+  try {
+    return evaluateJavaScriptCodeTest(code, criteria, graded);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      passed: false,
+      testResults: [
+        {
+          test: `Could not check this answer (${message})`,
+          passed: false,
+        },
+      ],
+    };
+  }
 }
 
 export function formatCodeTestResults(testResults: CodeTestResult[]): string[] {

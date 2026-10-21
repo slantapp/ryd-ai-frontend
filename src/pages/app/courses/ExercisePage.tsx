@@ -19,10 +19,11 @@ import {
   FullscreenModal,
   type ActionData,
 } from "../../../components/courses/exercise";
+import { formatCodeTestResults } from "@/utils/codeTestValidation";
 import {
-  evaluateCodeTest,
-  formatCodeTestResults,
-} from "@/utils/codeTestValidation";
+  gradeSubmissionCodeTest,
+  runSubmissionCodeOutput,
+} from "@/utils/codeTestRunner";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
 import { cn } from "@/lib/utils";
@@ -404,17 +405,30 @@ function CodingExerciseInner() {
     setCurrentQuestion(null);
   }, [canNextLesson]);
 
-  const handleCodeTest = () => {
+  const handleCodeTest = async () => {
     const question = currentQuestion;
     if (!question || question.type !== "code_test") return;
 
+    const submission = {
+      code,
+      language: question.code_example?.language ?? codeExample?.language,
+    };
+
     try {
-      const { passed, testResults } = evaluateCodeTest(
-        code,
+      const runOutput = await runSubmissionCodeOutput(
+        submission,
         question.testCriteria,
       );
+      const { passed, testResults } = await gradeSubmissionCodeTest(
+        submission,
+        question.testCriteria,
+        runOutput,
+      );
 
-      const displayResults = formatCodeTestResults(testResults);
+      const displayResults = [
+        ...runOutput,
+        ...formatCodeTestResults(testResults),
+      ];
       if (testResults.length === 0) {
         displayResults.push(
           "⚠️ No test criteria matched - please check the question requirements",

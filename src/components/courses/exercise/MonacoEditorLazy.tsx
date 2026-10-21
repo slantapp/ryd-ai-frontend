@@ -3,27 +3,42 @@ import type { EditorProps } from "@monaco-editor/react";
 
 const Editor = lazy(() => import("@monaco-editor/react"));
 
-/** Lighter defaults — faster init than full VS Code feature set. */
+/**
+ * Keep the light editor chrome, and turn suggestions on.
+ * Monaco's own language support is enough here. VS Code for the Web's
+ * bridge alone is about 50 MB before the workbench and extensions, and
+ * native C++ and Python language servers do not run in the browser.
+ */
 export const MONACO_PERF_OPTIONS: EditorProps["options"] = {
   automaticLayout: true,
   minimap: { enabled: false },
   folding: false,
   lineNumbersMinChars: 3,
   scrollBeyondLastLine: false,
-  renderLineHighlight: "none",
+  renderLineHighlight: "line",
   occurrencesHighlight: "off",
   selectionHighlight: false,
   codeLens: false,
   colorDecorators: false,
-  quickSuggestions: false,
-  suggestOnTriggerCharacters: false,
-  wordBasedSuggestions: "off",
-  parameterHints: { enabled: false },
-  hover: { enabled: false },
+  quickSuggestions: { other: true, comments: false, strings: false },
+  quickSuggestionsDelay: 40,
+  suggestOnTriggerCharacters: true,
+  acceptSuggestionOnEnter: "on",
+  tabCompletion: "on",
+  wordBasedSuggestions: "currentDocument",
+  parameterHints: { enabled: true },
+  hover: { enabled: true },
   links: false,
-  matchBrackets: "never",
-  renderValidationDecorations: "off",
+  matchBrackets: "near",
+  renderValidationDecorations: "editable",
   padding: { top: 8 },
+  suggest: {
+    showKeywords: true,
+    showSnippets: true,
+    showWords: true,
+    showFunctions: true,
+    showVariables: true,
+  },
 };
 
 function EditorSkeleton() {

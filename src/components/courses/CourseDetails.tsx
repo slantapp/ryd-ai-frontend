@@ -44,13 +44,17 @@ import MathAnswerWorkspace from "./math/MathAnswerWorkspace";
 import MathText from "./math/MathText";
 import { isCodeTestQuestion, isFormulaTestQuestion } from "@/utils/curriculumQuestion";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
+import {
+  describeStoredAnswer,
+  wrongAttemptOutcome,
+} from "@/utils/storedAnswer";
 import { useInstructorStore, INSTRUCTORS } from "../../stores/instructorStore";
 import { useCoursesStore } from "../../stores/coursesStore";
 import { cn } from "../../lib/utils";
 import {
   buildSubmitCodeResultLines,
   buildTryCodeResultLines,
-  evaluateSubmissionCodeTest,
+  gradeSubmissionCodeTest,
   runSubmissionCodeOutput,
   submissionHasContent,
 } from "@/utils/codeTestRunner";
@@ -280,6 +284,7 @@ function CourseDetailInner({
   // submissions can never inflate the lesson score beyond its question count.
   const answerResultsRef = useRef<Map<number, boolean>>(new Map());
   const answerSubmissionInFlightRef = useRef(false);
+  const wrongAttemptsRef = useRef(0);
   /** Consecutive correct answers (each question counts once toward streak). */
   const correctStreakRef = useRef(createLearningStreakState());
 
@@ -1300,6 +1305,7 @@ function CourseDetailInner({
 
   useEffect(() => {
     answerSubmissionInFlightRef.current = false;
+    wrongAttemptsRef.current = 0;
   }, [currentLesson?.id, currentQuestionIndex]);
 
   useEffect(() => {
@@ -2108,17 +2114,26 @@ function CourseDetailInner({
 
     if (currentQuestion.type === "multiple_choice") {
       isCorrect = currentQuestion.answer === selectedAnswer;
-      feedbackText = isCorrect
-        ? `Correct! Well done. ${currentQuestion.explanation || ""}`
-        : `Incorrect. The correct answer is ${currentQuestion.answer}. ${currentQuestion.explanation || ""
-        }`;
     } else if (currentQuestion.type === "true_false") {
       isCorrect = currentQuestion.answer === selectedAnswer;
-      feedbackText = isCorrect
-        ? `Correct! Well done. ${currentQuestion.explanation || ""}`
-        : `Incorrect. The correct answer is ${currentQuestion.answer ? "True" : "False"
-        }. ${currentQuestion.explanation || ""}`;
     }
+
+    if (!isCorrect) {
+      const attempt = wrongAttemptOutcome(wrongAttemptsRef.current);
+      wrongAttemptsRef.current = attempt.next;
+      if (!attempt.exhausted) {
+        answerSubmissionInFlightRef.current = false;
+        setIsAnswerSubmitted(false);
+        speak(attempt.hint);
+        return;
+      }
+    }
+
+    const stored = describeStoredAnswer(currentQuestion);
+    feedbackText = isCorrect
+      ? `Correct! Well done. ${currentQuestion.explanation || ""}`
+      : [stored.spoken, currentQuestion.explanation].filter(Boolean).join(" ") ||
+        "Let's move on and keep learning.";
 
     // Track the answer result
     recordAnswerResult(isCorrect);
@@ -2155,6 +2170,17 @@ function CourseDetailInner({
     const isCorrect = expected
       ? compareFormulaAnswer(studentAnswer, expected)
       : false;
+    if (!isCorrect) {
+      const attempt = wrongAttemptOutcome(wrongAttemptsRef.current);
+      wrongAttemptsRef.current = attempt.next;
+      if (!attempt.exhausted) {
+        answerSubmissionInFlightRef.current = false;
+        setIsAnswerSubmitted(false);
+        speak(attempt.hint);
+        return;
+      }
+      if (expected) setStudentAnswer(expected);
+    }
     setLastAnswerCorrect(isCorrect);
     recordAnswerResult(isCorrect);
     notifyLearningAnswerOutcome(
@@ -2163,9 +2189,11 @@ function CourseDetailInner({
       `${currentLesson?.id ?? "lesson"}:q:${currentQuestionIndex}`,
     );
 
+    const stored = describeStoredAnswer(currentQuestion);
     const feedbackText = isCorrect
       ? `Correct! Well done. ${currentQuestion.explanation ?? ""}`
-      : `Not quite. The expected answer is ${expected}. ${currentQuestion.explanation ?? ""}`;
+      : [stored.spoken, currentQuestion.explanation].filter(Boolean).join(" ") ||
+        "Let's move on and keep learning.";
     speak(feedbackText, { type: "next_question" });
     scheduleQuestionAdvanceFallback(feedbackText);
   }, [
@@ -2199,9 +2227,10 @@ function CourseDetailInner({
           submission,
           currentQuestion.testCriteria,
         );
-      const { passed, testResults } = evaluateSubmissionCodeTest(
+      const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         currentQuestion.testCriteria,
+        runOutput,
       );
       setResults(
         buildTryCodeResultLines(runOutput, passed, testResults, {
@@ -2240,18 +2269,42 @@ function CourseDetailInner({
           submission,
           currentQuestion.testCriteria,
         );
-      const { passed, testResults } = evaluateSubmissionCodeTest(
+      const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         currentQuestion.testCriteria,
+        runOutput,
       );
       setResults(buildSubmitCodeResultLines(runOutput, passed, testResults));
+
+      if (!passed) {
+        const attempt = wrongAttemptOutcome(wrongAttemptsRef.current);
+        wrongAttemptsRef.current = attempt.next;
+        if (!attempt.exhausted) {
+          answerSubmissionInFlightRef.current = false;
+          setIsAnswerSubmitted(false);
+          speak(attempt.hint);
+          return;
+        }
+        const stored = describeStoredAnswer(currentQuestion);
+        if (stored.code) setCode(stored.code);
+        if (stored.web) {
+          setWebCode((current) => ({
+            html: stored.web?.html ?? current.html,
+            css: stored.web?.css ?? current.css,
+            javascript: stored.web?.javascript ?? current.javascript,
+          }));
+        }
+      }
+
       setIsAnswerSubmitted(true);
 
       const passedCount = testResults.filter((r) => r.passed).length;
       const totalCount = testResults.length;
+      const stored = describeStoredAnswer(currentQuestion);
       const feedbackText = passed
         ? `Excellent! You passed this coding test. ${passedCount} out of ${totalCount} tests correct. ${currentQuestion.explanation || ""}`
-        : `You failed this coding test. ${passedCount} out of ${totalCount} tests passed. ${currentQuestion.explanation || ""}`;
+        : [stored.spoken, currentQuestion.explanation].filter(Boolean).join(" ") ||
+          "Let's move on and keep learning.";
 
       recordAnswerResult(passed);
       notifyLearningAnswerOutcome(

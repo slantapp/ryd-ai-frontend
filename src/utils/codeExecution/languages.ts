@@ -61,6 +61,27 @@ export function normalizeRunLanguage(language?: string): string {
     : "javascript";
 }
 
+const WEB_GRADED_LANGUAGES: Record<string, string> = {
+  web: "html",
+  "html/css": "html",
+  "html+css": "html",
+  html: "html",
+  css: "css",
+};
+
+/**
+ * Language used to grade an answer.
+ * A missing language stays JavaScript for older lessons.
+ * An unknown language is null so it is not graded as JavaScript.
+ */
+export function resolveGradedLanguage(language?: string): string | null {
+  const raw = (language ?? "").toLowerCase().trim();
+  if (!raw) return "javascript";
+  const aliased = LANGUAGE_ALIASES[raw] ?? raw;
+  if (WEB_GRADED_LANGUAGES[aliased]) return WEB_GRADED_LANGUAGES[aliased];
+  return CODE_RUN_LANGUAGES.some((lang) => lang.value === aliased) ? aliased : null;
+}
+
 export function getRunLanguageLabel(language?: string): string {
   const canonical = normalizeRunLanguage(language);
   return LANGUAGE_LABELS[canonical] ?? canonical;

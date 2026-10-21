@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ArrowLeft, CheckCircle2, Lightbulb, ListTodo, Mic, Pause, Play, RotateCcw, Volume2, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Lightbulb, ListTodo, Mic, Pause, Play, RotateCcw, SkipForward, Volume2, XCircle } from "lucide-react";
 import Split from "react-split";
 import MathText from "@/components/courses/math/MathText";
 import CodeEditor from "@/components/courses/exercise/CodeEditor";
@@ -123,6 +123,8 @@ interface LessonPlayerProps {
   onTogglePause?: () => void;
   /** Rewind the current spoken line by 10 seconds. */
   onRewind?: () => void;
+  /** Skip the current spoken line and run its follow-up. Does not jump beats by itself. */
+  onSkip?: () => void;
   currentSubtitle?: string;
   avatarSlot?: ReactNode;
   onLessonComplete: (lessonId: string) => void;
@@ -178,6 +180,7 @@ export function LessonPlayer({
   isPaused = false,
   onTogglePause,
   onRewind,
+  onSkip,
   currentSubtitle,
   avatarSlot,
   onLessonComplete,
@@ -233,6 +236,12 @@ export function LessonPlayer({
   const goalSpokenRef = useRef(false);
   const resumePracticeRef = useRef(!!initialDraft?.resumePractice);
   const advanceRef = useRef<() => void>(() => { });
+  /**
+   * A question beat can leave only after a correct answer, or after retries
+   * are used up and the stored answer is being given. Skip finishes the
+   * current line; it must not walk past a question that is still open.
+   */
+  const questionSettledRef = useRef(false);
   /** Active code example when demo/practice uses a multi-pane web workspace. */
   const webExampleContextRef = useRef<WebCodeExampleLike | null>(null);
 
@@ -279,6 +288,7 @@ export function LessonPlayer({
 
   const advance = useCallback(() => {
     if (!beat) return;
+    if (beat.type === "question" && !questionSettledRef.current) return;
     markBeatDone(beat.id);
     setCanContinue(false);
     setPauseSecondsLeft(0);
@@ -473,6 +483,7 @@ export function LessonPlayer({
     const key = `${lesson.id}:${beat.id}:${beatIndex}`;
     if (beatStartedRef.current === key) return;
     beatStartedRef.current = key;
+    questionSettledRef.current = false;
 
     stop();
     clearScheduledAfterSpeech();
@@ -902,6 +913,7 @@ export function LessonPlayer({
       setShowCelebration(correct);
 
       if (correct) {
+        questionSettledRef.current = true;
         notifyLearningAnswerOutcome(true, correctStreakRef.current, beat.id);
         // Solved it — they understood the task, so don't re-explain it.
         const feedback =
@@ -932,6 +944,8 @@ export function LessonPlayer({
         beat.avatar?.gesture_on_wrong ?? beat.avatar?.gesture;
 
       if (exhausted) {
+        // Retries are used up, so the reveal may finish and the lesson may move on.
+        questionSettledRef.current = true;
         // Do not speak success-phrased question.explanation after a failed attempt.
         missedPracticeRef.current = true;
         const stored = describeStoredAnswer(q);
@@ -1932,6 +1946,18 @@ export function LessonPlayer({
                     {isPaused ? "Resume" : "Pause"}
                   </span>
                 </button>
+                {onSkip ? (
+                  <button
+                    type="button"
+                    onClick={onSkip}
+                    title="Skip the current narration"
+                    aria-label="Skip the current narration"
+                    className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[0.65rem] font-semibold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 sm:text-xs"
+                  >
+                    <SkipForward className="size-3" aria-hidden />
+                    <span className="hidden min-[360px]:inline">Skip</span>
+                  </button>
+                ) : null}
               </>
             )}
           </div>

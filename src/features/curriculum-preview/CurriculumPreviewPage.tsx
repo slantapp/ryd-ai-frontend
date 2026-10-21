@@ -54,12 +54,11 @@ import {
 import {
   buildSubmitCodeResultLines,
   buildTryCodeResultLines,
-  evaluateSubmissionCodeTest,
+  gradeSubmissionCodeTest,
   runSubmissionCodeOutput,
   submissionHasContent,
 } from "@/utils/codeTestRunner";
 import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
-import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
 import {
   buildWebCodeFromExample,
   defaultWebEditorTab,
@@ -254,24 +253,6 @@ export default function CurriculumPreviewPage() {
     [code, runLanguage, useWebWorkspace, webCode],
   );
 
-  const applyCurriculumData = useCallback((data: CurriculumData) => {
-    setV2Curriculum(null);
-    setCurriculum(data);
-    setPublishStatus("idle");
-    setState("preview");
-    if (data.modules.length > 0 && data.modules[0].lessons.length > 0) {
-      setCurrentLesson(data.modules[0].lessons[0] as CodingLesson);
-    }
-    const hasCodeExamples = data.modules.some((mod) =>
-      mod.lessons.some(
-        (les) =>
-          !!(les as CodingLesson).code_example ||
-          les.questions.some((q) => q.type === "code_test"),
-      ),
-    );
-    if (hasCodeExamples) prefetchMonacoEditor();
-  }, []);
-
   const applyV2CurriculumData = useCallback((data: CurriculumV2Data) => {
     setCurriculum(null);
     setCurrentLesson(null);
@@ -313,11 +294,9 @@ export default function CurriculumPreviewPage() {
       setSourceFile(result.file);
       if (result.version === 2) {
         applyV2CurriculumData(result.data);
-      } else {
-        applyCurriculumData(result.data);
       }
     },
-    [applyCurriculumData, applyV2CurriculumData],
+    [applyV2CurriculumData],
   );
 
   useEffect(() => {
@@ -339,7 +318,9 @@ export default function CurriculumPreviewPage() {
           );
           applyV2CurriculumData(extracted.data);
         } else {
-          applyCurriculumData(data);
+          throw new Error(
+            "Preview only plays a flow curriculum (v2). This curriculum is classic v1.",
+          );
         }
         setRemoteLoadStatus("success");
       } catch (error) {
@@ -357,7 +338,6 @@ export default function CurriculumPreviewPage() {
       cancelled = true;
     };
   }, [
-    applyCurriculumData,
     applyV2CurriculumData,
     isRemotePreview,
     remotePreviewMeta.data,
@@ -862,9 +842,10 @@ export default function CurriculumPreviewPage() {
       const runOutput = useWebWorkspace
         ? []
         : await runCodeOutput(submission, question.testCriteria);
-      const { passed, testResults } = evaluateSubmissionCodeTest(
+      const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         question.testCriteria,
+        runOutput,
       );
       setResults(
         buildTryCodeResultLines(runOutput, passed, testResults, {
@@ -909,9 +890,10 @@ export default function CurriculumPreviewPage() {
       const runOutput = useWebWorkspace
         ? []
         : await runCodeOutput(submission, question.testCriteria);
-      const { passed, testResults } = evaluateSubmissionCodeTest(
+      const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         question.testCriteria,
+        runOutput,
       );
       setResults(buildSubmitCodeResultLines(runOutput, passed, testResults));
       setIsAnswerSubmitted(true);
@@ -1035,6 +1017,28 @@ export default function CurriculumPreviewPage() {
         }
         onCurriculumLoaded={handleCurriculumLoaded}
       />
+    );
+  }
+
+  if (curriculum) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-primary/10 via-white to-primary/5 p-6">
+        <div className="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm">
+          <h1 className="text-xl font-bold text-gray-900">Flow curriculum only</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Preview only plays a flow curriculum (v2). Classic v1 files cannot be previewed here.
+          </p>
+          {!isRemotePreview && (
+            <button
+              type="button"
+              onClick={handleBackToUpload}
+              className="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white"
+            >
+              Upload a v2 file
+            </button>
+          )}
+        </div>
+      </div>
     );
   }
 

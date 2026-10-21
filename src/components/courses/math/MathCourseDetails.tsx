@@ -29,6 +29,10 @@ import MathFormulaBoard from "./MathFormulaBoard";
 import MathAnswerWorkspace from "./MathAnswerWorkspace";
 import MathText from "./MathText";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
+import {
+  describeStoredAnswer,
+  wrongAttemptOutcome,
+} from "@/utils/storedAnswer";
 import { useInstructorStore, INSTRUCTORS } from "@/stores/instructorStore";
 import { useCoursesStore } from "@/stores/coursesStore";
 import { cn } from "@/lib/utils";
@@ -187,6 +191,7 @@ function MathCourseDetailsInner() {
   // rapid repeated clicks from producing impossible totals such as 4 out of 3.
   const answerResultsRef = useRef<Map<number, boolean>>(new Map());
   const answerSubmissionInFlightRef = useRef(false);
+  const wrongAttemptsRef = useRef(0);
   /** Consecutive correct answers (each question counts once toward streak). */
   const correctStreakRef = useRef(createLearningStreakState());
   const [progressPct, setProgressPct] = useState(0);
@@ -759,6 +764,7 @@ function MathCourseDetailsInner() {
 
   useEffect(() => {
     answerSubmissionInFlightRef.current = false;
+    wrongAttemptsRef.current = 0;
   }, [currentLesson?.id, currentQuestionIndex]);
 
   useEffect(() => {
@@ -1554,18 +1560,26 @@ function MathCourseDetailsInner() {
     answerSubmissionInFlightRef.current = true;
     setIsAnswerSubmitted(true);
     let isCorrect = false;
-    let feedbackText = "";
     if (currentQuestion.type === "multiple_choice") {
       isCorrect = currentQuestion.answer === selectedAnswer;
-      feedbackText = isCorrect
-        ? `Correct! Well done. ${currentQuestion.explanation ?? ""}`
-        : `Incorrect. The correct answer is ${currentQuestion.answer}. ${currentQuestion.explanation ?? ""}`;
     } else if (currentQuestion.type === "true_false") {
       isCorrect = currentQuestion.answer === selectedAnswer;
-      feedbackText = isCorrect
-        ? `Correct! Well done. ${currentQuestion.explanation ?? ""}`
-        : `Incorrect. The correct answer is ${currentQuestion.answer ? "True" : "False"}. ${currentQuestion.explanation ?? ""}`;
     }
+    if (!isCorrect) {
+      const attempt = wrongAttemptOutcome(wrongAttemptsRef.current);
+      wrongAttemptsRef.current = attempt.next;
+      if (!attempt.exhausted) {
+        answerSubmissionInFlightRef.current = false;
+        setIsAnswerSubmitted(false);
+        speak(attempt.hint);
+        return;
+      }
+    }
+    const stored = describeStoredAnswer(currentQuestion);
+    const feedbackText = isCorrect
+      ? `Correct! Well done. ${currentQuestion.explanation ?? ""}`
+      : [stored.spoken, currentQuestion.explanation].filter(Boolean).join(" ") ||
+        "Let's move on and keep learning.";
     setLastAnswerCorrect(isCorrect);
     recordAnswerResult(isCorrect);
     notifyLearningAnswerOutcome(
@@ -1593,6 +1607,17 @@ function MathCourseDetailsInner() {
     const isCorrect = expected
       ? compareFormulaAnswer(studentAnswer, expected)
       : false;
+    if (!isCorrect) {
+      const attempt = wrongAttemptOutcome(wrongAttemptsRef.current);
+      wrongAttemptsRef.current = attempt.next;
+      if (!attempt.exhausted) {
+        answerSubmissionInFlightRef.current = false;
+        setIsAnswerSubmitted(false);
+        speak(attempt.hint);
+        return;
+      }
+      if (expected) setStudentAnswer(expected);
+    }
     setLastAnswerCorrect(isCorrect);
     recordAnswerResult(isCorrect);
     notifyLearningAnswerOutcome(
@@ -1601,9 +1626,11 @@ function MathCourseDetailsInner() {
       `${currentLesson?.id ?? "lesson"}:q:${currentQuestionIndex}`,
     );
 
+    const stored = describeStoredAnswer(currentQuestion);
     const feedbackText = isCorrect
       ? `Correct! Well done. ${currentQuestion.explanation ?? ""}`
-      : `Not quite. The expected answer is ${expected}. ${currentQuestion.explanation ?? ""}`;
+      : [stored.spoken, currentQuestion.explanation].filter(Boolean).join(" ") ||
+        "Let's move on and keep learning.";
     speak(feedbackText, { type: "next_question" });
   }, [
     currentLesson?.id,

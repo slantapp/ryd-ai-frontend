@@ -8,6 +8,7 @@ import {
   Send,
 } from "lucide-react";
 import { MonacoEditorLazy } from "./MonacoEditorLazy";
+import { registerEditorSuggestions } from "./editorSuggestions";
 import {
   CODE_RUN_LANGUAGES,
   normalizeRunLanguage,
@@ -44,6 +45,10 @@ function toMonacoLanguage(language?: string): string {
   const map: Record<string, string> = {
     cpp: "cpp",
     csharp: "csharp",
+    bash: "shell",
+    shell: "shell",
+    html: "html",
+    css: "css",
   };
   return map[lang] ?? lang;
 }
@@ -202,6 +207,7 @@ export default function CodeEditor({
           onChange={(val) => onCodeChange(val || "")}
           height="100%"
           onMount={(editor, monaco) => {
+            registerEditorSuggestions(monaco, monacoLanguage);
             editor.addCommand(
               monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
               () => primaryActionRef.current(),

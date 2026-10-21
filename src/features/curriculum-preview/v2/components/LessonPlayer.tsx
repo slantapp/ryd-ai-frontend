@@ -30,13 +30,14 @@ import {
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import {
   buildSubmitCodeResultLines,
-  evaluateSubmissionCodeTest,
+  gradeSubmissionCodeTest,
   runSubmissionCodeOutput,
   submissionHasContent,
 } from "@/utils/codeTestRunner";
 import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import { isTurtlePythonCode } from "@/utils/codeExecution/turtle";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
+import { describeStoredAnswer } from "@/utils/storedAnswer";
 import { formulaProblemOnly, formatFormulaBoardText } from "@/utils/formulaBoard";
 import MathAnswerWorkspace from "@/components/courses/math/MathAnswerWorkspace";
 import type { V2LessonDraft } from "../lessonPersist";
@@ -933,16 +934,32 @@ export function LessonPlayer({
       if (exhausted) {
         // Do not speak success-phrased question.explanation after a failed attempt.
         missedPracticeRef.current = true;
+        const stored = describeStoredAnswer(q);
+        if (q.type === "code_test") {
+          if (stored.code) setCode(stored.code);
+          if (stored.web) {
+            setWebCode({
+              html: stored.web.html ?? "",
+              css: stored.web.css ?? "",
+              javascript: stored.web.javascript ?? "",
+            });
+          }
+        }
+        if (q.type === "formula_test" && stored.formula) {
+          setFormulaAnswer(stored.formula);
+        }
         const teachingLines = resolveExhaustedWrongTeachingLines(q);
+        const reveal = [
+          ...teachingLines,
+          stored.spoken,
+          "Let's move on and keep learning.",
+        ].filter((line): line is string => Boolean(line));
         speakThen(
           feedback,
           () => {
-            speakSequence(
-              [...teachingLines, "Let's move on and keep learning."],
-              () => {
-                setTimeout(() => advanceRef.current(), 600);
-              },
-            );
+            speakSequence(reveal, () => {
+              setTimeout(() => advanceRef.current(), 600);
+            });
           },
           beat.avatar?.show,
           wrongGesture,
@@ -1023,9 +1040,10 @@ export function LessonPlayer({
         q.testCriteria,
         { turtleTargetId },
       );
-      const { passed, testResults } = evaluateSubmissionCodeTest(
+      const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         q.testCriteria,
+        runOutput,
       );
       const lines = buildSubmitCodeResultLines(runOutput, passed, testResults);
       setResults(lines);

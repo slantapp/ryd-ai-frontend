@@ -1,11 +1,17 @@
 import {
+  buildFunctionProbe,
   evaluateCodeTest,
   formatCodeTestResults,
+  outputAgreesWithExpected,
+  stdoutMatches,
   type CodeTestCriteria,
   type CodeTestResult,
 } from "./codeTestValidation";
 import { executeStudentCode, formatRunOutput } from "./runStudentCode";
-import { normalizeRunLanguage } from "./codeExecution/languages";
+import {
+  normalizeRunLanguage,
+  resolveGradedLanguage,
+} from "./codeExecution/languages";
 import {
   executeTurtleCode,
   isTurtlePythonCode,
@@ -39,15 +45,77 @@ export function resolveUseWebWorkspace(
 export function evaluateSubmissionCodeTest(
   submission: CodeTestSubmission,
   criteria: CodeTestCriteria | undefined,
+  runLines?: string[],
 ): { passed: boolean; testResults: CodeTestResult[] } {
-  const language = normalizeRunLanguage(submission.language);
+  const graded = resolveGradedLanguage(submission.language);
+  if (submission.language?.trim() && !graded) {
+    return {
+      passed: false,
+      testResults: [
+        {
+          test: `Cannot check answers for "${submission.language}".`,
+          passed: false,
+        },
+      ],
+    };
+  }
+
+  const language = graded ?? "javascript";
   const useWeb = resolveUseWebWorkspace(language, criteria);
 
   if (useWeb && submission.webCode) {
     return evaluateWebCodeTest(submission.webCode, criteria);
   }
 
-  return evaluateCodeTest(submission.code, criteria);
+  const result = evaluateCodeTest(submission.code, criteria, language);
+  if (result.passed || !outputAgreesWithExpected(runLines, criteria)) {
+    return result;
+  }
+
+  return {
+    passed: true,
+    testResults: [
+      {
+        test: "Your program printed the expected result",
+        passed: true,
+        actual: runLines?.filter((line) => line !== "(No output)").join("\n"),
+        expected: criteria?.expectedCode ?? criteria?.expectedValue,
+      },
+    ],
+  };
+}
+
+/** Source check, printed output, then a language probe for function test cases. */
+export async function gradeSubmissionCodeTest(
+  submission: CodeTestSubmission,
+  criteria: CodeTestCriteria | undefined,
+  runLines?: string[],
+): Promise<{ passed: boolean; testResults: CodeTestResult[] }> {
+  const result = evaluateSubmissionCodeTest(submission, criteria, runLines);
+  if (result.passed) return result;
+
+  const language = resolveGradedLanguage(submission.language);
+  if (!language) return result;
+  const probe = buildFunctionProbe(submission.code, criteria, language);
+  if (!probe || !criteria?.testCases?.length) return result;
+
+  const executed = await executeStudentCode(probe, language);
+  if (executed.error) return result;
+  const actual = executed.logs.map((line) => line.trim()).filter(Boolean);
+  const passed = criteria.testCases.every((testCase, index) =>
+    stdoutMatches(actual[index] ?? "", testCase.expected, language),
+  );
+  if (!passed) return result;
+
+  return {
+    passed: true,
+    testResults: criteria.testCases.map((testCase, index) => ({
+      test: `Test case ${index + 1} passed`,
+      passed: true,
+      actual: actual[index],
+      expected: testCase.expected,
+    })),
+  };
 }
 
 /** Judge0 execution for runnable languages; web previews run in-browser instead. */
@@ -56,7 +124,11 @@ export async function runSubmissionCodeOutput(
   criteria: CodeTestCriteria | undefined,
   options?: { turtleTargetId?: string },
 ): Promise<string[]> {
-  const language = normalizeRunLanguage(submission.language);
+  const graded = resolveGradedLanguage(submission.language);
+  if (submission.language?.trim() && !graded) {
+    return [`Error: Code execution is not supported for "${submission.language}".`];
+  }
+  const language = graded ?? normalizeRunLanguage(submission.language);
   if (resolveUseWebWorkspace(language, criteria)) {
     return [];
   }

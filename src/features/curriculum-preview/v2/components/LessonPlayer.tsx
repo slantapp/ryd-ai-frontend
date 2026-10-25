@@ -38,6 +38,8 @@ import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import { isTurtlePythonCode } from "@/utils/codeExecution/turtle";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
 import { describeStoredAnswer } from "@/utils/storedAnswer";
+import { stdinForRun } from "@/utils/programInput";
+import { useProgramInput } from "@/hooks/useProgramInput";
 import { formulaProblemOnly, formatFormulaBoardText } from "@/utils/formulaBoard";
 import MathAnswerWorkspace from "@/components/courses/math/MathAnswerWorkspace";
 import type { V2LessonDraft } from "../lessonPersist";
@@ -219,6 +221,8 @@ export function LessonPlayer({
   const [showCelebration, setShowCelebration] = useState(false);
   /** Wrong attempts used on the current question beat (student retry simulation). */
   const [wrongAttempts, setWrongAttempts] = useState(0);
+  /** The editor shows the stored answer and cannot be edited. */
+  const [solutionLocked, setSolutionLocked] = useState(false);
   /** Consecutive correct answers across this lesson (resets on wrong; each beat counts once). */
   const correctStreakRef = useRef(createLearningStreakState());
   /**
@@ -242,6 +246,9 @@ export function LessonPlayer({
    * current line; it must not walk past a question that is still open.
    */
   const questionSettledRef = useRef(false);
+  /** Bumped when a beat is left so a late example run cannot write into the next beat. */
+  const exampleRunRef = useRef(0);
+  const revealTimerRef = useRef<number | null>(null);
   /** Active code example when demo/practice uses a multi-pane web workspace. */
   const webExampleContextRef = useRef<WebCodeExampleLike | null>(null);
 
@@ -249,6 +256,11 @@ export function LessonPlayer({
   const isLastBeat = beatIndex >= lesson.flow.length - 1;
 
   const resetInteractive = useCallback(() => {
+    exampleRunRef.current += 1;
+    if (revealTimerRef.current != null) {
+      window.clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
     setSelectedAnswer(null);
     setIsAnswerSubmitted(false);
     setFormulaAnswer("");
@@ -258,6 +270,7 @@ export function LessonPlayer({
     setDemoMode("idle");
     setShowCelebration(false);
     setWrongAttempts(0);
+    setSolutionLocked(false);
     setFullscreen(null);
     setPreviewRefreshKey(0);
     webExampleContextRef.current = null;
@@ -646,6 +659,34 @@ export function LessonPlayer({
     return () => clearTimeout(t);
   }, [beat, pauseSecondsLeft, enableManualContinue]);
 
+  const showExampleResult = async (
+    example: { code: string; language: string; stdin?: string },
+    questionStdin?: string,
+  ) => {
+    const token = ++exampleRunRef.current;
+    setIsExecuting(true);
+    setResults(["Running the example…"]);
+    try {
+      const out = await runSubmissionCodeOutput(
+        {
+          code: example.code,
+          language: normalizeRunLanguage(example.language),
+        },
+        undefined,
+        { turtleTargetId, stdin: stdinForRun(example, questionStdin) },
+      );
+      if (token !== exampleRunRef.current) return token;
+      setResults(out.length ? out : ["✓ Code ran successfully."]);
+    } catch (error) {
+      if (token !== exampleRunRef.current) return token;
+      const message = error instanceof Error ? error.message : String(error);
+      setResults([`Could not run the example. ${message}`]);
+    } finally {
+      if (token === exampleRunRef.current) setIsExecuting(false);
+    }
+    return token;
+  };
+
   const runCodeDemo = (demoBeat: CodeDemoBeat, goalLine?: string) => {
     const example = demoBeat.code_example;
     webExampleContextRef.current = example;
@@ -659,41 +700,14 @@ export function LessonPlayer({
       setWebCode(EMPTY_WEB_CODE);
     }
 
-    const afterType = () => {
-      const explainAndFinish = () => {
-        speakSequence(
-          [
-            example.explanation,
-            "Watch how that code works on the screen.",
-          ],
-          () => finishAutoOrManual(demoBeat),
-        );
-      };
-      if (example.autoRun) {
-        void (async () => {
-          setIsExecuting(true);
-          try {
-            const lang = normalizeRunLanguage(example.language);
-            const out = await runSubmissionCodeOutput(
-              {
-                code: example.code,
-                webCode: isWeb
-                  ? buildWebCodeFromExample(example, "demo")
-                  : undefined,
-                language: lang,
-              },
-              undefined,
-              { turtleTargetId },
-            );
-            setResults(out.length ? out : ["✓ Code ran successfully."]);
-          } finally {
-            setIsExecuting(false);
-            explainAndFinish();
-          }
-        })();
-      } else {
-        explainAndFinish();
-      }
+    const explainAndFinish = () => {
+      speakSequence(
+        [
+          example.explanation,
+          "Watch how that code works on the screen.",
+        ],
+        () => finishAutoOrManual(demoBeat),
+      );
     };
 
     speakSequence(
@@ -710,10 +724,16 @@ export function LessonPlayer({
         typed.type(example.code, example.typingSpeed ?? 40, () => {
           if (isWeb) {
             setWebCode(buildWebCodeFromExample(example, "demo"));
-          } else {
-            setCode(example.code);
+            setPreviewRefreshKey((key) => key + 1);
+            setResults(["✓ Preview updated."]);
+            explainAndFinish();
+            return;
           }
-          afterType();
+          setCode(example.code);
+          void showExampleResult(example).then((token) => {
+            if (token !== exampleRunRef.current) return;
+            explainAndFinish();
+          });
         });
       },
     );
@@ -814,12 +834,7 @@ export function LessonPlayer({
           example.description,
         ],
         () => {
-          typed.type(example.code, example.typingSpeed ?? 40, () => {
-            if (isWebWorkspaceLanguage(example.language)) {
-              setWebCode(buildWebCodeFromExample(example, "demo"));
-            } else {
-              setCode(example.code);
-            }
+          const handoff = () => {
             speakSequence(
               [
                 example.explanation,
@@ -828,9 +843,24 @@ export function LessonPlayer({
               ],
               () => {
                 applyStudentStarter(example);
+                setResults([]);
                 setDemoMode("practice");
               },
             );
+          };
+          typed.type(example.code, example.typingSpeed ?? 40, () => {
+            if (isWebWorkspaceLanguage(example.language)) {
+              setWebCode(buildWebCodeFromExample(example, "demo"));
+              setPreviewRefreshKey((key) => key + 1);
+              setResults(["✓ Preview updated."]);
+              handoff();
+              return;
+            }
+            setCode(example.code);
+            void showExampleResult(example, q.stdin).then((token) => {
+              if (token !== exampleRunRef.current) return;
+              handoff();
+            });
           });
         },
       );
@@ -950,14 +980,26 @@ export function LessonPlayer({
         missedPracticeRef.current = true;
         const stored = describeStoredAnswer(q);
         if (q.type === "code_test") {
-          if (stored.code) setCode(stored.code);
-          if (stored.web) {
-            setWebCode({
-              html: stored.web.html ?? "",
-              css: stored.web.css ?? "",
-              javascript: stored.web.javascript ?? "",
-            });
+          if (revealTimerRef.current != null) {
+            window.clearTimeout(revealTimerRef.current);
           }
+          setSolutionLocked(true);
+          setCode("");
+          setWebCode(EMPTY_WEB_CODE);
+          setResults(["The correct answer is in the editor."]);
+          const answerCode = stored.code;
+          const answerWeb = stored.web;
+          revealTimerRef.current = window.setTimeout(() => {
+            revealTimerRef.current = null;
+            if (answerCode) setCode(answerCode);
+            if (answerWeb) {
+              setWebCode({
+                html: answerWeb.html ?? "",
+                css: answerWeb.css ?? "",
+                javascript: answerWeb.javascript ?? "",
+              });
+            }
+          }, 350);
         }
         if (q.type === "formula_test" && stored.formula) {
           setFormulaAnswer(stored.formula);
@@ -1052,7 +1094,7 @@ export function LessonPlayer({
       const runOutput = await runSubmissionCodeOutput(
         submission,
         q.testCriteria,
-        { turtleTargetId },
+        { turtleTargetId, stdin: programInput.stdin },
       );
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
@@ -1092,6 +1134,31 @@ export function LessonPlayer({
     (beat.type === "formula_demo" ||
       (beat.type === "question" && beat.question.type === "formula_test") ||
       pauseReviewingFormula);
+
+  const activeCodeExample =
+    beat?.type === "code_demo"
+      ? beat.code_example
+      : beat?.type === "question" && beat.question.code_example
+        ? beat.question.code_example
+        : pauseReviewingCode && previousBeat?.type === "code_demo"
+          ? previousBeat.code_example
+          : pauseReviewingCode &&
+              previousBeat?.type === "question" &&
+              previousBeat.question.code_example
+            ? previousBeat.question.code_example
+            : undefined;
+  const questionStdin =
+    beat?.type === "question" ? beat.question.stdin : undefined;
+  const programInput = useProgramInput({
+    key:
+      beat?.type === "pause"
+        ? (previousBeat?.id ?? beat?.id ?? "pause")
+        : (beat?.id ?? "none"),
+    exampleStdin: activeCodeExample?.stdin,
+    questionStdin,
+    exampleCode: activeCodeExample?.code,
+    editorCode: code,
+  });
 
   const codeLang = useMemo(() => {
     if (beat?.type === "code_demo") {
@@ -1171,9 +1238,14 @@ export function LessonPlayer({
   );
 
   const handleRunCode = useCallback(async () => {
-    if (demoMode === "demo" || isExecuting) return;
+    if (isExecuting) return;
     const submission = getCodeSubmission();
-    if (!submissionHasContent(submission, beat?.type === "question" ? beat.question.testCriteria : undefined)) {
+    const language =
+      demoMode === "demo" && activeCodeExample
+        ? normalizeRunLanguage(activeCodeExample.language)
+        : submission.language;
+    const runnable = { ...submission, language };
+    if (!submissionHasContent(runnable, beat?.type === "question" ? beat.question.testCriteria : undefined)) {
       setResults(["Write some code first!"]);
       return;
     }
@@ -1186,17 +1258,17 @@ export function LessonPlayer({
     setResults(["⏳ Running…"]);
     try {
       const out = await runSubmissionCodeOutput(
-        submission,
+        runnable,
         beat?.type === "question" ? beat.question.testCriteria : undefined,
-        { turtleTargetId },
+        { turtleTargetId, stdin: programInput.stdin },
       );
       setResults(out.length ? out : ["✓ Code ran successfully."]);
     } finally {
       setIsExecuting(false);
     }
-  }, [beat, demoMode, getCodeSubmission, isExecuting, turtleTargetId, useWeb]);
+  }, [activeCodeExample, beat, demoMode, getCodeSubmission, isExecuting, programInput.stdin, turtleTargetId, useWeb]);
 
-  const editorLocked = demoMode === "demo" || pauseReviewingCode;
+  const editorLocked = demoMode === "demo" || pauseReviewingCode || solutionLocked;
 
   const demoIntroTitle = pauseReviewingCode || pauseReviewingFormula
     ? "Look closely"
@@ -1318,17 +1390,22 @@ export function LessonPlayer({
               setFullscreen(fullscreen === "editor" ? null : "editor")
             }
             isFullscreen={fullscreen === "editor"}
-            canTest={!editorLocked && !isExecuting}
+            canTest={(demoMode === "demo" || !editorLocked) && !isExecuting}
             canSubmit={
               beat?.type === "question" &&
               demoMode === "practice" &&
               submissionHasContent(getCodeSubmission(), beat.question.testCriteria)
             }
             isRunning={isExecuting}
+            showProgramInput={programInput.show && !useWeb}
+            programInput={programInput.value}
+            onProgramInputChange={programInput.setValue}
+            programInputReadOnly={editorLocked}
           />
           <TestResults
             results={results}
             code={code}
+            language={runLanguage}
             turtleTargetId={activeTurtleTargetId}
             onToggleFullscreen={() =>
               setFullscreen(fullscreen === "results" ? null : "results")

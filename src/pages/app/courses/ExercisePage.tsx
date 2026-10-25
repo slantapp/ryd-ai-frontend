@@ -24,6 +24,7 @@ import {
   gradeSubmissionCodeTest,
   runSubmissionCodeOutput,
 } from "@/utils/codeTestRunner";
+import { useProgramInput } from "@/hooks/useProgramInput";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { useAvatarAudioRecovery } from "@/hooks/useAvatarAudioRecovery";
 import { cn } from "@/lib/utils";
@@ -75,7 +76,19 @@ function CodingExerciseInner() {
     description?: string;
     autoRun?: boolean;
     typingSpeed?: number;
+    stdin?: string;
   } | null>(null);
+  const exerciseLanguage =
+    currentQuestion?.code_example?.language ?? codeExample?.language ?? "javascript";
+  const programInput = useProgramInput({
+    key: `${currentLesson?.id ?? ""}:${currentQuestion?.id ?? "demo"}`,
+    exampleStdin:
+      currentQuestion?.code_example?.stdin ?? codeExample?.stdin,
+    questionStdin: currentQuestion?.stdin,
+    exampleCode:
+      currentQuestion?.code_example?.code ?? codeExample?.code,
+    editorCode: code,
+  });
   const [isTypingExample, setIsTypingExample] = useState(false);
   const [canStartQuestions, setCanStartQuestions] = useState(false);
   const [canNextQuestion, setCanNextQuestion] = useState(false);
@@ -418,6 +431,7 @@ function CodingExerciseInner() {
       const runOutput = await runSubmissionCodeOutput(
         submission,
         question.testCriteria,
+        { stdin: programInput.stdin },
       );
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
@@ -754,6 +768,7 @@ function CodingExerciseInner() {
                   code={code}
                   onCodeChange={setCode}
                   onTestCode={handleCodeTest}
+                  language={exerciseLanguage}
                   onToggleFullscreen={() =>
                     setFullscreen(fullscreen === "editor" ? null : "editor")
                   }
@@ -763,12 +778,16 @@ function CodingExerciseInner() {
                     !!currentQuestion &&
                     currentQuestion.type === "code_test"
                   }
+                  showProgramInput={programInput.show}
+                  programInput={programInput.value}
+                  onProgramInputChange={programInput.setValue}
                 />
 
                 {/* Results Panel */}
                 <TestResults
                   results={results}
                   code={code}
+                  language={exerciseLanguage}
                   onToggleFullscreen={() =>
                     setFullscreen(fullscreen === "results" ? null : "results")
                   }

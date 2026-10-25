@@ -58,9 +58,10 @@ import {
   runSubmissionCodeOutput,
   submissionHasContent,
 } from "@/utils/codeTestRunner";
+import { stdinForRun } from "@/utils/programInput";
+import { useProgramInput } from "@/hooks/useProgramInput";
 import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import {
-  buildWebCodeFromExample,
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
   isWebWorkspaceLanguage,
@@ -210,6 +211,23 @@ export default function CurriculumPreviewPage() {
     [inferredRunLanguage],
   );
 
+  const activeQuestion =
+    lessonPhase === "questions"
+      ? currentLesson?.questions[currentQuestionIndex]
+      : undefined;
+  const activeExample =
+    activeQuestion?.code_example ?? currentLesson?.code_example;
+  const programInput = useProgramInput({
+    key:
+      lessonPhase === "questions"
+        ? `q:${currentLesson?.id ?? ""}:${currentQuestionIndex}`
+        : `demo:${currentLesson?.id ?? ""}`,
+    exampleStdin: activeExample?.stdin,
+    questionStdin: activeQuestion?.stdin,
+    exampleCode: activeExample?.code,
+    editorCode: code,
+  });
+
   const resetCodeState = useCallback(() => {
     setCode("");
     setWebCode(EMPTY_WEB_CODE);
@@ -218,10 +236,15 @@ export default function CurriculumPreviewPage() {
   }, []);
 
   const runCodeOutput = useCallback(
-    async (submission: { code: string; webCode?: WebCodeSources; language: string }, criteria?: Question["testCriteria"]) => {
+    async (
+      submission: { code: string; webCode?: WebCodeSources; language: string },
+      criteria?: Question["testCriteria"],
+      stdin?: string,
+    ) => {
       return runSubmissionCodeOutput(
         { code: submission.code, webCode: submission.webCode, language: submission.language },
         criteria,
+        { stdin },
       );
     },
     [],
@@ -231,11 +254,12 @@ export default function CurriculumPreviewPage() {
     async (
       submission: { code: string; webCode?: WebCodeSources; language: string },
       criteria?: Question["testCriteria"],
+      stdin?: string,
     ) => {
       setIsExecutingCode(true);
       setResults(["⏳ Running code..."]);
       try {
-        const runOutput = await runCodeOutput(submission, criteria);
+        const runOutput = await runCodeOutput(submission, criteria, stdin);
         setResults(runOutput);
       } finally {
         setIsExecutingCode(false);
@@ -452,22 +476,16 @@ export default function CurriculumPreviewPage() {
         isTypingCodeRef.current = false;
         setIsTypingLessonCode(false);
 
-        if (example.autoRun) {
-          if (isWeb) {
-            setPreviewRefreshKey((key) => key + 1);
-            setResults(["✓ Preview updated."]);
-            proceedAfterExample();
-          } else {
-            void runLessonExampleCode({
-              code: example.code,
-              webCode: isWeb
-                ? buildWebCodeFromExample(example, "demo")
-                : undefined,
-              language: normalizeRunLanguage(example.language),
-            }).then(proceedAfterExample);
-          }
-        } else {
+        if (isWeb) {
+          setPreviewRefreshKey((key) => key + 1);
+          setResults(["✓ Preview updated."]);
           proceedAfterExample();
+        } else {
+          void runLessonExampleCode({
+            code: example.code,
+            webCode: undefined,
+            language: normalizeRunLanguage(example.language),
+          }, undefined, stdinForRun(example)).then(proceedAfterExample);
         }
       };
 
@@ -812,12 +830,13 @@ export default function CurriculumPreviewPage() {
       return;
     }
 
-    void runLessonExampleCode(getCodeSubmission());
+    void runLessonExampleCode(getCodeSubmission(), undefined, programInput.stdin);
   }, [
     currentLesson?.code_example,
     getCodeSubmission,
     isExecutingCode,
     isTypingLessonCode,
+    programInput.stdin,
     runLessonExampleCode,
     useWebWorkspace,
   ]);
@@ -841,7 +860,7 @@ export default function CurriculumPreviewPage() {
     try {
       const runOutput = useWebWorkspace
         ? []
-        : await runCodeOutput(submission, question.testCriteria);
+        : await runCodeOutput(submission, question.testCriteria, programInput.stdin);
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         question.testCriteria,
@@ -867,6 +886,7 @@ export default function CurriculumPreviewPage() {
     getCodeSubmission,
     isAnswerSubmitted,
     isExecutingCode,
+    programInput.stdin,
     runCodeOutput,
     useWebWorkspace,
   ]);
@@ -889,7 +909,7 @@ export default function CurriculumPreviewPage() {
     try {
       const runOutput = useWebWorkspace
         ? []
-        : await runCodeOutput(submission, question.testCriteria);
+        : await runCodeOutput(submission, question.testCriteria, programInput.stdin);
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         question.testCriteria,
@@ -924,6 +944,7 @@ export default function CurriculumPreviewPage() {
     getCodeSubmission,
     isAnswerSubmitted,
     isExecutingCode,
+    programInput.stdin,
     runCodeOutput,
     speak,
     useWebWorkspace,
@@ -1450,10 +1471,15 @@ export default function CurriculumPreviewPage() {
                         }
                         isRunning={isExecutingCode}
                         canSubmit={false}
+                        showProgramInput={programInput.show}
+                        programInput={programInput.value}
+                        onProgramInputChange={programInput.setValue}
+                        programInputReadOnly={isTypingLessonCode}
                       />
                       <TestResults
                         results={results}
                         code={code}
+                        language={runLanguage}
                         onToggleFullscreen={() =>
                           setFullscreen(
                             fullscreen === "results" ? null : "results",
@@ -1571,10 +1597,14 @@ export default function CurriculumPreviewPage() {
                               !isExecutingCode
                             }
                             isRunning={isExecutingCode}
+                            showProgramInput={programInput.show}
+                            programInput={programInput.value}
+                            onProgramInputChange={programInput.setValue}
                           />
                           <TestResults
                             results={results}
                             code={code}
+                            language={runLanguage}
                             onToggleFullscreen={() =>
                               setFullscreen(
                                 fullscreen === "results" ? null : "results",

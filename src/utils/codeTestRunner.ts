@@ -122,7 +122,7 @@ export async function gradeSubmissionCodeTest(
 export async function runSubmissionCodeOutput(
   submission: CodeTestSubmission,
   criteria: CodeTestCriteria | undefined,
-  options?: { turtleTargetId?: string },
+  options?: { turtleTargetId?: string; stdin?: string },
 ): Promise<string[]> {
   const graded = resolveGradedLanguage(submission.language);
   if (submission.language?.trim() && !graded) {
@@ -144,7 +144,9 @@ export async function runSubmissionCodeOutput(
     return formatRunOutput(result, "✓ Turtle drawing complete.");
   }
 
-  const result = await executeStudentCode(submission.code, language);
+  const result = await executeStudentCode(submission.code, language, {
+    stdin: options?.stdin,
+  });
   return formatRunOutput(result);
 }
 

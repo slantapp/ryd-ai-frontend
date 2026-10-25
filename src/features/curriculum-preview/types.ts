@@ -11,6 +11,8 @@ export interface Question {
   explanation?: string;
   code_example?: CodeExample;
   formula_example?: FormulaExample;
+  /** Input for this question when it must differ from `code_example.stdin`. */
+  stdin?: string;
   testCriteria?: {
     expectedVariable?: string;
     expectedValue?: unknown;

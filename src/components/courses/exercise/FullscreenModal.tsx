@@ -46,6 +46,7 @@ export default function FullscreenModal({
           <TestResults
             results={results}
             code={code}
+            language={language}
             onToggleFullscreen={onClose}
             isFullscreen={true}
           />

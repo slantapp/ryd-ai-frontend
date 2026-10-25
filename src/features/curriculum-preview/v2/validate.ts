@@ -63,6 +63,9 @@ function validateCodeExample(
       `${label}: code_example.supportingLanguage must be a string when provided`,
     );
   }
+  if (ex.stdin !== undefined && typeof ex.stdin !== "string") {
+    errors.push(`${label}: code_example.stdin must be a string when provided`);
+  }
 }
 
 function validateFormulaExample(
@@ -97,6 +100,9 @@ function validateQuestion(
   }
   if (!q.question || typeof q.question !== "string") {
     errors.push(`${label}: missing question text`);
+  }
+  if (q.stdin !== undefined && typeof q.stdin !== "string") {
+    errors.push(`${label}: stdin must be a string when provided`);
   }
   if (qType === "code_test" && q.code_example) {
     validateCodeExample(q.code_example, label, errors);

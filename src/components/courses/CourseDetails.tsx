@@ -48,6 +48,8 @@ import {
   describeStoredAnswer,
   wrongAttemptOutcome,
 } from "@/utils/storedAnswer";
+import { stdinForRun } from "@/utils/programInput";
+import { useProgramInput } from "@/hooks/useProgramInput";
 import { useInstructorStore, INSTRUCTORS } from "../../stores/instructorStore";
 import { useCoursesStore } from "../../stores/coursesStore";
 import { cn } from "../../lib/utils";
@@ -60,7 +62,6 @@ import {
 } from "@/utils/codeTestRunner";
 import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import {
-  buildWebCodeFromExample,
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
   isWebWorkspaceLanguage,
@@ -309,6 +310,8 @@ function CourseDetailInner({
   const [isExecutingCode, setIsExecutingCode] = useState(false);
   const [runLanguage, setRunLanguage] = useState("javascript");
   const [results, setResults] = useState<string[]>([]);
+  const [solutionLocked, setSolutionLocked] = useState(false);
+  const revealTimerRef = useRef<number | null>(null);
   const [fullscreen, setFullscreen] = useState<"editor" | "results" | null>(
     null
   );
@@ -443,6 +446,11 @@ function CourseDetailInner({
   }, [normalizedCodePanelLanguage]);
 
   const resetCodeState = useCallback(() => {
+    if (revealTimerRef.current != null) {
+      window.clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+    setSolutionLocked(false);
     setCode("");
     setWebCode(EMPTY_WEB_CODE);
     setResults([]);
@@ -451,6 +459,11 @@ function CourseDetailInner({
 
   const prepareQuestionPractice = useCallback((question: Question) => {
     const example = question.code_example;
+    if (revealTimerRef.current != null) {
+      window.clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+    setSolutionLocked(false);
     setResults([]);
     setPreviewRefreshKey(0);
     setIsLessonCodeDemoActive(false);
@@ -468,6 +481,22 @@ function CourseDetailInner({
     setCode(example?.starterCode?.trim() ?? "");
   }, []);
 
+  const programInput = useProgramInput({
+    key: isLessonCodeDemoActive
+      ? `demo:${currentLesson?.id ?? ""}`
+      : `q:${currentLesson?.id ?? ""}:${currentQuestion?.id ?? currentQuestionIndex}`,
+    exampleStdin: (isLessonCodeDemoActive
+      ? currentLesson?.code_example
+      : currentQuestion?.code_example
+    )?.stdin,
+    questionStdin: isLessonCodeDemoActive ? undefined : currentQuestion?.stdin,
+    exampleCode: (isLessonCodeDemoActive
+      ? currentLesson?.code_example
+      : currentQuestion?.code_example
+    )?.code,
+    editorCode: code,
+  });
+
   const getCodeSubmission = useCallback(
     () => ({
       code,
@@ -482,11 +511,16 @@ function CourseDetailInner({
     : undefined;
 
   const runLessonExampleCode = useCallback(
-    async (submission: ReturnType<typeof getCodeSubmission>) => {
+    async (
+      submission: ReturnType<typeof getCodeSubmission>,
+      stdin?: string,
+    ) => {
       setIsExecutingCode(true);
       setResults(["⏳ Running code..."]);
       try {
-        const runOutput = await runSubmissionCodeOutput(submission, undefined);
+        const runOutput = await runSubmissionCodeOutput(submission, undefined, {
+          stdin,
+        });
         setResults(
           runOutput.length > 0 ? runOutput : ["✓ Code ran successfully."],
         );
@@ -510,11 +544,12 @@ function CourseDetailInner({
       return;
     }
 
-    void runLessonExampleCode(getCodeSubmission());
+    void runLessonExampleCode(getCodeSubmission(), programInput.stdin);
   }, [
     currentLesson?.code_example,
     getCodeSubmission,
     isExecutingCode,
+    programInput.stdin,
     runLessonExampleCode,
     useWebWorkspace,
   ]);
@@ -941,23 +976,20 @@ function CourseDetailInner({
       };
 
       runCodeExampleTyping(example, () => {
-        if (example.autoRun) {
-          if (isWeb) {
-            setPreviewRefreshKey((key) => key + 1);
-            setResults(["✓ Preview updated."]);
-            proceedAfterExample();
-          } else {
-            void runLessonExampleCode({
-              code: example.code,
-              webCode: isWeb
-                ? buildWebCodeFromExample(example, "demo")
-                : undefined,
-              language: normalizeRunLanguage(example.language),
-            }).then(proceedAfterExample);
-          }
-        } else {
+        if (isWeb) {
+          setPreviewRefreshKey((key) => key + 1);
+          setResults(["✓ Preview updated."]);
           proceedAfterExample();
+          return;
         }
+        void runLessonExampleCode(
+          {
+            code: example.code,
+            webCode: undefined,
+            language: normalizeRunLanguage(example.language),
+          },
+          stdinForRun(example),
+        ).then(proceedAfterExample);
       });
     },
     [
@@ -2226,6 +2258,7 @@ function CourseDetailInner({
         : await runSubmissionCodeOutput(
           submission,
           currentQuestion.testCriteria,
+          { stdin: programInput.stdin },
         );
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
@@ -2246,7 +2279,7 @@ function CourseDetailInner({
         setIsExecutingCode(false);
       }
     }
-  }, [currentQuestion, getCodeSubmission, useWebWorkspace]);
+  }, [currentQuestion, getCodeSubmission, programInput.stdin, useWebWorkspace]);
 
   const handleSubmitCodeAnswer = useCallback(async () => {
     if (!currentQuestion || currentQuestion.type !== "code_test") return;
@@ -2268,6 +2301,7 @@ function CourseDetailInner({
         : await runSubmissionCodeOutput(
           submission,
           currentQuestion.testCriteria,
+          { stdin: programInput.stdin },
         );
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
@@ -2286,14 +2320,26 @@ function CourseDetailInner({
           return;
         }
         const stored = describeStoredAnswer(currentQuestion);
-        if (stored.code) setCode(stored.code);
-        if (stored.web) {
-          setWebCode((current) => ({
-            html: stored.web?.html ?? current.html,
-            css: stored.web?.css ?? current.css,
-            javascript: stored.web?.javascript ?? current.javascript,
-          }));
+        if (revealTimerRef.current != null) {
+          window.clearTimeout(revealTimerRef.current);
         }
+        setSolutionLocked(true);
+        setCode("");
+        setWebCode(EMPTY_WEB_CODE);
+        setResults(["The correct answer is in the editor."]);
+        const answerCode = stored.code;
+        const answerWeb = stored.web;
+        revealTimerRef.current = window.setTimeout(() => {
+          revealTimerRef.current = null;
+          if (answerCode) setCode(answerCode);
+          if (answerWeb) {
+            setWebCode({
+              html: answerWeb.html ?? "",
+              css: answerWeb.css ?? "",
+              javascript: answerWeb.javascript ?? "",
+            });
+          }
+        }, 350);
       }
 
       setIsAnswerSubmitted(true);
@@ -2346,6 +2392,7 @@ function CourseDetailInner({
     recordAnswerResult,
     scheduleQuestionAdvanceFallback,
     speak,
+    programInput.stdin,
     useWebWorkspace,
   ]);
 
@@ -2995,7 +3042,10 @@ function CourseDetailInner({
                     >
                       <CodeEditor
                         code={code}
-                        onCodeChange={setCode}
+                        onCodeChange={(value) => {
+                          if (solutionLocked) return;
+                          setCode(value);
+                        }}
                         onTestCode={
                           isLessonCodeDemoActive
                             ? handleRunLessonCode
@@ -3054,10 +3104,17 @@ function CourseDetailInner({
                               ? "You already submitted this answer"
                               : "Write some code first"
                         }
+                        showProgramInput={programInput.show}
+                        programInput={programInput.value}
+                        onProgramInputChange={programInput.setValue}
+                        programInputReadOnly={
+                          solutionLocked || isLessonCodeDemoActive
+                        }
                       />
                       <TestResults
                         results={results}
                         code={code}
+                        language={runLanguage}
                         onToggleFullscreen={() =>
                           setFullscreen(
                             fullscreen === "results" ? null : "results",
@@ -3409,8 +3466,12 @@ function CourseDetailInner({
           type={fullscreen}
           code={code}
           results={results}
+          language={runLanguage}
           onClose={() => setFullscreen(null)}
-          onCodeChange={setCode}
+          onCodeChange={(value) => {
+            if (solutionLocked) return;
+            setCode(value);
+          }}
         />
       )}
     </div>

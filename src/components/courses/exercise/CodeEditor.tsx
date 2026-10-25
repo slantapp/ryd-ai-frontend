@@ -37,6 +37,11 @@ interface CodeEditorProps {
   testDisabledReason?: string;
   /** Tooltip shown on the submit button while it is disabled (explains why). */
   submitDisabledReason?: string;
+  /** Show the Input box under the editor. The program reads this when Run starts. */
+  showProgramInput?: boolean;
+  programInput?: string;
+  onProgramInputChange?: (value: string) => void;
+  programInputReadOnly?: boolean;
 }
 
 /** Map curriculum language strings to Monaco editor language ids. */
@@ -68,6 +73,10 @@ export default function CodeEditor({
   onReset,
   testDisabledReason,
   submitDisabledReason,
+  showProgramInput = false,
+  programInput = "",
+  onProgramInputChange,
+  programInputReadOnly = false,
 }: CodeEditorProps) {
   const twoButtonMode = typeof onTryOut === "function";
   const monacoLanguage = toMonacoLanguage(language);
@@ -215,6 +224,25 @@ export default function CodeEditor({
           }}
         />
       </div>
+      {showProgramInput ? (
+        <label className="shrink-0 border-t border-gray-200 bg-white px-3 py-2">
+          <span className="mb-0.5 block text-xs font-semibold text-gray-800">
+            Input
+          </span>
+          <span className="mb-1.5 block text-[0.7rem] leading-snug text-gray-500">
+            What the program reads when it starts. Type it before you tap Run.
+          </span>
+          <textarea
+            value={programInput}
+            onChange={(event) => onProgramInputChange?.(event.target.value)}
+            readOnly={programInputReadOnly}
+            rows={2}
+            placeholder="e.g. 10"
+            aria-label="Program input"
+            className="w-full resize-y rounded-md border border-gray-300 px-2.5 py-1.5 font-mono text-sm text-gray-900 outline-none focus:border-primary read-only:bg-gray-50"
+          />
+        </label>
+      ) : null}
     </div>
   );
 }

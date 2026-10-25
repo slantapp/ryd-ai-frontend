@@ -3,6 +3,7 @@ import {
   resolveJudge0LanguageId,
 } from "./judge0Languages";
 import { prepareCodeForExecution, type CodeRunResult } from "./types";
+import { compilerOptionsFor } from "./compilerOptions";
 
 type Judge0Submission = {
   stdout?: string | null;
@@ -85,6 +86,7 @@ function parseJudge0Submission(data: Judge0Submission): CodeRunResult {
 export async function executeStudentCode(
   code: string,
   language?: string,
+  options?: { stdin?: string },
 ): Promise<CodeRunResult> {
   const apiUrl = getJudge0ApiUrl();
   const headers = getJudge0Headers();
@@ -98,6 +100,7 @@ export async function executeStudentCode(
   }
 
   const preparedCode = prepareCodeForExecution(code, language);
+  const compilerOptions = compilerOptionsFor(language);
 
   try {
     const response = await fetch(
@@ -108,6 +111,8 @@ export async function executeStudentCode(
         body: JSON.stringify({
           source_code: preparedCode,
           language_id: languageId,
+          ...(compilerOptions ? { compiler_options: compilerOptions } : {}),
+          ...(options?.stdin !== undefined ? { stdin: options.stdin } : {}),
         }),
       },
     );

@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useState } from "react";
 import { Minimize2, Maximize2, Terminal, Eye, Palette } from "lucide-react";
 import { prepareHtmlForPreview } from "@/utils/prepareHtmlForPreview";
+import { isWebWorkspaceLanguage } from "@/utils/webCodeWorkspace";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { cn } from "@/lib/utils";
 
@@ -11,19 +12,8 @@ interface TestResultsProps {
   isFullscreen: boolean;
   /** Existing DOM target used by the in-browser Python Turtle runtime. */
   turtleTargetId?: string;
-}
-
-// Helper function to detect if code contains HTML
-function isHTMLCode(code: string): boolean {
-  if (!code || !code.trim()) return false;
-
-  const trimmedCode = code.trim();
-  const openingTagPattern = /<[a-z][a-z0-9]*(?:\s[^>]*)?\/?>/i;
-  const closingTagPattern = /<\/[a-z][a-z0-9]*>/i;
-
-  return (
-    openingTagPattern.test(trimmedCode) || closingTagPattern.test(trimmedCode)
-  );
+  /** Course language. Page preview is only for HTML, CSS, and web lessons. */
+  language?: string;
 }
 
 // Helper function to wrap HTML in a complete document if needed
@@ -67,25 +57,28 @@ export default function TestResults({
   onToggleFullscreen,
   isFullscreen,
   turtleTargetId,
+  language,
 }: TestResultsProps) {
   const [activeTab, setActiveTab] = useState<"console" | "preview">("console");
   const isLgUp = useMediaQueryMinLg();
 
-  const isHTML = useMemo(() => isHTMLCode(code), [code]);
+  const isPagePreview = isWebWorkspaceLanguage(language);
   const hasTurtlePreview = Boolean(turtleTargetId);
-  const hasVisualPreview = isHTML || hasTurtlePreview;
+  const hasVisualPreview = isPagePreview || hasTurtlePreview;
 
   const htmlContent = useMemo(() => {
-    if (!isHTML || !code.trim()) return "";
+    if (!isPagePreview || !code.trim()) return "";
+    const lang = (language || "").toLowerCase().trim();
+    if (lang === "css") return wrapHTML(`<style>\n${code}\n</style>`);
     return wrapHTML(code);
-  }, [code, isHTML]);
+  }, [code, isPagePreview, language]);
 
   // Prefer visual output when HTML or Turtle code is present.
   useEffect(() => {
-    if ((isHTML && htmlContent) || hasTurtlePreview) {
+    if ((isPagePreview && htmlContent) || hasTurtlePreview) {
       setActiveTab("preview");
     }
-  }, [hasTurtlePreview, htmlContent, isHTML]);
+  }, [hasTurtlePreview, htmlContent, isPagePreview]);
 
   useEffect(() => {
     if (!hasVisualPreview) return;

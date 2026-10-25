@@ -39,12 +39,9 @@ export type StoredAnswer = {
   web?: { html?: string; css?: string; javascript?: string };
 };
 
-function speakable(text: string): string {
-  const trimmed = text.trim();
-  if (!trimmed) return "Here is the right answer.";
-  if (trimmed.length <= 180) return `The right answer is ${trimmed}.`;
-  return "Here is the right answer.";
-}
+/** Spoken after a code question is missed. The source stays in the editor. */
+export const CODE_SOLUTION_SPEECH =
+  "Take a look at the editor. That is the correct answer. Try to understand it yourself.";
 
 /** The answer the author stored. Nothing is invented when that answer is missing. */
 export function describeStoredAnswer(question: StoredAnswerQuestion): StoredAnswer {
@@ -100,9 +97,8 @@ export function describeStoredAnswer(question: StoredAnswerQuestion): StoredAnsw
 
   if (!code && !hasWeb) return { spoken: null };
 
-  const shown = code || [web.html, web.css, web.javascript].filter(Boolean).join("\n");
   return {
-    spoken: speakable(shown),
+    spoken: CODE_SOLUTION_SPEECH,
     code: code || undefined,
     web: hasWeb ? web : undefined,
   };

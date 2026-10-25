@@ -15,6 +15,11 @@ export interface CodeExample {
   autoRun?: boolean;
   typingSpeed?: number;
   /**
+   * Text the program reads when it starts (`cin`, `input()`, `Scanner`, and the rest).
+   * Fills the Input box under the editor. Omit it when the program reads nothing.
+   */
+  stdin?: string;
+  /**
    * Seeded into the editor on student practice handoff (after the worked example).
    * Prefer a skeleton with comments — not the full solution.
    */
@@ -37,6 +42,11 @@ export interface Question {
   explanation?: string;
   code_example?: CodeExample;
   formula_example?: FormulaExample;
+  /**
+   * Input for this question when it must differ from `code_example.stdin`.
+   * When omitted, the example's `stdin` is used.
+   */
+  stdin?: string;
   testCriteria?: {
     expectedVariable?: string;
     expectedValue?: unknown;

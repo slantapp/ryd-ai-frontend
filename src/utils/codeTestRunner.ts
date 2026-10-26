@@ -1,4 +1,5 @@
 import {
+  buildCallProbe,
   buildFunctionProbe,
   evaluateCodeTest,
   formatCodeTestResults,
@@ -8,6 +9,13 @@ import {
   type CodeTestResult,
 } from "./codeTestValidation";
 import { executeStudentCode, formatRunOutput } from "./runStudentCode";
+import {
+  formatOutputMiss,
+  formatRowsMiss,
+  learnerDiagnostic,
+  outputsMatch,
+  programStdout,
+} from "./codeExecution/runFeedback";
 import {
   normalizeRunLanguage,
   resolveGradedLanguage,
@@ -22,6 +30,7 @@ import {
   isWebWorkspaceLanguage,
   type WebCodeSources,
 } from "./webCodeWorkspace";
+import { hasPageChecks } from "./webPreviewBridge";
 
 export type CodeTestSubmission = {
   /** Single-pane editor source (Python, Dart, legacy HTML-in-one-file, etc.). */
@@ -29,13 +38,18 @@ export type CodeTestSubmission = {
   /** HTML / CSS / JS panes when web workspace is active. */
   webCode?: WebCodeSources;
   language?: string;
+  runtime?: string;
+  version?: string;
+  files?: Record<string, string>;
+  setupSql?: string;
 };
 
 export function resolveUseWebWorkspace(
   language: string | undefined,
   criteria: CodeTestCriteria | undefined,
+  runtime?: string,
 ): boolean {
-  return isWebWorkspaceLanguage(language, criteria);
+  return isWebWorkspaceLanguage(language, criteria, runtime);
 }
 
 /**
@@ -46,6 +60,7 @@ export function evaluateSubmissionCodeTest(
   submission: CodeTestSubmission,
   criteria: CodeTestCriteria | undefined,
   runLines?: string[],
+  pageResults?: CodeTestResult[],
 ): { passed: boolean; testResults: CodeTestResult[] } {
   const graded = resolveGradedLanguage(submission.language);
   if (submission.language?.trim() && !graded) {
@@ -60,8 +75,74 @@ export function evaluateSubmissionCodeTest(
     };
   }
 
+  if (hasPageChecks(criteria)) {
+    if (!pageResults?.length) {
+      return {
+        passed: false,
+        testResults: [
+          { test: "Run the preview, then submit.", passed: false, plain: true },
+        ],
+      };
+    }
+    return {
+      passed: pageResults.every((result) => result.passed),
+      testResults: pageResults.map((result) => ({ ...result, plain: true })),
+    };
+  }
+
   const language = graded ?? "javascript";
-  const useWeb = resolveUseWebWorkspace(language, criteria);
+  const stdout = programStdout(runLines);
+
+  if (typeof criteria?.expectedOutput === "string" && criteria.expectedOutput.trim()) {
+    const passed = outputsMatch(stdout, criteria.expectedOutput);
+    if (passed) {
+      return {
+        passed: true,
+        testResults: [
+          { test: "Your program printed the expected result", passed: true, plain: true },
+        ],
+      };
+    }
+    const diagnostic = learnerDiagnostic(runLines);
+    const silent = !diagnostic || /didn't print anything/.test(diagnostic);
+    return {
+      passed: false,
+      testResults: [
+        {
+          test:
+            diagnostic && !stdout && !silent
+              ? diagnostic
+              : formatOutputMiss(stdout, criteria.expectedOutput),
+          passed: false,
+          plain: true,
+        },
+      ],
+    };
+  }
+
+  if (criteria?.expectedRows?.length) {
+    const actualRows = stdout
+      .split("\n")
+      .map((line) => line.split("|").map((cell) => cell.trim()).filter(Boolean))
+      .filter((row) => row.length > 0);
+    const passed = criteria.expectedRows.every((row, index) =>
+      row.every((cell, cellIndex) => actualRows[index]?.[cellIndex] === cell.trim()),
+    );
+    return {
+      passed,
+      testResults: [
+        {
+          test: passed
+            ? "The query returned the expected rows"
+            : formatRowsMiss(stdout, criteria.expectedRows),
+          passed,
+          plain: true,
+        },
+      ],
+    };
+  }
+
+  const useWeb = resolveUseWebWorkspace(language, criteria, submission.runtime);
 
   if (useWeb && submission.webCode) {
     return evaluateWebCodeTest(submission.webCode, criteria);
@@ -90,16 +171,87 @@ export async function gradeSubmissionCodeTest(
   submission: CodeTestSubmission,
   criteria: CodeTestCriteria | undefined,
   runLines?: string[],
+  pageResults?: CodeTestResult[],
 ): Promise<{ passed: boolean; testResults: CodeTestResult[] }> {
-  const result = evaluateSubmissionCodeTest(submission, criteria, runLines);
+  const result = evaluateSubmissionCodeTest(
+    submission,
+    criteria,
+    runLines,
+    pageResults,
+  );
   if (result.passed) return result;
+  if (criteria?.expectedOutput || criteria?.expectedRows?.length || hasPageChecks(criteria)) {
+    return result;
+  }
 
   const language = resolveGradedLanguage(submission.language);
   if (!language) return result;
+  const runOptions = {
+    stdin: undefined as string | undefined,
+    version: submission.version,
+    files: submission.files,
+    setupSql: submission.setupSql,
+  };
+
+  const callProbe = buildCallProbe(submission.code, criteria?.tests, language);
+  if (callProbe && criteria?.tests?.length) {
+    const executed = await executeStudentCode(callProbe, language, runOptions);
+    const actual = executed.logs.filter((line) => !line.startsWith("@@details@@"));
+    const tail = actual.slice(-criteria.tests.length);
+    const passed =
+      !executed.error &&
+      criteria.tests.every((item, index) => outputsMatch(tail[index] ?? "", item.expect));
+    if (passed) {
+      return {
+        passed: true,
+        testResults: criteria.tests.map((item) => ({
+          test: `${item.call} passed`,
+          passed: true,
+          plain: true,
+        })),
+      };
+    }
+    const diagnostic = learnerDiagnostic(actual);
+    return {
+      passed: false,
+      testResults: [
+        {
+          test:
+            executed.error || diagnostic
+              ? diagnostic || executed.error || "The program stopped."
+              : formatOutputMiss(
+                  tail.join("\n"),
+                  criteria.tests.map((item) => item.expect).join("\n"),
+                ),
+          passed: false,
+          plain: true,
+        },
+      ],
+    };
+  }
+
+  if (
+    criteria?.tests?.length &&
+    criteria.tests.every((item) => submission.code.includes(item.call))
+  ) {
+    const passed = criteria.tests.every((item) =>
+      outputsMatch(
+        (runLines ?? []).filter((line) => !line.startsWith("@@details@@")).join("\n"),
+        item.expect,
+      ) || (runLines ?? []).some((line) => outputsMatch(line, item.expect)),
+    );
+    if (passed) {
+      return {
+        passed: true,
+        testResults: [{ test: "Your program printed the expected result", passed: true, plain: true }],
+      };
+    }
+  }
+
   const probe = buildFunctionProbe(submission.code, criteria, language);
   if (!probe || !criteria?.testCases?.length) return result;
 
-  const executed = await executeStudentCode(probe, language);
+  const executed = await executeStudentCode(probe, language, runOptions);
   if (executed.error) return result;
   const actual = executed.logs.map((line) => line.trim()).filter(Boolean);
   const passed = criteria.testCases.every((testCase, index) =>
@@ -122,14 +274,20 @@ export async function gradeSubmissionCodeTest(
 export async function runSubmissionCodeOutput(
   submission: CodeTestSubmission,
   criteria: CodeTestCriteria | undefined,
-  options?: { turtleTargetId?: string; stdin?: string },
+  options?: {
+    turtleTargetId?: string;
+    stdin?: string;
+    version?: string;
+    files?: Record<string, string>;
+    setupSql?: string;
+  },
 ): Promise<string[]> {
   const graded = resolveGradedLanguage(submission.language);
   if (submission.language?.trim() && !graded) {
     return [`Error: Code execution is not supported for "${submission.language}".`];
   }
   const language = graded ?? normalizeRunLanguage(submission.language);
-  if (resolveUseWebWorkspace(language, criteria)) {
+  if (resolveUseWebWorkspace(language, criteria, submission.runtime)) {
     return [];
   }
 
@@ -146,6 +304,9 @@ export async function runSubmissionCodeOutput(
 
   const result = await executeStudentCode(submission.code, language, {
     stdin: options?.stdin,
+    version: options?.version ?? submission.version,
+    files: options?.files ?? submission.files,
+    setupSql: options?.setupSql ?? submission.setupSql,
   });
   return formatRunOutput(result);
 }
@@ -155,7 +316,7 @@ export function submissionHasContent(
   criteria: CodeTestCriteria | undefined,
 ): boolean {
   const language = normalizeRunLanguage(submission.language);
-  if (resolveUseWebWorkspace(language, criteria)) {
+  if (resolveUseWebWorkspace(language, criteria, submission.runtime)) {
     return submission.webCode ? hasWebCodeContent(submission.webCode) : false;
   }
   return submission.code.trim().length > 0;

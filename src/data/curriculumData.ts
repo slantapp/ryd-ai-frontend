@@ -31,6 +31,23 @@ export interface CodeExample {
   supportingCode?: string;
   /** Language of `supportingCode` (defaults: html when language is css, css when html). */
   supportingLanguage?: string;
+  /** `web` opens the page preview. Missing means the language runs on Judge0. */
+  runtime?: "node" | "web";
+  /** Page markup for a JavaScript lesson that runs in the preview. */
+  html?: string;
+  css?: string;
+  starterHtml?: string;
+  starterCss?: string;
+  /** Panes the learner can read but not edit. */
+  lockedTabs?: Array<"html" | "css" | "javascript">;
+  /** Extra files sent with the program. The main `code` is the file that runs. */
+  files?: Record<string, string>;
+  /** Prefer a Judge0 runtime whose name contains this text. */
+  version?: string;
+  /** SQL statements that run before the learner query. */
+  setupSql?: string;
+  /** Replaces fetch for these paths inside the page preview. */
+  mocks?: Record<string, unknown>;
 }
 
 export interface Question {
@@ -56,6 +73,12 @@ export interface Question {
     expectedCSS?: string;
     expectedJS?: string;
     expectedCode?: string;
+    expectedOutput?: string;
+    expectedRows?: string[][];
+    tests?: Array<{ call: string; expect: string }>;
+    domChecks?: Array<Record<string, unknown>>;
+    htmlChecks?: Array<Record<string, unknown>>;
+    cssChecks?: Array<Record<string, unknown>>;
     /** Math: expected final answer or expression (flexible match). */
     expectedFormula?: string;
     testCases?: Array<{

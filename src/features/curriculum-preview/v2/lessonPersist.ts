@@ -8,6 +8,7 @@ export type V2LessonDraft = {
   webCode?: WebCodeSources;
   formulaAnswer?: string;
   resumePractice?: boolean;
+  files?: Record<string, string>;
 };
 
 function storageKey(scope: string, lessonId: string): string {

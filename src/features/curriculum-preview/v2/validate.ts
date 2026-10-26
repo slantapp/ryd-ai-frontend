@@ -66,6 +66,23 @@ function validateCodeExample(
   if (ex.stdin !== undefined && typeof ex.stdin !== "string") {
     errors.push(`${label}: code_example.stdin must be a string when provided`);
   }
+  if (ex.runtime !== undefined && ex.runtime !== "node" && ex.runtime !== "web") {
+    errors.push(`${label}: code_example.runtime must be "node" or "web"`);
+  }
+  for (const field of ["html", "css", "starterHtml", "starterCss", "version", "setupSql"] as const) {
+    if (ex[field] !== undefined && typeof ex[field] !== "string") {
+      errors.push(`${label}: code_example.${field} must be a string when provided`);
+    }
+  }
+  if (ex.lockedTabs !== undefined && !Array.isArray(ex.lockedTabs)) {
+    errors.push(`${label}: code_example.lockedTabs must be an array when provided`);
+  }
+  if (
+    ex.files !== undefined &&
+    (typeof ex.files !== "object" || ex.files === null || Array.isArray(ex.files))
+  ) {
+    errors.push(`${label}: code_example.files must be an object of file names`);
+  }
 }
 
 function validateFormulaExample(
@@ -103,6 +120,13 @@ function validateQuestion(
   }
   if (q.stdin !== undefined && typeof q.stdin !== "string") {
     errors.push(`${label}: stdin must be a string when provided`);
+  }
+  const criteria = q.testCriteria as Record<string, unknown> | undefined;
+  if (criteria?.expectedOutput !== undefined && typeof criteria.expectedOutput !== "string") {
+    errors.push(`${label}: testCriteria.expectedOutput must be a string`);
+  }
+  if (criteria?.tests !== undefined && !Array.isArray(criteria.tests)) {
+    errors.push(`${label}: testCriteria.tests must be an array`);
   }
   if (qType === "code_test" && q.code_example) {
     validateCodeExample(q.code_example, label, errors);

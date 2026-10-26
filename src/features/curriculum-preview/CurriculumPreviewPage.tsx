@@ -821,7 +821,7 @@ export default function CurriculumPreviewPage() {
     }
   }, [curriculum, currentLesson, getNextLesson, playTeachingSegment, resetCodeState, speak, stop]);
 
-  const handleRunLessonCode = useCallback(() => {
+  const handleRunLessonCode = useCallback(async () => {
     if (!currentLesson?.code_example || isTypingLessonCode || isExecutingCode) return;
 
     if (useWebWorkspace) {
@@ -830,13 +830,15 @@ export default function CurriculumPreviewPage() {
       return;
     }
 
-    void runLessonExampleCode(getCodeSubmission(), undefined, programInput.stdin);
+    const stdin = await programInput.collect("Run program");
+    if (stdin === null) return;
+    void runLessonExampleCode(getCodeSubmission(), undefined, stdin);
   }, [
     currentLesson?.code_example,
     getCodeSubmission,
     isExecutingCode,
     isTypingLessonCode,
-    programInput.stdin,
+    programInput,
     runLessonExampleCode,
     useWebWorkspace,
   ]);
@@ -849,6 +851,10 @@ export default function CurriculumPreviewPage() {
     if (!question || question.type !== "code_test") return;
 
     const submission = getCodeSubmission();
+    const stdin = useWebWorkspace
+      ? undefined
+      : await programInput.collect("Run program");
+    if (stdin === null) return;
 
     if (useWebWorkspace) {
       setPreviewRefreshKey((key) => key + 1);
@@ -860,7 +866,7 @@ export default function CurriculumPreviewPage() {
     try {
       const runOutput = useWebWorkspace
         ? []
-        : await runCodeOutput(submission, question.testCriteria, programInput.stdin);
+        : await runCodeOutput(submission, question.testCriteria, stdin);
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         question.testCriteria,
@@ -886,7 +892,7 @@ export default function CurriculumPreviewPage() {
     getCodeSubmission,
     isAnswerSubmitted,
     isExecutingCode,
-    programInput.stdin,
+    programInput,
     runCodeOutput,
     useWebWorkspace,
   ]);
@@ -898,6 +904,10 @@ export default function CurriculumPreviewPage() {
     if (!question || question.type !== "code_test") return;
 
     const submission = getCodeSubmission();
+    const stdin = useWebWorkspace
+      ? undefined
+      : await programInput.collect("Submit answer");
+    if (stdin === null) return;
 
     if (useWebWorkspace) {
       setPreviewRefreshKey((key) => key + 1);
@@ -909,7 +919,7 @@ export default function CurriculumPreviewPage() {
     try {
       const runOutput = useWebWorkspace
         ? []
-        : await runCodeOutput(submission, question.testCriteria, programInput.stdin);
+        : await runCodeOutput(submission, question.testCriteria, stdin);
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         question.testCriteria,
@@ -944,7 +954,7 @@ export default function CurriculumPreviewPage() {
     getCodeSubmission,
     isAnswerSubmitted,
     isExecutingCode,
-    programInput.stdin,
+    programInput,
     runCodeOutput,
     speak,
     useWebWorkspace,
@@ -1472,8 +1482,10 @@ export default function CurriculumPreviewPage() {
                         isRunning={isExecutingCode}
                         canSubmit={false}
                         showProgramInput={programInput.show}
+                        programInputHint={programInput.hint}
                         programInput={programInput.value}
                         onProgramInputChange={programInput.setValue}
+                        inputPrompt={programInput.prompt}
                         programInputReadOnly={isTypingLessonCode}
                       />
                       <TestResults
@@ -1598,8 +1610,10 @@ export default function CurriculumPreviewPage() {
                             }
                             isRunning={isExecutingCode}
                             showProgramInput={programInput.show}
+                            programInputHint={programInput.hint}
                             programInput={programInput.value}
                             onProgramInputChange={programInput.setValue}
+                            inputPrompt={programInput.prompt}
                           />
                           <TestResults
                             results={results}

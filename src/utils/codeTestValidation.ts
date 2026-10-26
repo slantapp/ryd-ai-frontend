@@ -1,4 +1,5 @@
 import { resolveGradedLanguage } from "./codeExecution/languages";
+import { outputsMatch } from "./codeExecution/runFeedback";
 
 export type CodeTestCriteria = {
   expectedVariable?: string;
@@ -9,6 +10,15 @@ export type CodeTestCriteria = {
   expectedCSS?: string;
   expectedJS?: string;
   expectedCode?: string;
+  /** Printed text. A match passes even when the source differs. */
+  expectedOutput?: string;
+  /** SQL rows. Each inner list is one result row. */
+  expectedRows?: string[][];
+  /** Call an expression and compare the printed line. */
+  tests?: Array<{ call: string; expect: string }>;
+  domChecks?: Array<Record<string, unknown>>;
+  htmlChecks?: Array<Record<string, unknown>>;
+  cssChecks?: Array<Record<string, unknown>>;
   testCases?: Array<{
     input: unknown[];
     expected: unknown;
@@ -20,6 +30,8 @@ export type CodeTestResult = {
   passed: boolean;
   actual?: unknown;
   expected?: unknown;
+  /** Failure text is already the sentence the learner should read. */
+  plain?: boolean;
 };
 
 function valuesEqual(a: unknown, b: unknown): boolean {
@@ -322,6 +334,36 @@ export function buildFunctionProbe(
   return null;
 }
 
+/** Append a print for each call when the program does not already print it or define main. */
+export function buildCallProbe(
+  code: string,
+  tests: Array<{ call: string; expect: string }> | undefined,
+  language: string,
+): string | null {
+  if (!tests?.length) return null;
+  if (tests.every((item) => code.includes(item.call))) return null;
+  if (/\bmain\s*\(/.test(code)) return null;
+  const calls = tests.map((item) => item.call);
+  if (language === "javascript" || language === "typescript") {
+    return `${code}\n${calls.map((call) => `console.log(${call});`).join("\n")}\n`;
+  }
+  if (language === "python" || language === "lua") {
+    return `${code}\n${calls.map((call) => `print(${call})`).join("\n")}\n`;
+  }
+  if (language === "ruby") {
+    return `${code}\n${calls.map((call) => `puts(${call})`).join("\n")}\n`;
+  }
+  if (language === "php" && !code.includes("<?")) {
+    return `<?php\n${code}\n${calls.map((call) => `echo ${call}, "\\n";`).join("\n")}\n`;
+  }
+  if (language === "java") {
+    if (/\bclass\s+/.test(code)) return null;
+    const prints = calls.map((call) => `System.out.println(${call});`).join("\n");
+    return `${code}\nclass Main {\npublic static void main(String[] args) {\n${prints}\n}\n}\n`;
+  }
+  return null;
+}
+
 function extractStringLiterals(source: string): string[] {
   const literals: string[] = [];
   const pattern = /"([^"\\]|\\.)*"|'([^'\\]|\\.)*'/g;
@@ -349,10 +391,13 @@ export function outputAgreesWithExpected(
     return false;
   }
   const stdout = runLines
-    .filter((line) => line !== "(No output)")
+    .filter((line) => line !== "(No output)" && !line.startsWith("@@details@@"))
     .join("\n")
     .trim();
   if (!stdout) return false;
+  if (typeof criteria.expectedOutput === "string") {
+    return outputsMatch(stdout, criteria.expectedOutput);
+  }
   if (criteria.expectedCode && !criteria.expectedCode.startsWith("regex:")) {
     const literals = extractStringLiterals(criteria.expectedCode)
       .map((literal) => literal.trim())
@@ -704,6 +749,8 @@ export function formatCodeTestResults(testResults: CodeTestResult[]): string[] {
       r.expected !== undefined
         ? truncateForConsole(String(serializeValue(r.expected)))
         : undefined;
+    if (r.plain) return `❌ FAIL: ${r.test}`;
+
     const detail =
       actual !== undefined
         ? ` (got: ${actual}${expected !== undefined ? `, expected: ${expected}` : ""})`

@@ -23,6 +23,12 @@ export interface Question {
     expectedJS?: string;
     expectedCode?: string;
     expectedFormula?: string;
+    expectedOutput?: string;
+    expectedRows?: string[][];
+    tests?: Array<{ call: string; expect: string }>;
+    domChecks?: Array<Record<string, unknown>>;
+    htmlChecks?: Array<Record<string, unknown>>;
+    cssChecks?: Array<Record<string, unknown>>;
     testCases?: Array<{
       input: unknown[];
       expected: unknown;

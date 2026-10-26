@@ -535,7 +535,7 @@ function CourseDetailInner({
     [],
   );
 
-  const handleRunLessonCode = useCallback(() => {
+  const handleRunLessonCode = useCallback(async () => {
     if (!currentLesson?.code_example || isExecutingCode) return;
 
     if (useWebWorkspace) {
@@ -544,12 +544,14 @@ function CourseDetailInner({
       return;
     }
 
-    void runLessonExampleCode(getCodeSubmission(), programInput.stdin);
+    const stdin = await programInput.collect("Run program");
+    if (stdin === null) return;
+    void runLessonExampleCode(getCodeSubmission(), stdin);
   }, [
     currentLesson?.code_example,
     getCodeSubmission,
     isExecutingCode,
-    programInput.stdin,
+    programInput,
     runLessonExampleCode,
     useWebWorkspace,
   ]);
@@ -2244,6 +2246,10 @@ function CourseDetailInner({
     if (!currentQuestion || currentQuestion.type !== "code_test") return;
 
     const submission = getCodeSubmission();
+    const stdin = useWebWorkspace
+      ? undefined
+      : await programInput.collect("Run program");
+    if (stdin === null) return;
 
     if (useWebWorkspace) {
       setPreviewRefreshKey((key) => key + 1);
@@ -2258,7 +2264,7 @@ function CourseDetailInner({
         : await runSubmissionCodeOutput(
           submission,
           currentQuestion.testCriteria,
-          { stdin: programInput.stdin },
+          { stdin },
         );
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
@@ -2279,14 +2285,18 @@ function CourseDetailInner({
         setIsExecutingCode(false);
       }
     }
-  }, [currentQuestion, getCodeSubmission, programInput.stdin, useWebWorkspace]);
+  }, [currentQuestion, getCodeSubmission, programInput, useWebWorkspace]);
 
   const handleSubmitCodeAnswer = useCallback(async () => {
     if (!currentQuestion || currentQuestion.type !== "code_test") return;
     if (isAnswerSubmitted || answerSubmissionInFlightRef.current) return;
-    answerSubmissionInFlightRef.current = true;
 
     const submission = getCodeSubmission();
+    const stdin = useWebWorkspace
+      ? undefined
+      : await programInput.collect("Submit answer");
+    if (stdin === null) return;
+    answerSubmissionInFlightRef.current = true;
 
     if (useWebWorkspace) {
       setPreviewRefreshKey((key) => key + 1);
@@ -2301,7 +2311,7 @@ function CourseDetailInner({
         : await runSubmissionCodeOutput(
           submission,
           currentQuestion.testCriteria,
-          { stdin: programInput.stdin },
+          { stdin },
         );
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
@@ -2392,7 +2402,7 @@ function CourseDetailInner({
     recordAnswerResult,
     scheduleQuestionAdvanceFallback,
     speak,
-    programInput.stdin,
+    programInput,
     useWebWorkspace,
   ]);
 
@@ -3105,11 +3115,11 @@ function CourseDetailInner({
                               : "Write some code first"
                         }
                         showProgramInput={programInput.show}
+                        programInputHint={programInput.hint}
                         programInput={programInput.value}
                         onProgramInputChange={programInput.setValue}
-                        programInputReadOnly={
-                          solutionLocked || isLessonCodeDemoActive
-                        }
+                        inputPrompt={useWebWorkspace ? null : programInput.prompt}
+                        programInputReadOnly={solutionLocked}
                       />
                       <TestResults
                         results={results}

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Loader2,
   Maximize2,
@@ -7,12 +7,15 @@ import {
   RotateCcw,
   Send,
 } from "lucide-react";
+import type { OnMount } from "@monaco-editor/react";
 import { MonacoEditorLazy } from "./MonacoEditorLazy";
 import { registerEditorSuggestions } from "./editorSuggestions";
 import {
   CODE_RUN_LANGUAGES,
   normalizeRunLanguage,
 } from "@/utils/codeExecution/languages";
+import ProgramInputPrompt from "./ProgramInputPrompt";
+import type { ProgramInputPrompt as ProgramInputPromptState } from "@/hooks/useProgramInput";
 
 interface CodeEditorProps {
   code: string;
@@ -37,11 +40,18 @@ interface CodeEditorProps {
   testDisabledReason?: string;
   /** Tooltip shown on the submit button while it is disabled (explains why). */
   submitDisabledReason?: string;
-  /** Show the Input box under the editor. The program reads this when Run starts. */
+  /** Show the Input box under the editor. Used when the number of reads is not fixed. */
   showProgramInput?: boolean;
+  /** Loop reads explain themselves. A preset is the fallback when a read was not recognised. */
+  programInputHint?: "loop" | "preset" | null;
   programInput?: string;
   onProgramInputChange?: (value: string) => void;
   programInputReadOnly?: boolean;
+  /** One submit step for a fixed read. The line is highlighted in the editor. */
+  inputPrompt?: ProgramInputPromptState | null;
+  fileNames?: string[];
+  activeFileName?: string;
+  onActiveFileName?: (name: string) => void;
 }
 
 /** Map curriculum language strings to Monaco editor language ids. */
@@ -53,7 +63,7 @@ function toMonacoLanguage(language?: string): string {
     bash: "shell",
     shell: "shell",
     html: "html",
-    css: "css",
+    sqlite: "sql",
   };
   return map[lang] ?? lang;
 }
@@ -74,9 +84,14 @@ export default function CodeEditor({
   testDisabledReason,
   submitDisabledReason,
   showProgramInput = false,
+  programInputHint = "loop",
   programInput = "",
   onProgramInputChange,
   programInputReadOnly = false,
+  inputPrompt = null,
+  fileNames = [],
+  activeFileName = "main",
+  onActiveFileName,
 }: CodeEditorProps) {
   const twoButtonMode = typeof onTryOut === "function";
   const monacoLanguage = toMonacoLanguage(language);
@@ -89,7 +104,35 @@ export default function CodeEditor({
   // command (registered once on mount) always calls the current handler and
   // respects the current disabled state.
   const primaryActionRef = useRef<() => void>(() => {});
+  const promptRef = useRef(inputPrompt);
+  promptRef.current = inputPrompt;
+  const [editorReady, setEditorReady] = useState(false);
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco || !inputPrompt?.open) return;
+    const line = inputPrompt.line;
+    editor.revealLineInCenter(line);
+    const decorations = editor.createDecorationsCollection([
+      {
+        range: new monaco.Range(line, 1, line, 1),
+        options: {
+          isWholeLine: true,
+          className: "program-input-line",
+        },
+      },
+    ]);
+    return () => decorations.clear();
+  }, [editorReady, inputPrompt?.open, inputPrompt?.line]);
+
   primaryActionRef.current = () => {
+    if (promptRef.current?.open) {
+      promptRef.current.onSubmit();
+      return;
+    }
     if (isRunning) return;
     if (twoButtonMode) {
       if (!submitDisabled) onTestCode();
@@ -209,13 +252,38 @@ export default function CodeEditor({
           </button>
         </div>
       </div>
-      <div className="flex-1 min-h-0 overflow-hidden">
+      {fileNames.length > 0 ? (
+        <div className="flex shrink-0 gap-1 overflow-x-auto border-b bg-white px-2 py-1">
+          <button
+            type="button"
+            onClick={() => onActiveFileName?.("main")}
+            className={`rounded px-2 py-1 text-xs ${activeFileName === "main" ? "bg-gray-800 text-white" : "text-gray-600 hover:bg-gray-100"}`}
+          >
+            Main
+          </button>
+          {fileNames.map((name) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => onActiveFileName?.(name)}
+              className={`rounded px-2 py-1 text-xs ${activeFileName === name ? "bg-gray-800 text-white" : "text-gray-600 hover:bg-gray-100"}`}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <style>{`.program-input-line { background: rgba(251, 191, 36, 0.28); }`}</style>
         <MonacoEditorLazy
           language={monacoLanguage}
           value={code}
           onChange={(val) => onCodeChange(val || "")}
           height="100%"
           onMount={(editor, monaco) => {
+            editorRef.current = editor;
+            monacoRef.current = monaco;
+            setEditorReady(true);
             registerEditorSuggestions(monaco, monacoLanguage);
             editor.addCommand(
               monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
@@ -223,6 +291,7 @@ export default function CodeEditor({
             );
           }}
         />
+        {inputPrompt?.open ? <ProgramInputPrompt prompt={inputPrompt} /> : null}
       </div>
       {showProgramInput ? (
         <label className="shrink-0 border-t border-gray-200 bg-white px-3 py-2">
@@ -230,7 +299,9 @@ export default function CodeEditor({
             Input
           </span>
           <span className="mb-1.5 block text-[0.7rem] leading-snug text-gray-500">
-            What the program reads when it starts. Type it before you tap Run.
+            {programInputHint === "preset"
+              ? "Type what the program should read, then tap Run."
+              : "This program keeps reading. Type every line here, then tap Run."}
           </span>
           <textarea
             value={programInput}

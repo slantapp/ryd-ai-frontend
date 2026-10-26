@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState } from "react";
 import { Minimize2, Maximize2, Terminal, Eye, Palette } from "lucide-react";
+import { ConsoleLines } from "./ConsoleLines";
 import { prepareHtmlForPreview } from "@/utils/prepareHtmlForPreview";
 import { isWebWorkspaceLanguage } from "@/utils/webCodeWorkspace";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
@@ -154,19 +155,7 @@ export default function TestResults({
           </div>
           <div className="min-h-0 flex-1 overflow-auto bg-gray-950 p-2 font-mono text-xs sm:p-3 sm:text-sm">
             {results.length > 0 ? (
-              <div className="space-y-1">
-                {results.map((r, i) => {
-                  let color = "text-gray-300";
-                  if (r.startsWith("✅")) color = "text-green-400";
-                  else if (r.startsWith("❌")) color = "text-red-400";
-                  else if (r.startsWith("⚠️")) color = "text-yellow-400";
-                  return (
-                    <div key={i} className={`${color} break-all`}>
-                      {r}
-                    </div>
-                  );
-                })}
-              </div>
+              <ConsoleLines lines={results} />
             ) : (
               <div className="text-gray-500">
                 <div className="mb-1 text-[0.7rem] sm:text-sm">
@@ -246,7 +235,7 @@ export default function TestResults({
                   srcDoc={htmlContent}
                   className="h-full w-full border-0"
                   title="HTML Preview"
-                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                  sandbox="allow-scripts allow-popups allow-forms"
                   referrerPolicy="no-referrer"
                 />
               ) : (

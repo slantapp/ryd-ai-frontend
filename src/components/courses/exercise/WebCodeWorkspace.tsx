@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Loader2, Maximize2, Minimize2, Play, Send } from "lucide-react";
+import { Loader2, Lock, Maximize2, Minimize2, Play, RotateCcw, Send } from "lucide-react";
 import Split from "react-split";
 import { MonacoEditorLazy } from "./MonacoEditorLazy";
-import WebPreviewPane from "./WebPreviewPane";
+import WebPreviewPane, { type PreviewCheckResult, type PreviewLog } from "./WebPreviewPane";
+import { ConsoleLines } from "./ConsoleLines";
 import type { WebCodeSources, WebEditorTab } from "@/utils/webCodeWorkspace";
+import { PREVIEW_TIME_LIMIT_MESSAGE, type PageCheck } from "@/utils/webPreviewBridge";
 
 interface WebCodeWorkspaceProps {
   sources: WebCodeSources;
@@ -20,6 +22,13 @@ interface WebCodeWorkspaceProps {
   initialTab?: WebEditorTab;
   /** Stack preview/console vertically below md (phone / small tablet). */
   compactMobile?: boolean;
+  lockedTabs?: WebEditorTab[];
+  livePreview?: boolean;
+  stdin?: string;
+  mocks?: Record<string, unknown>;
+  checks?: PageCheck[];
+  onChecks?: (results: PreviewCheckResult[]) => void;
+  onReset?: () => void;
 }
 
 const TAB_CONFIG: Array<{ id: WebEditorTab; label: string; monaco: string }> = [
@@ -60,41 +69,48 @@ export default function WebCodeWorkspace({
   previewRefreshKey = 0,
   initialTab = "html",
   compactMobile = false,
+  lockedTabs = [],
+  livePreview = true,
+  stdin,
+  mocks,
+  checks,
+  onChecks,
+  onReset,
 }: WebCodeWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<WebEditorTab>(initialTab);
+  const [previewLines, setPreviewLines] = useState<string[]>([]);
   const isMdUp = useMinWidthMd();
   const stackPreview = compactMobile && !isMdUp;
   const twoButtonMode = typeof onTryOut === "function";
   const testDisabled = !canTest || isRunning;
   const submitDisabled = !canSubmit || isRunning;
+  const locked = new Set(lockedTabs);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  useEffect(() => {
+    setPreviewLines([]);
+  }, [previewRefreshKey]);
 
   const updatePane = (tab: WebEditorTab, value: string) => {
+    if (locked.has(tab)) return;
     onSourcesChange({ ...sources, [tab]: value });
   };
 
   const activeConfig =
     TAB_CONFIG.find((tab) => tab.id === activeTab) ?? TAB_CONFIG[0];
 
+  const consoleLines = [...previewLines, ...results];
   const consolePane = (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-gray-200 bg-gray-950 text-white">
       <div className="shrink-0 border-b border-gray-800 bg-gray-900 px-3 py-2">
         <h3 className="text-sm font-medium text-gray-200">Console</h3>
       </div>
       <div className="flex-1 overflow-auto p-3 font-mono text-sm">
-        {results.length > 0 ? (
-          <div className="space-y-1">
-            {results.map((line, index) => {
-              let color = "text-gray-300";
-              if (line.startsWith("✓")) color = "text-green-400";
-              else if (line.startsWith("✗")) color = "text-red-400";
-              else if (line.startsWith("⚠️")) color = "text-yellow-400";
-              return (
-                <div key={index} className={color}>
-                  {line}
-                </div>
-              );
-            })}
-          </div>
+        {consoleLines.length > 0 ? (
+          <ConsoleLines lines={consoleLines} />
         ) : (
           <p className="text-gray-500">
             Test results and validation messages appear here.
@@ -110,6 +126,16 @@ export default function WebCodeWorkspace({
       css={sources.css}
       javascript={sources.javascript}
       refreshKey={previewRefreshKey}
+      livePreview={livePreview}
+      stdin={stdin}
+      mocks={mocks}
+      checks={checks}
+      onLog={(entry: PreviewLog) => {
+        const text = entry.line ? `${entry.message} (line ${entry.line})` : entry.message;
+        setPreviewLines((prev) => [...prev, text]);
+      }}
+      onChecks={onChecks}
+      onHang={() => setPreviewLines([PREVIEW_TIME_LIMIT_MESSAGE])}
     />
   );
 
@@ -134,11 +160,27 @@ export default function WebCodeWorkspace({
                   : "text-gray-600 hover:bg-gray-200"
               }`}
             >
-              {tab.label}
+              <span className="inline-flex items-center gap-1">
+                {locked.has(tab.id) ? <Lock size={12} /> : null}
+                {tab.label}
+              </span>
             </button>
           ))}
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+          {onReset ? (
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={isRunning}
+              title="Reset to starter code"
+              aria-label="Reset to starter code"
+              className="flex h-8 items-center gap-1.5 rounded border border-gray-300 bg-white px-2 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            >
+              <RotateCcw size={14} />
+              <span className="hidden sm:inline">Reset</span>
+            </button>
+          ) : null}
           {twoButtonMode ? (
             <>
               <button
@@ -229,6 +271,7 @@ export default function WebCodeWorkspace({
             value={sources[activeTab]}
             onChange={(value) => updatePane(activeTab, value || "")}
             height="100%"
+            options={{ readOnly: locked.has(activeTab) }}
           />
         </div>
 

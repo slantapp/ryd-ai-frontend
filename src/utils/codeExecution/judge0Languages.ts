@@ -43,6 +43,7 @@ const LANGUAGE_RULES: LanguageRule[] = [
   { canonical: "perl", matches: [/^Perl /i] },
   { canonical: "r", matches: [/^R /i] },
   { canonical: "scala", matches: [/^Scala /i] },
+  { canonical: "sqlite", matches: [/SQLite/i, /^SQL \(/i] },
 ];
 
 /** Bootstrap IDs when /languages cannot be fetched. */
@@ -69,10 +70,37 @@ const FALLBACK_LANGUAGE_IDS: Record<string, number> = {
 };
 
 let languageIdMap: Record<string, number> | null = null;
+let languageCatalog: Judge0Language[] | null = null;
 let languageLoadPromise: Promise<Record<string, number>> | null = null;
 
 function normalizeLanguageKey(language?: string): string {
-  return (language || "javascript").toLowerCase().trim();
+  const key = (language || "javascript").toLowerCase().trim();
+  if (key === "c++") return "cpp";
+  if (key === "sql" || key === "sqlite" || key === "sqlite3") return "sqlite";
+  return key;
+}
+
+/** Prefer a runtime whose name contains `version`, otherwise the newest id. */
+export function selectJudge0LanguageId(
+  languages: Judge0Language[],
+  language: string | undefined,
+  version?: string,
+): number | null {
+  const key = normalizeLanguageKey(language);
+  const rule = LANGUAGE_RULES.find((item) => item.canonical === key);
+  if (!rule) return FALLBACK_LANGUAGE_IDS[key] ?? null;
+  const candidates = languages.filter((lang) =>
+    rule.matches.some((pattern) => pattern.test(lang.name)),
+  );
+  const needle = version?.trim().toLowerCase();
+  if (needle) {
+    const pinned = candidates.find((lang) => lang.name.toLowerCase().includes(needle));
+    if (pinned) return pinned.id;
+  }
+  if (candidates.length === 0) return FALLBACK_LANGUAGE_IDS[key] ?? null;
+  return candidates.reduce((latest, current) =>
+    current.id > latest.id ? current : latest,
+  ).id;
 }
 
 function buildLanguageIdMap(languages: Judge0Language[]): Record<string, number> {
@@ -106,6 +134,7 @@ export async function loadJudge0LanguageIds(
         throw new Error(`Could not load Judge0 languages (${response.status}).`);
       }
       const languages = (await response.json()) as Judge0Language[];
+      languageCatalog = languages;
       languageIdMap = buildLanguageIdMap(languages);
       return languageIdMap;
     })
@@ -120,6 +149,10 @@ export async function loadJudge0LanguageIds(
   return languageLoadPromise;
 }
 
+export function judge0LanguageName(id: number): string | undefined {
+  return languageCatalog?.find((lang) => lang.id === id)?.name;
+}
+
 export function getCachedLanguageId(language?: string): number | null {
   const key = normalizeLanguageKey(language);
   const map = languageIdMap ?? FALLBACK_LANGUAGE_IDS;
@@ -130,8 +163,12 @@ export async function resolveJudge0LanguageId(
   language: string | undefined,
   apiUrl: string,
   headers: HeadersInit,
+  version?: string,
 ): Promise<number | null> {
   const map = await loadJudge0LanguageIds(apiUrl, headers);
+  if (languageCatalog) {
+    return selectJudge0LanguageId(languageCatalog, language, version);
+  }
   const key = normalizeLanguageKey(language);
   return map[key] ?? null;
 }
@@ -143,5 +180,6 @@ export function canExecuteCode(language?: string): boolean {
 /** Reset cached language map (useful in tests). */
 export function resetJudge0LanguageCache(): void {
   languageIdMap = null;
+  languageCatalog = null;
   languageLoadPromise = null;
 }

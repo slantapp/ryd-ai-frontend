@@ -49,6 +49,9 @@ export function normalizeRunLanguage(language?: string): string {
   const raw = (language || "javascript").toLowerCase().trim();
   const canonical = LANGUAGE_ALIASES[raw] ?? raw;
 
+  if (canonical === "sql" || canonical === "sqlite" || canonical === "sqlite3") {
+    return "sqlite";
+  }
   if (canonical === "web" || canonical === "html/css" || canonical === "html+css") {
     return "html";
   }
@@ -78,6 +81,7 @@ export function resolveGradedLanguage(language?: string): string | null {
   const raw = (language ?? "").toLowerCase().trim();
   if (!raw) return "javascript";
   const aliased = LANGUAGE_ALIASES[raw] ?? raw;
+  if (aliased === "sql" || aliased === "sqlite" || aliased === "sqlite3") return "sqlite";
   if (WEB_GRADED_LANGUAGES[aliased]) return WEB_GRADED_LANGUAGES[aliased];
   return CODE_RUN_LANGUAGES.some((lang) => lang.value === aliased) ? aliased : null;
 }

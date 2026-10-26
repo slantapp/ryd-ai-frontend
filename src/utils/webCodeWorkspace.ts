@@ -1,6 +1,11 @@
 import type { CodeTestCriteria, CodeTestResult } from "./codeTestValidation";
 import { matchExpectedCode } from "./codeTestValidation";
 import { prepareHtmlForPreview } from "./prepareHtmlForPreview";
+import {
+  previewEpilogue,
+  previewPreamble,
+  type PageCheck,
+} from "./webPreviewBridge";
 
 export type WebCodeSources = {
   html: string;
@@ -26,7 +31,9 @@ const WEB_LANGUAGE_VALUES = new Set([
 export function isWebWorkspaceLanguage(
   language?: string,
   criteria?: CodeTestCriteria,
+  runtime?: string,
 ): boolean {
+  if (runtime === "web") return true;
   const lang = (language || "").toLowerCase().trim();
   if (WEB_LANGUAGE_VALUES.has(lang)) return true;
   if (criteria?.expectedHTML || criteria?.expectedCSS) return true;
@@ -73,7 +80,22 @@ export type WebCodeExampleLike = {
   starterCode?: string;
   supportingCode?: string;
   supportingLanguage?: string;
+  runtime?: string;
+  html?: string;
+  css?: string;
+  starterHtml?: string;
+  starterCss?: string;
 };
+
+export function exampleUsesAuthoredWebPanes(example: WebCodeExampleLike): boolean {
+  return (
+    example.runtime === "web" ||
+    example.html != null ||
+    example.css != null ||
+    example.starterHtml != null ||
+    example.starterCss != null
+  );
+}
 
 /**
  * Build HTML/CSS/JS panes from a code example.
@@ -84,6 +106,21 @@ export function buildWebCodeFromExample(
   example: WebCodeExampleLike,
   mode: "demo" | "practice",
 ): WebCodeSources {
+  if (exampleUsesAuthoredWebPanes(example)) {
+    return {
+      html:
+        mode === "practice"
+          ? (example.starterHtml ?? example.html ?? "")
+          : (example.html ?? ""),
+      css:
+        mode === "practice"
+          ? (example.starterCss ?? example.css ?? "")
+          : (example.css ?? ""),
+      javascript:
+        mode === "practice" ? (example.starterCode?.trim() ?? "") : example.code,
+    };
+  }
+
   const mainText =
     mode === "practice"
       ? (example.starterCode?.trim() ?? "")
@@ -137,30 +174,61 @@ function normalizeCodeForMatch(value: string): string {
     .trim();
 }
 
+export type WebPreviewBuildOptions = {
+  stdin?: string;
+  mocks?: Record<string, unknown>;
+  checks?: PageCheck[];
+};
+
+function injectPreviewScripts(
+  documentHtml: string,
+  preamble: string,
+  epilogue: string,
+): string {
+  const pre = `<script>\n${preamble}\n</script>`;
+  const post = `<script>\n${epilogue}\n</script>`;
+  let next = documentHtml;
+  if (/<head[^>]*>/i.test(next)) {
+    next = next.replace(/<head[^>]*>/i, (open) => `${open}\n${pre}`);
+  } else {
+    next = `${pre}\n${next}`;
+  }
+  if (/<\/body>/i.test(next)) {
+    next = next.replace(/<\/body>/i, `${post}\n</body>`);
+  } else {
+    next = `${next}\n${post}`;
+  }
+  return next;
+}
+
 /** Build a runnable HTML document from the three editor panes. */
-export function buildWebPreviewDocument(sources: WebCodeSources): string {
+export function buildWebPreviewDocument(
+  sources: WebCodeSources,
+  options?: WebPreviewBuildOptions,
+): string {
   const html = sources.html.trim();
   const css = sources.css.trim();
   const javascript = sources.javascript.trim();
+  const preamble = previewPreamble({ stdin: options?.stdin, mocks: options?.mocks });
+  const epilogue = previewEpilogue(options?.checks ?? []);
 
+  let documentHtml: string;
   if (/<html[\s>]/i.test(html)) {
-    let document = html;
-    if (css && !/<style[\s>]/i.test(document)) {
-      document = document.replace(
+    documentHtml = html;
+    if (css && !/<style[\s>]/i.test(documentHtml)) {
+      documentHtml = documentHtml.replace(
         /<\/head>/i,
         `<style>\n${css}\n</style>\n</head>`,
       );
     }
-    if (javascript && !/<script[\s>]/i.test(document)) {
-      document = document.replace(
+    if (javascript && !/<script[\s>]/i.test(documentHtml)) {
+      documentHtml = documentHtml.replace(
         /<\/body>/i,
         `<script>\n${javascript}\n</script>\n</body>`,
       );
     }
-    return prepareHtmlForPreview(document);
-  }
-
-  return prepareHtmlForPreview(`<!DOCTYPE html>
+  } else {
+    documentHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -177,11 +245,12 @@ export function buildWebPreviewDocument(sources: WebCodeSources): string {
 </head>
 <body>
 ${html}
-<script>
-${javascript}
-</script>
+${javascript ? `<script>\n${javascript}\n</script>` : ""}
 </body>
-</html>`);
+</html>`;
+  }
+
+  return prepareHtmlForPreview(injectPreviewScripts(documentHtml, preamble, epilogue));
 }
 
 export function combineWebCodeForValidation(sources: WebCodeSources): string {
@@ -266,7 +335,8 @@ export function evaluateWebCodeTest(
 
 export type WebEditorTab = "html" | "css" | "javascript";
 
-export function defaultWebEditorTab(language?: string): WebEditorTab {
+export function defaultWebEditorTab(language?: string, runtime?: string): WebEditorTab {
+  if (runtime === "web") return "javascript";
   const lang = (language || "html").toLowerCase().trim();
   if (lang === "css") return "css";
   if (lang === "javascript" || lang === "js") return "javascript";

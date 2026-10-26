@@ -11,6 +11,7 @@ import { ArrowLeft, CheckCircle2, Lightbulb, ListTodo, Mic, Pause, Play, RotateC
 import Split from "react-split";
 import MathText from "@/components/courses/math/MathText";
 import CodeEditor from "@/components/courses/exercise/CodeEditor";
+import ProgramInputPrompt from "@/components/courses/exercise/ProgramInputPrompt";
 import FullscreenModal from "@/components/courses/exercise/FullscreenModal";
 import WebCodeWorkspace from "@/components/courses/exercise/WebCodeWorkspace";
 import TestResults from "@/components/courses/exercise/TestResults";
@@ -34,11 +35,14 @@ import {
   runSubmissionCodeOutput,
   submissionHasContent,
 } from "@/utils/codeTestRunner";
+import type { CodeTestResult } from "@/utils/codeTestValidation";
 import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
+import { keepExampleOutput } from "@/utils/codeExecution/runFeedback";
 import { isTurtlePythonCode } from "@/utils/codeExecution/turtle";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
 import { describeStoredAnswer } from "@/utils/storedAnswer";
 import { stdinForRun } from "@/utils/programInput";
+import { collectPageChecks, hasPageChecks } from "@/utils/webPreviewBridge";
 import { useProgramInput } from "@/hooks/useProgramInput";
 import { formulaProblemOnly, formatFormulaBoardText } from "@/utils/formulaBoard";
 import MathAnswerWorkspace from "@/components/courses/math/MathAnswerWorkspace";
@@ -47,6 +51,7 @@ import {
   buildWebCodeFromExample,
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
+  exampleUsesAuthoredWebPanes,
   isWebWorkspaceLanguage,
   webCodeForExampleDemoStart,
   webCodeForExamplePractice,
@@ -58,6 +63,7 @@ import {
 import { pauseMinSeconds, resolveAvatarDefaults } from "../defaults";
 import { useTypedText } from "../hooks/useTypedText";
 import {
+  codeAttemptHint,
   resolveExhaustedWrongTeachingLines,
   resolveQuestionRetry,
 } from "../studentFlow";
@@ -215,6 +221,9 @@ export function LessonPlayer({
   const [formulaAnswer, setFormulaAnswer] = useState("");
   const [code, setCode] = useState("");
   const [webCode, setWebCode] = useState<WebCodeSources>(EMPTY_WEB_CODE);
+  const [extraFiles, setExtraFiles] = useState<Record<string, string>>({});
+  const [activeFile, setActiveFile] = useState("main");
+  const [webStdin, setWebStdin] = useState("");
   const [results, setResults] = useState<string[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [demoMode, setDemoMode] = useState<"idle" | "demo" | "practice">("idle");
@@ -248,6 +257,10 @@ export function LessonPlayer({
   const questionSettledRef = useRef(false);
   /** Bumped when a beat is left so a late example run cannot write into the next beat. */
   const exampleRunRef = useRef(0);
+  /** Console lines from the example, kept on screen when practice starts. */
+  const exampleOutputRef = useRef<string[]>([]);
+  const pageChecksRef = useRef<CodeTestResult[] | undefined>(undefined);
+  const pageWaiterRef = useRef<((results: CodeTestResult[]) => void) | null>(null);
   const revealTimerRef = useRef<number | null>(null);
   /** Active code example when demo/practice uses a multi-pane web workspace. */
   const webExampleContextRef = useRef<WebCodeExampleLike | null>(null);
@@ -257,6 +270,7 @@ export function LessonPlayer({
 
   const resetInteractive = useCallback(() => {
     exampleRunRef.current += 1;
+    exampleOutputRef.current = [];
     if (revealTimerRef.current != null) {
       window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = null;
@@ -448,6 +462,7 @@ export function LessonPlayer({
     resetInteractive();
     if (initialDraft?.code) setCode(initialDraft.code);
     if (initialDraft?.webCode) setWebCode(initialDraft.webCode);
+    if (initialDraft?.files) setExtraFiles(initialDraft.files);
     if (initialDraft?.formulaAnswer) setFormulaAnswer(initialDraft.formulaAnswer);
     beatStartedRef.current = null;
     goalSpokenRef.current = startIdx > 0;
@@ -461,6 +476,7 @@ export function LessonPlayer({
       code: demoMode === "practice" ? code : undefined,
       webCode: demoMode === "practice" ? webCode : undefined,
       formulaAnswer: demoMode === "practice" ? formulaAnswer : undefined,
+      files: demoMode === "practice" ? extraFiles : undefined,
       resumePractice: demoMode === "practice",
     });
   }, [beatIndex, completedBeatIds]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -475,11 +491,12 @@ export function LessonPlayer({
         code,
         webCode,
         formulaAnswer,
+        files: extraFiles,
         resumePractice: true,
       });
     }, 500);
     return () => clearTimeout(t);
-  }, [code, webCode, formulaAnswer, demoMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [code, webCode, formulaAnswer, extraFiles, demoMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Speak the lesson goal at most once, on the first beat of the lesson. */
   const takeGoalLine = useCallback((): string | undefined => {
@@ -660,7 +677,15 @@ export function LessonPlayer({
   }, [beat, pauseSecondsLeft, enableManualContinue]);
 
   const showExampleResult = async (
-    example: { code: string; language: string; stdin?: string },
+    example: {
+      code: string;
+      language: string;
+      stdin?: string;
+      files?: Record<string, string>;
+      version?: string;
+      setupSql?: string;
+      runtime?: string;
+    },
     questionStdin?: string,
   ) => {
     const token = ++exampleRunRef.current;
@@ -671,16 +696,30 @@ export function LessonPlayer({
         {
           code: example.code,
           language: normalizeRunLanguage(example.language),
+          files: example.files,
+          version: example.version,
+          setupSql: example.setupSql,
+          runtime: example.runtime,
         },
         undefined,
-        { turtleTargetId, stdin: stdinForRun(example, questionStdin) },
+        {
+          turtleTargetId,
+          stdin: stdinForRun(example, questionStdin),
+          version: example.version,
+          files: example.files,
+          setupSql: example.setupSql,
+        },
       );
       if (token !== exampleRunRef.current) return token;
-      setResults(out.length ? out : ["✓ Code ran successfully."]);
+      const lines = out.length ? out : ["✓ Code ran successfully."];
+      exampleOutputRef.current = lines;
+      setResults(lines);
     } catch (error) {
       if (token !== exampleRunRef.current) return token;
       const message = error instanceof Error ? error.message : String(error);
-      setResults([`Could not run the example. ${message}`]);
+      const lines = [`Could not run the example. ${message}`];
+      exampleOutputRef.current = lines;
+      setResults(lines);
     } finally {
       if (token === exampleRunRef.current) setIsExecuting(false);
     }
@@ -691,7 +730,11 @@ export function LessonPlayer({
     const example = demoBeat.code_example;
     webExampleContextRef.current = example;
     setDemoMode("demo");
-    const isWeb = isWebWorkspaceLanguage(example.language);
+    const isWeb = isWebWorkspaceLanguage(
+      example.language,
+      undefined,
+      example.runtime,
+    );
     if (isWeb) {
       setWebCode(webCodeForExampleDemoStart(example));
       setCode("");
@@ -699,6 +742,8 @@ export function LessonPlayer({
       setCode("");
       setWebCode(EMPTY_WEB_CODE);
     }
+    setExtraFiles(example.files ?? {});
+    setActiveFile("main");
 
     const explainAndFinish = () => {
       speakSequence(
@@ -724,6 +769,7 @@ export function LessonPlayer({
         typed.type(example.code, example.typingSpeed ?? 40, () => {
           if (isWeb) {
             setWebCode(buildWebCodeFromExample(example, "demo"));
+            setWebStdin(stdinForRun(example) ?? "");
             setPreviewRefreshKey((key) => key + 1);
             setResults(["✓ Preview updated."]);
             explainAndFinish();
@@ -767,30 +813,42 @@ export function LessonPlayer({
   };
 
   const applyStudentStarter = useCallback(
-    (example: WebCodeExampleLike) => {
+    (example: WebCodeExampleLike & { files?: Record<string, string> }) => {
       webExampleContextRef.current = example;
-      if (isWebWorkspaceLanguage(example.language)) {
+      setExtraFiles(example.files ?? {});
+      setActiveFile("main");
+      const webPractice = isWebWorkspaceLanguage(
+        example.language,
+        undefined,
+        example.runtime,
+      );
+      if (webPractice) {
         setWebCode(webCodeForExamplePractice(example));
         setCode("");
-        const hasHtml = !!(example.starterCode?.trim() || example.code?.trim());
-        if (!hasHtml) {
-          setResults([
-            "Tip: start typing in the editor. Tap Run to try your page, then Submit when ready.",
-          ]);
-        } else {
-          setResults([]);
-        }
       } else {
-        const starter = example.starterCode?.trim() ?? "";
-        setCode(starter);
+        setCode(example.starterCode?.trim() ?? "");
         setWebCode(EMPTY_WEB_CODE);
-        if (!starter) {
-          setResults([
-            "Tip: the editor is empty on purpose. Type your code, tap Run to try it, then Submit.",
-          ]);
-        } else {
-          setResults([]);
-        }
+      }
+      const kept = keepExampleOutput(exampleOutputRef.current, {
+        holdPreview: example.runtime === "web",
+      });
+      if (kept.length > 0) {
+        setResults(kept);
+      } else if (webPractice) {
+        const hasHtml = !!(example.starterCode?.trim() || example.code?.trim());
+        setResults(
+          hasHtml
+            ? []
+            : [
+                "Tip: start typing in the editor. Tap Run to try your page, then Submit when ready.",
+              ],
+        );
+      } else if (!example.starterCode?.trim()) {
+        setResults([
+          "Tip: the editor is empty on purpose. Type your code, tap Run to try it, then Submit.",
+        ]);
+      } else {
+        setResults([]);
       }
     },
     [],
@@ -810,6 +868,8 @@ export function LessonPlayer({
       if (resumePractice) {
         setDemoMode("practice");
         webExampleContextRef.current = example;
+        setExtraFiles(initialDraft?.files ?? example.files ?? {});
+        setActiveFile("main");
         if (initialDraft?.code) setCode(initialDraft.code);
         else if (initialDraft?.webCode) setWebCode(initialDraft.webCode);
         else applyStudentStarter(example);
@@ -823,7 +883,9 @@ export function LessonPlayer({
 
       setDemoMode("demo");
       webExampleContextRef.current = example;
-      if (isWebWorkspaceLanguage(example.language)) {
+      setExtraFiles(example.files ?? {});
+      setActiveFile("main");
+      if (isWebWorkspaceLanguage(example.language, undefined, example.runtime)) {
         setWebCode(webCodeForExampleDemoStart(example));
         setCode("");
       }
@@ -843,15 +905,15 @@ export function LessonPlayer({
               ],
               () => {
                 applyStudentStarter(example);
-                setResults([]);
                 setDemoMode("practice");
               },
             );
           };
           typed.type(example.code, example.typingSpeed ?? 40, () => {
-            if (isWebWorkspaceLanguage(example.language)) {
+            if (isWebWorkspaceLanguage(example.language, undefined, example.runtime)) {
               setWebCode(buildWebCodeFromExample(example, "demo"));
               setPreviewRefreshKey((key) => key + 1);
+              exampleOutputRef.current = ["✓ Preview updated."];
               setResults(["✓ Preview updated."]);
               handoff();
               return;
@@ -930,7 +992,10 @@ export function LessonPlayer({
    * wrong → on_wrong + hint and stay until max wrong attempts, then explanation + advance.
    */
   const handleQuestionOutcome = useCallback(
-    (correct: boolean, opts?: { clearSelection?: boolean }) => {
+    (
+      correct: boolean,
+      opts?: { clearSelection?: boolean; runLines?: string[]; failure?: string },
+    ) => {
       if (!beat || beat.type !== "question") return;
       // Prevent double-submit while feedback is showing / avatar is speaking
       if (isAnswerSubmitted || isSpeaking) return;
@@ -1034,7 +1099,12 @@ export function LessonPlayer({
           speakSequence(
             [
               withShow(reAskInstruction, beat.avatar?.show),
-              retry.hint,
+              codeAttemptHint({
+                attempt: nextWrong,
+                authoredHint: retry.hint,
+                runLines: opts?.runLines,
+                failure: opts?.failure,
+              }),
             ],
             () => {
               setIsAnswerSubmitted(false);
@@ -1083,27 +1153,57 @@ export function LessonPlayer({
       code,
       webCode: useWeb ? webCode : undefined,
       language: lang,
+      runtime: q.code_example?.runtime,
+      version: q.code_example?.version,
+      files: extraFiles,
+      setupSql: q.code_example?.setupSql,
     };
     if (!submissionHasContent(submission, q.testCriteria)) {
       setResults(["⚠️ Write some code first!"]);
       return;
     }
+    const stdin = await programInput.collect("Submit answer");
+    if (stdin === null) return;
     setIsExecuting(true);
     setResults(["⏳ Checking your code..."]);
     try {
-      const runOutput = await runSubmissionCodeOutput(
-        submission,
-        q.testCriteria,
-        { turtleTargetId, stdin: programInput.stdin },
-      );
+      let pageResults: CodeTestResult[] | undefined;
+      if (useWeb) {
+        setWebStdin(stdin ?? "");
+        pageChecksRef.current = undefined;
+        const pending = hasPageChecks(q.testCriteria)
+          ? new Promise<CodeTestResult[]>((resolve) => {
+              pageWaiterRef.current = resolve;
+              window.setTimeout(
+                () => resolve(pageChecksRef.current ?? []),
+                3500,
+              );
+            })
+          : null;
+        setPreviewRefreshKey((key) => key + 1);
+        pageResults = pending ? await pending : undefined;
+      }
+      const runOutput = useWeb
+        ? []
+        : await runSubmissionCodeOutput(submission, q.testCriteria, {
+            turtleTargetId,
+            stdin,
+            version: submission.version,
+            files: submission.files,
+            setupSql: submission.setupSql,
+          });
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         q.testCriteria,
         runOutput,
+        pageResults,
       );
       const lines = buildSubmitCodeResultLines(runOutput, passed, testResults);
       setResults(lines);
-      handleQuestionOutcome(passed);
+      handleQuestionOutcome(passed, {
+        runLines: runOutput,
+        failure: testResults.find((item) => !item.passed)?.test,
+      });
     } finally {
       setIsExecuting(false);
     }
@@ -1157,7 +1257,17 @@ export function LessonPlayer({
     exampleStdin: activeCodeExample?.stdin,
     questionStdin,
     exampleCode: activeCodeExample?.code,
-    editorCode: code,
+    editorCode:
+      activeCodeExample?.runtime === "web" ||
+      isWebWorkspaceLanguage(
+        activeCodeExample?.language,
+        undefined,
+        activeCodeExample?.runtime,
+      )
+        ? webCode.javascript
+        : activeFile === "main"
+          ? code
+          : (extraFiles[activeFile] ?? ""),
   });
 
   const codeLang = useMemo(() => {
@@ -1206,11 +1316,12 @@ export function LessonPlayer({
     isWebWorkspaceLanguage(
       codeLang,
       beat?.type === "question" ? beat.question.testCriteria : undefined,
+      activeCodeExample?.runtime,
     );
 
   const webEditorTab = useMemo(
-    () => defaultWebEditorTab(codeLang),
-    [codeLang],
+    () => defaultWebEditorTab(codeLang, activeCodeExample?.runtime),
+    [codeLang, activeCodeExample?.runtime],
   );
 
   // Keep editor in sync while the instructor types
@@ -1218,12 +1329,14 @@ export function LessonPlayer({
     if (demoMode !== "demo" || !typed.text) return;
     if (useWeb) {
       const ctx = webExampleContextRef.current;
-      if (ctx?.supportingCode?.trim()) {
+      if (ctx && exampleUsesAuthoredWebPanes(ctx)) {
+        setWebCode(buildWebCodeFromExample({ ...ctx, code: typed.text }, "demo"));
+      } else if (ctx?.supportingCode?.trim()) {
         setWebCode(webCodeForExampleTyping(ctx, typed.text));
       } else {
         setWebCode(seedWebCodeFromExample(typed.text, codeLang));
       }
-    } else {
+    } else if (activeFile === "main") {
       setCode(typed.text);
     }
   }, [typed.text, demoMode, useWeb, codeLang]);
@@ -1233,8 +1346,12 @@ export function LessonPlayer({
       code,
       webCode: useWeb ? webCode : undefined,
       language: runLanguage,
+      runtime: activeCodeExample?.runtime,
+      version: activeCodeExample?.version,
+      files: extraFiles,
+      setupSql: activeCodeExample?.setupSql,
     }),
-    [code, runLanguage, useWeb, webCode],
+    [activeCodeExample, activeFile, code, extraFiles, runLanguage, useWeb, webCode],
   );
 
   const handleRunCode = useCallback(async () => {
@@ -1250,23 +1367,34 @@ export function LessonPlayer({
       return;
     }
     if (useWeb) {
+      const stdin = await programInput.collect("Run program");
+      if (stdin === null) return;
+      setWebStdin(stdin ?? "");
       setPreviewRefreshKey((k) => k + 1);
-      setResults(["✓ Preview updated."]);
+      setResults([]);
       return;
     }
+    const stdin = await programInput.collect("Run program");
+    if (stdin === null) return;
     setIsExecuting(true);
     setResults(["⏳ Running…"]);
     try {
       const out = await runSubmissionCodeOutput(
         runnable,
         beat?.type === "question" ? beat.question.testCriteria : undefined,
-        { turtleTargetId, stdin: programInput.stdin },
+        {
+          turtleTargetId,
+          stdin,
+          version: runnable.version,
+          files: extraFiles,
+          setupSql: runnable.setupSql,
+        },
       );
       setResults(out.length ? out : ["✓ Code ran successfully."]);
     } finally {
       setIsExecuting(false);
     }
-  }, [activeCodeExample, beat, demoMode, getCodeSubmission, isExecuting, programInput.stdin, turtleTargetId, useWeb]);
+  }, [activeCodeExample, beat, demoMode, extraFiles, getCodeSubmission, isExecuting, programInput, turtleTargetId, useWeb]);
 
   const editorLocked = demoMode === "demo" || pauseReviewingCode || solutionLocked;
 
@@ -1320,6 +1448,9 @@ export function LessonPlayer({
 
   const codeWorkspace = showCodePanel ? (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      {useWeb && programInput.prompt ? (
+        <ProgramInputPrompt prompt={programInput.prompt} />
+      ) : null}
       {useWeb ? (
         <WebCodeWorkspace
           sources={webCode}
@@ -1341,7 +1472,7 @@ export function LessonPlayer({
             setFullscreen(fullscreen === "editor" ? null : "editor")
           }
           isFullscreen={fullscreen === "editor"}
-          canTest={!editorLocked && !isExecuting}
+          canTest={(demoMode === "demo" || !editorLocked) && !isExecuting}
           canSubmit={
             beat?.type === "question" &&
             demoMode === "practice" &&
@@ -1360,6 +1491,30 @@ export function LessonPlayer({
           previewRefreshKey={previewRefreshKey}
           initialTab={webEditorTab}
           compactMobile={kidsStage}
+          lockedTabs={activeCodeExample?.lockedTabs}
+          livePreview={activeCodeExample?.runtime !== "web"}
+          stdin={webStdin}
+          mocks={activeCodeExample?.mocks}
+          checks={
+            beat?.type === "question"
+              ? collectPageChecks(beat.question.testCriteria)
+              : []
+          }
+          onChecks={(results) => {
+            const mapped = results.map((item) => ({
+              test: item.test,
+              passed: item.passed,
+              plain: true as const,
+            }));
+            pageChecksRef.current = mapped;
+            pageWaiterRef.current?.(mapped);
+            pageWaiterRef.current = null;
+          }}
+          onReset={
+            demoMode === "practice" && activeCodeExample && !solutionLocked
+              ? () => applyStudentStarter(activeCodeExample)
+              : undefined
+          }
         />
       ) : (
         <Split
@@ -1370,10 +1525,11 @@ export function LessonPlayer({
           gutterSize={8}
         >
           <CodeEditor
-            code={code}
+            code={activeFile === "main" ? code : (extraFiles[activeFile] ?? "")}
             onCodeChange={(value) => {
               if (editorLocked) return;
-              setCode(value);
+              if (activeFile === "main") setCode(value);
+              else setExtraFiles((prev) => ({ ...prev, [activeFile]: value }));
             }}
             onTestCode={
               beat?.type === "question" && demoMode === "practice"
@@ -1398,9 +1554,19 @@ export function LessonPlayer({
             }
             isRunning={isExecuting}
             showProgramInput={programInput.show && !useWeb}
+            programInputHint={programInput.hint}
             programInput={programInput.value}
             onProgramInputChange={programInput.setValue}
-            programInputReadOnly={editorLocked}
+            programInputReadOnly={solutionLocked}
+            inputPrompt={useWeb ? null : programInput.prompt}
+            fileNames={Object.keys(extraFiles)}
+            activeFileName={activeFile}
+            onActiveFileName={setActiveFile}
+            onReset={
+              demoMode === "practice" && activeCodeExample && !solutionLocked
+                ? () => applyStudentStarter(activeCodeExample)
+                : undefined
+            }
           />
           <TestResults
             results={results}

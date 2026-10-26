@@ -426,12 +426,14 @@ function CodingExerciseInner() {
       code,
       language: question.code_example?.language ?? codeExample?.language,
     };
+    const stdin = await programInput.collect("Run program");
+    if (stdin === null) return;
 
     try {
       const runOutput = await runSubmissionCodeOutput(
         submission,
         question.testCriteria,
-        { stdin: programInput.stdin },
+        { stdin },
       );
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
@@ -779,8 +781,10 @@ function CodingExerciseInner() {
                     currentQuestion.type === "code_test"
                   }
                   showProgramInput={programInput.show}
+                  programInputHint={programInput.hint}
                   programInput={programInput.value}
                   onProgramInputChange={programInput.setValue}
+                  inputPrompt={programInput.prompt}
                 />
 
                 {/* Results Panel */}

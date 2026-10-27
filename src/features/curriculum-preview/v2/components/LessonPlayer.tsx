@@ -710,8 +710,8 @@ export function LessonPlayer({
           setupSql: example.setupSql,
         },
       );
-      if (token !== exampleRunRef.current) return token;
-      const lines = out.length ? out : ["✓ Code ran successfully."];
+      if (token !== exampleRunRef.current || !out) return token;
+      const lines = out.lines.length ? out.lines : ["✓ Code ran successfully."];
       exampleOutputRef.current = lines;
       setResults(lines);
     } catch (error) {
@@ -1148,7 +1148,7 @@ export function LessonPlayer({
     if (!beat || beat.type !== "question") return;
     const q = beat.question;
     const lang = normalizeRunLanguage(q.code_example?.language);
-    const useWeb = isWebWorkspaceLanguage(lang, q.testCriteria);
+    const useWeb = isWebWorkspaceLanguage(lang, q.testCriteria, q.code_example?.runtime);
     const submission = {
       code,
       webCode: useWeb ? webCode : undefined,
@@ -1183,22 +1183,30 @@ export function LessonPlayer({
         setPreviewRefreshKey((key) => key + 1);
         pageResults = pending ? await pending : undefined;
       }
-      const runOutput = useWeb
-        ? []
+      const outcome = useWeb
+        ? { lines: [] as string[], raw: [] as string[] }
         : await runSubmissionCodeOutput(submission, q.testCriteria, {
             turtleTargetId,
             stdin,
             version: submission.version,
             files: submission.files,
             setupSql: submission.setupSql,
+            askLine: programInput.askLine,
+            onProgress: setResults,
           });
+      if (!outcome) return;
+      const runOutput = outcome.raw;
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         q.testCriteria,
         runOutput,
         pageResults,
+        outcome.turtle,
       );
-      const lines = buildSubmitCodeResultLines(runOutput, passed, testResults);
+      const lines = [
+        ...outcome.lines,
+        ...buildSubmitCodeResultLines([], passed, testResults),
+      ];
       setResults(lines);
       handleQuestionOutcome(passed, {
         runLines: runOutput,
@@ -1250,6 +1258,7 @@ export function LessonPlayer({
   const questionStdin =
     beat?.type === "question" ? beat.question.stdin : undefined;
   const programInput = useProgramInput({
+    language: runLanguage,
     key:
       beat?.type === "pause"
         ? (previousBeat?.id ?? beat?.id ?? "pause")
@@ -1388,9 +1397,12 @@ export function LessonPlayer({
           version: runnable.version,
           files: extraFiles,
           setupSql: runnable.setupSql,
+          askLine: programInput.askLine,
+          onProgress: setResults,
         },
       );
-      setResults(out.length ? out : ["✓ Code ran successfully."]);
+      if (!out) return;
+      setResults(out.lines.length ? out.lines : ["✓ Code ran successfully."]);
     } finally {
       setIsExecuting(false);
     }
@@ -1482,6 +1494,7 @@ export function LessonPlayer({
                 code: "",
                 webCode,
                 language: runLanguage,
+                runtime: activeCodeExample?.runtime,
               },
               beat.question.testCriteria,
             )
@@ -1570,6 +1583,7 @@ export function LessonPlayer({
           />
           <TestResults
             results={results}
+            inputLine={programInput.consoleLine}
             code={code}
             language={runLanguage}
             turtleTargetId={activeTurtleTargetId}

@@ -482,6 +482,7 @@ function CourseDetailInner({
   }, []);
 
   const programInput = useProgramInput({
+    language: runLanguage,
     key: isLessonCodeDemoActive
       ? `demo:${currentLesson?.id ?? ""}`
       : `q:${currentLesson?.id ?? ""}:${currentQuestion?.id ?? currentQuestionIndex}`,
@@ -521,8 +522,9 @@ function CourseDetailInner({
         const runOutput = await runSubmissionCodeOutput(submission, undefined, {
           stdin,
         });
+        if (!runOutput) return;
         setResults(
-          runOutput.length > 0 ? runOutput : ["✓ Code ran successfully."],
+          runOutput.lines.length > 0 ? runOutput.lines : ["✓ Code ran successfully."],
         );
       } catch (error) {
         const errorMessage =
@@ -2259,23 +2261,29 @@ function CourseDetailInner({
     }
 
     try {
-      const runOutput = useWebWorkspace
-        ? []
+      const outcome = useWebWorkspace
+        ? { lines: [] as string[], raw: [] as string[] }
         : await runSubmissionCodeOutput(
           submission,
           currentQuestion.testCriteria,
-          { stdin },
+          {
+            stdin,
+            askLine: programInput.askLine,
+            onProgress: setResults,
+          },
         );
+      if (!outcome) return;
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         currentQuestion.testCriteria,
-        runOutput,
+        outcome.raw,
       );
-      setResults(
-        buildTryCodeResultLines(runOutput, passed, testResults, {
+      setResults([
+        ...outcome.lines,
+        ...buildTryCodeResultLines([], passed, testResults, {
           web: useWebWorkspace,
         }),
-      );
+      ]);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -2306,19 +2314,30 @@ function CourseDetailInner({
     }
 
     try {
-      const runOutput = useWebWorkspace
-        ? []
+      const outcome = useWebWorkspace
+        ? { lines: [] as string[], raw: [] as string[] }
         : await runSubmissionCodeOutput(
           submission,
           currentQuestion.testCriteria,
-          { stdin },
+          {
+            stdin,
+            askLine: programInput.askLine,
+            onProgress: setResults,
+          },
         );
+      if (!outcome) {
+        answerSubmissionInFlightRef.current = false;
+        return;
+      }
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         currentQuestion.testCriteria,
-        runOutput,
+        outcome.raw,
       );
-      setResults(buildSubmitCodeResultLines(runOutput, passed, testResults));
+      setResults([
+        ...outcome.lines,
+        ...buildSubmitCodeResultLines([], passed, testResults),
+      ]);
 
       if (!passed) {
         const attempt = wrongAttemptOutcome(wrongAttemptsRef.current);
@@ -3123,6 +3142,7 @@ function CourseDetailInner({
                       />
                       <TestResults
                         results={results}
+                        inputLine={programInput.consoleLine}
                         code={code}
                         language={runLanguage}
                         onToggleFullscreen={() =>

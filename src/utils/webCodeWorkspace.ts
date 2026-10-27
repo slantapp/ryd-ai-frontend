@@ -2,6 +2,8 @@ import type { CodeTestCriteria, CodeTestResult } from "./codeTestValidation";
 import { matchExpectedCode } from "./codeTestValidation";
 import { prepareHtmlForPreview } from "./prepareHtmlForPreview";
 import {
+  applyLearnerLineMap,
+  LEARNER_SCRIPT_MARKER,
   previewEpilogue,
   previewPreamble,
   type PageCheck,
@@ -194,7 +196,7 @@ function injectPreviewScripts(
     next = `${pre}\n${next}`;
   }
   if (/<\/body>/i.test(next)) {
-    next = next.replace(/<\/body>/i, `${post}\n</body>`);
+    next = next.replace(/<\/body>/i, () => `${post}\n</body>`);
   } else {
     next = `${next}\n${post}`;
   }
@@ -208,7 +210,8 @@ export function buildWebPreviewDocument(
 ): string {
   const html = sources.html.trim();
   const css = sources.css.trim();
-  const javascript = sources.javascript.trim();
+  // Leading blank lines stay, so an error line matches the line in the editor.
+  const javascript = sources.javascript.trim() ? sources.javascript.replace(/\s+$/, "") : "";
   const preamble = previewPreamble({ stdin: options?.stdin, mocks: options?.mocks });
   const epilogue = previewEpilogue(options?.checks ?? []);
 
@@ -218,13 +221,13 @@ export function buildWebPreviewDocument(
     if (css && !/<style[\s>]/i.test(documentHtml)) {
       documentHtml = documentHtml.replace(
         /<\/head>/i,
-        `<style>\n${css}\n</style>\n</head>`,
+        () => `<style>\n${css}\n</style>\n</head>`,
       );
     }
     if (javascript && !/<script[\s>]/i.test(documentHtml)) {
       documentHtml = documentHtml.replace(
         /<\/body>/i,
-        `<script>\n${javascript}\n</script>\n</body>`,
+        () => `<script>\n${LEARNER_SCRIPT_MARKER}\n${javascript}\n</script>\n</body>`,
       );
     }
   } else {
@@ -245,12 +248,14 @@ export function buildWebPreviewDocument(
 </head>
 <body>
 ${html}
-${javascript ? `<script>\n${javascript}\n</script>` : ""}
+${javascript ? `<script>\n${LEARNER_SCRIPT_MARKER}\n${javascript}\n</script>` : ""}
 </body>
 </html>`;
   }
 
-  return prepareHtmlForPreview(injectPreviewScripts(documentHtml, preamble, epilogue));
+  const prepared = prepareHtmlForPreview(injectPreviewScripts(documentHtml, preamble, epilogue));
+  const learnerLineCount = javascript ? javascript.split("\n").length : 0;
+  return applyLearnerLineMap(prepared, learnerLineCount);
 }
 
 export function combineWebCodeForValidation(sources: WebCodeSources): string {

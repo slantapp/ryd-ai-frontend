@@ -136,6 +136,7 @@ export default function WebCodeWorkspace({
       }}
       onChecks={onChecks}
       onHang={() => setPreviewLines([PREVIEW_TIME_LIMIT_MESSAGE])}
+      onReload={() => setPreviewLines([])}
     />
   );
 
@@ -199,10 +200,10 @@ export default function WebCodeWorkspace({
                   <Play size={14} />
                 )}
                 <span className="hidden min-[400px]:inline">
-                  {isRunning ? "Running..." : "Test Code"}
+                  {isRunning ? "Running..." : "Run"}
                 </span>
                 <span className="min-[400px]:hidden">
-                  {isRunning ? "…" : "Test"}
+                  {isRunning ? "…" : "Run"}
                 </span>
               </button>
               <button
@@ -221,7 +222,7 @@ export default function WebCodeWorkspace({
                   <Send size={14} />
                 )}
                 <span className="hidden min-[400px]:inline">
-                  {isRunning ? "Running..." : "Submit answer"}
+                  {isRunning ? "Running..." : "Submit"}
                 </span>
                 <span className="min-[400px]:hidden">
                   {isRunning ? "…" : "Submit"}
@@ -244,7 +245,7 @@ export default function WebCodeWorkspace({
               ) : (
                 <Play size={14} />
               )}
-              {isRunning ? "Running..." : "Run Preview"}
+              {isRunning ? "Running..." : "Run"}
             </button>
           )}
           <button

@@ -1,10 +1,16 @@
-import { useMemo, useEffect, useState } from "react";
-import { Minimize2, Maximize2, Terminal, Eye, Palette } from "lucide-react";
+import { useMemo, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Minimize2, Maximize2, Terminal, Eye, Palette, Square } from "lucide-react";
 import { ConsoleLines } from "./ConsoleLines";
 import { prepareHtmlForPreview } from "@/utils/prepareHtmlForPreview";
 import { isWebWorkspaceLanguage } from "@/utils/webCodeWorkspace";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { cn } from "@/lib/utils";
+import type { ConsoleInputLine } from "@/hooks/useProgramInput";
+import {
+  isTurtleRunning,
+  stopTurtleProgram,
+  subscribeTurtleRunning,
+} from "@/utils/codeExecution/turtle";
 
 interface TestResultsProps {
   results: string[];
@@ -15,6 +21,59 @@ interface TestResultsProps {
   turtleTargetId?: string;
   /** Course language. Page preview is only for HTML, CSS, and web lessons. */
   language?: string;
+  /** The program is waiting for an answer typed on the console's last line. */
+  inputLine?: ConsoleInputLine | null;
+}
+
+/**
+ * Scale the turtle canvas to fit its panel. The drawing keeps its shape, and
+ * the stacked canvas layers scale together because the transform is on their parent.
+ */
+function useFitTurtleCanvas(enabled: boolean) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const targetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    const box = boxRef.current;
+    const target = targetRef.current;
+    if (!enabled || !panel || !box || !target) return;
+
+    const fit = () => {
+      const canvas = target.querySelector("canvas");
+      if (!canvas || !canvas.width || !canvas.height) {
+        box.style.width = "100%";
+        box.style.height = "100%";
+        target.style.transform = "";
+        return;
+      }
+      const room = panel.getBoundingClientRect();
+      const scale = Math.min(
+        1,
+        Math.max(0.05, (room.width - 8) / canvas.width),
+        Math.max(0.05, (room.height - 8) / canvas.height),
+      );
+      target.style.width = `${canvas.width}px`;
+      target.style.height = `${canvas.height}px`;
+      target.style.transformOrigin = "0 0";
+      target.style.transform = `scale(${scale})`;
+      box.style.width = `${canvas.width * scale}px`;
+      box.style.height = `${canvas.height * scale}px`;
+    };
+
+    fit();
+    const resize = new ResizeObserver(fit);
+    resize.observe(panel);
+    const changes = new MutationObserver(fit);
+    changes.observe(target, { childList: true, subtree: true, attributes: true, attributeFilter: ["width", "height"] });
+    return () => {
+      resize.disconnect();
+      changes.disconnect();
+    };
+  }, [enabled]);
+
+  return { panelRef, boxRef, targetRef };
 }
 
 // Helper function to wrap HTML in a complete document if needed
@@ -59,6 +118,7 @@ export default function TestResults({
   isFullscreen,
   turtleTargetId,
   language,
+  inputLine = null,
 }: TestResultsProps) {
   const [activeTab, setActiveTab] = useState<"console" | "preview">("console");
   const isLgUp = useMediaQueryMinLg();
@@ -66,6 +126,8 @@ export default function TestResults({
   const isPagePreview = isWebWorkspaceLanguage(language);
   const hasTurtlePreview = Boolean(turtleTargetId);
   const hasVisualPreview = isPagePreview || hasTurtlePreview;
+  const turtleRunning = useSyncExternalStore(subscribeTurtleRunning, isTurtleRunning, () => false);
+  const turtleFit = useFitTurtleCanvas(hasTurtlePreview);
 
   const htmlContent = useMemo(() => {
     if (!isPagePreview || !code.trim()) return "";
@@ -154,8 +216,8 @@ export default function TestResults({
             </div>
           </div>
           <div className="min-h-0 flex-1 overflow-auto bg-gray-950 p-2 font-mono text-xs sm:p-3 sm:text-sm">
-            {results.length > 0 ? (
-              <ConsoleLines lines={results} />
+            {results.length > 0 || inputLine ? (
+              <ConsoleLines lines={results} inputLine={inputLine} />
             ) : (
               <div className="text-gray-500">
                 <div className="mb-1 text-[0.7rem] sm:text-sm">
@@ -206,6 +268,17 @@ export default function TestResults({
                   ) : null}
                 </div>
               </div>
+              {hasTurtlePreview && turtleRunning ? (
+                <button
+                  type="button"
+                  onClick={stopTurtleProgram}
+                  className="mr-2 inline-flex items-center gap-1.5 rounded bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700"
+                  title="Stop the turtle program"
+                >
+                  <Square size={12} fill="currentColor" />
+                  Stop
+                </button>
+              ) : null}
               {!hasTurtlePreview && (
                 <button
                   type="button"
@@ -222,12 +295,18 @@ export default function TestResults({
             </div>
             <div className="min-h-0 flex-1 border-t border-gray-700 bg-white">
               {hasTurtlePreview && turtleTargetId ? (
-                <div className="flex h-full min-h-0 items-center justify-center overflow-auto bg-white p-2">
-                  <div
-                    id={turtleTargetId}
-                    className="min-h-48 w-full overflow-hidden rounded-md bg-white [&>canvas]:mx-auto [&>canvas]:max-w-full [&>svg]:mx-auto [&>svg]:max-w-full"
-                    aria-label="Python Turtle drawing canvas"
-                  />
+                <div
+                  ref={turtleFit.panelRef}
+                  className="flex h-full min-h-48 items-center justify-center overflow-hidden bg-white p-1"
+                >
+                  <div ref={turtleFit.boxRef} className="relative shrink-0 overflow-hidden">
+                    <div
+                      ref={turtleFit.targetRef}
+                      id={turtleTargetId}
+                      className="absolute left-0 top-0 bg-white outline-none"
+                      aria-label="Python Turtle drawing canvas"
+                    />
+                  </div>
                 </div>
               ) : htmlContent ? (
                 <iframe

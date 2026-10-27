@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  interleaveAnswers,
+  splitPendingLine,
   emptyOutputHint,
   formatOutputMiss,
   formatRowsMiss,
@@ -12,6 +14,8 @@ import {
   outputsMatch,
   programStdout,
   SQL_HOST_MESSAGE,
+  logsAfterTimeLimit,
+  MORE_INPUT_MESSAGE,
   TIME_LIMIT_MESSAGE,
   trimProgramOutput,
   versionHostNote,
@@ -119,6 +123,57 @@ test("example output stays labeled when practice starts", () => {
     ["Example preview is still on the page. Tap Run to see your own page."],
   );
   assert.deepEqual(keepExampleOutput(["✓ Preview updated."]), []);
+});
+
+test("a stopped program keeps what it already printed", () => {
+  assert.deepEqual(logsAfterTimeLimit("Starting\n", ""), [
+    "Starting",
+    TIME_LIMIT_MESSAGE,
+  ]);
+  assert.deepEqual(logsAfterTimeLimit("tick\ntick\n", null).slice(0, 2), ["tick", "tick"]);
+});
+
+test("the short Python error is the last real error, not the traceback", () => {
+  const value = friendlyRunError(
+    'Traceback (most recent call last):\n  File "/box/script.py", line 4, in <module>\nValueError: invalid literal for int() with base 10: \'3,9,7\'\nRuntime Error (NZEC)\n',
+    "python",
+  );
+  assert.match(value.summary, /ValueError: invalid literal for int\(\) with base 10: '3,9,7' \(line 4\)/);
+  assert.doesNotMatch(value.summary, /Traceback|\/box\/|NZEC/);
+
+  const eof = friendlyRunError("EOFError: EOF when reading a line\n", "python");
+  assert.equal(eof.summary, MORE_INPUT_MESSAGE);
+
+  const host = friendlyRunError("Runtime Error (NZEC)\n/box/script.py\n", "python");
+  assert.equal(host.summary, "The program stopped.");
+  assert.doesNotMatch(host.summary, /NZEC|\/box\//);
+});
+
+test("typed answers sit on the question line", () => {
+  const stdout = "Guess 1 to 10: Too low\nGuess 1 to 10: Too high\nGuess 1 to 10: You got it!\n";
+  const cuts = ["Guess 1 to 10: ".length, "Guess 1 to 10: Too low\nGuess 1 to 10: ".length];
+  cuts.push(stdout.indexOf("You got it!"));
+  assert.equal(
+    interleaveAnswers(stdout, ["3", "9", "7"], cuts),
+    "Guess 1 to 10: 3\nToo low\nGuess 1 to 10: 9\nToo high\nGuess 1 to 10: 7\nYou got it!\n",
+  );
+  // A run that printed something else first is shown as printed.
+  assert.equal(interleaveAnswers("short", ["3"], [40]), "short");
+  assert.deepEqual(splitPendingLine("Too low\nGuess 1 to 10: "), {
+    lines: ["Too low"],
+    pending: "Guess 1 to 10: ",
+  });
+  assert.deepEqual(splitPendingLine("Name? "), { lines: [], pending: "Name? " });
+});
+
+test("a C++ compile error names the error line, not the caret", () => {
+  const value = friendlyRunError(
+    "main.cpp: In function 'int main()':\nmain.cpp:4:5: error: 'cout' was not declared in this scope\n    4 |     cout << 1;\n      |     ^~~~\n",
+    "cpp",
+  );
+  assert.match(value.summary, /error: 'cout' was not declared/);
+  const abort = friendlyRunError("terminate called after throwing\nRuntime Error (SIGABRT)\n", "cpp");
+  assert.doesNotMatch(abort.summary, /SIGABRT/);
 });
 
 test("version pin prefers the named runtime", () => {

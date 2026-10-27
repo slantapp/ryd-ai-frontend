@@ -301,7 +301,7 @@ export default function CodeEditor({
           <span className="mb-1.5 block text-[0.7rem] leading-snug text-gray-500">
             {programInputHint === "preset"
               ? "Type what the program should read, then tap Run."
-              : "This program keeps reading. Type every line here, then tap Run."}
+              : "Type one answer per line (press Enter after each). For example: 3, then 9, then 7."}
           </span>
           <textarea
             value={programInput}

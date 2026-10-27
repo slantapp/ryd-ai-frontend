@@ -77,6 +77,7 @@ export interface Question {
     expectedRows?: string[][];
     tests?: Array<{ call: string; expect: string }>;
     domChecks?: Array<Record<string, unknown>>;
+    turtleChecks?: import("@/utils/codeExecution/turtleChecks").TurtleCheck[];
     htmlChecks?: Array<Record<string, unknown>>;
     cssChecks?: Array<Record<string, unknown>>;
     /** Math: expected final answer or expression (flexible match). */

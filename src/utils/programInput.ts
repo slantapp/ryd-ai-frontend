@@ -197,6 +197,51 @@ export function programReadsInput(code?: string): boolean {
   return planProgramReads(code).mode !== "none";
 }
 
+/** A loop that is supposed to stop when the input ends, not when a guess is right. */
+export function readsUntilEnd(code?: string): boolean {
+  if (!code?.trim()) return false;
+  const masked = blankNonCode(code);
+  return (
+    /while\s*\(\s*(?:std::)?cin\s*>>/.test(masked) ||
+    /while\s*\(\s*(?:std::)?getline\s*\(\s*(?:std::)?cin\b/.test(masked) ||
+    /!\s*\(\s*(?:std::)?cin\s*>>/.test(masked) ||
+    /if\s*\(\s*!\s*(?:std::)?cin\s*\)/.test(masked) ||
+    /\bcin\s*\.\s*eof\s*\(/.test(masked) ||
+    /while\s*\(\s*scanf\s*\(/.test(masked) ||
+    /\bfor\b[^\n]*\bin\b[^\n]*sys\.stdin/.test(masked) ||
+    /sys\.stdin\s*\.\s*(?:read|readlines)\s*\(/.test(masked) ||
+    /\bexcept\b[^:\n]*\bEOFError\b/.test(masked)
+  );
+}
+
+function liveLanguage(language?: string): "python" | "cpp" | null {
+  const lang = (language || "").toLowerCase().trim();
+  if (lang === "python" || lang === "python3" || lang === "py") return "python";
+  if (lang === "cpp" || lang === "c++") return "cpp";
+  return null;
+}
+
+/**
+ * Python `input()` and C++ `std::cin` are answered one at a time in the console.
+ * The runner cannot pause a program, so it runs the program again with one
+ * more answer each time the program stops to wait (see codeExecution/instrument.ts).
+ * Reads that cannot say they ran out of input keep the box or the pop-up.
+ */
+export function canUseLiveInput(code?: string, language?: string): boolean {
+  const lang = liveLanguage(language);
+  if (!lang || !code?.trim()) return false;
+  if (planProgramReads(code).mode === "none" || readsUntilEnd(code)) return false;
+  const masked = blankNonCode(code);
+  if (lang === "python") {
+    return /\binput\s*\(/.test(masked) && !/\bsys\s*\.\s*stdin\b/.test(masked);
+  }
+  return (
+    /(?:\bstd::|\b)cin\b/.test(masked) &&
+    !/\b(?:scanf|fscanf|getchar|fgets|gets|getc|fgetc)\s*\(/.test(masked) &&
+    !/sync_with_stdio\s*\(\s*(?:false|0)\s*\)/.test(masked)
+  );
+}
+
 function collectHits(source: string, masked: string): Hit[] {
   const found: Hit[] = [];
   const hasScanner = /\bScanner\b/.test(masked);
@@ -723,12 +768,14 @@ export type ProgramInputSeed = {
   questionStdin?: string;
   exampleCode?: string;
   editorCode?: string;
+  /** Python and C++ answer their reads in the console when the source allows it. */
+  language?: string;
 };
 
 export function programInputState(seed: ProgramInputSeed): {
   show: boolean;
   prefill: string;
-  mode: InputPlan["mode"];
+  mode: InputPlan["mode"] | "live";
   prompts: InputPrompt[];
   /** Loop reads use the box. A preset is only a fallback when a read was not recognised. */
   hint: "loop" | "preset" | null;
@@ -741,6 +788,9 @@ export function programInputState(seed: ProgramInputSeed): {
       ? seed.exampleStdin ?? ""
       : "";
   const source = seed.editorCode ?? seed.exampleCode ?? "";
+  if (canUseLiveInput(source, seed.language)) {
+    return { show: false, prefill, mode: "live", prompts: [], hint: null };
+  }
   const plan = planProgramReads(source);
   if (plan.mode === "prompt") {
     return { show: false, prefill, mode: "prompt", prompts: plan.prompts, hint: null };

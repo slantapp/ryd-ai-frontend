@@ -218,6 +218,7 @@ export default function CurriculumPreviewPage() {
   const activeExample =
     activeQuestion?.code_example ?? currentLesson?.code_example;
   const programInput = useProgramInput({
+    language: runLanguage,
     key:
       lessonPhase === "questions"
         ? `q:${currentLesson?.id ?? ""}:${currentQuestionIndex}`
@@ -240,14 +241,19 @@ export default function CurriculumPreviewPage() {
       submission: { code: string; webCode?: WebCodeSources; language: string },
       criteria?: Question["testCriteria"],
       stdin?: string,
+      interactive?: boolean,
     ) => {
       return runSubmissionCodeOutput(
         { code: submission.code, webCode: submission.webCode, language: submission.language },
         criteria,
-        { stdin },
+        {
+          stdin,
+          askLine: interactive ? programInput.askLine : undefined,
+          onProgress: interactive ? setResults : undefined,
+        },
       );
     },
-    [],
+    [programInput],
   );
 
   const runLessonExampleCode = useCallback(
@@ -260,7 +266,8 @@ export default function CurriculumPreviewPage() {
       setResults(["⏳ Running code..."]);
       try {
         const runOutput = await runCodeOutput(submission, criteria, stdin);
-        setResults(runOutput);
+        if (!runOutput) return;
+        setResults(runOutput.lines);
       } finally {
         setIsExecutingCode(false);
       }
@@ -864,19 +871,21 @@ export default function CurriculumPreviewPage() {
     }
 
     try {
-      const runOutput = useWebWorkspace
-        ? []
-        : await runCodeOutput(submission, question.testCriteria, stdin);
+      const outcome = useWebWorkspace
+        ? { lines: [] as string[], raw: [] as string[] }
+        : await runCodeOutput(submission, question.testCriteria, stdin, true);
+      if (!outcome) return;
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         question.testCriteria,
-        runOutput,
+        outcome.raw,
       );
-      setResults(
-        buildTryCodeResultLines(runOutput, passed, testResults, {
+      setResults([
+        ...outcome.lines,
+        ...buildTryCodeResultLines([], passed, testResults, {
           web: useWebWorkspace,
         }),
-      );
+      ]);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -917,15 +926,19 @@ export default function CurriculumPreviewPage() {
     }
 
     try {
-      const runOutput = useWebWorkspace
-        ? []
-        : await runCodeOutput(submission, question.testCriteria, stdin);
+      const outcome = useWebWorkspace
+        ? { lines: [] as string[], raw: [] as string[] }
+        : await runCodeOutput(submission, question.testCriteria, stdin, true);
+      if (!outcome) return;
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         question.testCriteria,
-        runOutput,
+        outcome.raw,
       );
-      setResults(buildSubmitCodeResultLines(runOutput, passed, testResults));
+      setResults([
+        ...outcome.lines,
+        ...buildSubmitCodeResultLines([], passed, testResults),
+      ]);
       setIsAnswerSubmitted(true);
 
       if (passed) {
@@ -1490,6 +1503,7 @@ export default function CurriculumPreviewPage() {
                       />
                       <TestResults
                         results={results}
+                        inputLine={programInput.consoleLine}
                         code={code}
                         language={runLanguage}
                         onToggleFullscreen={() =>
@@ -1617,6 +1631,7 @@ export default function CurriculumPreviewPage() {
                           />
                           <TestResults
                             results={results}
+                            inputLine={programInput.consoleLine}
                             code={code}
                             language={runLanguage}
                             onToggleFullscreen={() =>

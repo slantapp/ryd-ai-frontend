@@ -3,9 +3,11 @@ import test from "node:test";
 import {
   assignPrefill,
   joinPromptAnswers,
+  canUseLiveInput,
   planProgramReads,
   programInputState,
   programReadsInput,
+  readsUntilEnd,
   stdinForRun,
 } from "./programInput.ts";
 import { CODE_SOLUTION_SPEECH, describeStoredAnswer } from "./storedAnswer.ts";
@@ -61,6 +63,29 @@ test("an empty editor does not show the loop box just because stdin was set", ()
   assert.equal(offer.show, false);
   assert.equal(offer.mode, "none");
   assert.equal(offer.prefill, "Ada");
+});
+
+test("Python input and C++ cin answer in the console; read-until-end loops keep the box", () => {
+  const guessing =
+    'secret = 7\nguess = 0\nwhile guess != secret:\n    guess = int(input("Guess 1 to 10: "))\n';
+  assert.equal(canUseLiveInput(guessing, "python"), true);
+  assert.equal(canUseLiveInput('name = input("Name? ")\nprint(name)', "python"), true);
+  assert.equal(canUseLiveInput("int x; std::cin >> x;", "cpp"), true);
+  assert.equal(canUseLiveInput("while (std::cin >> x) {}", "cpp"), false);
+  assert.equal(canUseLiveInput("int x; scanf(\"%d\", &x); std::cin >> x;", "cpp"), false);
+  assert.equal(canUseLiveInput("import sys\nx = sys.stdin.readline()\ny = input()", "python"), false);
+  assert.equal(
+    canUseLiveInput("try:\n    while True:\n        x = input()\nexcept EOFError:\n    pass", "python"),
+    false,
+  );
+  assert.equal(canUseLiveInput('x = input("a")', "ruby"), false);
+  assert.equal(canUseLiveInput('print("hi")', "python"), false);
+  const live = programInputState({ key: "q", editorCode: guessing, language: "python", questionStdin: "3" });
+  assert.equal(live.mode, "live");
+  assert.equal(live.show, false);
+  assert.equal(live.prefill, "3");
+  assert.equal(readsUntilEnd("while guess != secret:\n    guess = int(input('Guess: '))\n"), false);
+  assert.equal(readsUntilEnd("while (std::cin >> x) {\n  std::cout << x;\n}"), true);
 });
 
 test("a loop keeps the input box", () => {

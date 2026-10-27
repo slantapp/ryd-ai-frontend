@@ -1,8 +1,13 @@
+import { IMAGE_LINE_PREFIX, WAITING_FOR_INPUT_MARKER } from "./instrument";
+
 /** Marker so the console can hide the raw runner text behind “Show details”. */
 export const RUN_DETAILS_PREFIX = "@@details@@";
 
 export const TIME_LIMIT_MESSAGE =
   "Your program took too long. Check for a loop that never ends.";
+
+export const MORE_INPUT_MESSAGE =
+  "Your program is waiting for more input. Add another answer and run again.";
 
 const PRINT_WORD: Record<string, string> = {
   javascript: "console.log",
@@ -61,6 +66,7 @@ export function programStdout(lines: string[] | undefined): string {
       if (!text) return false;
       if (text === "(No output)" || text === "Example output") return false;
       if (text.startsWith(RUN_DETAILS_PREFIX) || text.startsWith("Error:")) return false;
+      if (text.startsWith(IMAGE_LINE_PREFIX)) return false;
       if (/^[⏳✅❌✓✗⚠]/.test(text)) return false;
       if (learnerDiagnostic([text])) return false;
       return true;
@@ -213,12 +219,16 @@ export function friendlyRunError(
     summary =
       "Check the % format in scanf or printf. It has to match the type of the value.";
   } else {
-    const named = text.match(
-      /\b(ReferenceError|TypeError|SyntaxError|NameError|IndentationError):[^\n]*/,
-    );
+    const named = lastProgramError(text);
     if (named) {
-      summary = named[0].trim();
-      if (line && !/line \d+/i.test(summary)) summary = `${summary} (line ${line})`;
+      if (/^EOFError\b/.test(named.message)) {
+        summary = MORE_INPUT_MESSAGE;
+      } else {
+        const at = named.line ?? line;
+        summary = /line \d+/i.test(named.message) || !at
+          ? named.message
+          : `${named.message} (line ${at})`;
+      }
     }
   }
 
@@ -226,14 +236,103 @@ export function friendlyRunError(
     const useful = text
       .split("\n")
       .map((item) => item.trim())
-      .filter((item) => item && !NOISE.test(item) && !item.startsWith("^"));
-    summary = useful[0] || "The program stopped.";
-    if (line && !summary.includes(line)) summary = `${summary} (line ${line})`;
+      .filter(
+        (item) =>
+          item &&
+          !NOISE.test(item) &&
+          !item.startsWith("^") &&
+          !/^Traceback\b/i.test(item) &&
+          !/^Runtime Error \([A-Z]+\)$/i.test(item),
+      );
+    // A compiler names the problem on its first "error" line. A runtime dump ends with it.
+    summary =
+      useful.find((item) => /\berror\b/i.test(item)) ||
+      useful.at(-1) ||
+      "The program stopped.";
+    if (line && !summary.includes(line) && summary !== "The program stopped.") {
+      summary = `${summary} (line ${line})`;
+    }
   }
+
+  summary = summary
+    .replace(/\/box\/\S+/g, "")
+    .replace(/Runtime Error \([A-Z]+\)/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 
   if ((language || "").toLowerCase() === "python" && /TabError/i.test(text)) {
     summary = `TabError${line ? ` on line ${line}` : ""}: use spaces for the indent, and use the same number on each line.`;
   }
 
-  return { summary, details: text };
+  return { summary: summary || "The program stopped.", details: text };
+}
+
+/** The last real error in a traceback, with the line number closest above it. */
+export function lastProgramError(
+  raw: string,
+): { message: string; line?: string } | undefined {
+  const text = raw.replace(/\r\n/g, "\n");
+  const matches = [...text.matchAll(/^([A-Za-z_][\w.]*(?:Error|Exception):.*)$/gm)];
+  const found = matches.at(-1);
+  if (!found || found.index == null) return undefined;
+  const before = text.slice(0, found.index);
+  const line = [...before.matchAll(/line (\d+)/gi)].at(-1)?.[1];
+  return { message: found[1].trim(), line };
+}
+
+export function isWaitingForInput(text: string): boolean {
+  return (
+    text.includes(WAITING_FOR_INPUT_MARKER) ||
+    /EOFError|EOF when reading|NoSuchElementException|No line found/i.test(text)
+  );
+}
+
+/** Keep whatever was printed, then the time-limit sentence. */
+export function logsAfterTimeLimit(
+  stdout?: string | null,
+  stderr?: string | null,
+  pictures: string[] = [],
+): string[] {
+  const printed = [
+    ...(stdout?.trim() ? trimProgramOutput(stdout) : []),
+    ...pictures,
+    ...(stderr?.trim() ? trimProgramOutput(stderr) : []),
+  ];
+  return [...printed, TIME_LIMIT_MESSAGE];
+}
+
+/**
+ * Put each typed answer on its question line.
+ *
+ * `cuts[i]` is how much the program had printed when it stopped to wait for
+ * `answers[i]`. A program that prints the same text on every run puts each
+ * answer right after its question. When a later run printed something else
+ * first, for example a new random number, the text is returned as printed.
+ */
+export function interleaveAnswers(
+  stdout: string,
+  answers: string[],
+  cuts: number[],
+): string {
+  let out = "";
+  let from = 0;
+  for (let index = 0; index < answers.length; index += 1) {
+    const cut = cuts[index];
+    if (cut == null || cut < from || cut > stdout.length) return stdout;
+    out += `${stdout.slice(from, cut)}${answers[index]}\n`;
+    from = cut;
+  }
+  return out + stdout.slice(from);
+}
+
+/** The text after the last line break: a question that is waiting for its answer. */
+export function splitPendingLine(text: string): { lines: string[]; pending: string } {
+  const normalized = text.replace(/\r\n/g, "\n");
+  const end = normalized.lastIndexOf("\n");
+  const pending = normalized.slice(end + 1);
+  const body = end < 0 ? "" : normalized.slice(0, end);
+  return {
+    lines: end < 0 ? [] : body.split("\n"),
+    pending,
+  };
 }

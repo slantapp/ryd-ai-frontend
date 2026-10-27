@@ -128,6 +128,16 @@ function validateQuestion(
   if (criteria?.tests !== undefined && !Array.isArray(criteria.tests)) {
     errors.push(`${label}: testCriteria.tests must be an array`);
   }
+  if (criteria?.turtleChecks !== undefined) {
+    if (!Array.isArray(criteria.turtleChecks)) {
+      errors.push(`${label}: testCriteria.turtleChecks must be an array`);
+    } else {
+      criteria.turtleChecks.forEach((check, index) => {
+        const problem = turtleCheckProblem(check);
+        if (problem) errors.push(`${label}: testCriteria.turtleChecks[${index}] ${problem}`);
+      });
+    }
+  }
   if (qType === "code_test" && q.code_example) {
     validateCodeExample(q.code_example, label, errors);
   }
@@ -535,4 +545,31 @@ export function validateCurriculumV2(data: unknown): {
   });
 
   return { valid: errors.length === 0, errors };
+}
+
+/** One turtle check names one thing the drawing must do. */
+function turtleCheckProblem(check: unknown): string | undefined {
+  if (!check || typeof check !== "object" || Array.isArray(check)) return "must be an object";
+  const item = check as Record<string, unknown>;
+  const known = ["linesDrawn", "endsAt", "heading", "colorUsed", "filled", "textWritten"];
+  const keys = Object.keys(item).filter((key) => key !== "tolerance");
+  if (keys.length !== 1 || !known.includes(keys[0])) {
+    return `must have one of ${known.join(", ")} (and optional tolerance)`;
+  }
+  const value = item[keys[0]];
+  if (item.tolerance !== undefined && (typeof item.tolerance !== "number" || item.tolerance < 0)) {
+    return "tolerance must be a number of 0 or more";
+  }
+  if (keys[0] === "linesDrawn" && !(Number.isInteger(value) && (value as number) >= 0)) {
+    return "linesDrawn must be a whole number";
+  }
+  if (keys[0] === "endsAt" && !(Array.isArray(value) && value.length === 2 && value.every((n) => typeof n === "number"))) {
+    return "endsAt must be [x, y]";
+  }
+  if (keys[0] === "heading" && typeof value !== "number") return "heading must be a number";
+  if ((keys[0] === "colorUsed" || keys[0] === "textWritten") && typeof value !== "string") {
+    return `${keys[0]} must be a string`;
+  }
+  if (keys[0] === "filled" && typeof value !== "boolean") return "filled must be true or false";
+  return undefined;
 }

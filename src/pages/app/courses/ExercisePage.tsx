@@ -81,6 +81,7 @@ function CodingExerciseInner() {
   const exerciseLanguage =
     currentQuestion?.code_example?.language ?? codeExample?.language ?? "javascript";
   const programInput = useProgramInput({
+    language: exerciseLanguage,
     key: `${currentLesson?.id ?? ""}:${currentQuestion?.id ?? "demo"}`,
     exampleStdin:
       currentQuestion?.code_example?.stdin ?? codeExample?.stdin,
@@ -430,19 +431,24 @@ function CodingExerciseInner() {
     if (stdin === null) return;
 
     try {
-      const runOutput = await runSubmissionCodeOutput(
+      const outcome = await runSubmissionCodeOutput(
         submission,
         question.testCriteria,
-        { stdin },
+        {
+          stdin,
+          askLine: programInput.askLine,
+          onProgress: setResults,
+        },
       );
+      if (!outcome) return;
       const { passed, testResults } = await gradeSubmissionCodeTest(
         submission,
         question.testCriteria,
-        runOutput,
+        outcome.raw,
       );
 
       const displayResults = [
-        ...runOutput,
+        ...outcome.lines,
         ...formatCodeTestResults(testResults),
       ];
       if (testResults.length === 0) {
@@ -790,6 +796,7 @@ function CodingExerciseInner() {
                 {/* Results Panel */}
                 <TestResults
                   results={results}
+                  inputLine={programInput.consoleLine}
                   code={code}
                   language={exerciseLanguage}
                   onToggleFullscreen={() =>

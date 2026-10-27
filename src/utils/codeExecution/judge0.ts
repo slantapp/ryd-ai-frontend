@@ -7,11 +7,18 @@ import { prepareCodeForExecution, type CodeRunResult } from "./types";
 import { compilerOptionsFor } from "./compilerOptions";
 import { bytesToBase64, zipStore } from "./zipStore";
 import {
+  IMAGE_LINE_PREFIX,
+  instrumentSource,
+  shiftScriptLines,
+  splitImageLines,
+} from "./instrument";
+import {
   emptyOutputHint,
   friendlyRunError,
+  isWaitingForInput,
   judge0RejectionPlan,
+  logsAfterTimeLimit,
   SQL_HOST_MESSAGE,
-  TIME_LIMIT_MESSAGE,
   formatSqlTable,
   trimProgramOutput,
   versionHostNote,
@@ -52,29 +59,48 @@ function failureText(data: Judge0Submission): string {
     .join("\n");
 }
 
-function parseJudge0Submission(
-  data: Judge0Submission,
+export function parseJudge0Submission(
+  received: Judge0Submission,
   language?: string,
+  lineOffset = 0,
 ): CodeRunResult {
-  const statusId = data.status?.id;
+  const statusId = received.status?.id;
+  const data: Judge0Submission = {
+    ...received,
+    stderr: shiftScriptLines(received.stderr, lineOffset),
+    compile_output: shiftScriptLines(received.compile_output, lineOffset),
+  };
+  const { text: stdout, images } = splitImageLines(
+    (received.stdout ?? "").replace(/\r\n/g, "\n"),
+  );
+  const pictures = images.map((src) => `${IMAGE_LINE_PREFIX}${src}`);
+  const printed = stdout.trim() ? trimProgramOutput(stdout) : [];
 
   if (statusId === 3) {
-    if (data.stdout?.trim()) {
+    if (stdout.trim()) {
       const sql = (language || "").toLowerCase();
-      if (sql === "sqlite" || sql === "sql") return { logs: formatSqlTable(data.stdout) };
-      return { logs: trimProgramOutput(data.stdout) };
+      if (sql === "sqlite" || sql === "sql") return { logs: formatSqlTable(stdout), stdout };
+      return { logs: [...printed, ...pictures], stdout };
     }
-    if (data.stderr?.trim()) return { logs: trimProgramOutput(data.stderr) };
-    return { logs: [emptyOutputHint(language)] };
+    if (pictures.length) return { logs: pictures, stdout };
+    if (data.stderr?.trim()) return { logs: trimProgramOutput(data.stderr), stdout };
+    return { logs: [emptyOutputHint(language)], stdout };
   }
 
   if (statusId === 5) {
-    return { logs: [TIME_LIMIT_MESSAGE] };
+    return { logs: [...logsAfterTimeLimit(stdout, data.stderr, pictures)], stdout };
   }
 
   if (statusId === 6 || (statusId && statusId >= 7 && statusId <= 12)) {
-    const friendly = friendlyRunError(failureText(data), language);
-    return { logs: withRunDetails(friendly.summary, friendly.details) };
+    const raw = failureText(data);
+    if (statusId !== 6 && isWaitingForInput(raw)) {
+      return { logs: [...printed, ...pictures], waiting: true, stdout };
+    }
+    const friendly = friendlyRunError(raw, language);
+    return {
+      logs: [...printed, ...pictures, ...withRunDetails(friendly.summary, friendly.details)],
+      stdout,
+    };
   }
 
   if (data.message) {
@@ -98,6 +124,9 @@ export type StudentCodeOptions = {
   version?: string;
   files?: Record<string, string>;
   setupSql?: string;
+  /** Re-run with one more answer each time the program waits. See instrument.ts. */
+  live?: boolean;
+  seed?: number;
 };
 
 function isSqlLanguage(language?: string): boolean {
@@ -153,9 +182,13 @@ export async function executeStudentCode(
   }
 
   const preparedCode = prepareCodeForExecution(code, language);
+  const instrumented = instrumentSource(preparedCode, language, {
+    live: options?.live,
+    seed: options?.seed,
+  });
   const source = options?.setupSql?.trim()
-    ? `${options.setupSql.trim()}\n${preparedCode}`
-    : preparedCode;
+    ? `${options.setupSql.trim()}\n${instrumented.source}`
+    : instrumented.source;
   const compilerOptions = compilerOptionsFor(language);
   const extraFiles = Object.entries(options?.files ?? {}).filter(
     ([name, content]) => name.trim() && content != null,
@@ -216,7 +249,7 @@ export async function executeStudentCode(
       });
     }
 
-    return annotate(parseJudge0Submission(data, language));
+    return annotate(parseJudge0Submission(data, language, instrumented.lineOffset));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return annotate({

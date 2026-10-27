@@ -1,3 +1,4 @@
+import type { TurtleCheck } from "./codeExecution/turtleChecks";
 import { resolveGradedLanguage } from "./codeExecution/languages";
 import { outputsMatch } from "./codeExecution/runFeedback";
 
@@ -17,6 +18,8 @@ export type CodeTestCriteria = {
   /** Call an expression and compare the printed line. */
   tests?: Array<{ call: string; expect: string }>;
   domChecks?: Array<Record<string, unknown>>;
+  /** What a turtle drawing must do. See codeExecution/turtleChecks.ts. */
+  turtleChecks?: TurtleCheck[];
   htmlChecks?: Array<Record<string, unknown>>;
   cssChecks?: Array<Record<string, unknown>>;
   testCases?: Array<{

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Eye, Monitor, Smartphone, Tablet } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Eye, Maximize2, Monitor, Smartphone, Tablet, X } from "lucide-react";
 import { buildWebPreviewDocument } from "@/utils/webCodeWorkspace";
 import {
   htmlAuthorWarnings,
@@ -24,14 +25,17 @@ interface WebPreviewPaneProps {
   onLog?: (entry: PreviewLog) => void;
   onChecks?: (results: PreviewCheckResult[]) => void;
   onHang?: () => void;
+  /** Maximize moves the frame, so the page runs again. Its old console lines are stale. */
+  onReload?: () => void;
 }
 
 type FrameWidth = "phone" | "tablet" | "full";
 
-const WIDTH_CLASS: Record<FrameWidth, string> = {
-  phone: "w-[390px] max-w-full",
-  tablet: "w-[768px] max-w-full",
-  full: "w-full",
+/** Real page sizes. The preview box scrolls instead of squeezing the page. */
+const FRAME_SIZE: Record<FrameWidth, { width: number; height: number }> = {
+  phone: { width: 390, height: 844 },
+  tablet: { width: 768, height: 1024 },
+  full: { width: 1280, height: 800 },
 };
 
 export default function WebPreviewPane({
@@ -46,16 +50,21 @@ export default function WebPreviewPane({
   onLog,
   onChecks,
   onHang,
+  onReload,
 }: WebPreviewPaneProps) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const onLogRef = useRef(onLog);
   const onChecksRef = useRef(onChecks);
   const onHangRef = useRef(onHang);
+  const onReloadRef = useRef(onReload);
   onLogRef.current = onLog;
   onChecksRef.current = onChecks;
   onHangRef.current = onHang;
+  onReloadRef.current = onReload;
   const [hung, setHung] = useState(false);
   const [width, setWidth] = useState<FrameWidth>("full");
+  const [maximized, setMaximized] = useState(false);
+  const shownMaximized = useRef(maximized);
   const [snap, setSnap] = useState({ html, css, javascript });
   const seenKey = useRef(refreshKey);
 
@@ -91,7 +100,6 @@ export default function WebPreviewPane({
 
   useEffect(() => {
     setHung(false);
-    const frame = frameRef.current;
     let timer = 0;
     if (watch) {
       timer = window.setTimeout(() => {
@@ -100,6 +108,7 @@ export default function WebPreviewPane({
       }, 3000);
     }
     const onMessage = (event: MessageEvent) => {
+      const frame = frameRef.current;
       if (!frame || event.source !== frame.contentWindow) return;
       const data = event.data as {
         source?: string;
@@ -131,6 +140,71 @@ export default function WebPreviewPane({
     };
   }, [previewDocument, watch]);
 
+  useEffect(() => {
+    if (shownMaximized.current === maximized) return;
+    shownMaximized.current = maximized;
+    onReloadRef.current?.();
+  }, [maximized]);
+
+  useEffect(() => {
+    if (!maximized) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMaximized(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [maximized]);
+
+  const frame = FRAME_SIZE[width];
+  // Wide view uses the whole window for the desktop page. Phone and tablet keep their size.
+  const fillWindow = maximized && width === "full";
+  const frameStyle = fillWindow
+    ? { width: "100%", height: "100%" }
+    : { width: frame.width, height: frame.height };
+  const widthButtons = (
+    <div className="flex items-center gap-1">
+      {(
+        [
+          ["phone", Smartphone, "Phone width"],
+          ["tablet", Tablet, "Tablet width"],
+          ["full", Monitor, "Desktop width"],
+        ] as const
+      ).map(([id, Icon, label]) => (
+        <button
+          key={id}
+          type="button"
+          aria-label={label}
+          aria-pressed={width === id}
+          title={label}
+          onClick={() => setWidth(id)}
+          className={`rounded p-1 ${width === id ? "bg-gray-200 text-gray-900" : "text-gray-500 hover:bg-gray-100"}`}
+        >
+          <Icon size={14} />
+        </button>
+      ))}
+    </div>
+  );
+  const frameBody = hung ? (
+    <div className="flex h-full items-center justify-center px-6 text-center text-sm text-gray-600">
+      {PREVIEW_TIME_LIMIT_MESSAGE}
+    </div>
+  ) : previewDocument.trim() ? (
+    <iframe
+      ref={frameRef}
+      key={`${refreshKey}-${previewDocument.length}`}
+      srcDoc={previewDocument}
+      style={frameStyle}
+      className="shrink-0 border-0 bg-white"
+      title="Web preview"
+      sandbox="allow-scripts allow-popups allow-forms"
+      referrerPolicy="no-referrer"
+    />
+  ) : (
+    <div className="flex h-full items-center justify-center text-sm text-gray-500">
+      Write HTML, CSS, or JavaScript to see the preview.
+    </div>
+  );
+
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-md border border-gray-200 bg-white">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
@@ -141,24 +215,16 @@ export default function WebPreviewPane({
           </h3>
         </div>
         <div className="flex items-center gap-1">
-          {(
-            [
-              ["phone", Smartphone, "Phone width"],
-              ["tablet", Tablet, "Tablet width"],
-              ["full", Monitor, "Desktop width"],
-            ] as const
-          ).map(([id, Icon, label]) => (
-            <button
-              key={id}
-              type="button"
-              aria-label={label}
-              title={label}
-              onClick={() => setWidth(id)}
-              className={`rounded p-1 ${width === id ? "bg-gray-200 text-gray-900" : "text-gray-500 hover:bg-gray-100"}`}
-            >
-              <Icon size={14} />
-            </button>
-          ))}
+          {widthButtons}
+          <button
+            type="button"
+            aria-label="Maximize preview"
+            title="Maximize"
+            onClick={() => setMaximized(true)}
+            className="rounded p-1 text-gray-500 hover:bg-gray-100"
+          >
+            <Maximize2 size={14} />
+          </button>
         </div>
       </div>
       {warnings.length > 0 ? (
@@ -168,27 +234,47 @@ export default function WebPreviewPane({
           ))}
         </ul>
       ) : null}
-      <div className="flex min-h-0 flex-1 justify-center bg-gray-100">
-        {hung ? (
-          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-gray-600">
-            {PREVIEW_TIME_LIMIT_MESSAGE}
-          </div>
-        ) : previewDocument.trim() ? (
-          <iframe
-            ref={frameRef}
-            key={`${refreshKey}-${previewDocument.length}`}
-            srcDoc={previewDocument}
-            className={`h-full border-0 bg-white ${WIDTH_CLASS[width]}`}
-            title="Web preview"
-            sandbox="allow-scripts allow-popups allow-forms"
-            referrerPolicy="no-referrer"
-          />
+      <div className="min-h-0 flex-1 overflow-auto bg-gray-100">
+        {maximized ? (
+          <p className="p-4 text-sm text-gray-500">
+            The preview is open wide. Close it to bring it back here.
+          </p>
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-gray-500">
-            Write HTML, CSS, or JavaScript to see the preview.
-          </div>
+          <div className="mx-auto h-full w-fit">{frameBody}</div>
         )}
       </div>
+      {maximized
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[10040] flex flex-col bg-gray-900/70"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Wide web preview"
+            >
+              <div className="flex shrink-0 items-center justify-between gap-2 bg-white px-3 py-2">
+                <p className="text-sm font-medium text-gray-700">Preview</p>
+                <div className="flex items-center gap-2">
+                  {widthButtons}
+                  <button
+                    type="button"
+                    onClick={() => setMaximized(false)}
+                    aria-label="Close the wide preview"
+                    className="inline-flex items-center gap-1 rounded px-2 py-1 text-sm text-gray-600 hover:bg-gray-100"
+                  >
+                    <X size={16} />
+                    Close
+                  </button>
+                </div>
+              </div>
+              <div className={`min-h-0 flex-1 overflow-auto ${fillWindow ? "" : "p-4"}`}>
+                <div className={fillWindow ? "h-full w-full bg-white" : "mx-auto w-fit bg-white shadow"}>
+                  {frameBody}
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

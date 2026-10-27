@@ -101,6 +101,33 @@ function stdinLines(stdin?: string): string[] {
 }
 
 /** Runs before the learner script. Replaces alert, prompt, storage, and fetch. */
+export const LEARNER_SCRIPT_MARKER = "/*RYD_LEARNER*/";
+
+/**
+ * Map a browser document line to the learner's JavaScript.
+ * `markerLine` is the document line of LEARNER_SCRIPT_MARKER, which sits
+ * on the line immediately before the learner's first line.
+ */
+export function mapLearnerErrorLine(
+  documentLine: number,
+  markerLine: number,
+  lineCount: number,
+): number | undefined {
+  if (!markerLine || !documentLine || lineCount < 1) return undefined;
+  const learner = documentLine - markerLine;
+  if (learner < 1 || learner > lineCount) return undefined;
+  return learner;
+}
+
+/** Fill the preview script's line-map placeholders after the document is built. */
+export function applyLearnerLineMap(documentHtml: string, learnerLineCount: number): string {
+  const markerAt = documentHtml.indexOf(LEARNER_SCRIPT_MARKER);
+  const markerLine = markerAt < 0 ? 0 : documentHtml.slice(0, markerAt).split("\n").length;
+  return documentHtml
+    .replaceAll("__RYD_LEARNER_LINE__", String(markerLine))
+    .replaceAll("__RYD_LEARNER_COUNT__", String(markerAt < 0 ? 0 : learnerLineCount));
+}
+
 export function previewPreamble(options?: {
   stdin?: string;
   mocks?: Record<string, unknown>;
@@ -124,8 +151,15 @@ export function previewPreamble(options?: {
       send({ type: "log", level: level, message: message });
     };
   });
+  var learnerMarkerLine = __RYD_LEARNER_LINE__;
+  var learnerLineCount = __RYD_LEARNER_COUNT__;
   window.addEventListener("error", function (event) {
-    send({ type: "log", level: "error", message: event.message || "Error", line: event.lineno });
+    var line = event.lineno || 0;
+    var mapped;
+    if (learnerMarkerLine && line > learnerMarkerLine && line <= learnerMarkerLine + learnerLineCount) {
+      mapped = line - learnerMarkerLine;
+    }
+    send({ type: "log", level: "error", message: event.message || "Error", line: mapped });
   });
   function showBox(message) {
     var box = document.createElement("div");

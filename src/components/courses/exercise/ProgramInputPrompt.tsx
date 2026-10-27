@@ -70,10 +70,14 @@ export default function ProgramInputPrompt({ prompt }: ProgramInputPromptProps) 
           <p className="text-base font-semibold leading-snug text-gray-900">
             {prompt.label}
           </p>
-          <p className="overflow-x-auto rounded-lg bg-[#1e1e1e] px-3 py-2 font-mono text-xs text-gray-100">
-            <span className="mr-2 text-amber-300">line {prompt.line}</span>
-            {prompt.snippet}
-          </p>
+          {prompt.line > 0 ? (
+            <p className="overflow-x-auto rounded-lg bg-[#1e1e1e] px-3 py-2 font-mono text-xs text-gray-100">
+              <span className="mr-2 text-amber-300">line {prompt.line}</span>
+              {prompt.snippet}
+            </p>
+          ) : (
+            <p className="text-sm text-gray-500">{prompt.snippet}</p>
+          )}
           <input
             ref={fieldRef}
             value={prompt.value}

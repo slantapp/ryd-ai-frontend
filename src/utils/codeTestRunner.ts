@@ -12,10 +12,16 @@ import { executeStudentCode, formatRunOutput } from "./runStudentCode";
 import {
   formatOutputMiss,
   formatRowsMiss,
+  interleaveAnswers,
   learnerDiagnostic,
+  MORE_INPUT_MESSAGE,
   outputsMatch,
   programStdout,
+  splitPendingLine,
+  trimProgramOutput,
 } from "./codeExecution/runFeedback";
+import { canUseLiveInput } from "./programInput";
+import type { CodeRunResult } from "./codeExecution/types";
 import {
   normalizeRunLanguage,
   resolveGradedLanguage,
@@ -23,7 +29,13 @@ import {
 import {
   executeTurtleCode,
   isTurtlePythonCode,
+  normalizeTurtleColor,
+  TURTLE_STOPPED_MESSAGE,
 } from "./codeExecution/turtle";
+import {
+  evaluateTurtleChecks,
+  type TurtleRecord,
+} from "./codeExecution/turtleChecks";
 import {
   evaluateWebCodeTest,
   hasWebCodeContent,
@@ -61,7 +73,21 @@ export function evaluateSubmissionCodeTest(
   criteria: CodeTestCriteria | undefined,
   runLines?: string[],
   pageResults?: CodeTestResult[],
+  turtle?: TurtleRecord,
 ): { passed: boolean; testResults: CodeTestResult[] } {
+  if (criteria?.turtleChecks?.length) {
+    const drawing = turtle
+      ? evaluateTurtleChecks(turtle, criteria.turtleChecks, normalizeTurtleColor)
+      : [{ test: "Run the drawing, then submit.", passed: false, plain: true as const }];
+    const rest = { ...criteria, turtleChecks: undefined };
+    const printed =
+      typeof criteria.expectedOutput === "string" && criteria.expectedOutput.trim()
+        ? evaluateSubmissionCodeTest(submission, rest, runLines, pageResults).testResults
+        : [];
+    const testResults = [...drawing, ...printed];
+    return { passed: testResults.every((item) => item.passed), testResults };
+  }
+
   const graded = resolveGradedLanguage(submission.language);
   if (submission.language?.trim() && !graded) {
     return {
@@ -172,15 +198,22 @@ export async function gradeSubmissionCodeTest(
   criteria: CodeTestCriteria | undefined,
   runLines?: string[],
   pageResults?: CodeTestResult[],
+  turtle?: TurtleRecord,
 ): Promise<{ passed: boolean; testResults: CodeTestResult[] }> {
   const result = evaluateSubmissionCodeTest(
     submission,
     criteria,
     runLines,
     pageResults,
+    turtle,
   );
   if (result.passed) return result;
-  if (criteria?.expectedOutput || criteria?.expectedRows?.length || hasPageChecks(criteria)) {
+  if (
+    criteria?.expectedOutput ||
+    criteria?.expectedRows?.length ||
+    criteria?.turtleChecks?.length ||
+    hasPageChecks(criteria)
+  ) {
     return result;
   }
 
@@ -270,6 +303,55 @@ export async function gradeSubmissionCodeTest(
   };
 }
 
+export type ProgramRun = {
+  /** Console text, with each typed answer shown on its question line. */
+  lines: string[];
+  /** What the program printed, without those typed answers folded in. */
+  raw: string[];
+  /** What a turtle program drew, for `turtleChecks`. */
+  turtle?: TurtleRecord;
+};
+
+/** A question the program printed, waiting for one typed answer in the console. */
+export type ConsoleQuestion = {
+  /** Text after the last line break, such as "Guess 1 to 10: ". */
+  prompt: string;
+  /** The lesson's answer for this read, when it gave one. */
+  defaultValue: string;
+};
+
+const LIVE_ANSWER_LIMIT = 30;
+
+export const TOO_MANY_ANSWERS_MESSAGE =
+  "Your program asked for an answer 30 times, so it was stopped. Check the loop that asks for input.";
+
+function programLines(result: CodeRunResult): string[] {
+  if (result.waiting) return [...result.logs, MORE_INPUT_MESSAGE];
+  return formatRunOutput(result);
+}
+
+/** Lines around the printed block: a host note before it, pictures and errors after it. */
+function aroundPrinted(result: CodeRunResult): { before: string[]; after: string[] } {
+  const printed = result.stdout?.trim() ? trimProgramOutput(result.stdout) : [];
+  const start = printed.length ? result.logs.indexOf(printed[0]) : -1;
+  if (start < 0) {
+    const note = result.logs.filter((line) => /^This coding host /.test(line));
+    return { before: note, after: result.logs.filter((line) => !note.includes(line)) };
+  }
+  return {
+    before: result.logs.slice(0, start),
+    after: result.logs.slice(start + printed.length),
+  };
+}
+
+/** Console lines with typed answers placed after their questions. */
+function linesWithAnswers(result: CodeRunResult, shown: string): string[] {
+  const { before, after } = aroundPrinted(result);
+  const body = shown.trim() ? trimProgramOutput(shown) : [];
+  const tail = result.error ? [...after, `Error: ${result.error}`] : after;
+  return [...before, ...body, ...tail];
+}
+
 /** Judge0 execution for runnable languages; web previews run in-browser instead. */
 export async function runSubmissionCodeOutput(
   submission: CodeTestSubmission,
@@ -280,35 +362,88 @@ export async function runSubmissionCodeOutput(
     version?: string;
     files?: Record<string, string>;
     setupSql?: string;
+    /** Ask for one answer in the console. Null means the learner stopped. */
+    askLine?: (question: ConsoleQuestion) => Promise<string | null>;
+    /** Console lines while the program is still running or waiting. */
+    onProgress?: (lines: string[]) => void;
   },
-): Promise<string[]> {
+): Promise<ProgramRun | null> {
   const graded = resolveGradedLanguage(submission.language);
   if (submission.language?.trim() && !graded) {
-    return [`Error: Code execution is not supported for "${submission.language}".`];
+    const message = `Error: Code execution is not supported for "${submission.language}".`;
+    return { lines: [message], raw: [message] };
   }
   const language = graded ?? normalizeRunLanguage(submission.language);
   if (resolveUseWebWorkspace(language, criteria, submission.runtime)) {
-    return [];
+    return { lines: [], raw: [] };
   }
 
   if (isTurtlePythonCode(submission.code, language)) {
     if (!options?.turtleTargetId) {
-      return ["Error: The Turtle canvas is not available."];
+      const message = "Error: The Turtle canvas is not available.";
+      return { lines: [message], raw: [message] };
     }
-    const result = await executeTurtleCode(
-      submission.code,
-      options.turtleTargetId,
-    );
-    return formatRunOutput(result, "✓ Turtle drawing complete.");
+    const result = await executeTurtleCode(submission.code, options.turtleTargetId, {
+      onOutput: options.onProgress,
+    });
+    const lines = formatRunOutput(result, "✓ Turtle drawing complete.");
+    return { lines, raw: lines, turtle: result.turtle };
   }
 
-  const result = await executeStudentCode(submission.code, language, {
-    stdin: options?.stdin,
-    version: options?.version ?? submission.version,
-    files: options?.files ?? submission.files,
-    setupSql: options?.setupSql ?? submission.setupSql,
-  });
-  return formatRunOutput(result);
+  const execute = (stdin: string | undefined, live: boolean, seed?: number) =>
+    executeStudentCode(submission.code, language, {
+      stdin,
+      version: options?.version ?? submission.version,
+      files: options?.files ?? submission.files,
+      setupSql: options?.setupSql ?? submission.setupSql,
+      live,
+      seed,
+    });
+
+  const askLine = options?.askLine;
+  if (!askLine || !canUseLiveInput(submission.code, language)) {
+    const result = await execute(options?.stdin, false);
+    const lines = programLines(result);
+    return { lines, raw: lines };
+  }
+
+  // Live input: run, and each time the program waits, ask in the console and
+  // run again with every answer so far. The seed keeps random numbers the same.
+  const seed = Math.floor(Math.random() * 2_000_000_000) + 1;
+  const defaults = (options?.stdin ?? "").replace(/\r\n/g, "\n").split("\n");
+  const answers: string[] = [];
+  const cuts: number[] = [];
+  for (;;) {
+    const stdin = answers.length ? `${answers.join("\n")}\n` : "";
+    const result = await execute(stdin, true, seed);
+    const stdout = result.stdout ?? "";
+    const shown = interleaveAnswers(stdout, answers, cuts);
+
+    if (!result.waiting) {
+      const lines = answers.length ? linesWithAnswers(result, shown) : programLines(result);
+      return { lines, raw: programLines(result) };
+    }
+    if (answers.length >= LIVE_ANSWER_LIMIT) {
+      const lines = [...linesWithAnswers({ ...result, waiting: false }, shown), TOO_MANY_ANSWERS_MESSAGE];
+      return { lines, raw: [...formatRunOutput({ ...result, waiting: false }), TOO_MANY_ANSWERS_MESSAGE] };
+    }
+
+    const { lines: done, pending } = splitPendingLine(shown);
+    const notes = aroundPrinted(result).before;
+    options?.onProgress?.([...notes, ...done]);
+    const value = await askLine({
+      prompt: pending,
+      defaultValue: defaults[answers.length] ?? "",
+    });
+    if (value === null) {
+      options?.onProgress?.([...notes, ...done, ...(pending ? [pending] : []), TURTLE_STOPPED_MESSAGE]);
+      return null;
+    }
+    const answer = value.replace(/\r?\n/g, " ");
+    cuts.push(stdout.length);
+    answers.push(answer);
+    options?.onProgress?.([...notes, ...done, `${pending}${answer}`, "⏳ Running…"]);
+  }
 }
 
 export function submissionHasContent(
@@ -319,9 +454,11 @@ export function submissionHasContent(
   if (resolveUseWebWorkspace(language, criteria, submission.runtime)) {
     return submission.webCode ? hasWebCodeContent(submission.webCode) : false;
   }
+  if (submission.webCode && !submission.code.trim()) {
+    return hasWebCodeContent(submission.webCode);
+  }
   return submission.code.trim().length > 0;
 }
-
 export function buildTryCodeResultLines(
   runOutput: string[],
   passed: boolean,

@@ -1,6 +1,10 @@
 export type CodeRunResult = {
   logs: string[];
   error?: string;
+  /** The program asked for a line that was not in the input. */
+  waiting?: boolean;
+  /** Everything the program printed, exactly as written, without picture lines. */
+  stdout?: string;
 };
 
 function javaIdentChar(ch: string | undefined): boolean {
@@ -74,7 +78,8 @@ export function prepareCodeForExecution(code: string, language?: string): string
   const definesPrint = /(?:const|let|var|function)\s+print\b/.test(code);
   const usesPrint = /\bprint\s*\(/.test(code);
   if (usesPrint && !definesPrint) {
-    return `const print = (...args) => console.log(...args);\n${code}`;
+    // A function declaration is hoisted, so it can go last and error lines stay the learner's.
+    return `${code}\nfunction print(...args) { console.log(...args); }\n`;
   }
   return code;
 }

@@ -34,6 +34,11 @@ export const PRIVATE_PATHS = {
   CURRICULUM_PREVIEW: "/curriculum-preview",
   CURRICULUM_EDIT: "/curriculum-edit",
   MARKETING_TOOL: "/marketing-tool",
+  /** Interactive tests (flashcard-style cards, grades and recommendations). */
+  TESTS: "/tests",
+  TEST_INTRO: "/tests/:testId",
+  TEST_ATTEMPT: "/tests/:testId/attempt/:attemptId",
+  TEST_RESULT: "/tests/attempts/:attemptId",
 };
 
 export const ACTION = {

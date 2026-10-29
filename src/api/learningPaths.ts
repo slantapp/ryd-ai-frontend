@@ -21,17 +21,57 @@ export type ApiLearningPathUnit = {
   steps: ApiLearningPathStep[];
 };
 
+export type ApiLearningPathTaxonomyRef = {
+  id: number;
+  title: string;
+  slug: string;
+  icon: string | null;
+  categoryId?: number | null;
+};
+
 export type ApiLearningPath = {
   id: number;
   title: string;
   slug: string;
   /** Icon key; the app draws it with PATHWAY_ICONS (components/icons.ts). */
   icon: string;
+  /** beginner | intermediate | advanced */
+  level?: string | null;
+  subcategoryId?: number | null;
+  subcategory?: ApiLearningPathTaxonomyRef | null;
+  category?: ApiLearningPathTaxonomyRef | null;
+  sortOrder?: number;
   units: ApiLearningPathUnit[];
+};
+
+export type ApiLearningPathBrowseSubcategory = {
+  id: number;
+  title: string;
+  slug: string;
+  icon: string | null;
+  sortOrder: number;
+  paths: ApiLearningPath[];
+};
+
+export type ApiLearningPathBrowseCategory = {
+  id: number;
+  title: string;
+  slug: string;
+  icon: string;
+  example: string | null;
+  subcategories: ApiLearningPathBrowseSubcategory[];
 };
 
 /** Published learning paths (admin-built from existing curricula); hidden curricula are already left out. */
 export async function fetchVisibleLearningPaths() {
   const res = await axiosInstance.get<ApiEnvelope<ApiLearningPath[]>>("/parent/learning-path/visible");
+  return res.data;
+}
+
+/** Category → subcategory → paths tree for the course browser. */
+export async function fetchLearningPathBrowse() {
+  const res = await axiosInstance.get<ApiEnvelope<ApiLearningPathBrowseCategory[]>>(
+    "/parent/learning-path/browse",
+  );
   return res.data;
 }

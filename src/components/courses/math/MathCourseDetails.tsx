@@ -16,6 +16,7 @@ import {
   getModuleIndexForLesson,
   getLessonIndexInCurriculum,
   getLessonByIndex,
+  getCourseDurationMeta,
 } from "@/data/curriculumData";
 import { applySubtitleShow } from "@/features/curriculum-preview/v2/subtitleShow";
 import {
@@ -66,6 +67,7 @@ import {
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
 import { LessonStartGate } from "@/components/courses/LessonStartGate";
+import { CourseTestLink } from "@/features/tests/components/CourseTestLink";
 import {
   createLearningStreakState,
   notifyLearningAnswerOutcome,
@@ -2323,10 +2325,14 @@ function MathCourseDetailsInner() {
                     "Guided practice",
                     "Check your work",
                   ]}
+                  meta={getCourseDurationMeta(curriculum)}
                   footer={
-                    canResume ? (
-                      <CourseProgressResetLink onReset={handleRestartCourse} />
-                    ) : null
+                    <>
+                      {canResume ? (
+                        <CourseProgressResetLink onReset={handleRestartCourse} />
+                      ) : null}
+                      <CourseTestLink courseSlug={exercise} />
+                    </>
                   }
                 />
               </div>

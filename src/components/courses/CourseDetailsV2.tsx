@@ -19,7 +19,7 @@ import type { LessonV2 } from "@/features/curriculum-preview/v2/types";
 import { PageLoadWaitBanner } from "@/components/courses/exercise/PageLoadWaitBanner";
 import { prefetchMonacoEditor } from "@/components/courses/exercise/MonacoEditorLazy";
 import { MOBILE_INSTRUCTOR_AUDIO_BUTTON } from "@/constants/mobileInstructorAudio";
-import { getCurriculumEntryBySlug } from "@/data/curriculumData";
+import { getCourseDurationMeta, getCurriculumEntryBySlug } from "@/data/curriculumData";
 import { useMediaQueryMinLg } from "@/hooks/useMediaQueryMinLg";
 import { useCoursesStore } from "@/stores/coursesStore";
 import {
@@ -29,6 +29,7 @@ import {
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
 import { LessonStartGate } from "@/components/courses/LessonStartGate";
+import { CourseTestLink } from "@/features/tests/components/CourseTestLink";
 import {
   clearV2LessonDraft,
   loadV2LessonDraft,
@@ -447,10 +448,14 @@ export default function CourseDetailsV2() {
           onStart={handleStartLesson}
           avatarSlot={avatarSlot}
           showAvatar={isLgUp}
+          meta={getCourseDurationMeta(curriculum)}
           footer={
-            canResume ? (
-              <CourseProgressResetLink onReset={handleRestartCourse} />
-            ) : null
+            <>
+              {canResume ? (
+                <CourseProgressResetLink onReset={handleRestartCourse} />
+              ) : null}
+              <CourseTestLink courseSlug={exercise} />
+            </>
           }
         />
       ) : isCourseCompleted && currentLesson ? (

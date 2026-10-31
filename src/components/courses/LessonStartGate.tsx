@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Play } from "lucide-react";
+import { BookOpen, Clock, Play, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatLessonMinutes, type CourseDurationMeta } from "@/data/curriculumData";
 
 type LessonStartGateProps = {
   heading: string;
@@ -14,6 +15,8 @@ type LessonStartGateProps = {
   /** e.g. CourseProgressResetLink */
   footer?: ReactNode;
   chips?: string[];
+  /** Course length shown above the button. Chips without a value are hidden. */
+  meta?: CourseDurationMeta;
   className?: string;
 };
 
@@ -33,8 +36,19 @@ export function LessonStartGate({
   showAvatar = false,
   footer,
   chips = DEFAULT_CHIPS,
+  meta,
   className,
 }: LessonStartGateProps) {
+  const metaItems = [
+    meta?.duration ? { key: "duration", Icon: Clock, label: `${meta.duration} to complete` } : null,
+    meta?.lessonCount
+      ? { key: "lessons", Icon: BookOpen, label: `${meta.lessonCount} ${meta.lessonCount === 1 ? "lesson" : "lessons"}` }
+      : null,
+    meta?.totalMinutes
+      ? { key: "minutes", Icon: Timer, label: `About ${formatLessonMinutes(meta.totalMinutes)} of lessons` }
+      : null,
+  ].filter((item): item is NonNullable<typeof item> => item !== null);
+
   return (
     <div
       className={cn(
@@ -79,6 +93,23 @@ export function LessonStartGate({
           <p className="mt-2 font-inter text-sm leading-relaxed text-[#666666]">
             {description}
           </p>
+
+          {metaItems.length > 0 ? (
+            <ul
+              className="mt-4 flex flex-wrap items-center justify-center gap-1.5 font-inter text-xs text-[#4F4D55]"
+              aria-label="Course length"
+            >
+              {metaItems.map(({ key, Icon, label }) => (
+                <li
+                  key={key}
+                  className="inline-flex items-center gap-1 rounded-full border border-primary/15 bg-white/80 px-2.5 py-1"
+                >
+                  <Icon className="size-3.5 shrink-0 text-primary" aria-hidden />
+                  <span>{label}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
           <button
             type="button"

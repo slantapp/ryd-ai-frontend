@@ -322,11 +322,36 @@ export function isDemoCourseSlug(slug: string | null | undefined): boolean {
   return slug === DEMO_COURSE_SLUG;
 }
 
-/** Curricula loaded from `/parent/curriculum/visible`. */
-let remoteCurricula: CurriculumEntry[] = [];
+/**
+ * One course card from `/parent/curriculum/visible?view=summary`: card fields and counts,
+ * with no modules or lessons. Load the full course with `GET /parent/curriculum/slug/:slug`.
+ */
+export type CurriculumSummary = {
+  slug: string;
+  curriculumId?: number;
+  schema_version?: number;
+  /** Last content edit (falls back to updatedAt); a newer value means a cached course is stale. */
+  contentUpdatedAt?: string | null;
+  curriculum: Pick<
+    Curriculum["curriculum"],
+    "title" | "description" | "language" | "category" | "age" | "class"
+  > &
+    Partial<
+      Pick<Curriculum["curriculum"], "grade" | "duration" | "level" | "rating">
+    >;
+  moduleCount?: number;
+  lessonCount?: number;
+  questionCount?: number;
+  totalMinutes?: number | null;
+};
 
-function normalizeCurriculumEntry(entry: CurriculumEntry): CurriculumEntry {
-  const raw = entry as CurriculumEntry & {
+/** Course list (summaries) from `/parent/curriculum/visible?view=summary`. */
+let remoteCurricula: CurriculumSummary[] = [];
+/** Full courses loaded one at a time by slug (course player, learning paths). */
+const fullCurricula = new Map<string, CurriculumEntry>();
+
+function normalizeCurriculumId<T extends { curriculumId?: number }>(entry: T): T {
+  const raw = entry as T & {
     id?: number;
     curriculum_id?: number;
   };
@@ -341,21 +366,29 @@ function normalizeCurriculumEntry(entry: CurriculumEntry): CurriculumEntry {
   return curriculumId !== undefined ? { ...entry, curriculumId } : entry;
 }
 
-export function setRemoteCurricula(curricula: CurriculumEntry[]): void {
-  remoteCurricula = curricula.map(normalizeCurriculumEntry);
+export function setRemoteCurricula(curricula: CurriculumSummary[]): void {
+  remoteCurricula = curricula.map(normalizeCurriculumId);
+}
+
+/** Stores a full course from `GET /parent/curriculum/slug/:slug`. */
+export function setFullCurriculum(entry: CurriculumEntry): void {
+  fullCurricula.set(entry.slug, normalizeCurriculumId(entry));
+}
+
+export function getCurriculumSummaryBySlug(slug: string): CurriculumSummary | null {
+  return remoteCurricula.find((curriculum) => curriculum.slug === slug) || null;
 }
 
 /** Resolves the API curriculum id for feedback and other parent endpoints. */
 export function getCurriculumIdBySlug(slug: string): number | null {
-  const entry = getCurriculumEntryBySlug(slug);
-  if (!entry?.curriculumId || !Number.isFinite(entry.curriculumId)) {
-    return null;
-  }
-  return entry.curriculumId;
+  const id =
+    getCurriculumSummaryBySlug(slug)?.curriculumId ??
+    fullCurricula.get(slug)?.curriculumId;
+  return typeof id === "number" && Number.isFinite(id) ? id : null;
 }
 
 export function getCourseTitleBySlug(slug: string): string {
-  const entry = getCurriculumEntryBySlug(slug);
+  const entry = getCurriculumSummaryBySlug(slug) ?? getCurriculumEntryBySlug(slug);
   if (!entry) return slug;
   const data = entry.curriculum as { title?: string };
   return typeof data.title === "string" && data.title.trim()
@@ -363,17 +396,32 @@ export function getCourseTitleBySlug(slug: string): string {
     : slug;
 }
 
-/** Visible curriculums from the API only (no bundled local JSON). */
-export function getAllCurricula(): Curriculum[] {
-  return remoteCurricula as Curriculum[];
+/** Visible course list from the API (card fields and counts only, no lessons). */
+export function getCurriculumSummaries(): CurriculumSummary[] {
+  return remoteCurricula;
 }
 
-/** Raw entry by slug — includes bundled demo v2 and API v1/v2 payloads. */
+/** True when the full course is loaded and not older than the list says. */
+export function isFullCurriculumFresh(slug: string): boolean {
+  const full = fullCurricula.get(slug) as
+    | (CurriculumEntry & { contentUpdatedAt?: string | null; updatedAt?: string | null })
+    | undefined;
+  if (!full) return false;
+  const listed = getCurriculumSummaryBySlug(slug)?.contentUpdatedAt;
+  if (!listed) return true;
+  const loaded = full.contentUpdatedAt ?? full.updatedAt;
+  return !loaded || new Date(loaded).getTime() >= new Date(listed).getTime();
+}
+
+/**
+ * Full course by slug: the bundled demo, or a course already loaded with `ensureCurriculum`.
+ * Returns null until the course is loaded; list summaries are never returned here.
+ */
 export function getCurriculumEntryBySlug(slug: string): CurriculumEntry | null {
   if (isDemoCourseSlug(slug)) {
     return getDemoCurriculumV2();
   }
-  return remoteCurricula.find((curriculum) => curriculum.slug === slug) || null;
+  return fullCurricula.get(slug) ?? null;
 }
 
 // Helper function to get curriculum by slug (bundled demo is v2 — use getDemoCurriculumV2)
@@ -381,8 +429,7 @@ export function getCurriculumBySlug(slug: string): Curriculum | null {
   if (isDemoCourseSlug(slug)) {
     return null;
   }
-  const entry = remoteCurricula.find((curriculum) => curriculum.slug === slug);
-  return (entry as Curriculum | undefined) || null;
+  return (fullCurricula.get(slug) as Curriculum | undefined) ?? null;
 }
 
 // Helper to find the module containing a lesson and whether it's the last lesson in that module
@@ -447,3 +494,45 @@ export function isNextModule(
 
 // Course `age`, `class`, `duration`, `level`, and `rating` live on each curriculum from the API.
 // Card images are resolved from curriculum title via `src/utils/courseImage.ts`.
+
+export interface CourseDurationMeta {
+  /** Free-text estimate from the curriculum, e.g. "6 weeks". Never invented. */
+  duration?: string;
+  lessonCount?: number;
+  /** Sum of v2 `estimated_minutes`; only set when at least one lesson has it. */
+  totalMinutes?: number;
+}
+
+type DurationSource = {
+  duration?: string;
+  // v1 lessons have no estimated_minutes; v2 lessons may.
+  modules?: ReadonlyArray<{ lessons?: ReadonlyArray<object> }>;
+};
+
+/** Duration, lesson count and lesson minutes for the start / continue gate (v1, v2 and maths). */
+export function getCourseDurationMeta(curriculum: DurationSource | null | undefined): CourseDurationMeta {
+  if (!curriculum) return {};
+  const duration = typeof curriculum.duration === "string" ? curriculum.duration.trim() : "";
+  let lessonCount = 0;
+  let totalMinutes = 0;
+  for (const mod of curriculum.modules ?? []) {
+    for (const lesson of mod?.lessons ?? []) {
+      lessonCount++;
+      const minutes = Number((lesson as { estimated_minutes?: unknown }).estimated_minutes);
+      if (Number.isFinite(minutes) && minutes > 0) totalMinutes += minutes;
+    }
+  }
+  return {
+    duration: duration || undefined,
+    lessonCount: lessonCount || undefined,
+    totalMinutes: totalMinutes ? Math.round(totalMinutes) : undefined,
+  };
+}
+
+/** "3 h 20 min", "45 min". */
+export function formatLessonMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (!h) return `${m} min`;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}

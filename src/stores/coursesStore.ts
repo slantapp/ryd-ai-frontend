@@ -2,11 +2,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
-  getAllCurricula,
+  getCurriculumSummaries,
   isDemoCourseSlug,
+  isFullCurriculumFresh,
+  setFullCurriculum,
   setRemoteCurricula,
-  type Curriculum,
-  type CurriculumEntry,
+  type CurriculumSummary,
 } from "../data/curriculumData";
 import {
   resolveCourseCategoryId,
@@ -19,7 +20,10 @@ import {
   upsertCourseProgress as upsertCourseProgressRequest,
   type CourseProgressPutBody,
 } from "@/api/courseProgress";
-import { fetchVisibleCurriculums as fetchVisibleCurriculumsRequest } from "@/api/curriculum";
+import {
+  fetchCurriculumBySlug as fetchCurriculumBySlugRequest,
+  fetchVisibleCurriculums as fetchVisibleCurriculumsRequest,
+} from "@/api/curriculum";
 import {
   getCourseImageFallback,
   resolveCourseImages as resolveCourseImagesRequest,
@@ -48,7 +52,7 @@ export interface Course {
 
 /** Static listing metadata only — progress comes from API via `courseProgress`. */
 function curriculumToCourse(
-  curriculum: Curriculum,
+  curriculum: CurriculumSummary,
   courseImages: Record<string, string>,
 ): Course {
   const {
@@ -86,7 +90,7 @@ function curriculumToCourse(
 }
 
 function buildCoursesFromCurricula(
-  curricula: Curriculum[],
+  curricula: CurriculumSummary[],
   courseImages: Record<string, string>,
 ): Course[] {
   return curricula.map((curriculum) =>
@@ -172,6 +176,8 @@ interface CoursesState {
   courseProgress: CourseProgressData;
   /** Bumped when visible curriculums are loaded from the API. */
   curriculaRevision: number;
+  /** Bumped when a full course is loaded by slug (`ensureCurriculum`). */
+  fullCurriculaRevision: number;
   curriculaLoading: boolean;
   curriculaFetched: boolean;
   /** Bumped when async course images finish resolving. */
@@ -188,7 +194,10 @@ interface CoursesState {
   ) => void;
   getCourseProgress: (slug: string) => CourseProgressDataEntry | null;
   fetchAllCourseProgress: () => Promise<void>;
-  fetchVisibleCurriculums: () => Promise<void>;
+  /** Loads the course list; reuses a load from the last minute unless `force`. */
+  fetchVisibleCurriculums: (options?: { force?: boolean }) => Promise<void>;
+  /** Loads one full course by slug (cached for the session, reloaded when the list shows a newer edit). */
+  ensureCurriculum: (slug: string) => Promise<EnsureCurriculumResult>;
   resolveCourseImages: () => Promise<void>;
   hydrateCourseProgressFromApi: (slug: string) => Promise<void>;
   getAllCourses: () => Course[];
@@ -197,6 +206,14 @@ interface CoursesState {
   getEnrolledCourses: () => Course[];
   reset: () => void;
 }
+
+export type EnsureCurriculumResult = "ok" | "not_found" | "error";
+
+/** A list load newer than this is reused instead of asking the API again. */
+const CURRICULA_REUSE_MS = 60_000;
+let curriculaRequest: Promise<void> | null = null;
+let curriculaLoadedAt = 0;
+const curriculumRequests = new Map<string, Promise<EnsureCurriculumResult>>();
 
 async function flushProgressToApi(
   slug: string,
@@ -270,6 +287,7 @@ export const useCoursesStore = create<CoursesState>()(
       wishlist: new Set<string>(),
       courseProgress: {},
       curriculaRevision: 0,
+      fullCurriculaRevision: 0,
       curriculaLoading: false,
       curriculaFetched: false,
       courseImagesRevision: 0,
@@ -298,27 +316,68 @@ export const useCoursesStore = create<CoursesState>()(
           /* ignore — dashboard still usable */
         }
       },
-      fetchVisibleCurriculums: async () => {
-        set({ curriculaLoading: true });
-        try {
-          const res = await fetchVisibleCurriculumsRequest();
-          if (!res.status || !Array.isArray(res.data)) {
-            set({ curriculaFetched: true, curriculaLoading: false });
-            return;
-          }
-          setRemoteCurricula(res.data as CurriculumEntry[]);
-          set((state) => ({
-            curriculaRevision: state.curriculaRevision + 1,
-            curriculaFetched: true,
-            curriculaLoading: false,
-          }));
-          await get().resolveCourseImages();
-        } catch {
-          set({ curriculaFetched: true, curriculaLoading: false });
+      fetchVisibleCurriculums: (options) => {
+        // Several screens ask on mount; share one request and reuse a recent list.
+        if (curriculaRequest) return curriculaRequest;
+        if (
+          !options?.force &&
+          get().curriculaFetched &&
+          Date.now() - curriculaLoadedAt < CURRICULA_REUSE_MS
+        ) {
+          return Promise.resolve();
         }
+        curriculaRequest = (async () => {
+          set({ curriculaLoading: true });
+          try {
+            const res = await fetchVisibleCurriculumsRequest();
+            if (!res.status || !Array.isArray(res.data)) {
+              set({ curriculaFetched: true, curriculaLoading: false });
+              return;
+            }
+            setRemoteCurricula(res.data);
+            curriculaLoadedAt = Date.now();
+            set((state) => ({
+              curriculaRevision: state.curriculaRevision + 1,
+              curriculaFetched: true,
+              curriculaLoading: false,
+            }));
+            await get().resolveCourseImages();
+          } catch {
+            set({ curriculaFetched: true, curriculaLoading: false });
+          } finally {
+            curriculaRequest = null;
+          }
+        })();
+        return curriculaRequest;
+      },
+      ensureCurriculum: (slug) => {
+        if (isDemoCourseSlug(slug) || isFullCurriculumFresh(slug)) {
+          return Promise.resolve("ok");
+        }
+        const pending = curriculumRequests.get(slug);
+        if (pending) return pending;
+        const request = (async (): Promise<EnsureCurriculumResult> => {
+          try {
+            const res = await fetchCurriculumBySlugRequest(slug);
+            if (!res.status || !res.data) return "not_found";
+            setFullCurriculum(res.data);
+            set((state) => ({
+              fullCurriculaRevision: state.fullCurriculaRevision + 1,
+            }));
+            return "ok";
+          } catch (error) {
+            const status = (error as { response?: { status?: number } })
+              ?.response?.status;
+            return status === 404 ? "not_found" : "error";
+          } finally {
+            curriculumRequests.delete(slug);
+          }
+        })();
+        curriculumRequests.set(slug, request);
+        return request;
       },
       resolveCourseImages: async () => {
-        const curricula = getAllCurricula();
+        const curricula = getCurriculumSummaries();
         const resolved = await resolveCourseImagesRequest(
           curricula.map((curriculum) => ({
             slug: curriculum.slug,
@@ -422,7 +481,7 @@ export const useCoursesStore = create<CoursesState>()(
       getAllCourses: () => {
         const state = get();
         return buildCoursesFromCurricula(
-          getAllCurricula(),
+          getCurriculumSummaries(),
           state.courseImages,
         ).map((course) => {
           const progress = state.courseProgress[course.slug];
@@ -439,7 +498,7 @@ export const useCoursesStore = create<CoursesState>()(
       },
       getCompletedCourses: () => {
         const state = get();
-        return buildCoursesFromCurricula(getAllCurricula(), state.courseImages)
+        return buildCoursesFromCurricula(getCurriculumSummaries(), state.courseImages)
           .filter((course) => {
             const progress = state.courseProgress[course.slug];
             return progress?.status === "completed";
@@ -459,7 +518,7 @@ export const useCoursesStore = create<CoursesState>()(
       },
       getOngoingCourses: () => {
         const state = get();
-        return buildCoursesFromCurricula(getAllCurricula(), state.courseImages)
+        return buildCoursesFromCurricula(getCurriculumSummaries(), state.courseImages)
           .filter((course) => {
             const progress = state.courseProgress[course.slug];
             return progress?.status === "ongoing";
@@ -479,7 +538,7 @@ export const useCoursesStore = create<CoursesState>()(
       getEnrolledCourses: () => {
         const state = get();
         return buildCoursesFromCurricula(
-          getAllCurricula(),
+          getCurriculumSummaries(),
           state.courseImages,
         ).filter((course) => {
           const progress = state.courseProgress[course.slug];

@@ -11,7 +11,7 @@ import { fetchLearningStats, type LearningStats } from "@/api/learningStats";
 import { getCurriculumEntryBySlug } from "@/data/curriculumData";
 import { loadV2LessonDraft } from "@/features/curriculum-preview/v2/lessonPersist";
 import { useCoursesStore } from "@/stores/coursesStore";
-import { buildPathway, type BuiltPathway } from "./fromApi";
+import { buildPathway, pathwayId, type BuiltPathway } from "./fromApi";
 import { computePathProgress, type PathProgress } from "./lessonProgress";
 import { findNode } from "./progress";
 import { usePathwayUi } from "./store";
@@ -70,6 +70,9 @@ export default function LearningPathwaysPage() {
   const courseProgress = useCoursesStore((s) => s.courseProgress);
   const curriculaRevision = useCoursesStore((s) => s.curriculaRevision);
   const curriculaFetched = useCoursesStore((s) => s.curriculaFetched);
+  const fullCurriculaRevision = useCoursesStore((s) => s.fullCurriculaRevision);
+  /** The course list has no lessons; the path's courses are loaded by slug before building. */
+  const [pathCoursesLoaded, setPathCoursesLoaded] = useState(false);
   const ui = usePathwayUi();
 
   const refreshStats = useCallback(() => {
@@ -105,14 +108,28 @@ export default function LearningPathwaysPage() {
     };
   }, [refreshStats]);
 
+  useEffect(() => {
+    if (!apiPaths) return;
+    let cancelled = false;
+    const slugs = new Set(apiPaths.flatMap((p) => p.units.flatMap((u) => u.steps.map((step) => step.slug))));
+    const { ensureCurriculum } = useCoursesStore.getState();
+    // A course that fails to load is left out, as before when its JSON was missing.
+    void Promise.all([...slugs].map((slug) => ensureCurriculum(slug))).then(() => {
+      if (!cancelled) setPathCoursesLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiPaths]);
+
   const built = useMemo<BuiltPathway[]>(() => {
-    if (!apiPaths) return [];
+    if (!apiPaths || !pathCoursesLoaded) return [];
     return apiPaths
       .map((p) => buildPathway(p, (slug) => getCurriculumEntryBySlug(slug)?.curriculum))
       .filter((b) => b.pathway.units.length > 0);
-    // curriculaRevision: rebuild when visible curricula finish loading
+    // Revisions: rebuild when the list or a path course finishes loading.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiPaths, curriculaRevision]);
+  }, [apiPaths, pathCoursesLoaded, curriculaRevision, fullCurriculaRevision]);
 
   const progressByPath = useMemo(() => {
     const out: Record<string, PathProgress> = {};
@@ -125,14 +142,15 @@ export default function LearningPathwaysPage() {
   if (error) {
     return <PathwayMessage title="Couldn't load learning paths" body="Check your connection and refresh the page." />;
   }
+  const loading = (
+    <div className="flex min-h-[50vh] items-center justify-center text-[#4F4D55]">
+      <Loader2 className="mr-2 size-5 animate-spin" /> Loading learning paths…
+    </div>
+  );
   if (!apiPaths || browseCategories == null || (apiPaths.length > 0 && !curriculaFetched)) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center text-[#4F4D55]">
-        <Loader2 className="mr-2 size-5 animate-spin" /> Loading learning paths…
-      </div>
-    );
+    return loading;
   }
-  if (!built.length) {
+  if (!apiPaths.length) {
     return (
       <PathwayMessage
         title="No learning paths yet"
@@ -142,7 +160,12 @@ export default function LearningPathwaysPage() {
   }
 
   const activeBuilt = built.find((b) => b.pathway.id === ui.activePathwayId);
-  const showBrowser = !activeBuilt && browseCategories.length > 0;
+  // A path the learner already opened: wait for its courses rather than flash the browser.
+  const reopeningPath =
+    !pathCoursesLoaded && apiPaths.some((p) => pathwayId(p.id) === ui.activePathwayId);
+  // The browser only needs the browse data; course lessons load in the background and
+  // fill in each card's progress when they arrive.
+  const showBrowser = !activeBuilt && browseCategories.length > 0 && !reopeningPath;
 
   if (showBrowser) {
     return (
@@ -150,6 +173,17 @@ export default function LearningPathwaysPage() {
         categories={browseCategories}
         progressByPath={progressByPath}
         onOpenPath={ui.setActivePathway}
+      />
+    );
+  }
+
+  // The journey draws every lesson, so it needs the path's courses loaded by slug.
+  if (!pathCoursesLoaded) return loading;
+  if (!built.length) {
+    return (
+      <PathwayMessage
+        title="No learning paths yet"
+        body="Learning paths will appear here once they're published. Meanwhile, explore all courses."
       />
     );
   }

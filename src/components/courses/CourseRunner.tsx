@@ -1,14 +1,17 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import {
   getCurriculumBySlug,
   getCurriculumEntryBySlug,
   getCourseTitleBySlug,
   getCurriculumIdBySlug,
+  isDemoCourseSlug,
+  isFullCurriculumFresh,
   type Curriculum,
 } from "@/data/curriculumData";
 import { isCurriculumV2 } from "@/features/curriculum-preview/v2/detect";
-import { useCoursesStore } from "@/stores/coursesStore";
+import { useCoursesStore, type EnsureCurriculumResult } from "@/stores/coursesStore";
 import {
   useCourseCompletionFeedback,
   type CourseFeedbackVariant,
@@ -43,7 +46,70 @@ function isMathematicsCurriculum(
   );
 }
 
+type LoadState = EnsureCurriculumResult | "loading";
+
+const isReady = (slug: string | undefined) =>
+  !slug || isDemoCourseSlug(slug) || isFullCurriculumFresh(slug);
+
+/**
+ * The course list has no lessons, so load this course by slug before mounting the player.
+ * The player is keyed by slug and mounts only once the course is in memory.
+ */
 export default function CourseRunner() {
+  const { exercise } = useParams<{ exercise: string }>();
+  const ensureCurriculum = useCoursesStore((s) => s.ensureCurriculum);
+  const [attempt, setAttempt] = useState(0);
+  const [load, setLoad] = useState<{ slug?: string; state: LoadState }>(() => ({
+    slug: exercise,
+    state: isReady(exercise) ? "ok" : "loading",
+  }));
+
+  useEffect(() => {
+    if (isReady(exercise)) {
+      setLoad({ slug: exercise, state: "ok" });
+      return;
+    }
+    let cancelled = false;
+    setLoad({ slug: exercise, state: "loading" });
+    void ensureCurriculum(exercise as string).then((state) => {
+      if (!cancelled) setLoad({ slug: exercise, state });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [exercise, ensureCurriculum, attempt]);
+
+  // Ignore a result left over from the previous slug while the effect catches up.
+  const state: LoadState = load.slug === exercise ? load.state : "loading";
+
+  if (state === "ok") return <CourseRunnerLoaded key={exercise} />;
+
+  return (
+    <div className="flex h-full min-h-80 w-full flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+      {state === "loading" ? (
+        <>
+          <Loader2 className="size-6 animate-spin text-primary" aria-hidden />
+          <p className="text-sm text-gray-500" role="status">Loading course…</p>
+        </>
+      ) : state === "not_found" ? (
+        <p className="text-sm text-gray-500">Course could not be found.</p>
+      ) : (
+        <>
+          <p className="text-sm text-gray-500" role="alert">The course could not be loaded. Check your connection and try again.</p>
+          <button
+            type="button"
+            onClick={() => setAttempt((n) => n + 1)}
+            className="rounded-lg border border-primary/30 px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
+          >
+            Try again
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function CourseRunnerLoaded() {
   const { exercise } = useParams<{ exercise: string }>();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackVariant, setFeedbackVariant] =

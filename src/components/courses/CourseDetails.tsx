@@ -25,6 +25,7 @@ import {
   getModuleIndexForLesson,
   getLessonIndexInCurriculum,
   getLessonByIndex,
+  getCourseDurationMeta,
 } from "../../data/curriculumData";
 import { applySubtitleShow } from "@/features/curriculum-preview/v2/subtitleShow";
 import {
@@ -105,6 +106,7 @@ import {
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
 import { LessonStartGate } from "@/components/courses/LessonStartGate";
+import { CourseTestLink } from "@/features/tests/components/CourseTestLink";
 import {
   createLearningStreakState,
   notifyLearningAnswerOutcome,
@@ -3453,12 +3455,16 @@ function CourseDetailInner({
                         canResume ? "Continue learning" : "Start learning"
                       }
                       onStart={handleStartLesson}
+                      meta={getCourseDurationMeta(curriculum)}
                       footer={
-                        canResume ? (
-                          <CourseProgressResetLink
-                            onReset={handleRestartCourse}
-                          />
-                        ) : null
+                        <>
+                          {canResume ? (
+                            <CourseProgressResetLink
+                              onReset={handleRestartCourse}
+                            />
+                          ) : null}
+                          <CourseTestLink courseSlug={exercise} />
+                        </>
                       }
                     />
                   )}

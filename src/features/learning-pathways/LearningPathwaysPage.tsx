@@ -36,6 +36,9 @@ export default function LearningPathwaysPage() {
   const courseProgress = useCoursesStore((s) => s.courseProgress);
   const curriculaRevision = useCoursesStore((s) => s.curriculaRevision);
   const curriculaFetched = useCoursesStore((s) => s.curriculaFetched);
+  const fullCurriculaRevision = useCoursesStore((s) => s.fullCurriculaRevision);
+  /** The course list has no lessons; the path's courses are loaded by slug before building. */
+  const [pathCoursesLoaded, setPathCoursesLoaded] = useState(false);
 
   const refreshStats = useCallback(() => {
     fetchLearningStats()
@@ -62,14 +65,28 @@ export default function LearningPathwaysPage() {
     };
   }, [refreshStats]);
 
+  useEffect(() => {
+    if (!apiPaths) return;
+    let cancelled = false;
+    const slugs = new Set(apiPaths.flatMap((p) => p.units.flatMap((u) => u.steps.map((step) => step.slug))));
+    const { ensureCurriculum } = useCoursesStore.getState();
+    // A course that fails to load is left out, as before when its JSON was missing.
+    void Promise.all([...slugs].map((slug) => ensureCurriculum(slug))).then(() => {
+      if (!cancelled) setPathCoursesLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiPaths]);
+
   const built = useMemo<BuiltPathway[]>(() => {
-    if (!apiPaths) return [];
+    if (!apiPaths || !pathCoursesLoaded) return [];
     return apiPaths
       .map((p) => buildPathway(p, (slug) => getCurriculumEntryBySlug(slug)?.curriculum))
       .filter((b) => b.pathway.units.length > 0);
-    // curriculaRevision: rebuild when visible curricula finish loading
+    // Revisions: rebuild when the list or a path course finishes loading.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiPaths, curriculaRevision]);
+  }, [apiPaths, pathCoursesLoaded, curriculaRevision, fullCurriculaRevision]);
 
   const progressByPath = useMemo(() => {
     const out: Record<string, PathProgress> = {};
@@ -82,7 +99,7 @@ export default function LearningPathwaysPage() {
   if (error) {
     return <PathwayMessage title="Couldn't load learning paths" body="Check your connection and refresh the page." />;
   }
-  if (!apiPaths || (apiPaths.length > 0 && !curriculaFetched)) {
+  if (!apiPaths || (apiPaths.length > 0 && (!curriculaFetched || !pathCoursesLoaded))) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center text-[#4F4D55]">
         <Loader2 className="mr-2 size-5 animate-spin" /> Loading learning paths…

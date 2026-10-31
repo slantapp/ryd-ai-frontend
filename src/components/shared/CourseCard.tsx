@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { isAgeClassFilterableCategory } from "@/data/courseCategories";
-import { type Course } from "@/stores/coursesStore";
+import { useCoursesStore, type Course } from "@/stores/coursesStore";
 import { getCourseImageFallback } from "@/utils/courseImage";
 
 interface CourseCardProps {
@@ -31,6 +31,9 @@ const CourseCard = ({
   wishlistButtonVariant = "toggle",
 }: CourseCardProps) => {
   const navigate = useNavigate();
+  const prefetchCourse = () => {
+    void useCoursesStore.getState().ensureCurriculum(course.slug);
+  };
   const [imgSrc, setImgSrc] = useState(course.img);
 
   useEffect(() => {
@@ -210,6 +213,9 @@ const CourseCard = ({
 
           <Button
             onClick={() => navigate(`/courses/${course.slug}`)}
+            // Start loading the course before the click lands (the list has no lessons).
+            onPointerEnter={prefetchCourse}
+            onFocus={prefetchCourse}
             className={cn(
               "h-9 w-full shrink-0 text-sm font-semibold transition-all",
               course.status === "completed"

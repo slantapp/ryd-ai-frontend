@@ -138,7 +138,9 @@ export function decodeCurriculumCode(segment: string): CurriculumCodePayload {
 function getApiBaseUrl(): string {
   return (
     import.meta.env.VITE_API_URL?.trim().replace(/\/$/, "") ||
-    "https://api-pro.rydlearning.com"
+    (import.meta.env.DEV
+      ? "http://localhost:4000"
+      : "https://api-pro.rydlearning.com")
   );
 }
 

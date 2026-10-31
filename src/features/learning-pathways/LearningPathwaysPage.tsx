@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowDown, ArrowUp, Flag, Loader2, Map as MapIcon, Play, Trophy } from "lucide-react";
-import { fetchVisibleLearningPaths, type ApiLearningPath } from "@/api/learningPaths";
+import { ArrowDown, ArrowLeft, ArrowUp, Flag, Loader2, Map as MapIcon, Play, Trophy } from "lucide-react";
+import {
+  fetchLearningPathBrowse,
+  fetchVisibleLearningPaths,
+  type ApiLearningPath,
+  type ApiLearningPathBrowseCategory,
+} from "@/api/learningPaths";
 import { fetchLearningStats, type LearningStats } from "@/api/learningStats";
 import { getCurriculumEntryBySlug } from "@/data/curriculumData";
 import { loadV2LessonDraft } from "@/features/curriculum-preview/v2/lessonPersist";
@@ -13,6 +18,7 @@ import { usePathwayUi } from "./store";
 import type { Badge, PathNodeState, PathUnit, Pathway } from "./types";
 import { UnitSection } from "./components/UnitSection";
 import { PathwaySwitcher } from "./components/PathwaySwitcher";
+import { PathBrowser } from "./components/PathBrowser";
 import { CelebrationModal, type CelebrationData } from "./components/Celebration";
 import { GuidebookDialog } from "./components/GuidebookDialog";
 import { pathwayIcon } from "./components/icons";
@@ -28,9 +34,37 @@ function v2DraftBeat(slug: string, lessonId: string): number | undefined {
   }
 }
 
+function flattenBrowsePaths(categories: ApiLearningPathBrowseCategory[]): ApiLearningPath[] {
+  const byId = new Map<number, ApiLearningPath>();
+  for (const cat of categories) {
+    for (const sub of cat.subcategories) {
+      for (const path of sub.paths) {
+        byId.set(path.id, {
+          ...path,
+          category: path.category ?? {
+            id: cat.id,
+            title: cat.title,
+            slug: cat.slug,
+            icon: cat.icon,
+          },
+          subcategory: path.subcategory ?? {
+            id: sub.id,
+            title: sub.title,
+            slug: sub.slug,
+            icon: sub.icon,
+            categoryId: cat.id,
+          },
+        });
+      }
+    }
+  }
+  return [...byId.values()];
+}
+
 /** Loads published learning paths, the courses they use, course progress and learning stats. */
 export default function LearningPathwaysPage() {
   const [apiPaths, setApiPaths] = useState<ApiLearningPath[] | null>(null);
+  const [browseCategories, setBrowseCategories] = useState<ApiLearningPathBrowseCategory[] | null>(null);
   const [error, setError] = useState(false);
   const [stats, setStats] = useState<LearningStats | null>(null);
   const courseProgress = useCoursesStore((s) => s.courseProgress);
@@ -39,6 +73,7 @@ export default function LearningPathwaysPage() {
   const fullCurriculaRevision = useCoursesStore((s) => s.fullCurriculaRevision);
   /** The course list has no lessons; the path's courses are loaded by slug before building. */
   const [pathCoursesLoaded, setPathCoursesLoaded] = useState(false);
+  const ui = usePathwayUi();
 
   const refreshStats = useCallback(() => {
     fetchLearningStats()
@@ -53,9 +88,17 @@ export default function LearningPathwaysPage() {
     if (!courses.curriculaFetched) void courses.fetchVisibleCurriculums();
     void courses.fetchAllCourseProgress();
     refreshStats();
-    fetchVisibleLearningPaths()
-      .then((res) => {
-        if (!cancelled) setApiPaths(Array.isArray(res?.data) ? res.data : []);
+    Promise.all([fetchVisibleLearningPaths(), fetchLearningPathBrowse()])
+      .then(([visibleRes, browseRes]) => {
+        if (cancelled) return;
+        const browse = Array.isArray(browseRes?.data) ? browseRes.data : [];
+        const fromBrowse = flattenBrowsePaths(browse);
+        const visible = Array.isArray(visibleRes?.data) ? visibleRes.data : [];
+        const byId = new Map<number, ApiLearningPath>();
+        for (const p of visible) byId.set(p.id, p);
+        for (const p of fromBrowse) byId.set(p.id, { ...byId.get(p.id), ...p });
+        setBrowseCategories(browse);
+        setApiPaths([...byId.values()]);
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -99,7 +142,7 @@ export default function LearningPathwaysPage() {
   if (error) {
     return <PathwayMessage title="Couldn't load learning paths" body="Check your connection and refresh the page." />;
   }
-  if (!apiPaths || (apiPaths.length > 0 && (!curriculaFetched || !pathCoursesLoaded))) {
+  if (!apiPaths || browseCategories == null || (apiPaths.length > 0 && (!curriculaFetched || !pathCoursesLoaded))) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center text-[#4F4D55]">
         <Loader2 className="mr-2 size-5 animate-spin" /> Loading learning paths…
@@ -114,7 +157,28 @@ export default function LearningPathwaysPage() {
       />
     );
   }
-  return <PathwayJourney built={built} progressByPath={progressByPath} stats={stats} />;
+
+  const activeBuilt = built.find((b) => b.pathway.id === ui.activePathwayId);
+  const showBrowser = !activeBuilt && browseCategories.length > 0;
+
+  if (showBrowser) {
+    return (
+      <PathBrowser
+        categories={browseCategories}
+        progressByPath={progressByPath}
+        onOpenPath={ui.setActivePathway}
+      />
+    );
+  }
+
+  return (
+    <PathwayJourney
+      built={built}
+      progressByPath={progressByPath}
+      stats={stats}
+      onBackToBrowse={browseCategories.length > 0 ? () => ui.setActivePathway("") : undefined}
+    />
+  );
 }
 
 function PathwayMessage({ title, body }: { title: string; body: string }) {
@@ -133,10 +197,12 @@ function PathwayJourney({
   built,
   progressByPath,
   stats,
+  onBackToBrowse,
 }: {
   built: BuiltPathway[];
   progressByPath: Record<string, PathProgress>;
   stats: LearningStats | null;
+  onBackToBrowse?: () => void;
 }) {
   const navigate = useNavigate();
   const ui = usePathwayUi();
@@ -310,6 +376,16 @@ function PathwayJourney({
           {/* Header */}
           <header className="relative flex flex-wrap items-end justify-between gap-4">
             <div className="relative">
+              {onBackToBrowse && (
+                <button
+                  type="button"
+                  onClick={onBackToBrowse}
+                  className="mb-2 inline-flex items-center gap-1.5 font-inter text-sm font-semibold text-[#AA468E] transition-opacity hover:opacity-80"
+                >
+                  <ArrowLeft className="size-4" aria-hidden />
+                  All paths
+                </button>
+              )}
               <p className="app-type-eyebrow">Learning Path</p>
               <h1 className="app-type-page-title mt-1">Chart your course, one lesson at a time.</h1>
               <p className="app-type-page-subtitle mt-1 max-w-lg">
@@ -321,14 +397,16 @@ function PathwayJourney({
             </div>
           </header>
 
-          <div className="mt-5">
-            <PathwaySwitcher
-              pathways={pathways}
-              activeId={pathway.id}
-              percents={percents}
-              onSelect={ui.setActivePathway}
-            />
-          </div>
+          {!onBackToBrowse && (
+            <div className="mt-5">
+              <PathwaySwitcher
+                pathways={pathways}
+                activeId={pathway.id}
+                percents={percents}
+                onSelect={ui.setActivePathway}
+              />
+            </div>
+          )}
 
           {/* The journey — one calm white canvas */}
           <div

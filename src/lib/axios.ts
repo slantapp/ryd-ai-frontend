@@ -3,8 +3,10 @@ import axios from "axios";
 import { useAuthStore } from "@/stores/authStore";
 
 /** Must be absolute API host. Missing VITE_API_URL at build time posts to the SPA origin → 405. */
+const LOCAL_API_BASE_URL = "http://localhost:4000";
 const API_BASE_URL = (
-  import.meta.env.VITE_API_URL || "https://api-pro.rydlearning.com"
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? LOCAL_API_BASE_URL : "https://api-pro.rydlearning.com")
 ).replace(/\/$/, "");
 
 const axiosInstance = axios.create({

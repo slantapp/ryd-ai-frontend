@@ -34,7 +34,7 @@ export const navItems: NavItem[] = [
     path: PRIVATE_PATHS.COURSES,
   },
   {
-    name: "Tests",
+    name: "Knowledge Tests",
     icon: tests,
     path: PRIVATE_PATHS.TESTS,
   },

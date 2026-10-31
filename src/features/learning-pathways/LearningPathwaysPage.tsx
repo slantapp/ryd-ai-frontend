@@ -11,7 +11,7 @@ import { fetchLearningStats, type LearningStats } from "@/api/learningStats";
 import { getCurriculumEntryBySlug } from "@/data/curriculumData";
 import { loadV2LessonDraft } from "@/features/curriculum-preview/v2/lessonPersist";
 import { useCoursesStore } from "@/stores/coursesStore";
-import { buildPathway, type BuiltPathway } from "./fromApi";
+import { buildPathway, pathwayId, type BuiltPathway } from "./fromApi";
 import { computePathProgress, type PathProgress } from "./lessonProgress";
 import { findNode } from "./progress";
 import { usePathwayUi } from "./store";
@@ -142,14 +142,15 @@ export default function LearningPathwaysPage() {
   if (error) {
     return <PathwayMessage title="Couldn't load learning paths" body="Check your connection and refresh the page." />;
   }
-  if (!apiPaths || browseCategories == null || (apiPaths.length > 0 && (!curriculaFetched || !pathCoursesLoaded))) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center text-[#4F4D55]">
-        <Loader2 className="mr-2 size-5 animate-spin" /> Loading learning paths…
-      </div>
-    );
+  const loading = (
+    <div className="flex min-h-[50vh] items-center justify-center text-[#4F4D55]">
+      <Loader2 className="mr-2 size-5 animate-spin" /> Loading learning paths…
+    </div>
+  );
+  if (!apiPaths || browseCategories == null || (apiPaths.length > 0 && !curriculaFetched)) {
+    return loading;
   }
-  if (!built.length) {
+  if (!apiPaths.length) {
     return (
       <PathwayMessage
         title="No learning paths yet"
@@ -159,7 +160,12 @@ export default function LearningPathwaysPage() {
   }
 
   const activeBuilt = built.find((b) => b.pathway.id === ui.activePathwayId);
-  const showBrowser = !activeBuilt && browseCategories.length > 0;
+  // A path the learner already opened: wait for its courses rather than flash the browser.
+  const reopeningPath =
+    !pathCoursesLoaded && apiPaths.some((p) => pathwayId(p.id) === ui.activePathwayId);
+  // The browser only needs the browse data; course lessons load in the background and
+  // fill in each card's progress when they arrive.
+  const showBrowser = !activeBuilt && browseCategories.length > 0 && !reopeningPath;
 
   if (showBrowser) {
     return (
@@ -167,6 +173,17 @@ export default function LearningPathwaysPage() {
         categories={browseCategories}
         progressByPath={progressByPath}
         onOpenPath={ui.setActivePathway}
+      />
+    );
+  }
+
+  // The journey draws every lesson, so it needs the path's courses loaded by slug.
+  if (!pathCoursesLoaded) return loading;
+  if (!built.length) {
+    return (
+      <PathwayMessage
+        title="No learning paths yet"
+        body="Learning paths will appear here once they're published. Meanwhile, explore all courses."
       />
     );
   }

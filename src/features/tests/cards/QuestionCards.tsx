@@ -324,7 +324,11 @@ export function MatchPairsCard({
           {Object.keys(matched).length} of {left.length} matched
         </span>
       </div>
-      <p className="-mt-2 text-[13px] text-[#6B6572]">Tap a code card, then the description that goes with it.</p>
+      <p className={cn("-mt-2 text-[13px]", selectedLeft ? "font-semibold text-primary" : "text-[#6B6572]")}>
+        {selectedLeft
+          ? "Now tap the description that goes with your selected card."
+          : "Tap a code card, then the description that goes with it."}
+      </p>
       <div ref={boardRef} className="relative grid grid-cols-2 gap-x-9 sm:gap-x-14">
         <div className="flex flex-col gap-2.5">
           {left.map((l) => {
@@ -348,11 +352,25 @@ export function MatchPairsCard({
                   isMatched && revealed && "border-[#16A34A] bg-[#ECFDF3] text-[#15803D]",
                   isMatched && !revealed && "bg-[#2A2540] text-[#E9E4F0]",
                   !isMatched && isWrong && "animate-[tests-shake_0.35s] border-[#DC2626] bg-[#3A1620] text-[#FCA5A5]",
-                  !isMatched && !isWrong && isSelected && "border-primary bg-[#1E1B2E] text-white ring-[3px] ring-primary/30",
+                  // Selected: a solid brand tile that lifts, so it reads clearly against the dark code cards.
+                  !isMatched && !isWrong && isSelected &&
+                    "z-10 scale-[1.03] border-[#FACC15] bg-primary text-white shadow-[0_10px_24px_-8px_rgba(170,70,142,0.7)] ring-4 ring-primary/35",
                   !isMatched && !isWrong && !isSelected && "border-[#1E1B2E] bg-[#1E1B2E] text-[#E9E4F0] hover:border-primary/60",
+                  // While one card is picked, the other free code cards step back.
+                  !isMatched && !isWrong && !isSelected && selectedLeft && "opacity-55",
                 )}
               >
-                {isMatched && revealed ? l.text : <InlineCode code={l.text} language={language} />}
+                {isSelected && !isMatched ? (
+                  <span className="absolute -right-2 -top-2.5 inline-flex items-center gap-1 rounded-full border-2 border-white bg-[#FACC15] px-2 py-0.5 font-sans text-[11px] font-extrabold text-[#1F1B24] shadow">
+                    <Check className="size-3" strokeWidth={3} aria-hidden /> Selected
+                  </span>
+                ) : null}
+                {/* Token colours clash with the brand tile, so selected code is plain white. */}
+                {(isMatched && revealed) || (isSelected && !isMatched) ? (
+                  <code className="whitespace-pre-wrap break-words font-mono">{l.text}</code>
+                ) : (
+                  <InlineCode code={l.text} language={language} />
+                )}
               </button>
             );
           })}

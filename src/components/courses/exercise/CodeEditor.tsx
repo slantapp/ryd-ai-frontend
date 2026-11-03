@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   Loader2,
   Maximize2,
@@ -6,7 +6,13 @@ import {
   Play,
   RotateCcw,
   Send,
+  Square,
 } from "lucide-react";
+import {
+  isTurtleRunning,
+  stopTurtleProgram,
+  subscribeTurtleRunning,
+} from "@/utils/codeExecution/turtle";
 import type { OnMount } from "@monaco-editor/react";
 import { MonacoEditorLazy } from "./MonacoEditorLazy";
 import { registerEditorSuggestions } from "./editorSuggestions";
@@ -14,8 +20,15 @@ import {
   CODE_RUN_LANGUAGES,
   normalizeRunLanguage,
 } from "@/utils/codeExecution/languages";
+import { toMonacoLanguage } from "@/utils/codeExecution/monacoLanguage";
 import ProgramInputPrompt from "./ProgramInputPrompt";
-import type { ProgramInputPrompt as ProgramInputPromptState } from "@/hooks/useProgramInput";
+import LiveInputDialog from "./LiveInputDialog";
+import { ToolbarNotice } from "./ToolbarNotice";
+import { AnswerReviewActions, type AnswerReviewControls } from "./AnswerReviewActions";
+import type {
+  ConsoleInputLine,
+  ProgramInputPrompt as ProgramInputPromptState,
+} from "@/hooks/useProgramInput";
 
 interface CodeEditorProps {
   code: string;
@@ -40,6 +53,8 @@ interface CodeEditorProps {
   testDisabledReason?: string;
   /** Tooltip shown on the submit button while it is disabled (explains why). */
   submitDisabledReason?: string;
+  /** A short line under the toolbar, e.g. why Submit is waiting. Visible on touch screens too. */
+  toolbarNotice?: string | null;
   /** Show the Input box under the editor. Used when the number of reads is not fixed. */
   showProgramInput?: boolean;
   /** Loop reads explain themselves. A preset is the fallback when a read was not recognised. */
@@ -49,23 +64,13 @@ interface CodeEditorProps {
   programInputReadOnly?: boolean;
   /** One submit step for a fixed read. The line is highlighted in the editor. */
   inputPrompt?: ProgramInputPromptState | null;
+  /** The running program is waiting for one answer (Python/C++ live input). Shown as a pop-up. */
+  inputLine?: ConsoleInputLine | null;
+  /** After the last wrong try: "View correct answer" and "Continue" replace Run and Submit. */
+  answerReview?: AnswerReviewControls | null;
   fileNames?: string[];
   activeFileName?: string;
   onActiveFileName?: (name: string) => void;
-}
-
-/** Map curriculum language strings to Monaco editor language ids. */
-function toMonacoLanguage(language?: string): string {
-  const lang = normalizeRunLanguage(language);
-  const map: Record<string, string> = {
-    cpp: "cpp",
-    csharp: "csharp",
-    bash: "shell",
-    shell: "shell",
-    html: "html",
-    sqlite: "sql",
-  };
-  return map[lang] ?? lang;
 }
 
 export default function CodeEditor({
@@ -83,17 +88,21 @@ export default function CodeEditor({
   onReset,
   testDisabledReason,
   submitDisabledReason,
+  toolbarNotice = null,
   showProgramInput = false,
   programInputHint = "loop",
   programInput = "",
   onProgramInputChange,
   programInputReadOnly = false,
   inputPrompt = null,
+  inputLine = null,
+  answerReview = null,
   fileNames = [],
   activeFileName = "main",
   onActiveFileName,
 }: CodeEditorProps) {
   const twoButtonMode = typeof onTryOut === "function";
+  const turtleRunning = useSyncExternalStore(subscribeTurtleRunning, isTurtleRunning, () => false);
   const monacoLanguage = toMonacoLanguage(language);
   const testDisabled = !canTest || isRunning;
   const submitDisabled = !canSubmit || isRunning;
@@ -170,7 +179,7 @@ export default function CodeEditor({
               ))}
             </select>
           )}
-          {onReset && (
+          {onReset && !answerReview && (
             <button
               type="button"
               onClick={onReset}
@@ -183,7 +192,21 @@ export default function CodeEditor({
               <span className="hidden sm:inline">Reset</span>
             </button>
           )}
-          {twoButtonMode ? (
+          {isRunning && turtleRunning ? (
+            // A turtle program waits in done() for keys and clicks: offer Stop where Run was.
+            <button
+              type="button"
+              onClick={stopTurtleProgram}
+              title="Stop the program"
+              className="flex shrink-0 items-center gap-1.5 rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 sm:gap-2 sm:px-3 sm:text-sm"
+            >
+              <Square size={12} fill="currentColor" aria-hidden />
+              Stop
+            </button>
+          ) : null}
+          {answerReview ? (
+            <AnswerReviewActions controls={answerReview} />
+          ) : isRunning && turtleRunning ? null : twoButtonMode ? (
             <>
               <button
                 onClick={onTryOut}
@@ -252,6 +275,7 @@ export default function CodeEditor({
           </button>
         </div>
       </div>
+      {toolbarNotice ? <ToolbarNotice text={toolbarNotice} /> : null}
       {fileNames.length > 0 ? (
         <div className="flex shrink-0 gap-1 overflow-x-auto border-b bg-white px-2 py-1">
           <button
@@ -292,6 +316,7 @@ export default function CodeEditor({
           }}
         />
         {inputPrompt?.open ? <ProgramInputPrompt prompt={inputPrompt} /> : null}
+        {inputLine ? <LiveInputDialog line={inputLine} /> : null}
       </div>
       {showProgramInput ? (
         <label className="shrink-0 border-t border-gray-200 bg-white px-3 py-2">

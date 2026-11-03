@@ -52,6 +52,8 @@ type TurtleGraphicsConfig = {
   ryd?: TurtleHooks;
   stop?: () => void;
   pending?: () => boolean;
+  busy?: () => boolean;
+  pressKey?: (name: string) => boolean;
   final?: () => { x: number; y: number; heading: number } | undefined;
 };
 
@@ -71,6 +73,26 @@ export const TURTLE_WAIT_LIMIT_MS = 60_000;
 export const TURTLE_WAIT_LIMIT_MESSAGE =
   "The turtle program stopped after 60 seconds.";
 export const TURTLE_STOPPED_MESSAGE = "Stopped.";
+
+/** Submit and the tutor's example: after done(), timers get this long before the run ends. */
+export const TURTLE_SETTLE_LIMIT_MS = 3_000;
+
+/** Shown while Run waits in done() for keys and clicks. */
+export const TURTLE_WAITING_MESSAGE =
+  "🎮 Your program is waiting for keys or clicks. Click the drawing to use them, then press Stop.";
+
+export type TurtleRunOptions = {
+  onOutput?: (lines: string[]) => void;
+  /**
+   * "live" (Run): done() keeps the program going until Stop or 60 seconds.
+   * "settle" (Submit, examples): done() lets timers finish for up to 3 seconds, then ends.
+   */
+  mode?: "live" | "settle";
+  /** Settle mode: keys to press after done(), one list per keyed check (see turtleChecks.ts). */
+  keySteps?: string[][];
+};
+
+const pause = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
 let skulptPromise: Promise<SkulptApi> | null = null;
 let turtleSourcePromise: Promise<string> | null = null;
@@ -181,8 +203,9 @@ function errorText(error: unknown): string {
 export async function executeTurtleCode(
   code: string,
   targetId: string,
-  options?: { onOutput?: (lines: string[]) => void },
+  options?: TurtleRunOptions,
 ): Promise<TurtleRunResult> {
+  const mode = options?.mode ?? "live";
   active?.stop();
 
   const target = document.getElementById(targetId);
@@ -213,10 +236,25 @@ export async function executeTurtleCode(
 
   const shownLines = () =>
     pendingOutput.value ? [...logs, pendingOutput.value] : [...logs];
+  /** Console lines while running: Run adds a hint while it waits for keys and clicks. */
+  let waitingForInput = false;
+  const liveLines = () => (waitingForInput ? [...shownLines(), TURTLE_WAITING_MESSAGE] : shownLines());
+  const snapshot = (): TurtleRecord => {
+    const final = Sk?.TurtleGraphics?.final?.();
+    return {
+      linesDrawn: record.linesDrawn,
+      colors: [...colors],
+      filled: record.filled,
+      texts: [...record.texts],
+      end: final ? { x: final.x, y: final.y } : record.end,
+      heading: final ? final.heading : record.heading,
+    };
+  };
 
   let Sk: SkulptApi | undefined;
 
   const endWait = () => {
+    waitingForInput = false;
     if (!waiting) return;
     window.clearTimeout(waiting.timer);
     const { resolve } = waiting;
@@ -271,12 +309,53 @@ export async function executeTurtleCode(
   };
   setActive(run);
 
+  /** Wait until no timer is pending and no callback is running, or until `deadline`. */
+  const settleUntil = async (deadline: number) => {
+    let quiet = 0;
+    while (!finished && Date.now() < deadline) {
+      quiet = Sk?.TurtleGraphics?.busy?.() ? 0 : quiet + 1;
+      if (quiet >= 2) return;
+      await pause(50);
+    }
+  };
+
+  /** Submit and examples: press each check's keys, then let timers finish (3 seconds at most). */
+  let settled = false;
+  const settleRun = async (): Promise<void> => {
+    if (finished || !Sk || settled) return;
+    settled = true;
+    Sk.execStart = Date.now();
+    Sk.execLimit = PROGRAM_TIME_LIMIT_MS;
+    const steps = options?.keySteps ?? [];
+    if (steps.length) {
+      await settleUntil(Date.now() + TURTLE_SETTLE_LIMIT_MS);
+      record.beforeKeys = snapshot();
+      record.afterKeys = [];
+      for (const step of steps) {
+        for (const key of step) {
+          if (finished) return;
+          Sk.TurtleGraphics?.pressKey?.(key);
+          await settleUntil(Date.now() + TURTLE_SETTLE_LIMIT_MS);
+        }
+        record.afterKeys.push(snapshot());
+      }
+    }
+    await settleUntil(Date.now() + TURTLE_SETTLE_LIMIT_MS);
+  };
+
   /** Wait while a timer, key, or click can still change the drawing. */
   let waited = false;
   const waitForEvents = (): Promise<void> => {
+    if (mode === "settle") return settleRun();
     if (finished || !Sk || waiting || waited) return Promise.resolve();
     if (!Sk.TurtleGraphics?.pending?.()) return Promise.resolve();
     waited = true;
+    // Keys or clicks are set up: tell the learner how to use them and how to finish.
+    const hasHandlers = Boolean(Sk.TurtleGraphics?.pending?.()) && !Sk.TurtleGraphics?.busy?.();
+    if (hasHandlers) {
+      waitingForInput = true;
+      options?.onOutput?.(liveLines());
+    }
     Sk.execStart = Date.now();
     Sk.execLimit = TURTLE_WAIT_LIMIT_MS;
     return new Promise<void>((resolve) => {
@@ -329,7 +408,7 @@ export async function executeTurtleCode(
       output: (text: string) => {
         if (finished) return;
         appendOutput(logs, pendingOutput, text);
-        options?.onOutput?.(shownLines());
+        options?.onOutput?.(liveLines());
       },
       read: (path: string) => {
         if (path === "src/lib/turtle.js") return turtleSource;

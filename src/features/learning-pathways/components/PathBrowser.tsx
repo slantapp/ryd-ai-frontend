@@ -1,8 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Filter, Search, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import type { ApiLearningPath, ApiLearningPathBrowseCategory } from "@/api/learningPaths";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import {
+  ActiveChip,
+  CardRail,
+  CategoryTabs,
+  FiltersPopover,
+  TopicChips,
+} from "@/components/browse/BrowseControls";
+import { RAIL_CARD_WIDTH } from "@/components/browse/browseStyles";
 import { pathwayIcon } from "./icons";
 import type { PathProgress } from "../lessonProgress";
 import { pathwayId } from "../fromApi";
@@ -90,45 +98,13 @@ export function PathBrowser({ categories, progressByPath, onOpenPath }: PathBrow
   const allCards = useMemo(() => buildCards(categories, progressByPath), [categories, progressByPath]);
 
   const [query, setQuery] = useState("");
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [levelFilter, setLevelFilter] = useState<string | null>(null);
   const [progressFilter, setProgressFilter] = useState<ProgressFilter>("all");
   const [categoryId, setCategoryId] = useState<number | null>(categories[0]?.id ?? null);
   const [subcategoryId, setSubcategoryId] = useState<number | null>(null);
-  const [topicsOpen, setTopicsOpen] = useState(false);
-  const [topicQuery, setTopicQuery] = useState("");
-  const filtersRef = useRef<HTMLDivElement>(null);
-  const topicsRef = useRef<HTMLDivElement>(null);
-
-  // Close filter / “More topics” popovers on outside click or Escape.
-  useEffect(() => {
-    if (!filtersOpen && !topicsOpen) return;
-    const onPointerDown = (e: PointerEvent) => {
-      const target = e.target as Node;
-      if (filtersOpen && filtersRef.current && !filtersRef.current.contains(target)) {
-        setFiltersOpen(false);
-      }
-      if (topicsOpen && topicsRef.current && !topicsRef.current.contains(target)) {
-        setTopicsOpen(false);
-      }
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setFiltersOpen(false);
-      setTopicsOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [filtersOpen, topicsOpen]);
 
   const activeCategory = categories.find((c) => c.id === categoryId) ?? categories[0] ?? null;
   const topicChips = activeCategory?.subcategories ?? [];
-  const visibleTopics = topicChips.slice(0, 5);
-  const hasMoreTopics = topicChips.length > 5;
 
   const continueCard = useMemo(() => {
     const started = allCards.filter((c) => c.started && !c.completed);
@@ -161,6 +137,9 @@ export function PathBrowser({ categories, progressByPath, onOpenPath }: PathBrow
     });
   }, [allCards, categoryId, subcategoryId, levelFilter, progressFilter, query, categories]);
 
+  // The API sends subcategories in the admin's order and each subcategory's paths by level, then
+  // the admin's order. "All" keeps that: one row per subcategory, in the same order as the chips.
+  // One subcategory: one row per level (Beginner → Advanced).
   const groups = useMemo(() => {
     const map = new Map<string, CardModel[]>();
     for (const card of filtered) {
@@ -168,21 +147,14 @@ export function PathBrowser({ categories, progressByPath, onOpenPath }: PathBrow
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(card);
     }
+    const rows = [...map.entries()].map(([title, items]) => ({
+      title: subcategoryId ? formatLevel(title) || title : title,
+      key: title,
+      items,
+    }));
+    if (!subcategoryId) return rows;
     const levelOrder: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
-    return [...map.entries()]
-      .map(([title, items]) => ({
-        title: formatLevel(title) || title,
-        items: [...items].sort(
-          (a, b) =>
-            (levelOrder[a.level ?? ""] ?? 99) - (levelOrder[b.level ?? ""] ?? 99) ||
-            a.api.title.localeCompare(b.api.title),
-        ),
-      }))
-      .sort((a, b) => {
-        const la = levelOrder[a.title.toLowerCase()] ?? 50;
-        const lb = levelOrder[b.title.toLowerCase()] ?? 50;
-        return la - lb || a.title.localeCompare(b.title);
-      });
+    return rows.sort((a, b) => (levelOrder[a.key] ?? 50) - (levelOrder[b.key] ?? 50));
   }, [filtered, subcategoryId]);
 
   const activeFilterCount = (levelFilter ? 1 : 0) + (progressFilter !== "all" ? 1 : 0);
@@ -200,18 +172,6 @@ export function PathBrowser({ categories, progressByPath, onOpenPath }: PathBrow
     clearFilters();
     setSubcategoryId(null);
   };
-
-  const chipOn = (on: boolean) =>
-    cn(
-      "inline-flex h-8 shrink-0 items-center rounded-full border px-3 text-xs font-semibold transition-colors",
-      on
-        ? "border-primary/40 bg-primary/10 text-primary"
-        : "border-[#EDEAF3] bg-white text-[#132050]/75 hover:border-primary/25 hover:text-[#132050]",
-    );
-
-  const topicList = topicChips.filter(
-    (t) => !topicQuery.trim() || t.title.toLowerCase().includes(topicQuery.trim().toLowerCase()),
-  );
 
   return (
     <div className="flex min-w-0 max-w-full flex-col gap-3 font-inter text-[#132050] sm:gap-4">
@@ -240,93 +200,30 @@ export function PathBrowser({ categories, progressByPath, onOpenPath }: PathBrow
               className="h-9 rounded-md border border-[#EDEAF3] bg-[#F8F8FA] pl-8 font-inter text-sm shadow-none transition-colors focus-visible:border-primary/25 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-primary/30"
             />
           </div>
-          <div className="relative shrink-0" ref={filtersRef}>
-            <button
-              type="button"
-              aria-expanded={filtersOpen}
-              onClick={() => setFiltersOpen((o) => !o)}
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-md border border-[#EDEAF3] bg-[#F8F8FA] px-2.5 text-xs font-semibold text-[#132050]/75 shadow-none transition-colors hover:bg-white",
-                activeFilterCount > 0 && "border-primary/30 bg-primary/5 text-primary",
-              )}
-            >
-              <Filter className="size-3.5" aria-hidden />
-              <span className="hidden sm:inline">
-                {activeFilterCount ? `Filters · ${activeFilterCount}` : "Filters"}
-              </span>
-              {activeFilterCount > 0 && (
-                <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white sm:hidden">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-            {filtersOpen && (
-              <div
-                role="dialog"
-                aria-label="Filters"
-                className="absolute right-0 top-10 z-30 flex w-[min(18rem,calc(100vw-2rem))] flex-col gap-3 rounded-xl border border-[#EDEAF3] bg-white p-3 shadow-[0_12px_28px_rgba(19,32,80,0.12)]"
-              >
-                <div className="flex flex-col gap-1.5">
-                  <span className="app-type-label">Level</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {LEVELS.map((lvl) => {
-                      const on = levelFilter === lvl.value;
-                      return (
-                        <button
-                          key={lvl.value}
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() => setLevelFilter(on ? null : lvl.value)}
-                          className={chipOn(on)}
-                        >
-                          {lvl.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <span className="app-type-label">Progress</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(
-                      [
-                        ["all", "All"],
-                        ["not_started", "Not started"],
-                        ["in_progress", "In progress"],
-                        ["completed", "Completed"],
-                      ] as const
-                    ).map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        aria-pressed={progressFilter === value}
-                        onClick={() => setProgressFilter(value)}
-                        className={chipOn(progressFilter === value)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between gap-2 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="h-8 px-1 text-xs font-semibold text-primary"
-                  >
-                    Reset
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFiltersOpen(false)}
-                    className="inline-flex h-8 items-center rounded-full bg-[#132050] px-3.5 text-xs font-semibold text-white"
-                  >
-                    Show {filtered.length}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <FiltersPopover
+            activeCount={activeFilterCount}
+            resultCount={filtered.length}
+            onReset={clearFilters}
+            sections={[
+              {
+                label: "Level",
+                options: LEVELS.map((l) => ({ value: l.value, label: l.label })),
+                value: levelFilter ?? "",
+                onChange: (v) => setLevelFilter(levelFilter === v ? null : v),
+              },
+              {
+                label: "Progress",
+                options: [
+                  { value: "all", label: "All" },
+                  { value: "not_started", label: "Not started" },
+                  { value: "in_progress", label: "In progress" },
+                  { value: "completed", label: "Completed" },
+                ],
+                value: progressFilter,
+                onChange: (v) => setProgressFilter(v as ProgressFilter),
+              },
+            ]}
+          />
         </div>
       </div>
 
@@ -364,110 +261,21 @@ export function PathBrowser({ categories, progressByPath, onOpenPath }: PathBrow
 
       <section aria-label="Browse paths" className="flex min-w-0 flex-col gap-4">
         <div className="flex min-w-0 flex-col gap-2.5">
-          <div className="min-w-0 overflow-x-auto border-b border-[#EDEAF3] [-webkit-overflow-scrolling:touch] scrollbar-hide">
-            <div role="tablist" aria-label="Category" className="flex min-w-min gap-4 sm:gap-6">
-              {categories.map((cat) => {
-                const on = activeCategory?.id === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={on}
-                    onClick={() => {
-                      setCategoryId(cat.id);
-                      setSubcategoryId(null);
-                      setTopicsOpen(false);
-                    }}
-                    className={cn(
-                      "mb-[-1px] shrink-0 border-0 border-b-2 bg-transparent pb-2.5 pt-1 text-sm whitespace-nowrap transition-colors",
-                      on
-                        ? "border-primary font-solway font-bold text-[#132050]"
-                        : "border-transparent font-medium text-[#132050]/55 hover:text-[#132050]",
-                    )}
-                  >
-                    {cat.title}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <CategoryTabs
+            options={categories.map((cat) => ({ value: String(cat.id), label: cat.title }))}
+            value={activeCategory ? String(activeCategory.id) : null}
+            onChange={(value) => {
+              setCategoryId(Number(value));
+              setSubcategoryId(null);
+            }}
+          />
 
-          {!!topicChips.length && (
-            <div className="relative flex min-w-0 items-center gap-1.5" ref={topicsRef}>
-              <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch] scrollbar-hide">
-                <button
-                  type="button"
-                  aria-pressed={subcategoryId == null}
-                  onClick={() => setSubcategoryId(null)}
-                  className={chipOn(subcategoryId == null)}
-                >
-                  All
-                </button>
-                {visibleTopics.map((sub) => (
-                  <button
-                    key={sub.id}
-                    type="button"
-                    aria-pressed={subcategoryId === sub.id}
-                    onClick={() => setSubcategoryId(subcategoryId === sub.id ? null : sub.id)}
-                    className={chipOn(subcategoryId === sub.id)}
-                  >
-                    {sub.title}
-                  </button>
-                ))}
-                {hasMoreTopics && (
-                  <button
-                    type="button"
-                    aria-expanded={topicsOpen}
-                    onClick={() => setTopicsOpen((o) => !o)}
-                    className="inline-flex h-8 shrink-0 items-center gap-0.5 px-2 text-xs font-semibold text-primary"
-                  >
-                    More
-                    <ChevronDown
-                      className={cn("size-3.5 transition-transform", topicsOpen && "rotate-180")}
-                    />
-                  </button>
-                )}
-              </div>
-              {topicsOpen && (
-                <div
-                  role="dialog"
-                  aria-label="More topics"
-                  className="absolute left-0 top-9 z-20 flex w-[min(17rem,calc(100vw-2rem))] flex-col gap-2 rounded-xl border border-[#EDEAF3] bg-white p-2.5 shadow-[0_12px_28px_rgba(19,32,80,0.12)]"
-                >
-                  <Input
-                    type="search"
-                    value={topicQuery}
-                    onChange={(e) => setTopicQuery(e.target.value)}
-                    placeholder="Filter this list"
-                    className="h-8 rounded-md border-[#EDEAF3] bg-[#F8F8FA] text-xs shadow-none"
-                  />
-                  <div className="flex max-h-56 flex-col overflow-y-auto">
-                    {topicList.map((sub) => {
-                      const on = subcategoryId === sub.id;
-                      return (
-                        <button
-                          key={sub.id}
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() => {
-                            setSubcategoryId(sub.id);
-                            setTopicsOpen(false);
-                          }}
-                          className={cn(
-                            "rounded-md px-2.5 py-2 text-left text-xs font-medium",
-                            on ? "bg-primary/10 text-primary" : "text-[#132050] hover:bg-[#F8F8FA]",
-                          )}
-                        >
-                          {sub.title}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <TopicChips
+            key={activeCategory?.id ?? "none"}
+            options={topicChips.map((sub) => ({ value: String(sub.id), label: sub.title }))}
+            value={subcategoryId == null ? null : String(subcategoryId)}
+            onChange={(value) => setSubcategoryId(value == null ? null : Number(value))}
+          />
 
           {(levelFilter || progressFilter !== "all" || subcategoryId != null || query) && (
             <div className="flex flex-wrap gap-1.5">
@@ -511,74 +319,14 @@ export function PathBrowser({ categories, progressByPath, onOpenPath }: PathBrow
           </div>
         ) : (
           groups.map((group) => (
-            <PathCardSlider
-              key={group.title}
-              title={group.title}
-              items={group.items}
-              onOpenPath={onOpenPath}
-            />
+            <CardRail key={group.key} title={group.title} count={group.items.length} noun="path">
+              {group.items.map((item) => (
+                <PathCard key={item.pathwayId} item={item} onOpen={() => onOpenPath(item.pathwayId)} />
+              ))}
+            </CardRail>
           ))
         )}
       </section>
-    </div>
-  );
-}
-
-function PathCardSlider({
-  title,
-  items,
-  onOpenPath,
-}: {
-  title: string;
-  items: CardModel[];
-  onOpenPath: (pathwayId: string) => void;
-}) {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-
-  const scrollByCard = (dir: -1 | 1) => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const amount = Math.min(el.clientWidth * 0.85, 360);
-    el.scrollBy({ left: dir * amount, behavior: "smooth" });
-  };
-
-  return (
-    <div className="flex min-w-0 flex-col gap-2.5">
-      <div className="flex items-center gap-2">
-        <h2 className="min-w-0 flex-1 truncate font-solway text-base font-bold text-[#132050] sm:text-lg">
-          {title}
-        </h2>
-        <span className="hidden text-xs font-medium tabular-nums text-[#5C5468] sm:inline">
-          {items.length} path{items.length === 1 ? "" : "s"}
-        </span>
-        <div className="hidden items-center gap-1 sm:flex">
-          <button
-            type="button"
-            aria-label={`Scroll ${title} left`}
-            onClick={() => scrollByCard(-1)}
-            className="inline-flex size-8 items-center justify-center rounded-full border border-[#EDEAF3] bg-white text-[#132050]/70 transition hover:border-primary/30 hover:text-primary"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-          <button
-            type="button"
-            aria-label={`Scroll ${title} right`}
-            onClick={() => scrollByCard(1)}
-            className="inline-flex size-8 items-center justify-center rounded-full border border-[#EDEAF3] bg-white text-[#132050]/70 transition hover:border-primary/30 hover:text-primary"
-          >
-            <ChevronRight className="size-4" />
-          </button>
-        </div>
-      </div>
-
-      <div
-        ref={scrollerRef}
-        className="-mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 [-webkit-overflow-scrolling:touch] scrollbar-hide sm:-mx-1 sm:gap-3.5 sm:px-1"
-      >
-        {items.map((item) => (
-          <PathCard key={item.pathwayId} item={item} onOpen={() => onOpenPath(item.pathwayId)} />
-        ))}
-      </div>
     </div>
   );
 }
@@ -591,7 +339,8 @@ function PathCard({ item, onOpen }: { item: CardModel; onOpen: () => void }) {
       aria-label={`Open ${item.api.title}`}
       onClick={onOpen}
       className={cn(
-        "relative flex w-[min(86vw,20.5rem)] shrink-0 snap-start flex-col gap-2 rounded-2xl border bg-white p-4 text-left shadow-[0_1px_3px_rgba(19,32,80,0.05)] transition-all sm:w-[22rem]",
+        RAIL_CARD_WIDTH,
+        "relative flex flex-col gap-2 rounded-2xl border bg-white p-4 text-left shadow-[0_1px_3px_rgba(19,32,80,0.05)] transition-all",
         "hover:-translate-y-0.5 hover:shadow-[0_8px_20px_-10px_rgba(170,70,142,0.28)]",
         item.started ? "border-primary/45" : "border-[#EDEAF3]",
       )}
@@ -631,19 +380,6 @@ function PathCard({ item, onOpen }: { item: CardModel; onOpen: () => void }) {
           </span>
         )}
       </span>
-    </button>
-  );
-}
-
-function ActiveChip({ label, onClear }: { label: string; onClear: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClear}
-      className="inline-flex h-7 items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 text-[11px] font-semibold text-primary"
-    >
-      {label}
-      <X className="size-3" strokeWidth={2.5} aria-hidden />
     </button>
   );
 }

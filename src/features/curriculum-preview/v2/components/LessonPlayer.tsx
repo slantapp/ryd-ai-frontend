@@ -41,6 +41,13 @@ import { keepExampleOutput } from "@/utils/codeExecution/runFeedback";
 import { isTurtlePythonCode } from "@/utils/codeExecution/turtle";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
 import { describeStoredAnswer } from "@/utils/storedAnswer";
+import {
+  ANSWER_REVIEW_CONSOLE_HINT,
+  ANSWER_REVIEW_SPEECH,
+  buildAnswerReview,
+  type AnswerReview,
+} from "@/utils/answerReview";
+import type { AnswerReviewControls } from "@/components/courses/exercise/AnswerReviewActions";
 import { stdinForRun } from "@/utils/programInput";
 import { collectPageChecks, hasPageChecks } from "@/utils/webPreviewBridge";
 import { useProgramInput } from "@/hooks/useProgramInput";
@@ -175,6 +182,8 @@ interface LessonPlayerProps {
   onBeatProgress?: (draft: V2LessonDraft) => void;
 }
 
+/** How long the tutor must be quiet before a stuck retry or Continue unlocks by itself. */
+const QUIET_UNLOCK_MS = 2500;
 export function LessonPlayer({
   curriculum,
   lesson,
@@ -232,6 +241,25 @@ export function LessonPlayer({
   const [wrongAttempts, setWrongAttempts] = useState(0);
   /** The editor shows the stored answer and cannot be edited. */
   const [solutionLocked, setSolutionLocked] = useState(false);
+  /** After the last wrong try on a code question: the learner's code and the stored answer. */
+  const [answerReview, setAnswerReview] = useState<AnswerReview | null>(null);
+  /** The tutor has finished explaining, so Continue may move on. */
+  const [reviewReady, setReviewReady] = useState(false);
+  /** A wrong answer with tries left is waiting for the hint to finish before the next try. */
+  const [retryPending, setRetryPending] = useState(false);
+  const retryUnlockRef = useRef<(() => void) | null>(null);
+
+  // Safety net: the next try (and Continue after "View correct answer") normally unlock when the
+  // tutor's last line ends. If that end never arrives (speech failed to start, was skipped, or
+  // another line took its place), unlock once the tutor has been quiet for a moment.
+  useEffect(() => {
+    if (isSpeaking || (!retryPending && !(answerReview && !reviewReady))) return;
+    const timer = window.setTimeout(() => {
+      retryUnlockRef.current?.();
+      if (answerReview) setReviewReady(true);
+    }, QUIET_UNLOCK_MS);
+    return () => window.clearTimeout(timer);
+  }, [isSpeaking, retryPending, answerReview, reviewReady]);
   /** Consecutive correct answers across this lesson (resets on wrong; each beat counts once). */
   const correctStreakRef = useRef(createLearningStreakState());
   /**
@@ -285,6 +313,10 @@ export function LessonPlayer({
     setShowCelebration(false);
     setWrongAttempts(0);
     setSolutionLocked(false);
+    setAnswerReview(null);
+    setReviewReady(false);
+    retryUnlockRef.current = null;
+    setRetryPending(false);
     setFullscreen(null);
     setPreviewRefreshKey(0);
     webExampleContextRef.current = null;
@@ -346,6 +378,10 @@ export function LessonPlayer({
       setIsAnswerSubmitted(false);
       setShowCelebration(false);
       setWrongAttempts(0);
+      setAnswerReview(null);
+      setReviewReady(false);
+      retryUnlockRef.current = null;
+      setRetryPending(false);
     }
 
     beatStartedRef.current = null;
@@ -994,7 +1030,13 @@ export function LessonPlayer({
   const handleQuestionOutcome = useCallback(
     (
       correct: boolean,
-      opts?: { clearSelection?: boolean; runLines?: string[]; failure?: string },
+      opts?: {
+        clearSelection?: boolean;
+        runLines?: string[];
+        failure?: string;
+        /** The submitted code, kept for the side-by-side answer comparison. */
+        learner?: { code: string; web: WebCodeSources | null };
+      },
     ) => {
       if (!beat || beat.type !== "question") return;
       // Prevent double-submit while feedback is showing / avatar is speaking
@@ -1044,27 +1086,23 @@ export function LessonPlayer({
         // Do not speak success-phrased question.explanation after a failed attempt.
         missedPracticeRef.current = true;
         const stored = describeStoredAnswer(q);
+        // Code questions keep the learner's code in the editor. The answer opens beside it
+        // ("View correct answer"), and the lesson waits for Continue.
+        let review: AnswerReview | null = null;
         if (q.type === "code_test") {
-          if (revealTimerRef.current != null) {
-            window.clearTimeout(revealTimerRef.current);
-          }
+          const lang = normalizeRunLanguage(q.code_example?.language);
+          review = buildAnswerReview(
+            q,
+            { code: opts?.learner?.code ?? "", web: opts?.learner?.web ?? null },
+            {
+              web: isWebWorkspaceLanguage(lang, q.testCriteria, q.code_example?.runtime),
+              language: lang,
+            },
+          );
           setSolutionLocked(true);
-          setCode("");
-          setWebCode(EMPTY_WEB_CODE);
-          setResults(["The correct answer is in the editor."]);
-          const answerCode = stored.code;
-          const answerWeb = stored.web;
-          revealTimerRef.current = window.setTimeout(() => {
-            revealTimerRef.current = null;
-            if (answerCode) setCode(answerCode);
-            if (answerWeb) {
-              setWebCode({
-                html: answerWeb.html ?? "",
-                css: answerWeb.css ?? "",
-                javascript: answerWeb.javascript ?? "",
-              });
-            }
-          }, 350);
+          setAnswerReview(review);
+          setReviewReady(false);
+          if (review) setResults((lines) => [...lines, ANSWER_REVIEW_CONSOLE_HINT]);
         }
         if (q.type === "formula_test" && stored.formula) {
           setFormulaAnswer(stored.formula);
@@ -1072,13 +1110,17 @@ export function LessonPlayer({
         const teachingLines = resolveExhaustedWrongTeachingLines(q);
         const reveal = [
           ...teachingLines,
-          stored.spoken,
-          "Let's move on and keep learning.",
+          review ? ANSWER_REVIEW_SPEECH : stored.spoken,
+          review ? null : "Let's move on and keep learning.",
         ].filter((line): line is string => Boolean(line));
         speakThen(
           feedback,
           () => {
             speakSequence(reveal, () => {
+              if (review) {
+                setReviewReady(true);
+                return;
+              }
               setTimeout(() => advanceRef.current(), 600);
             });
           },
@@ -1093,6 +1135,19 @@ export function LessonPlayer({
         q.type === "code_test" || q.type === "formula_test"
           ? beat.avatar?.on_ask ?? q.question
           : undefined;
+      // Hand the question back for another try. Normally this runs when the hint has been spoken;
+      // the retry safety net (below) runs it if that never happens, so Submit cannot stay locked.
+      const unlockRetry = () => {
+        if (retryUnlockRef.current !== unlockRetry) return;
+        retryUnlockRef.current = null;
+        setRetryPending(false);
+        setIsAnswerSubmitted(false);
+        setShowCelebration(false);
+        if (clearSelection) setSelectedAnswer(null);
+        if (q.type === "formula_test") setFormulaAnswer("");
+      };
+      retryUnlockRef.current = unlockRetry;
+      setRetryPending(true);
       speakThen(
         feedback,
         () => {
@@ -1106,12 +1161,7 @@ export function LessonPlayer({
                 failure: opts?.failure,
               }),
             ],
-            () => {
-              setIsAnswerSubmitted(false);
-              setShowCelebration(false);
-              if (clearSelection) setSelectedAnswer(null);
-              if (q.type === "formula_test") setFormulaAnswer("");
-            },
+            unlockRetry,
           );
         },
         beat.avatar?.show,
@@ -1146,6 +1196,8 @@ export function LessonPlayer({
 
   const handleSubmitCode = async () => {
     if (!beat || beat.type !== "question") return;
+    // The outcome would be dropped while the tutor speaks; the button is disabled then too.
+    if (isSpeaking || isAnswerSubmitted) return;
     const q = beat.question;
     const lang = normalizeRunLanguage(q.code_example?.language);
     const useWeb = isWebWorkspaceLanguage(lang, q.testCriteria, q.code_example?.runtime);
@@ -1211,6 +1263,7 @@ export function LessonPlayer({
       handleQuestionOutcome(passed, {
         runLines: runOutput,
         failure: testResults.find((item) => !item.passed)?.test,
+        learner: { code: submission.code, web: submission.webCode ?? null },
       });
     } finally {
       setIsExecuting(false);
@@ -1393,6 +1446,8 @@ export function LessonPlayer({
         beat?.type === "question" ? beat.question.testCriteria : undefined,
         {
           turtleTargetId,
+          // Run keeps a turtle game going until Stop; Submit and the example end by themselves.
+          turtleMode: "live",
           stdin,
           version: runnable.version,
           files: extraFiles,
@@ -1458,6 +1513,26 @@ export function LessonPlayer({
     return "";
   })();
 
+  const reviewControls: AnswerReviewControls | null = answerReview
+    ? {
+        review: answerReview,
+        onContinue: () => advance(),
+        canContinue: reviewReady && !isSpeaking,
+        continueLabel: isLastBeat ? "Next lesson" : "Continue",
+      }
+    : null;
+
+  // While the tutor talks, a submitted answer would be ignored (handleQuestionOutcome waits for
+  // the speech), so Submit is disabled and says why, as on multiple-choice questions.
+  const isCodeQuestionTurn = beat?.type === "question" && demoMode === "practice" && !answerReview;
+  const submitWaitReason =
+    isCodeQuestionTurn && isSpeaking && !isAnswerSubmitted
+      ? "Wait for your instructor to finish, then submit."
+      : isCodeQuestionTurn && isAnswerSubmitted && isSpeaking
+        ? "Your answer is being checked. Listen to your instructor."
+        : null;
+  const submitWaitNotice = isCodeQuestionTurn && isSpeaking && !isAnswerSubmitted ? submitWaitReason : null;
+
   const codeWorkspace = showCodePanel ? (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       {useWeb && programInput.prompt ? (
@@ -1489,6 +1564,7 @@ export function LessonPlayer({
             beat?.type === "question" &&
             demoMode === "practice" &&
             !isAnswerSubmitted &&
+            !isSpeaking &&
             submissionHasContent(
               {
                 code: "",
@@ -1528,6 +1604,9 @@ export function LessonPlayer({
               ? () => applyStudentStarter(activeCodeExample)
               : undefined
           }
+          answerReview={reviewControls}
+          submitDisabledReason={submitWaitReason ?? undefined}
+          toolbarNotice={submitWaitNotice}
         />
       ) : (
         <Split
@@ -1563,8 +1642,12 @@ export function LessonPlayer({
             canSubmit={
               beat?.type === "question" &&
               demoMode === "practice" &&
+              !isAnswerSubmitted &&
+              !isSpeaking &&
               submissionHasContent(getCodeSubmission(), beat.question.testCriteria)
             }
+            submitDisabledReason={submitWaitReason ?? undefined}
+            toolbarNotice={submitWaitNotice}
             isRunning={isExecuting}
             showProgramInput={programInput.show && !useWeb}
             programInputHint={programInput.hint}
@@ -1572,6 +1655,7 @@ export function LessonPlayer({
             onProgramInputChange={programInput.setValue}
             programInputReadOnly={solutionLocked}
             inputPrompt={useWeb ? null : programInput.prompt}
+            inputLine={programInput.consoleLine}
             fileNames={Object.keys(extraFiles)}
             activeFileName={activeFile}
             onActiveFileName={setActiveFile}
@@ -1580,6 +1664,7 @@ export function LessonPlayer({
                 ? () => applyStudentStarter(activeCodeExample)
                 : undefined
             }
+            answerReview={reviewControls}
           />
           <TestResults
             results={results}
@@ -1601,11 +1686,12 @@ export function LessonPlayer({
     beat?.type === "recap" || isLastBeat ? "Next lesson" : "Continue";
 
   const continueRow =
-    canContinue &&
+    (canContinue &&
       beat &&
       beat.type !== "bridge" &&
       beat.advance === "manual" &&
-      !isSpeaking ? (
+      !isSpeaking) ||
+    (reviewReady && !isSpeaking) ? (
       <div
         className={cn(
           "flex shrink-0 border-t border-gray-200 bg-white",
@@ -2139,11 +2225,12 @@ export function LessonPlayer({
 
     const canGoPreviousBeat = beatIndex > 0 && !isSpeaking;
     const canPrimaryContinue =
-      !!canContinue &&
-      !!beat &&
-      beat.type !== "bridge" &&
-      beat.advance === "manual" &&
-      !isSpeaking;
+      (!!canContinue &&
+        !!beat &&
+        beat.type !== "bridge" &&
+        beat.advance === "manual" &&
+        !isSpeaking) ||
+      (reviewReady && !isSpeaking);
 
     // Match CourseDetails: show the prompt above the avatar while the learner answers a code test.
     const isCodeTestQuestionActive = isCodeTestPractice;
@@ -2372,7 +2459,9 @@ export function LessonPlayer({
     );
 
     return (
-      <div className="relative h-full w-full min-h-0 overflow-hidden bg-white">
+      // A column: the skip bar takes its own height and the lesson fills the rest. (With h-full the
+      // lesson was as tall as the whole player, so the bar pushed its bottom edge off screen.)
+      <div className="relative flex h-full w-full min-h-0 flex-col overflow-hidden bg-white">
         {!hideFlowChrome ? (
           <V2SkipPanel
             lesson={lesson}
@@ -2382,7 +2471,7 @@ export function LessonPlayer({
         ) : null}
 
         <Split
-          className="flex h-full min-h-0 w-full"
+          className="flex min-h-0 w-full flex-1"
           sizes={isLgUp ? [35, 65] : [0, 100]}
           minSize={isLgUp ? 200 : 0}
           gutterSize={isLgUp ? 8 : 0}

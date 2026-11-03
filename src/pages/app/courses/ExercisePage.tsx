@@ -791,6 +791,7 @@ function CodingExerciseInner() {
                   programInput={programInput.value}
                   onProgramInputChange={programInput.setValue}
                   inputPrompt={programInput.prompt}
+                  inputLine={programInput.consoleLine}
                 />
 
                 {/* Results Panel */}

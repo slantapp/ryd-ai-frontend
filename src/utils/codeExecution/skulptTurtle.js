@@ -79,6 +79,18 @@ function generateTurtleModule(_target) {
         return false;
     }
 
+    // RYD: a timer is waiting or a timer/key callback is still running (key handlers alone do not count).
+    function isBusy() {
+        return _timers.length > 0 || _runningCallbacks > 0;
+    }
+
+    // RYD: press a key for a lesson check. False when the program set no key handlers.
+    function pressKey(name) {
+        var screen = _screenInstance;
+        if (!screen || !screen._keyListeners || typeof screen._pressKey !== "function") return false;
+        return screen._pressKey(name);
+    }
+
     function clearTimers() {
         for (var i = 0; i < _timers.length; i++) {
             window.clearTimeout(_timers[i]);
@@ -1555,6 +1567,35 @@ function generateTurtleModule(_target) {
             "46" : /^del(ete)?$/i
         };
 
+        // RYD: press one key for a lesson check ("Right", "space", "a"), as keydown then keyup on
+        // the canvas. keyup straight away means the key never auto-repeats.
+        proto._pressKey = function(name) {
+            var text = String(name || "").trim(),
+                code = 0,
+                target = getTarget(),
+                types = ["keydown", "keyup"],
+                i;
+            if (text.length === 1) {
+                code = text.toUpperCase().charCodeAt(0);
+            }
+            else {
+                for (var candidate in KEY_MAP) {
+                    if (KEY_MAP[candidate].test(text)) {
+                        code = Number(candidate);
+                        break;
+                    }
+                }
+            }
+            if (!code || !target) return false;
+            for (i = 0; i < types.length; i++) {
+                var event = new KeyboardEvent(types[i], { bubbles: true, cancelable: true, key: text });
+                Object.defineProperty(event, "keyCode", { get: function() { return code; } });
+                Object.defineProperty(event, "charCode", { get: function() { return 0; } });
+                target.dispatchEvent(event);
+            }
+            return true;
+        };
+
         proto._createKeyRepeater = function(key, code) {
             var self = this;
             // set a timeout for 333ms and if key has not yet been
@@ -1644,7 +1685,21 @@ function generateTurtleModule(_target) {
 
             if (method && typeof method === "function") {
                 if (!this._keyListeners) this._keyListeners = {};
-                this._keyListeners[keyValue] = method;
+                // RYD: a key callback counts as running work until it finishes (it may animate),
+                // so a check that presses keys can wait for it like a timer.
+                this._keyListeners[keyValue] = function() {
+                    _runningCallbacks += 1;
+                    var finish = function() {
+                        _runningCallbacks = Math.max(0, _runningCallbacks - 1);
+                        notifyIdle();
+                    };
+                    try {
+                        Promise.resolve(method()).then(finish, finish);
+                    } catch (e) {
+                        finish();
+                        throw e;
+                    }
+                };
             }
             else if (this._keyListeners) {
                 delete this._keyListeners[keyValue];
@@ -2513,6 +2568,8 @@ function generateTurtleModule(_target) {
         stop     : stopTurtle,
         focus    : focusTurtle,
         pending  : hasPendingWork,
+        busy     : isBusy,
+        pressKey : pressKey,
         final    : finalTurtle,
         Turtle   : Turtle,
         Screen   : Screen
@@ -2536,6 +2593,8 @@ Sk.TurtleGraphics.stop   = currentTarget.turtleInstance.stop;
 Sk.TurtleGraphics.focus  = currentTarget.turtleInstance.focus;
 Sk.TurtleGraphics.pending = currentTarget.turtleInstance.pending; // RYD
 Sk.TurtleGraphics.final   = currentTarget.turtleInstance.final;   // RYD
+Sk.TurtleGraphics.busy    = currentTarget.turtleInstance.busy;    // RYD
+Sk.TurtleGraphics.pressKey = currentTarget.turtleInstance.pressKey; // RYD
 Sk.TurtleGraphics.raw = {
     Turtle : currentTarget.turtleInstance.Turtle,
     Screen : currentTarget.turtleInstance.Screen

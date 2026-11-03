@@ -182,6 +182,46 @@ svg {
 }
 
 /*
+  Resizable panes (react-split adds .gutter between panes).
+  The pointer becomes a resize cursor on every divider, and the editor/console divider shows a
+  small grip, so learners can see the console can be dragged taller or shorter. A pane that sets
+  its own gutterStyle (inline) still wins, e.g. hidden 0px gutters with pointer-events: none.
+*/
+.gutter {
+  position: relative;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+  touch-action: none;
+}
+.gutter.gutter-vertical {
+  cursor: row-resize;
+}
+.gutter.gutter-horizontal {
+  cursor: col-resize;
+}
+.gutter:hover,
+.gutter:active {
+  background-color: color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+.gutter.gutter-vertical::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: #c9c4d3;
+  transform: translate(-50%, -50%);
+  transition: background-color 0.15s ease, width 0.15s ease;
+}
+.gutter.gutter-vertical:hover::after,
+.gutter.gutter-vertical:active::after {
+  width: 48px;
+  background-color: var(--color-primary);
+}
+
+/*
   App chrome / dashboard typography (not lesson player).
   Keep sizes on this scale so pages stay consistent.
 */

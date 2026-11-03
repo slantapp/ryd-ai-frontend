@@ -29,7 +29,18 @@ interface TestResultsProps {
  * Scale the turtle canvas to fit its panel. The drawing keeps its shape, and
  * the stacked canvas layers scale together because the transform is on their parent.
  */
-function useFitTurtleCanvas(enabled: boolean) {
+/** Keys the browser would use to scroll the page. */
+const SCROLL_KEYS = new Set([
+  "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "PageUp", "PageDown", "Home", "End",
+]);
+
+/**
+ * "scroll": the drawing fills the panel's width at a readable size (never above 100%) and the
+ * panel scrolls for the rest. "fit": the whole drawing is scaled down to fit, with no scrolling.
+ */
+type TurtleView = "scroll" | "fit";
+
+function useFitTurtleCanvas(enabled: boolean, view: TurtleView) {
   const panelRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const targetRef = useRef<HTMLDivElement>(null);
@@ -48,12 +59,14 @@ function useFitTurtleCanvas(enabled: boolean) {
         target.style.transform = "";
         return;
       }
-      const room = panel.getBoundingClientRect();
-      const scale = Math.min(
-        1,
-        Math.max(0.05, (room.width - 8) / canvas.width),
-        Math.max(0.05, (room.height - 8) / canvas.height),
-      );
+      // clientWidth/Height leave out the scrollbars.
+      const roomWidth = panel.clientWidth - 8;
+      const roomHeight = panel.clientHeight - 8;
+      const byWidth = Math.max(0.05, roomWidth / canvas.width);
+      const scale =
+        view === "fit"
+          ? Math.min(1, byWidth, Math.max(0.05, roomHeight / canvas.height))
+          : Math.min(1, byWidth);
       target.style.width = `${canvas.width}px`;
       target.style.height = `${canvas.height}px`;
       target.style.transformOrigin = "0 0";
@@ -71,7 +84,7 @@ function useFitTurtleCanvas(enabled: boolean) {
       resize.disconnect();
       changes.disconnect();
     };
-  }, [enabled]);
+  }, [enabled, view]);
 
   return { panelRef, boxRef, targetRef };
 }
@@ -127,7 +140,8 @@ export default function TestResults({
   const hasTurtlePreview = Boolean(turtleTargetId);
   const hasVisualPreview = isPagePreview || hasTurtlePreview;
   const turtleRunning = useSyncExternalStore(subscribeTurtleRunning, isTurtleRunning, () => false);
-  const turtleFit = useFitTurtleCanvas(hasTurtlePreview);
+  const [turtleView, setTurtleView] = useState<TurtleView>("scroll");
+  const turtleFit = useFitTurtleCanvas(hasTurtlePreview, turtleView);
 
   const htmlContent = useMemo(() => {
     if (!isPagePreview || !code.trim()) return "";
@@ -165,7 +179,7 @@ export default function TestResults({
       <div
         className={cn(
           "flex h-full min-h-0 flex-col",
-          hasVisualPreview && isLgUp && "lg:grid lg:grid-cols-3",
+          hasVisualPreview && isLgUp && "lg:grid lg:grid-cols-3 lg:grid-rows-[minmax(0,1fr)]",
         )}
       >
         <div
@@ -268,6 +282,44 @@ export default function TestResults({
                   ) : null}
                 </div>
               </div>
+              {hasTurtlePreview ? (
+                <div
+                  role="group"
+                  aria-label="Drawing size"
+                  className="mr-2 inline-flex rounded border border-gray-700 bg-gray-800 p-0.5 text-xs"
+                >
+                  {(
+                    [
+                      [
+                        "scroll",
+                        "Scroll",
+                        "Show the drawing larger and scroll around it",
+                      ],
+                      [
+                        "fit",
+                        "Fit",
+                        "Shrink the whole drawing to fit the panel",
+                      ],
+                    ] as const
+                  ).map(([value, label, title]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setTurtleView(value)}
+                      aria-pressed={turtleView === value}
+                      title={title}
+                      className={cn(
+                        "rounded px-2 py-0.5 font-medium transition-colors",
+                        turtleView === value
+                          ? "bg-gray-600 text-white"
+                          : "text-gray-400 hover:text-white",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               {hasTurtlePreview && turtleRunning ? (
                 <button
                   type="button"
@@ -295,17 +347,34 @@ export default function TestResults({
             </div>
             <div className="min-h-0 flex-1 border-t border-gray-700 bg-white">
               {hasTurtlePreview && turtleTargetId ? (
-                <div
-                  ref={turtleFit.panelRef}
-                  className="flex h-full min-h-48 items-center justify-center overflow-hidden bg-white p-1"
-                >
-                  <div ref={turtleFit.boxRef} className="relative shrink-0 overflow-hidden">
-                    <div
-                      ref={turtleFit.targetRef}
-                      id={turtleTargetId}
-                      className="absolute left-0 top-0 bg-white outline-none"
-                      aria-label="Python Turtle drawing canvas"
-                    />
+                // The drawing is absolutely positioned, so its size never feeds back into the panel's
+                // height: the panel takes the space it is given, and the drawing is scaled to fit it.
+                <div className="relative h-full min-h-48 overflow-hidden bg-white">
+                  {/* The scroller fills the panel; the drawing is centred while it fits and
+                      scrolls (both ways) when it is larger, without cutting anything off. */}
+                  <div
+                    ref={turtleFit.panelRef}
+                    className="absolute inset-0 overflow-auto"
+                  >
+                    <div className="flex min-h-full min-w-full p-1">
+                      <div
+                        ref={turtleFit.boxRef}
+                        className="relative m-auto shrink-0 overflow-hidden"
+                      >
+                        <div
+                          ref={turtleFit.targetRef}
+                          id={turtleTargetId}
+                          className="absolute left-0 top-0 bg-white outline-none"
+                          aria-label="Python Turtle drawing canvas"
+                          // Game keys (arrows, space, page keys) belong to the turtle program, not to page
+                          // scrolling. The turtle's own key listener on this element still receives them.
+                          onKeyDown={(event) => {
+                            if (SCROLL_KEYS.has(event.key))
+                              event.preventDefault();
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : htmlContent ? (

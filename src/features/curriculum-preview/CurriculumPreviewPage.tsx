@@ -1499,6 +1499,7 @@ export default function CurriculumPreviewPage() {
                         programInput={programInput.value}
                         onProgramInputChange={programInput.setValue}
                         inputPrompt={programInput.prompt}
+                        inputLine={programInput.consoleLine}
                         programInputReadOnly={isTypingLessonCode}
                       />
                       <TestResults
@@ -1628,6 +1629,7 @@ export default function CurriculumPreviewPage() {
                             programInput={programInput.value}
                             onProgramInputChange={programInput.setValue}
                             inputPrompt={programInput.prompt}
+                            inputLine={programInput.consoleLine}
                           />
                           <TestResults
                             results={results}

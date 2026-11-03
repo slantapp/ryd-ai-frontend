@@ -551,6 +551,16 @@ export function validateCurriculumV2(data: unknown): {
 function turtleCheckProblem(check: unknown): string | undefined {
   if (!check || typeof check !== "object" || Array.isArray(check)) return "must be an object";
   const item = check as Record<string, unknown>;
+  // { "keys": ["Right"], "then": { "textWritten": "Score: 1" } }
+  if ("keys" in item || "then" in item) {
+    const extra = Object.keys(item).filter((key) => key !== "keys" && key !== "then");
+    if (extra.length) return `with keys, put ${extra.join(", ")} inside "then"`;
+    if (!Array.isArray(item.keys) || !item.keys.length || !item.keys.every((k) => typeof k === "string" && k.trim())) {
+      return "keys must be a list of key names, e.g. [\"Right\", \"space\"]";
+    }
+    const inner = turtleCheckProblem(item.then);
+    return inner ? `then ${inner}` : undefined;
+  }
   const known = ["linesDrawn", "endsAt", "heading", "colorUsed", "filled", "textWritten"];
   const keys = Object.keys(item).filter((key) => key !== "tolerance");
   if (keys.length !== 1 || !known.includes(keys[0])) {

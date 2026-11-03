@@ -5,9 +5,23 @@
  *
  *   [{ "linesDrawn": 4 }, { "endsAt": [0, 0], "tolerance": 2 }, { "heading": 0 },
  *    { "colorUsed": "blue" }, { "filled": true }, { "textWritten": "Score: 3" }]
+ *
+ * A check can press keys first (on Submit, once the program reaches done()):
+ *
+ *   { "keys": ["Right", "Right"], "then": { "textWritten": "Score: 2" } }
+ *
+ * Keyed checks press their keys in list order, on one run, so later checks see earlier presses.
+ * Checks without keys look at the drawing as it was before any key was pressed.
  */
 
-export type TurtleCheck = {
+export type TurtleCheck = TurtleDrawingCheck & {
+  /** Keys to press first, in order ("Right", "space", "a"). */
+  keys?: string[];
+  /** What must be true after the keys. */
+  then?: TurtleDrawingCheck;
+};
+
+export type TurtleDrawingCheck = {
   linesDrawn?: number;
   endsAt?: [number, number];
   heading?: number;
@@ -28,7 +42,18 @@ export type TurtleRecord = {
   /** Where the turtle that moved last stopped. */
   end?: { x: number; y: number };
   heading?: number;
+  /** When checks pressed keys: the drawing before the first key. */
+  beforeKeys?: TurtleRecord;
+  /** When checks pressed keys: the drawing after each keyed check's keys, in check order. */
+  afterKeys?: TurtleRecord[];
 };
+
+/** The key list of each keyed check, in order (what the runner presses on Submit). */
+export function turtleKeySteps(checks: TurtleCheck[] | undefined): string[][] {
+  return (checks ?? [])
+    .filter((check) => check && Array.isArray(check.keys) && check.keys.length > 0)
+    .map((check) => check.keys!.map(String));
+}
 
 export type TurtleCheckResult = { test: string; passed: boolean; plain: true };
 
@@ -89,6 +114,30 @@ export function evaluateTurtleChecks(
   record: TurtleRecord,
   checks: TurtleCheck[],
   normalizeColor: (value: string) => string = plainColor,
+): TurtleCheckResult[] {
+  const results: TurtleCheckResult[] = [];
+  let keyed = 0;
+  for (const check of checks) {
+    if (!check || typeof check !== "object") continue;
+    if (Array.isArray(check.keys) && check.keys.length > 0) {
+      const after = record.afterKeys?.[keyed];
+      keyed += 1;
+      if (!after) {
+        results.push({ test: `Submit to check what pressing ${check.keys.join(", ")} does.`, passed: false, plain: true });
+        continue;
+      }
+      results.push(...evaluateDrawingChecks(after, [check.then ?? {}], normalizeColor));
+      continue;
+    }
+    results.push(...evaluateDrawingChecks(record.beforeKeys ?? record, [check], normalizeColor));
+  }
+  return results;
+}
+
+function evaluateDrawingChecks(
+  record: TurtleRecord,
+  checks: TurtleDrawingCheck[],
+  normalizeColor: (value: string) => string,
 ): TurtleCheckResult[] {
   const results: TurtleCheckResult[] = [];
   const add = (passed: boolean, yes: string, no: string) =>

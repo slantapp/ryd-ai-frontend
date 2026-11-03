@@ -3,41 +3,25 @@ import { RUN_DETAILS_PREFIX } from "@/utils/codeExecution/runFeedback";
 import { IMAGE_LINE_PREFIX } from "@/utils/codeExecution/instrument";
 import type { ConsoleInputLine } from "@/hooks/useProgramInput";
 
-/** The program's question and a typing line, on the console's last line. */
+/**
+ * The program's question on the console's last line while it waits. The answer is typed in the
+ * input pop-up (LiveInputDialog), so this line only shows that the program is waiting.
+ */
 function ConsoleInput({ line }: { line: ConsoleInputLine }) {
-  const fieldRef = useRef<HTMLInputElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fieldRef.current?.focus({ preventScroll: false });
-    fieldRef.current?.scrollIntoView({ block: "nearest" });
+    rowRef.current?.scrollIntoView({ block: "nearest" });
   }, [line.prompt]);
 
   return (
-    <form
-      className="flex items-baseline gap-0 text-gray-100"
-      onSubmit={(event) => {
-        event.preventDefault();
-        line.onSubmit();
-      }}
-    >
+    <div ref={rowRef} className="flex flex-wrap items-baseline gap-x-2 text-gray-100">
       {line.prompt ? <span className="whitespace-pre-wrap">{line.prompt}</span> : null}
-      <input
-        ref={fieldRef}
-        value={line.value}
-        onChange={(event) => line.onChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            line.onCancel();
-          }
-        }}
-        aria-label={line.prompt.trim() || "Type an answer for the program"}
-        placeholder="type, then press Enter"
-        autoComplete="off"
-        spellCheck={false}
-        className="min-w-24 flex-1 border-0 border-b border-dashed border-gray-500 bg-transparent px-0.5 font-mono text-amber-200 caret-amber-200 outline-none placeholder:text-gray-600 focus:border-amber-300"
-      />
-    </form>
+      <span className="inline-flex items-center gap-1.5 text-xs text-amber-300">
+        <span className="size-1.5 animate-pulse rounded-full bg-amber-300" aria-hidden />
+        waiting for your answer
+      </span>
+    </div>
   );
 }
 

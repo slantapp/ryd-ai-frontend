@@ -49,6 +49,13 @@ import {
   describeStoredAnswer,
   wrongAttemptOutcome,
 } from "@/utils/storedAnswer";
+import {
+  ANSWER_REVIEW_CONSOLE_HINT,
+  ANSWER_REVIEW_SPEECH,
+  buildAnswerReview,
+  type AnswerReview,
+} from "@/utils/answerReview";
+import type { AnswerReviewControls } from "./exercise/AnswerReviewActions";
 import { stdinForRun } from "@/utils/programInput";
 import { useProgramInput } from "@/hooks/useProgramInput";
 import { useInstructorStore, INSTRUCTORS } from "../../stores/instructorStore";
@@ -173,6 +180,8 @@ type PendingResume = {
 type PendingAction =
   | { type: "none" }
   | { type: "next_question" }
+  /** Tries are used up: wait for Continue after the learner compares their code with the answer. */
+  | { type: "answer_review" }
   | { type: "enable_start_questions" }
   | { type: "enable_next_lesson" }
   | { type: "show_completion" }
@@ -313,6 +322,10 @@ function CourseDetailInner({
   const [runLanguage, setRunLanguage] = useState("javascript");
   const [results, setResults] = useState<string[]>([]);
   const [solutionLocked, setSolutionLocked] = useState(false);
+  /** After the last wrong try on a code question: the learner's code and the stored answer. */
+  const [answerReview, setAnswerReview] = useState<AnswerReview | null>(null);
+  /** The tutor has finished explaining, so Continue may move on. */
+  const [reviewReady, setReviewReady] = useState(false);
   const revealTimerRef = useRef<number | null>(null);
   const [fullscreen, setFullscreen] = useState<"editor" | "results" | null>(
     null
@@ -453,6 +466,8 @@ function CourseDetailInner({
       revealTimerRef.current = null;
     }
     setSolutionLocked(false);
+    setAnswerReview(null);
+    setReviewReady(false);
     setCode("");
     setWebCode(EMPTY_WEB_CODE);
     setResults([]);
@@ -466,6 +481,8 @@ function CourseDetailInner({
       revealTimerRef.current = null;
     }
     setSolutionLocked(false);
+    setAnswerReview(null);
+    setReviewReady(false);
     setResults([]);
     setPreviewRefreshKey(0);
     setIsLessonCodeDemoActive(false);
@@ -1131,6 +1148,36 @@ function CourseDetailInner({
     [clearQuestionAdvanceTimeout, stopSpeaking],
   );
 
+  /** Like the advance fallback: if TTS never reports the end, still unlock Continue. */
+  const scheduleReviewReadyFallback = useCallback(
+    (feedbackText: string) => {
+      clearQuestionAdvanceTimeout();
+      questionAdvanceTimeoutRef.current = setTimeout(() => {
+        questionAdvanceTimeoutRef.current = null;
+        if (pendingActionRef.current.type !== "answer_review") return;
+        pendingActionRef.current = { type: "none" };
+        stopSpeaking();
+        setReviewReady(true);
+      }, estimateSpeechFallbackMs(feedbackText.length));
+    },
+    [clearQuestionAdvanceTimeout, stopSpeaking],
+  );
+
+  /** Continue after comparing: leave the answer review and go to the next question. */
+  const continueAfterReview = useCallback(() => {
+    setAnswerReview(null);
+    setReviewReady(false);
+    moveToNextQuestionRef.current();
+  }, []);
+
+  const reviewControls: AnswerReviewControls | null = answerReview
+    ? {
+        review: answerReview,
+        onContinue: continueAfterReview,
+        canContinue: reviewReady && !isSpeaking,
+      }
+    : null;
+
   // Internal handler that executes the pending action after speech
   const handleSpeechEndInternal = useCallback(() => {
     setIsSpeaking(false);
@@ -1150,6 +1197,10 @@ function CourseDetailInner({
     lastSpeechTextRef.current = "";
 
     switch (action.type) {
+      case "answer_review":
+        clearQuestionAdvanceTimeout();
+        setReviewReady(true);
+        break;
       case "next_question":
         clearQuestionAdvanceTimeout();
         // Small delay before moving to next question for better UX
@@ -2341,6 +2392,7 @@ function CourseDetailInner({
         ...buildSubmitCodeResultLines([], passed, testResults),
       ]);
 
+      let review: AnswerReview | null = null;
       if (!passed) {
         const attempt = wrongAttemptOutcome(wrongAttemptsRef.current);
         wrongAttemptsRef.current = attempt.next;
@@ -2350,27 +2402,19 @@ function CourseDetailInner({
           speak(attempt.hint);
           return;
         }
-        const stored = describeStoredAnswer(currentQuestion);
-        if (revealTimerRef.current != null) {
-          window.clearTimeout(revealTimerRef.current);
-        }
+        // The learner's code stays in the editor; the answer opens beside it ("View correct answer").
+        review = buildAnswerReview(
+          currentQuestion,
+          { code: submission.code, web: submission.webCode ?? null },
+          {
+            web: useWebWorkspace,
+            language: normalizeRunLanguage(currentQuestion.code_example?.language),
+          },
+        );
         setSolutionLocked(true);
-        setCode("");
-        setWebCode(EMPTY_WEB_CODE);
-        setResults(["The correct answer is in the editor."]);
-        const answerCode = stored.code;
-        const answerWeb = stored.web;
-        revealTimerRef.current = window.setTimeout(() => {
-          revealTimerRef.current = null;
-          if (answerCode) setCode(answerCode);
-          if (answerWeb) {
-            setWebCode({
-              html: answerWeb.html ?? "",
-              css: answerWeb.css ?? "",
-              javascript: answerWeb.javascript ?? "",
-            });
-          }
-        }, 350);
+        setAnswerReview(review);
+        setReviewReady(false);
+        if (review) setResults((lines) => [...lines, ANSWER_REVIEW_CONSOLE_HINT]);
       }
 
       setIsAnswerSubmitted(true);
@@ -2380,8 +2424,10 @@ function CourseDetailInner({
       const stored = describeStoredAnswer(currentQuestion);
       const feedbackText = passed
         ? `Excellent! You passed this coding test. ${passedCount} out of ${totalCount} tests correct. ${currentQuestion.explanation || ""}`
-        : [stored.spoken, currentQuestion.explanation].filter(Boolean).join(" ") ||
-          "Let's move on and keep learning.";
+        : review
+          ? ANSWER_REVIEW_SPEECH
+          : [stored.spoken, currentQuestion.explanation].filter(Boolean).join(" ") ||
+            "Let's move on and keep learning.";
 
       recordAnswerResult(passed);
       notifyLearningAnswerOutcome(
@@ -2390,8 +2436,13 @@ function CourseDetailInner({
         `${currentLesson?.id ?? "lesson"}:q:${currentQuestionIndex}`,
       );
 
-      speak(feedbackText, { type: "next_question" });
-      scheduleQuestionAdvanceFallback(feedbackText);
+      if (review) {
+        speak(feedbackText, { type: "answer_review" });
+        scheduleReviewReadyFallback(feedbackText);
+      } else {
+        speak(feedbackText, { type: "next_question" });
+        scheduleQuestionAdvanceFallback(feedbackText);
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -2422,6 +2473,7 @@ function CourseDetailInner({
     isAnswerSubmitted,
     recordAnswerResult,
     scheduleQuestionAdvanceFallback,
+    scheduleReviewReadyFallback,
     speak,
     programInput,
     useWebWorkspace,
@@ -3053,6 +3105,7 @@ function CourseDetailInner({
                       results={results}
                       previewRefreshKey={previewRefreshKey}
                       initialTab={webEditorTab}
+                      answerReview={reviewControls}
                     />
                   ) : (
                     <Split
@@ -3140,7 +3193,9 @@ function CourseDetailInner({
                         programInput={programInput.value}
                         onProgramInputChange={programInput.setValue}
                         inputPrompt={useWebWorkspace ? null : programInput.prompt}
+                        inputLine={programInput.consoleLine}
                         programInputReadOnly={solutionLocked}
+                        answerReview={reviewControls}
                       />
                       <TestResults
                         results={results}

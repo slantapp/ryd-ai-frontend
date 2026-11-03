@@ -149,7 +149,8 @@ export function instrumentSource(
     // `from __future__` must stay the first statement.
     if (/^\s*from\s+__future__\s+import\b/m.test(code)) return { source: code, lineOffset: 0 };
     const head = [PYTHON_UNBUFFERED];
-    if (options?.live && usesRandom(code)) {
+    // A seed is also given to the last run after "No more input", so random numbers stay the same.
+    if ((options?.live || options?.seed !== undefined) && usesRandom(code)) {
       head.push(`import random as _ryd_random; _ryd_random.seed(${seed >>> 0}); del _ryd_random`);
     }
     let prelude = head.join("; ");
@@ -160,7 +161,7 @@ export function instrumentSource(
   }
 
   if (lang === "cpp" || lang === "c++") {
-    let source = options?.live ? seedCppRandom(code, seed) : code;
+    let source = options?.live || options?.seed !== undefined ? seedCppRandom(code, seed) : code;
     source = `${source}\n${CPP_UNBUFFERED}`;
     if (options?.live) source = `${source}${CPP_INPUT_GUARD}`;
     return { source, lineOffset: 0 };

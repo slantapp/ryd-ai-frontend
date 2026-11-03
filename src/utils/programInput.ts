@@ -3,7 +3,8 @@
  *
  * A fixed list of reads becomes one submit prompt per value. The answers are
  * stored and sent together, because the runner cannot pause on the input line.
- * A loop or a read that consumes the whole stream keeps the Input box.
+ * A loop or a read that consumes the whole stream asks for every line in one pop-up.
+ * Every language uses these pop-ups; Python and C++ can also answer one read at a time.
  */
 
 export type InputPrompt = {
@@ -222,15 +223,16 @@ function liveLanguage(language?: string): "python" | "cpp" | null {
 }
 
 /**
- * Python `input()` and C++ `std::cin` are answered one at a time in the console.
+ * Python `input()` and C++ `std::cin` are answered one at a time, each in its own pop-up.
  * The runner cannot pause a program, so it runs the program again with one
  * more answer each time the program stops to wait (see codeExecution/instrument.ts).
- * Reads that cannot say they ran out of input keep the box or the pop-up.
+ * Other reads are collected before the run, in the per-value or all-lines pop-up.
  */
 export function canUseLiveInput(code?: string, language?: string): boolean {
   const lang = liveLanguage(language);
   if (!lang || !code?.trim()) return false;
-  if (planProgramReads(code).mode === "none" || readsUntilEnd(code)) return false;
+  // Reads until the input ends are live too: the pop-up offers "No more input" for them.
+  if (planProgramReads(code).mode === "none") return false;
   const masked = blankNonCode(code);
   if (lang === "python") {
     return /\binput\s*\(/.test(masked) && !/\bsys\s*\.\s*stdin\b/.test(masked);
@@ -373,8 +375,10 @@ function collectHits(source: string, masked: string): Hit[] {
     add(simpleHit(source, match.index ?? 0, match[0].length, 1, { stream: true }));
   }
 
-  for (const match of masked.matchAll(/\bfs\.readFileSync\s*\(/g)) {
-    add(parseNodeStdin(source, masked, match.index ?? 0));
+  // fs.readFileSync(0) or require("fs").readFileSync("/dev/stdin")
+  for (const match of masked.matchAll(/(?:\bfs|\brequire\s*\([^)\n]*\))\s*\.\s*readFileSync\s*\(/g)) {
+    // Start at readFileSync so the call parsed is readFileSync(...), not require(...).
+    add(parseNodeStdin(source, masked, (match.index ?? 0) + match[0].lastIndexOf("readFileSync")));
   }
   for (const match of masked.matchAll(/\bprocess\.stdin\b/g)) {
     add(parseProcessStdin(source, masked, match.index ?? 0));
@@ -772,10 +776,25 @@ export type ProgramInputSeed = {
   language?: string;
 };
 
+/** Pop-up text for a program that reads every line it is given. */
+export const READ_ALL_INPUT_PROMPT: InputPrompt = {
+  line: 0,
+  label: "Type the program's input",
+  snippet:
+    "This program keeps reading until the input ends. Put each answer on its own line, then run it.",
+};
+
+/** Pop-up text when the lesson gives input but the read itself was not recognised. */
+export const LESSON_INPUT_PROMPT: InputPrompt = {
+  line: 0,
+  label: "Check the program's input",
+  snippet: "This lesson gives your program some input. Change it if you like, one answer per line, then run it.",
+};
+
 export function programInputState(seed: ProgramInputSeed): {
   show: boolean;
   prefill: string;
-  mode: InputPlan["mode"] | "live";
+  mode: InputPlan["mode"] | "live" | "lines";
   prompts: InputPrompt[];
   /** Loop reads use the box. A preset is only a fallback when a read was not recognised. */
   hint: "loop" | "preset" | null;
@@ -795,11 +814,13 @@ export function programInputState(seed: ProgramInputSeed): {
   if (plan.mode === "prompt") {
     return { show: false, prefill, mode: "prompt", prompts: plan.prompts, hint: null };
   }
+  // Every language asks in a pop-up; the Input box under the editor is no longer used.
   if (plan.mode === "box") {
-    return { show: true, prefill, mode: "box", prompts: [], hint: "loop" };
+    return { show: false, prefill, mode: "lines", prompts: [READ_ALL_INPUT_PROMPT], hint: null };
   }
+  // The lesson gives input but no read was recognised: let the learner check it before the run.
   if ((hasQuestion || hasExample) && source.trim()) {
-    return { show: true, prefill, mode: "box", prompts: [], hint: "preset" };
+    return { show: false, prefill, mode: "lines", prompts: [LESSON_INPUT_PROMPT], hint: null };
   }
   return { show: false, prefill, mode: "none", prompts: [], hint: null };
 }

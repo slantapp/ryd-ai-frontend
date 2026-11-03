@@ -20,7 +20,7 @@ import {
   splitPendingLine,
   trimProgramOutput,
 } from "./codeExecution/runFeedback";
-import { canUseLiveInput } from "./programInput";
+import { canUseLiveInput, readsUntilEnd } from "./programInput";
 import type { CodeRunResult } from "./codeExecution/types";
 import {
   normalizeRunLanguage,
@@ -34,6 +34,7 @@ import {
 } from "./codeExecution/turtle";
 import {
   evaluateTurtleChecks,
+  turtleKeySteps,
   type TurtleRecord,
 } from "./codeExecution/turtleChecks";
 import {
@@ -318,7 +319,16 @@ export type ConsoleQuestion = {
   prompt: string;
   /** The lesson's answer for this read, when it gave one. */
   defaultValue: string;
+  /** The last lines the program printed before this question, for the input pop-up. */
+  recent: string[];
+  /** Answers already given in this run (0 for the first question). */
+  answered: number;
+  /** The program reads until the input ends, so the learner can say there is no more input. */
+  canEnd: boolean;
 };
+
+/** What askLine returns when the learner chooses "No more input" (Ctrl+D in a terminal). */
+export const END_OF_INPUT = "\u0004";
 
 const LIVE_ANSWER_LIMIT = 30;
 
@@ -366,6 +376,11 @@ export async function runSubmissionCodeOutput(
     askLine?: (question: ConsoleQuestion) => Promise<string | null>;
     /** Console lines while the program is still running or waiting. */
     onProgress?: (lines: string[]) => void;
+    /**
+     * Turtle only. "live" for Run: done() waits for keys until Stop. Otherwise (Submit, the tutor's
+     * example) the program ends by itself after done(), pressing any keys the turtle checks ask for.
+     */
+    turtleMode?: "live" | "settle";
   },
 ): Promise<ProgramRun | null> {
   const graded = resolveGradedLanguage(submission.language);
@@ -383,8 +398,11 @@ export async function runSubmissionCodeOutput(
       const message = "Error: The Turtle canvas is not available.";
       return { lines: [message], raw: [message] };
     }
+    const mode = options.turtleMode ?? "settle";
     const result = await executeTurtleCode(submission.code, options.turtleTargetId, {
       onOutput: options.onProgress,
+      mode,
+      keySteps: mode === "settle" ? turtleKeySteps(criteria?.turtleChecks) : undefined,
     });
     const lines = formatRunOutput(result, "✓ Turtle drawing complete.");
     return { lines, raw: lines, turtle: result.turtle };
@@ -434,10 +452,20 @@ export async function runSubmissionCodeOutput(
     const value = await askLine({
       prompt: pending,
       defaultValue: defaults[answers.length] ?? "",
+      recent: done.slice(-6),
+      answered: answers.length,
+      canEnd: readsUntilEnd(submission.code),
     });
     if (value === null) {
       options?.onProgress?.([...notes, ...done, ...(pending ? [pending] : []), TURTLE_STOPPED_MESSAGE]);
       return null;
+    }
+    if (value === END_OF_INPUT) {
+      // One last run with the answers so far and a real end of input, so the loop ends itself.
+      const last = await execute(answers.length ? `${answers.join("\n")}\n` : "", false, seed);
+      const shownLast = interleaveAnswers(last.stdout ?? "", answers, cuts);
+      const lines = answers.length ? linesWithAnswers(last, shownLast) : programLines(last);
+      return { lines, raw: programLines(last) };
     }
     const answer = value.replace(/\r?\n/g, " ");
     cuts.push(stdout.length);

@@ -11,6 +11,15 @@ export type TestLevel = "Beginner" | "Intermediate" | "Advanced";
 
 export type AttemptStatus = "in_progress" | "submitted" | "expired";
 
+export interface TaxonomyLink {
+  id: number;
+  title: string;
+  slug: string;
+  icon: string | null;
+  /** Admin order (Learning path categories); missing from older API builds. */
+  sortOrder?: number;
+}
+
 export interface TestIntro {
   id: number;
   title: string;
@@ -18,6 +27,11 @@ export interface TestIntro {
   curriculumId: number | null;
   courseSlug: string | null;
   courseTitle: string | null;
+  /** Learning-path taxonomy (Coding → Python); null when the test has no category. */
+  category: TaxonomyLink | null;
+  subcategory: TaxonomyLink | null;
+  /** Admin display order; the API already returns tests sorted by it. */
+  sortOrder: number;
   language: string | null;
   level: TestLevel | null;
   timeLimitMinutes: number | null;
@@ -146,6 +160,12 @@ export interface Recommendation {
   reviewLessons: ReviewLesson[];
   course: CourseLink | null;
   canRetake: boolean;
+  /** The test's own pick: after a pass a course or a test, after a fail a course. Missing on older results. */
+  followUp?: {
+    when: "pass" | "fail";
+    course: CourseLink | null;
+    test: { id: number; title: string } | null;
+  } | null;
   byType?: Partial<Record<TestQuestionType, { total: number; correct: number; score: number; maxScore: number }>>;
   correctCount?: number;
   total?: number;

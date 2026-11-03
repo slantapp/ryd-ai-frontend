@@ -9,6 +9,9 @@ export type DomCheck = {
   style?: string;
   equals?: string;
   click?: string;
+  /** A key to press on the page's document, e.g. "ArrowLeft", "a", " ". */
+  key?: string;
+  /** How many clicks or key presses. Defaults to 1. */
   times?: number;
   then?: { selector: string; text?: string; style?: string; equals?: string };
 };
@@ -151,6 +154,18 @@ export function previewPreamble(options?: {
       send({ type: "log", level: level, message: message });
     };
   });
+  // Arrow keys, space and page keys drive games in lessons; they must not scroll the preview
+  // (or, once it reaches its end, the lesson page around it). Typing in a field keeps them.
+  // The learner's own keydown listeners still run: this only stops the browser's scrolling.
+  var SCROLL_KEYS = { ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1, " ": 1, PageUp: 1, PageDown: 1, Home: 1, End: 1 };
+  document.addEventListener("keydown", function (event) {
+    if (!SCROLL_KEYS[event.key] || event.defaultPrevented) return;
+    var target = event.target;
+    var tag = target && target.tagName ? target.tagName.toLowerCase() : "";
+    if (tag === "input" || tag === "textarea" || tag === "select" || (target && target.isContentEditable)) return;
+    if (event.key === " " && tag === "button") return;
+    event.preventDefault();
+  });
   var learnerMarkerLine = __RYD_LEARNER_LINE__;
   var learnerLineCount = __RYD_LEARNER_COUNT__;
   window.addEventListener("error", function (event) {
@@ -214,7 +229,11 @@ export function previewPreamble(options?: {
 `.trim();
 }
 
-/** Runs after the learner script and posts check results, then idle. */
+/**
+ * Runs after the learner script and posts check results, then idle.
+ * Checks run in order once the page has loaded. A `click` or `key` check acts first, then waits
+ * one frame so the learner's handlers (and any redraw) finish before the page is read.
+ */
 export function previewEpilogue(checks: PageCheck[] = []): string {
   return `
 (function () {
@@ -222,6 +241,50 @@ export function previewEpilogue(checks: PageCheck[] = []): string {
   var checks = ${JSON.stringify(checks)};
   function send(payload) {
     try { parent.postMessage(Object.assign({ source: source }, payload), "*"); } catch (e) {}
+  }
+  // One animation frame, or 50ms when the preview is hidden and frames do not run.
+  function nextFrame() {
+    return new Promise(function (resolve) {
+      var done = false;
+      function finish() { if (!done) { done = true; resolve(); } }
+      try { requestAnimationFrame(function () { setTimeout(finish, 0); }); } catch (e) {}
+      setTimeout(finish, 50);
+    });
+  }
+  var KEY_CODES = { Backspace: 8, Tab: 9, Enter: 13, Shift: 16, Control: 17, Alt: 18, Escape: 27, " ": 32,
+    PageUp: 33, PageDown: 34, End: 35, Home: 36, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, Delete: 46 };
+  function keyCodeFor(key) {
+    if (KEY_CODES[key]) return KEY_CODES[key];
+    return key.length === 1 ? key.toUpperCase().charCodeAt(0) : 0;
+  }
+  function codeFor(key) {
+    if (key === " ") return "Space";
+    if (/^[a-z]$/i.test(key)) return "Key" + key.toUpperCase();
+    if (/^[0-9]$/.test(key)) return "Digit" + key;
+    return key;
+  }
+  // keydown then keyup on the document, so listeners on document and window both hear it.
+  // keyCode and which are set too, for code that still reads e.keyCode.
+  function pressKey(key) {
+    var keyCode = keyCodeFor(key);
+    ["keydown", "keyup"].forEach(function (type) {
+      var event = new KeyboardEvent(type, { key: key, code: codeFor(key), bubbles: true, cancelable: true });
+      try {
+        Object.defineProperty(event, "keyCode", { get: function () { return keyCode; } });
+        Object.defineProperty(event, "which", { get: function () { return keyCode; } });
+      } catch (e) {}
+      document.dispatchEvent(event);
+    });
+  }
+  function act(check) {
+    var times = Math.max(1, Number(check.times) || 1);
+    if (check.click) {
+      var clicked = document.querySelector(check.click);
+      for (var i = 0; i < times; i += 1) { if (clicked && clicked.click) clicked.click(); }
+    }
+    if (check.key) {
+      for (var k = 0; k < times; k += 1) pressKey(String(check.key));
+    }
   }
   function normColor(value) {
     var probe = document.createElement("span");
@@ -242,12 +305,7 @@ export function previewEpilogue(checks: PageCheck[] = []): string {
     return normColor(got) === normColor(expected);
   }
   var results = [];
-  checks.forEach(function (check) {
-    if (check.click) {
-      var clicked = document.querySelector(check.click);
-      var times = check.times || 1;
-      for (var i = 0; i < times; i += 1) { if (clicked && clicked.click) clicked.click(); }
-    }
+  function evaluate(check) {
     var expect = check.then || check;
     if (expect.selector && expect.count != null) {
       var count = document.querySelectorAll(expect.selector).length;
@@ -276,9 +334,26 @@ export function previewEpilogue(checks: PageCheck[] = []): string {
       var styleOk = Boolean(styled) && sameStyle(got, expect.equals);
       results.push({ test: styleOk ? "The style matches." : "The " + expect.style + " should be " + expect.equals + ".", passed: styleOk });
     }
-  });
-  if (results.length) send({ type: "checks", results: results });
-  send({ type: "idle" });
+  }
+  function runChecks() {
+    var chain = nextFrame();
+    checks.forEach(function (check) {
+      chain = chain.then(function () {
+        if (check.click || check.key) {
+          act(check);
+          return nextFrame().then(function () { evaluate(check); });
+        }
+        evaluate(check);
+      });
+    });
+    chain.then(function () {
+      if (results.length) send({ type: "checks", results: results });
+      send({ type: "idle" });
+    });
+  }
+  // Wait for the learner's script, including code that runs on load.
+  if (document.readyState === "complete") runChecks();
+  else window.addEventListener("load", function () { setTimeout(runChecks, 0); });
 })();
 `.trim();
 }

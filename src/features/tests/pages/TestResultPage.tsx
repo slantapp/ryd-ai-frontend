@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ArrowLeft, ArrowRight, BookOpen, Check, Clock, Loader2, Map as MapIcon, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Check, ClipboardList, Clock, Loader2, Map as MapIcon, RotateCcw, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 import { apiErrorMessage, apiErrorStatus, fetchResult, startAttempt } from "../api";
@@ -152,6 +152,7 @@ function RecommendationCard({
   onRetake: () => void;
 }) {
   const title = rec.label ? `${rec.label} — here's what to do next` : "What to do next";
+  const followUp = rec.followUp ?? null;
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-primary/20 bg-white p-5 sm:p-6">
       <div className="flex items-start gap-3">
@@ -165,7 +166,19 @@ function RecommendationCard({
       </div>
 
       <div className="flex flex-col gap-2">
-        {rec.nextCourse ? (
+        {/* The test's own pick comes first: after a pass a course or a test, after a fail a course. */}
+        {followUp?.course ? (
+          <ActionLink to={coursePath(followUp.course.slug)} icon={<ArrowRight className="size-4" />} primary>
+            {followUp.when === "pass" ? "Recommended next: " : "Recommended course: "}
+            {followUp.course.title}
+          </ActionLink>
+        ) : null}
+        {followUp?.test ? (
+          <ActionLink to={testIntroPath(followUp.test.id)} icon={<ClipboardList className="size-4" />} primary>
+            Recommended next test: {followUp.test.title}
+          </ActionLink>
+        ) : null}
+        {rec.nextCourse && rec.nextCourse.id !== followUp?.course?.id ? (
           <ActionLink to={coursePath(rec.nextCourse.slug)} icon={<ArrowRight className="size-4" />} primary>
             {rec.action === "next_level" && rec.nextLevel ? `Move up to ${rec.nextLevel}: ` : "Next course: "}
             {rec.nextCourse.title}

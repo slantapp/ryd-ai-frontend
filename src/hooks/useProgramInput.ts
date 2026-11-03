@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ConsoleQuestion } from "@/utils/codeTestRunner";
+import { END_OF_INPUT, type ConsoleQuestion } from "@/utils/codeTestRunner";
 import {
   assignPrefill,
   joinPromptAnswers,
@@ -9,6 +9,8 @@ import {
 
 export type ProgramInputPrompt = {
   open: boolean;
+  /** One text area for every line the program reads (programs that read until the input ends). */
+  multiline: boolean;
   index: number;
   total: number;
   label: string;
@@ -22,12 +24,20 @@ export type ProgramInputPrompt = {
   onCancel: () => void;
 };
 
-/** One answer typed on the console's last line while the program waits. */
+/** One answer the running program is waiting for (shown in a pop-up). */
 export type ConsoleInputLine = {
   prompt: string;
+  /** What the program printed just before asking. */
+  recent: string[];
+  /** 1-based number of this answer in the run. */
+  number: number;
+  /** The program reads until the input ends: offer "No more input". */
+  canEnd: boolean;
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  /** No more input: the program sees the end of input. */
+  onEnd: () => void;
   onCancel: () => void;
 };
 
@@ -39,7 +49,9 @@ export function useProgramInput(seed: ProgramInputSeed) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
   const [confirmLabel, setConfirmLabel] = useState("Run program");
-  const [question, setQuestion] = useState<{ prompt: string; value: string } | null>(null);
+  const [question, setQuestion] = useState<
+    { prompt: string; value: string; recent: string[]; number: number; canEnd: boolean } | null
+  >(null);
   const keyRef = useRef(seed.key);
   const offerRef = useRef(offer);
   const valueRef = useRef(value);
@@ -78,7 +90,8 @@ export function useProgramInput(seed: ProgramInputSeed) {
 
   useEffect(() => {
     if (!open) return;
-    if (offer.mode !== "prompt" || step >= offer.prompts.length) finish(null);
+    const asks = offer.mode === "prompt" || offer.mode === "lines";
+    if (!asks || step >= offer.prompts.length) finish(null);
   }, [open, offer.mode, offer.prompts.length, step, finish]);
 
   useEffect(
@@ -96,7 +109,11 @@ export function useProgramInput(seed: ProgramInputSeed) {
       if (current.mode === "live") {
         return Promise.resolve<string | undefined | null>(current.prefill || undefined);
       }
-      if (current.mode !== "prompt" || current.prompts.length === 0) {
+      if (current.mode === "none") {
+        return Promise.resolve<string | undefined | null>(current.prefill || undefined);
+      }
+      const asks = current.mode === "prompt" || current.mode === "lines";
+      if (!asks || current.prompts.length === 0) {
         return Promise.resolve<string | undefined | null>(
           current.show ? valueRef.current : undefined,
         );
@@ -105,7 +122,11 @@ export function useProgramInput(seed: ProgramInputSeed) {
         waiter.current?.(null);
         waiter.current = resolve;
         setConfirmLabel(actionLabel);
-        setAnswers(assignPrefill(current.prefill, current.prompts.length));
+        setAnswers(
+          current.mode === "lines"
+            ? [current.prefill.replace(/\n$/, "")]
+            : assignPrefill(current.prefill, current.prompts.length),
+        );
         setStep(0);
         setOpen(true);
       });
@@ -118,19 +139,29 @@ export function useProgramInput(seed: ProgramInputSeed) {
       lineWaiter.current?.(null);
       lineWaiter.current = resolve;
       questionValue.current = next.defaultValue;
-      setQuestion({ prompt: next.prompt, value: next.defaultValue });
+      setQuestion({
+        prompt: next.prompt,
+        value: next.defaultValue,
+        recent: next.recent,
+        number: next.answered + 1,
+        canEnd: next.canEnd,
+      });
     });
   }, []);
 
   const consoleLine: ConsoleInputLine | null = question
     ? {
         prompt: question.prompt,
+        recent: question.recent,
+        number: question.number,
+        canEnd: question.canEnd,
         value: question.value,
         onChange: (next) => {
           questionValue.current = next;
           setQuestion((current) => (current ? { ...current, value: next } : current));
         },
         onSubmit: () => answerLine(questionValue.current),
+        onEnd: () => answerLine(END_OF_INPUT),
         onCancel: () => answerLine(null),
       }
     : null;
@@ -140,6 +171,7 @@ export function useProgramInput(seed: ProgramInputSeed) {
     open && currentPrompt
       ? {
           open: true,
+          multiline: offer.mode === "lines",
           index: step,
           total: offer.prompts.length,
           label: currentPrompt.label,
@@ -156,6 +188,11 @@ export function useProgramInput(seed: ProgramInputSeed) {
           onSubmit: () => {
             if (step < offer.prompts.length - 1) {
               setStep((current) => current + 1);
+              return;
+            }
+            if (offer.mode === "lines") {
+              const text = (answersRef.current[0] ?? "").replace(/\r\n/g, "\n");
+              finish(text ? `${text.replace(/\n$/, "")}\n` : "");
               return;
             }
             finish(joinPromptAnswers(answersRef.current));

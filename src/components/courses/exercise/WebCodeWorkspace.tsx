@@ -4,6 +4,8 @@ import Split from "react-split";
 import { MonacoEditorLazy } from "./MonacoEditorLazy";
 import WebPreviewPane, { type PreviewCheckResult, type PreviewLog } from "./WebPreviewPane";
 import { ConsoleLines } from "./ConsoleLines";
+import { AnswerReviewActions, type AnswerReviewControls } from "./AnswerReviewActions";
+import { ToolbarNotice } from "./ToolbarNotice";
 import type { WebCodeSources, WebEditorTab } from "@/utils/webCodeWorkspace";
 import { PREVIEW_TIME_LIMIT_MESSAGE, type PageCheck } from "@/utils/webPreviewBridge";
 
@@ -29,6 +31,12 @@ interface WebCodeWorkspaceProps {
   checks?: PageCheck[];
   onChecks?: (results: PreviewCheckResult[]) => void;
   onReset?: () => void;
+  /** After the last wrong try: "View correct answer" and "Continue" replace Run and Submit. */
+  answerReview?: AnswerReviewControls | null;
+  /** Tooltip on Submit while it is disabled. */
+  submitDisabledReason?: string;
+  /** A short line under the toolbar, e.g. why Submit is waiting. */
+  toolbarNotice?: string | null;
 }
 
 const TAB_CONFIG: Array<{ id: WebEditorTab; label: string; monaco: string }> = [
@@ -76,6 +84,9 @@ export default function WebCodeWorkspace({
   checks,
   onChecks,
   onReset,
+  answerReview = null,
+  submitDisabledReason,
+  toolbarNotice = null,
 }: WebCodeWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<WebEditorTab>(initialTab);
   const [previewLines, setPreviewLines] = useState<string[]>([]);
@@ -169,7 +180,7 @@ export default function WebCodeWorkspace({
           ))}
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-          {onReset ? (
+          {onReset && !answerReview ? (
             <button
               type="button"
               onClick={onReset}
@@ -182,7 +193,9 @@ export default function WebCodeWorkspace({
               <span className="hidden sm:inline">Reset</span>
             </button>
           ) : null}
-          {twoButtonMode ? (
+          {answerReview ? (
+            <AnswerReviewActions controls={answerReview} compact={!isMdUp} />
+          ) : twoButtonMode ? (
             <>
               <button
                 type="button"
@@ -210,6 +223,7 @@ export default function WebCodeWorkspace({
                 type="button"
                 onClick={onTestCode}
                 disabled={submitDisabled}
+                title={submitDisabled ? submitDisabledReason : "Submit your answer"}
                 className={`flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs text-white sm:gap-2 sm:px-3 sm:text-sm ${
                   submitDisabled
                     ? "cursor-not-allowed bg-gray-500"
@@ -258,6 +272,7 @@ export default function WebCodeWorkspace({
           </button>
         </div>
       </div>
+      {toolbarNotice ? <ToolbarNotice text={toolbarNotice} /> : null}
 
       <Split
         direction="vertical"

@@ -104,7 +104,7 @@ export default function TestIntroPage() {
 
           <div className="flex flex-col gap-2">
             <p className="app-type-label">Card types</p>
-            <TypeChips types={test.types} />
+            <TypeChips types={test.types} maxVisible={3} />
           </div>
 
           <div className="flex items-start gap-2 rounded-2xl bg-[#F6F3FA] px-4 py-3 text-[13px] text-[#4B4458]">

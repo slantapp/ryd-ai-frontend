@@ -17,11 +17,39 @@ import { testIntroPath, testResultPath } from "../paths";
 import { CardShell } from "../cards/CardShell";
 import type { CardFeedback } from "../cards/cardStyles";
 import { ChoiceCard, FillBlankCard, MatchPairsCard, TrueFalseCard, type BlankStatus } from "../cards/QuestionCards";
-import type { AttemptQuestion, AttemptView } from "../types";
+import {
+  BuildAnswerCard,
+  ListenAnswerCard,
+  OrderLinesCard,
+  PlaceOnLineCard,
+  SelectAllCard,
+  SortBucketsCard,
+  SpeedRoundCard,
+  SpotBugCard,
+  SpotMistakeCard,
+  TraceStepsCard,
+  TypeOutputCard,
+  type SpotBugStage,
+} from "../cards/QuestionCardsExtra";
+import type { AttemptQuestion, AttemptView, TestQuestionType } from "../types";
 import "../tests.css";
 
 /** How long a wrong chip / pair stays red before it resets (as in the guide). */
 const WRONG_FLASH_MS = 450;
+
+const RETRY_UNTIL_CORRECT = new Set<TestQuestionType>([
+  "fill_blank",
+  "order_lines",
+  "build_answer",
+  "select_all",
+  "type_output",
+  "place_on_line",
+  "sort_buckets",
+]);
+
+function asStringArray(v: unknown): string[] {
+  return Array.isArray(v) ? v.map(String) : [];
+}
 
 type CardState = {
   /** Learning mode: the server has graded the card. Exam mode: the answer is saved. */
@@ -40,6 +68,22 @@ type CardState = {
   wrong: { left: string; right: string } | null;
   /** any wrong try on this card (streak) */
   missed: boolean;
+  sequence: string[];
+  multiSelected: string[];
+  typed: string;
+  tick: number | null;
+  bucketMap: Record<string, string>;
+  traceValues: (string | number)[];
+  traceMisses: number;
+  bugStage: SpotBugStage;
+  bugLine: number | null;
+  bugFixId: string | null;
+  bugTries: number;
+  speedResults: { id: string; value: boolean }[];
+  speedStarted: boolean;
+  speedEndsAt: number | null;
+  showSpokenText: boolean;
+  checkWrong: boolean;
 };
 
 function initialCardState(q: AttemptQuestion, instant: boolean): CardState {
@@ -50,6 +94,19 @@ function initialCardState(q: AttemptQuestion, instant: boolean): CardState {
   const revealed = instant && done;
   let blankStatus: BlankStatus = "idle";
   if (q.type === "fill_blank" && done) blankStatus = instant ? "correct" : "selected";
+
+  const traceLen = q.type === "trace_steps" ? q.steps.length : 0;
+  const traceFrom =
+    q.type === "trace_steps" && Array.isArray(f?.value) ? (f.value as (string | number)[]) : [];
+  const bugVal =
+    q.type === "spot_bug" && f?.value && typeof f.value === "object" && !Array.isArray(f.value)
+      ? (f.value as { line?: number; fixId?: string })
+      : null;
+  const speedFrom =
+    q.type === "speed_round" && Array.isArray(f?.value)
+      ? (f.value as { id: string; value: boolean }[])
+      : [];
+
   return {
     done,
     revealed,
@@ -57,12 +114,45 @@ function initialCardState(q: AttemptQuestion, instant: boolean): CardState {
     firstTryCorrect: f?.firstTryCorrect,
     correctAnswer: f?.correctAnswer,
     explanation: f?.explanation ?? null,
-    selected: done ? (f?.value ?? null) : null,
+    selected: (() => {
+      if (f?.value == null) return null;
+      if (q.type === "spot_mistake" && typeof f.value === "number") return f.value;
+      if (q.type === "listen_answer") return String(f.value);
+      if (q.type === "true_false" && typeof f.value === "boolean") return f.value;
+      if (q.type === "code_prediction" || q.type === "multiple_choice") return String(f.value);
+      if (done && (q.type === "fill_blank" || q.type === "type_output")) return f.value;
+      return done ? f.value : null;
+    })(),
     blankStatus,
     matched,
     selectedLeft: null,
     wrong: null,
     missed: Boolean(f && f.tries > 1) || f?.firstTryCorrect === false,
+    sequence:
+      q.type === "order_lines" || q.type === "build_answer"
+        ? asStringArray(done ? f?.value : f?.value)
+        : [],
+    multiSelected: q.type === "select_all" ? asStringArray(f?.value) : [],
+    typed: q.type === "type_output" && typeof f?.value === "string" ? f.value : "",
+    tick: q.type === "place_on_line" && typeof f?.value === "number" ? f.value : null,
+    bucketMap:
+      q.type === "sort_buckets" && f?.value && typeof f.value === "object" && !Array.isArray(f.value)
+        ? (f.value as Record<string, string>)
+        : {},
+    traceValues:
+      traceLen > 0
+        ? Array.from({ length: traceLen }, (_, i) => traceFrom[i] ?? "")
+        : [],
+    traceMisses: 0,
+    bugStage: done ? "fix" : bugVal?.line != null ? "fix" : "run",
+    bugLine: bugVal?.line ?? null,
+    bugFixId: bugVal?.fixId ?? null,
+    bugTries: f?.tries ?? 0,
+    speedResults: speedFrom,
+    speedStarted: q.type === "speed_round" && (done || speedFrom.length > 0),
+    speedEndsAt: null,
+    showSpokenText: false,
+    checkWrong: false,
   };
 }
 
@@ -96,6 +186,7 @@ export default function TestAttemptPage() {
   const [finishing, setFinishing] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  const [speedTick, setSpeedTick] = useState(0);
   const clockOffset = useRef(0);
   const timers = useRef<number[]>([]);
   const finishedRef = useRef(false);
@@ -340,23 +431,226 @@ export default function TestAttemptPage() {
     patch(question.id, { matched: {}, selectedLeft: null });
   };
 
+  const flashCheckWrong = (qid: number) => {
+    patch(qid, { checkWrong: true });
+    timers.current.push(
+      window.setTimeout(() => setStates((prev) => ({ ...prev, [qid]: { ...prev[qid], checkWrong: false } })), WRONG_FLASH_MS),
+    );
+  };
+
+  const completeCheck = (qid: number, res: NonNullable<Awaited<ReturnType<typeof send>>>, missed: boolean) => {
+    patch(qid, {
+      done: true,
+      revealed: true,
+      correct: res.correct,
+      firstTryCorrect: !missed && Boolean(res.correct),
+      correctAnswer: res.correctAnswer,
+      explanation: res.explanation ?? null,
+      checkWrong: false,
+    });
+    scoreOutcome(!missed && Boolean(res.correct));
+  };
+
+  const checkAnswer = async (value: unknown, missed: boolean) => {
+    if (!question || !state || state.done || busy) return;
+    if (!instant) {
+      patch(question.id, { selected: value });
+      return;
+    }
+    const res = await send(value);
+    if (!res) return;
+    if (res.correct) {
+      completeCheck(question.id, res, missed);
+      return;
+    }
+    patch(question.id, { missed: true });
+    flashCheckWrong(question.id);
+    playLearningSfx("wrong");
+    setStreak(0);
+  };
+
+  const pickMistake = async (index: number) => {
+    if (!question || !state || state.done || busy) return;
+    if (!instant) {
+      patch(question.id, { selected: index });
+      return;
+    }
+    patch(question.id, { selected: index });
+    const res = await send(index);
+    if (!res) return;
+    patch(question.id, {
+      done: true,
+      revealed: true,
+      correct: res.correct,
+      firstTryCorrect: res.correct,
+      correctAnswer: res.correctAnswer,
+      explanation: res.explanation ?? null,
+    });
+    scoreOutcome(Boolean(res.correct));
+  };
+
+  const submitTrace = async () => {
+    if (!question || !state || state.done || busy) return;
+    const payload = { values: state.traceValues, misses: state.traceMisses };
+    if (!instant) {
+      patch(question.id, { selected: payload });
+      return;
+    }
+    const res = await send(payload);
+    if (!res) return;
+    if (res.correct) {
+      completeCheck(question.id, res, state.missed);
+      return;
+    }
+    patch(question.id, { traceMisses: state.traceMisses + 1, missed: true });
+    flashCheckWrong(question.id);
+    playLearningSfx("wrong");
+    setStreak(0);
+  };
+
+  const submitSpotBug = async () => {
+    if (!question || !state || state.done || busy || state.bugLine == null || !state.bugFixId) return;
+    const tries = state.bugTries + 1;
+    const payload = { line: state.bugLine, fixId: state.bugFixId, tries };
+    if (!instant) {
+      patch(question.id, { selected: payload });
+      return;
+    }
+    const res = await send(payload);
+    if (!res) return;
+    if (res.correct) {
+      patch(question.id, {
+        done: true,
+        revealed: true,
+        correct: true,
+        firstTryCorrect: res.correct && tries <= 2 && !state.missed,
+        correctAnswer: res.correctAnswer,
+        explanation: res.explanation ?? null,
+        bugTries: tries,
+      });
+      scoreOutcome(tries <= 2 && !state.missed);
+      return;
+    }
+    patch(question.id, {
+      missed: true,
+      bugTries: tries,
+      bugStage: "line",
+      bugFixId: null,
+    });
+    flashCheckWrong(question.id);
+    playLearningSfx("wrong");
+    setStreak(0);
+  };
+
+  const submitSpeedRound = useCallback(
+    async (qid: number, results: { id: string; value: boolean }[]) => {
+      setBusy(true);
+      try {
+        const res = await answerQuestion(attemptId, qid, { results });
+        patch(qid, {
+          done: true,
+          speedResults: results,
+          correct: res.correct,
+          firstTryCorrect: res.correct,
+          revealed: instant,
+        });
+        if (instant) scoreOutcome(Boolean(res.correct));
+      } catch (e) {
+        await handleAnswerError(e);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [attemptId, handleAnswerError, instant, patch],
+  );
+
+  useEffect(() => {
+    if (!question || question.type !== "speed_round" || !state?.speedStarted || state.done) return;
+    const id = window.setInterval(() => setSpeedTick((n) => n + 1), 250);
+    return () => window.clearInterval(id);
+  }, [question, state?.speedStarted, state?.done]);
+
+  useEffect(() => {
+    if (!question || question.type !== "speed_round" || !state?.speedStarted || state.done || busy || !state.speedEndsAt) return;
+    const left = Math.max(0, Math.ceil((state.speedEndsAt - Date.now()) / 1000));
+    if (left <= 0 && state.speedResults.length < question.facts.length) {
+      const pending = question.facts.filter((f) => !state.speedResults.some((r) => r.id === f.id));
+      const merged = [...state.speedResults, ...pending.map((f) => ({ id: f.id, value: false }))];
+      void submitSpeedRound(question.id, merged);
+    }
+  }, [busy, question, speedTick, state, submitSpeedRound]);
+
+  useEffect(() => {
+    if (!question || question.type !== "speed_round" || !state?.speedStarted || state.done || busy) return;
+    if (state.speedResults.length === question.facts.length) void submitSpeedRound(question.id, state.speedResults);
+  }, [busy, question, state, submitSpeedRound]);
+
+  function examValue(q: AttemptQuestion, s: CardState): unknown {
+    switch (q.type) {
+      case "match_pairs":
+        return { matches: s.matched };
+      case "order_lines":
+      case "build_answer":
+        return s.sequence;
+      case "select_all":
+        return [...s.multiSelected].sort();
+      case "type_output":
+        return s.typed.trim();
+      case "place_on_line":
+        return s.tick ?? 0;
+      case "sort_buckets":
+        return s.bucketMap;
+      case "trace_steps":
+        return { values: s.traceValues, misses: s.traceMisses };
+      case "spot_bug":
+        return { line: s.bugLine, fixId: s.bugFixId, tries: s.bugTries || 1 };
+      case "speed_round":
+        return { results: s.speedResults };
+      default:
+        return s.selected;
+    }
+  }
+
+  function examReadyFor(q: AttemptQuestion, s: CardState): boolean {
+    if (s.done) return true;
+    switch (q.type) {
+      case "match_pairs":
+        return Object.keys(s.matched).length === q.left.length;
+      case "order_lines":
+        return s.sequence.length === q.slotCount;
+      case "build_answer":
+        return s.sequence.length > 0;
+      case "select_all":
+        return s.multiSelected.length > 0;
+      case "type_output":
+        return s.typed.trim().length > 0;
+      case "place_on_line":
+        return s.tick != null;
+      case "sort_buckets":
+        return q.items.every((i) => s.bucketMap[i.id]);
+      case "trace_steps":
+        return s.traceValues.length === q.steps.length && s.traceValues.every((v) => v !== "" && v != null);
+      case "spot_bug":
+        return s.bugLine != null && Boolean(s.bugFixId);
+      case "speed_round":
+        return s.speedResults.length === q.facts.length;
+      default:
+        return s.selected != null;
+    }
+  }
+
   // ---------------------------------------------------------------------------------------------
   // Next / finish
   // ---------------------------------------------------------------------------------------------
 
   const isLast = index >= questions.length - 1;
 
-  const examReady = (() => {
-    if (!question || !state || instant) return false;
-    if (state.done) return true;
-    if (question.type === "match_pairs") return Object.keys(state.matched).length === question.left.length;
-    return state.selected != null;
-  })();
+  const examReady = question && state && !instant ? examReadyFor(question, state) : false;
 
   const goNext = async () => {
     if (!question || !state) return;
     if (!instant && !state.done) {
-      const value = question.type === "match_pairs" ? { matches: state.matched } : state.selected;
+      const value = examValue(question, state);
       const res = await send(value);
       if (!res) return;
       patch(question.id, { done: true });
@@ -398,10 +692,16 @@ export default function TestAttemptPage() {
 
   let feedback: CardFeedback | null = null;
   if (instant && state.revealed) {
-    const ok = question.type === "fill_blank" || question.type === "match_pairs" ? !state.missed : Boolean(state.correct);
-    feedback = ok
+    const partialOk =
+      question.type === "trace_steps" || question.type === "speed_round"
+        ? Boolean(state.firstTryCorrect)
+        : RETRY_UNTIL_CORRECT.has(question.type)
+          ? !state.missed
+          : Boolean(state.correct);
+    const retryEnd = RETRY_UNTIL_CORRECT.has(question.type) || question.type === "match_pairs" || question.type === "fill_blank";
+    feedback = partialOk
       ? { tone: "correct", title: "Nice — spot on!", body: state.explanation }
-      : question.type === "fill_blank" || question.type === "match_pairs"
+      : retryEnd && state.correct
         ? { tone: "neutral", title: "Got there in the end — only first tries score", body: state.explanation }
         : { tone: "incorrect", title: "Not quite — here's why", body: state.explanation };
   } else if (!instant && state.done) {
@@ -474,6 +774,214 @@ export default function TestAttemptPage() {
             onReset={instant ? null : resetPairs}
           />
         );
+      case "order_lines": {
+        const used = new Set(state.sequence);
+        return (
+          <OrderLinesCard
+            prompt={question.prompt}
+            language={language}
+            lines={question.lines}
+            slotCount={question.slotCount}
+            order={state.sequence}
+            usedIds={used}
+            revealed={state.revealed}
+            disabled={locked}
+            checkWrong={state.checkWrong}
+            canCheck={instant && !state.done}
+            onAdd={(id) => state.sequence.length < question.slotCount && patch(question.id, { sequence: [...state.sequence, id] })}
+            onRemove={(i) => patch(question.id, { sequence: state.sequence.filter((_, j) => j !== i) })}
+            onCheck={() => void checkAnswer(state.sequence, state.missed)}
+          />
+        );
+      }
+      case "build_answer":
+        return (
+          <BuildAnswerCard
+            prompt={question.prompt}
+            tiles={question.tiles}
+            sequence={state.sequence}
+            revealed={state.revealed}
+            disabled={locked}
+            checkWrong={state.checkWrong}
+            canCheck={instant && !state.done}
+            onToggle={(id) => {
+              const inSeq = state.sequence.includes(id);
+              patch(question.id, {
+                sequence: inSeq ? state.sequence.filter((x) => x !== id) : [...state.sequence, id],
+              });
+            }}
+            onClear={() => patch(question.id, { sequence: [] })}
+            onCheck={() => void checkAnswer(state.sequence, state.missed)}
+          />
+        );
+      case "spot_mistake":
+        return (
+          <SpotMistakeCard
+            prompt={question.prompt}
+            language={language}
+            steps={question.steps}
+            selected={typeof state.selected === "number" ? state.selected : null}
+            correctIndex={typeof state.correctAnswer === "number" ? state.correctAnswer : null}
+            revealed={state.revealed}
+            disabled={locked}
+            onPick={(i) => void pickMistake(i)}
+          />
+        );
+      case "select_all":
+        return (
+          <SelectAllCard
+            prompt={question.prompt}
+            options={question.options}
+            selected={state.multiSelected}
+            correctIds={Array.isArray(state.correctAnswer) ? state.correctAnswer.map(String) : null}
+            revealed={state.revealed}
+            disabled={locked}
+            checkWrong={state.checkWrong}
+            canCheck={instant && !state.done}
+            onToggle={(id) => {
+              const has = state.multiSelected.includes(id);
+              patch(question.id, {
+                multiSelected: has ? state.multiSelected.filter((x) => x !== id) : [...state.multiSelected, id],
+              });
+            }}
+            onCheck={() => void checkAnswer([...state.multiSelected].sort(), state.missed)}
+          />
+        );
+      case "type_output":
+        return (
+          <TypeOutputCard
+            prompt={question.prompt}
+            code={question.code}
+            language={language}
+            maxLength={question.maxLength}
+            keypad={question.keypad}
+            value={state.typed}
+            revealed={state.revealed}
+            disabled={locked}
+            checkWrong={state.checkWrong}
+            canCheck={instant && !state.done}
+            onChange={(v) => patch(question.id, { typed: v })}
+            onCheck={() => void checkAnswer(state.typed.trim(), state.missed)}
+          />
+        );
+      case "place_on_line":
+        return (
+          <PlaceOnLineCard
+            prompt={question.prompt}
+            ticks={question.ticks}
+            leftLabel={question.leftLabel}
+            rightLabel={question.rightLabel}
+            value={state.tick}
+            correctValue={typeof state.correctAnswer === "number" ? state.correctAnswer : null}
+            revealed={state.revealed}
+            disabled={locked}
+            checkWrong={state.checkWrong}
+            canCheck={instant && !state.done}
+            onChange={(v) => patch(question.id, { tick: v })}
+            onCheck={() => void checkAnswer(state.tick ?? 0, state.missed)}
+          />
+        );
+      case "sort_buckets":
+        return (
+          <SortBucketsCard
+            prompt={question.prompt}
+            items={question.items}
+            buckets={question.buckets}
+            map={state.bucketMap}
+            revealed={state.revealed}
+            disabled={locked}
+            checkWrong={state.checkWrong}
+            canCheck={instant && !state.done}
+            onPick={(itemId, bucketId) => patch(question.id, { bucketMap: { ...state.bucketMap, [itemId]: bucketId } })}
+            onCheck={() => void checkAnswer(state.bucketMap, state.missed)}
+          />
+        );
+      case "listen_answer":
+        return (
+          <ListenAnswerCard
+            prompt={question.prompt}
+            spokenText={question.spokenText}
+            showTextAllowed={question.showTextAllowed}
+            options={question.options}
+            selected={state.selected == null ? null : String(state.selected)}
+            correctAnswer={state.correctAnswer == null ? null : String(state.correctAnswer)}
+            revealed={state.revealed}
+            disabled={locked}
+            showText={state.showSpokenText}
+            onToggleShow={() => patch(question.id, { showSpokenText: !state.showSpokenText })}
+            onPick={(id) => void pickSingle(id)}
+          />
+        );
+      case "trace_steps":
+        return (
+          <TraceStepsCard
+            prompt={question.prompt}
+            language={language}
+            lines={question.lines}
+            steps={question.steps}
+            values={state.traceValues}
+            revealed={state.revealed}
+            disabled={locked}
+            canCheck={instant && !state.done}
+            onSet={(i, v) => {
+              const next = [...state.traceValues];
+              next[i] = v;
+              patch(question.id, { traceValues: next });
+            }}
+            onCheck={() => void submitTrace()}
+          />
+        );
+      case "spot_bug":
+        return (
+          <SpotBugCard
+            prompt={question.prompt}
+            language={language}
+            lines={question.lines}
+            expectedOutput={question.expectedOutput}
+            actualOutput={question.actualOutput}
+            clue={question.clue}
+            fixes={question.fixes}
+            stage={state.bugStage}
+            line={state.bugLine}
+            fixId={state.bugFixId}
+            revealed={state.revealed}
+            disabled={locked}
+            onRun={() => patch(question.id, { bugStage: "line" })}
+            onPickLine={(i) => patch(question.id, { bugLine: i, bugStage: "fix" })}
+            onPickFix={(id) => patch(question.id, { bugFixId: id })}
+            onSubmit={() => void submitSpotBug()}
+            canSubmit={instant && !state.done && state.bugLine != null && Boolean(state.bugFixId)}
+          />
+        );
+      case "speed_round": {
+        const remaining =
+          state.speedEndsAt != null
+            ? Math.max(0, Math.ceil((state.speedEndsAt - Date.now()) / 1000))
+            : question.seconds;
+        return (
+          <SpeedRoundCard
+            prompt={question.prompt}
+            seconds={question.seconds}
+            facts={question.facts}
+            results={state.speedResults}
+            remainingSec={remaining}
+            revealed={state.revealed}
+            disabled={locked || finishing}
+            started={state.speedStarted}
+            onStart={() =>
+              patch(question.id, {
+                speedStarted: true,
+                speedEndsAt: Date.now() + question.seconds * 1000,
+              })
+            }
+            onPick={(id, value) => {
+              if (state.speedResults.some((r) => r.id === id)) return;
+              const next = [...state.speedResults, { id, value }];
+              patch(question.id, { speedResults: next });
+            }}
+          />
+        );
+      }
       default:
         return null;
     }

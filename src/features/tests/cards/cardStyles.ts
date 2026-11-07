@@ -1,4 +1,21 @@
-import { Code2, Link2, ListChecks, TextCursorInput, ToggleLeft } from "lucide-react";
+import {
+  Bug,
+  Code2,
+  Footprints,
+  Keyboard,
+  Layers,
+  Link2,
+  ListChecks,
+  ListOrdered,
+  Puzzle,
+  Search,
+  SlidersHorizontal,
+  SquareCheck,
+  TextCursorInput,
+  Timer,
+  ToggleLeft,
+  Volume2,
+} from "lucide-react";
 import type { TestQuestionType } from "../types";
 
 export const TYPE_META: Record<TestQuestionType, { label: string; icon: typeof Code2 }> = {
@@ -7,6 +24,17 @@ export const TYPE_META: Record<TestQuestionType, { label: string; icon: typeof C
   true_false: { label: "True or false", icon: ToggleLeft },
   fill_blank: { label: "Fill in the blank", icon: TextCursorInput },
   match_pairs: { label: "Match the pairs", icon: Link2 },
+  order_lines: { label: "Put it in order", icon: ListOrdered },
+  build_answer: { label: "Build the answer", icon: Puzzle },
+  spot_mistake: { label: "Spot the mistake", icon: Search },
+  select_all: { label: "Select all that apply", icon: SquareCheck },
+  type_output: { label: "Type the output", icon: Keyboard },
+  place_on_line: { label: "Place on the line", icon: SlidersHorizontal },
+  sort_buckets: { label: "Sort it", icon: Layers },
+  listen_answer: { label: "Listen and answer", icon: Volume2 },
+  trace_steps: { label: "Trace it", icon: Footprints },
+  spot_bug: { label: "Spot the bug", icon: Bug },
+  speed_round: { label: "Speed round", icon: Timer },
 };
 
 export type CardFeedback = {

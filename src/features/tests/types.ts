@@ -5,7 +5,18 @@ export type TestQuestionType =
   | "multiple_choice"
   | "true_false"
   | "fill_blank"
-  | "match_pairs";
+  | "match_pairs"
+  | "order_lines"
+  | "build_answer"
+  | "spot_mistake"
+  | "select_all"
+  | "type_output"
+  | "place_on_line"
+  | "sort_buckets"
+  | "listen_answer"
+  | "trace_steps"
+  | "spot_bug"
+  | "speed_round";
 
 export type TestLevel = "Beginner" | "Intermediate" | "Advanced";
 
@@ -97,6 +108,45 @@ export type PublicQuestion =
       type: "match_pairs";
       left: { id: string; text: string }[];
       right: { token: string; text: string }[];
+    })
+  | (QuestionBase & {
+      type: "order_lines";
+      lines: { id: string; text: string }[];
+      slotCount: number;
+    })
+  | (QuestionBase & { type: "build_answer"; tiles: { id: string; text: string }[] })
+  | (QuestionBase & { type: "spot_mistake"; steps: string[] })
+  | (QuestionBase & { type: "select_all"; options: QuestionOption[] })
+  | (QuestionBase & { type: "type_output"; maxLength: number; keypad: "numeric" | "text" })
+  | (QuestionBase & { type: "place_on_line"; ticks: number; leftLabel: string; rightLabel: string })
+  | (QuestionBase & {
+      type: "sort_buckets";
+      items: { id: string; text: string }[];
+      buckets: { id: string; label: string }[];
+    })
+  | (QuestionBase & {
+      type: "listen_answer";
+      spokenText: string;
+      showTextAllowed: boolean;
+      options: QuestionOption[];
+    })
+  | (QuestionBase & {
+      type: "trace_steps";
+      lines: string[];
+      steps: { options: (string | number)[]; hint: string | null }[];
+    })
+  | (QuestionBase & {
+      type: "spot_bug";
+      lines: string[];
+      expectedOutput: string;
+      actualOutput: string;
+      clue: string | null;
+      fixes: { id: string; text: string; output: string | null }[];
+    })
+  | (QuestionBase & {
+      type: "speed_round";
+      seconds: number;
+      facts: { id: string; prompt: string }[];
     });
 
 /** What the server already knows about a card (used to resume after a refresh). */

@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
-import { ArrowRight, CheckCircle2, Flame, XCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, Code2, Flame, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TestQuestionType } from "../types";
 import { TYPE_META, type CardFeedback } from "./cardStyles";
+
+const FALLBACK_META = { label: "Question", icon: Code2 };
 
 interface CardShellProps {
   type: TestQuestionType;
@@ -33,7 +35,7 @@ export function CardShell({
   nextDisabled,
   footer,
 }: CardShellProps) {
-  const meta = TYPE_META[type];
+  const meta = TYPE_META[type] ?? { ...FALLBACK_META, label: type || FALLBACK_META.label };
   const Icon = meta.icon;
   return (
     <div className="mx-auto flex w-full max-w-[640px] flex-col gap-5 rounded-[28px] bg-white p-5 shadow-[0_24px_60px_-24px_rgba(170,70,142,0.3)] sm:p-9">

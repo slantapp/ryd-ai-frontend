@@ -347,5 +347,149 @@ function AnswerLines({ item }: { item: ReviewItem }) {
       </ul>
     );
   }
+  if (q.type === "order_lines" || q.type === "build_answer") {
+    const label = (ids: unknown) => {
+      const list = Array.isArray(ids) ? ids.map(String) : [];
+      const byId = new Map(
+        (q.type === "order_lines" ? q.lines : q.tiles).map((row) => [row.id, "text" in row ? row.text : ""]),
+      );
+      return list.map((id) => byId.get(id) ?? id).join(q.type === "build_answer" ? "" : " → ");
+    };
+    return (
+      <div className="flex flex-col gap-1">
+        {line("Your answer:", a ? label(a.value) : "—", "you")}
+        {!a?.firstTryCorrect ? line("Right answer:", label(item.correctAnswer), "right") : null}
+      </div>
+    );
+  }
+  if (q.type === "spot_mistake") {
+    const label = (v: unknown) => (typeof v === "number" ? `Step ${v + 1}` : "—");
+    return (
+      <div className="flex flex-col gap-1">
+        {line("Your answer:", a ? label(a.value) : "—", "you")}
+        {!a?.firstTryCorrect ? line("Right answer:", label(item.correctAnswer), "right") : null}
+      </div>
+    );
+  }
+  if (q.type === "select_all") {
+    const label = (ids: unknown) => {
+      const list = Array.isArray(ids) ? ids : [];
+      return list.map((id) => q.options.find((o) => o.id === String(id))?.label ?? String(id)).join(", ") || "—";
+    };
+    return (
+      <div className="flex flex-col gap-1">
+        {line("Your answer:", a ? label(a.value) : "—", "you")}
+        {!a?.firstTryCorrect ? line("Right answer:", label(item.correctAnswer), "right") : null}
+      </div>
+    );
+  }
+  if (q.type === "type_output") {
+    return (
+      <div className="flex flex-col gap-1">
+        {line("Your answer:", a ? String(a.value ?? "—") : "—", "you")}
+        {!a?.firstTryCorrect ? line("Right answer:", String(item.correctAnswer ?? "—"), "right") : null}
+      </div>
+    );
+  }
+  if (q.type === "place_on_line") {
+    const fmt = (v: unknown) => (typeof v === "number" ? String(v) : "—");
+    return (
+      <div className="flex flex-col gap-1">
+        {line("Your answer:", a ? fmt(a.value) : "—", "you")}
+        {!a?.firstTryCorrect ? line("Right answer:", fmt(item.correctAnswer), "right") : null}
+        <p className="text-[12px] text-[#6B6572]">
+          {q.leftLabel} ↔ {q.rightLabel} (0–{q.ticks})
+        </p>
+      </div>
+    );
+  }
+  if (q.type === "sort_buckets") {
+    const bucketLabel = new Map(q.buckets.map((b) => [b.id, b.label]));
+    const correct = (item.correctAnswer as Record<string, string>) ?? {};
+    return (
+      <ul className="flex flex-col gap-1.5 text-sm">
+        {q.items.map((item) => (
+          <li key={item.id} className="flex flex-wrap gap-2">
+            <span className="font-semibold text-[#132050]">{item.text}</span>
+            <ArrowRight className="size-3.5 text-[#9C96A6]" aria-hidden />
+            <span className="text-[#132050]">
+              {(a?.value as Record<string, string> | undefined)?.[item.id]
+                ? bucketLabel.get(String((a?.value as Record<string, string>)[item.id])) ?? "—"
+                : "—"}
+            </span>
+            {!a?.firstTryCorrect ? (
+              <span className="text-[#15803D]">({bucketLabel.get(correct[item.id]) ?? "—"})</span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (q.type === "listen_answer") {
+    const label = (id: unknown) => q.options.find((o) => o.id === String(id))?.label ?? "—";
+    return (
+      <div className="flex flex-col gap-1">
+        <p className="rounded-xl bg-[#F6F3FA] px-3 py-2 text-[13px] text-[#4B4458]">Spoken: {q.spokenText}</p>
+        {line("Your answer:", a ? label(a.value) : "—", "you")}
+        {!a?.firstTryCorrect ? line("Right answer:", label(item.correctAnswer), "right") : null}
+      </div>
+    );
+  }
+  if (q.type === "trace_steps") {
+    const yours = Array.isArray(a?.value) ? a.value.map(String) : [];
+    const right = Array.isArray(item.correctAnswer)
+      ? item.correctAnswer.map(String)
+      : ((item.correctAnswer as { values?: unknown[] } | null)?.values ?? []).map(String);
+    return (
+      <ol className="m-0 flex list-decimal flex-col gap-1 pl-5 text-sm">
+        {q.steps.map((_, i) => (
+          <li key={i}>
+            <span className="font-semibold text-[#132050]">{yours[i] ?? "—"}</span>
+            {!a?.firstTryCorrect && right[i] ? <span className="text-[#15803D]"> (→ {right[i]})</span> : null}
+          </li>
+        ))}
+      </ol>
+    );
+  }
+  if (q.type === "spot_bug") {
+    const yours = a?.value as { line?: number; fixId?: string } | null;
+    const correct = item.correctAnswer as { line?: number; fixId?: string };
+    const fixLabel = (id: string | undefined) => q.fixes.find((f) => f.id === id)?.text ?? "—";
+    return (
+      <div className="flex flex-col gap-1">
+        {line("Your line:", yours?.line != null ? String(yours.line + 1) : "—", "you")}
+        {line("Your fix:", yours?.fixId ? fixLabel(yours.fixId) : "—", "you")}
+        {!a?.firstTryCorrect ? (
+          <>
+            {line("Right line:", correct?.line != null ? String(correct.line + 1) : "—", "right")}
+            {line("Right fix:", fixLabel(correct?.fixId), "right")}
+          </>
+        ) : null}
+      </div>
+    );
+  }
+  if (q.type === "speed_round") {
+    const results = Array.isArray(a?.value) ? (a.value as { id: string; value: boolean }[]) : [];
+    const correct = new Map(
+      ((item.correctAnswer as { id: string; value: boolean }[]) ?? []).map((r) => [r.id, r.value]),
+    );
+    return (
+      <ul className="flex flex-col gap-1 text-sm">
+        {q.facts.map((f) => {
+          const pick = results.find((r) => r.id === f.id);
+          const want = correct.get(f.id);
+          return (
+            <li key={f.id} className="flex flex-wrap gap-2">
+              <span className="font-semibold text-[#132050]">{f.prompt}</span>
+              <span>{pick ? (pick.value ? "True" : "False") : "—"}</span>
+              {want != null && pick?.value !== want ? (
+                <span className="text-[#15803D]">(→ {want ? "True" : "False"})</span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
   return null;
 }

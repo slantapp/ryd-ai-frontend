@@ -48,7 +48,7 @@ export function CourseTestLink({ courseSlug }: { courseSlug: string | null | und
     <div className="mt-3 flex items-center justify-center gap-2 font-inter text-sm">
       {best ? (
         <span className="inline-flex items-center gap-1.5 text-xs text-[#4F4D55]">
-          Course grade <GradeBadge grade={best.grade} size="sm" />
+          Course result <GradeBadge grade={best.grade} size="sm" />
           <span className="tabular-nums">{Math.round(best.percent)}%</span>
         </span>
       ) : null}

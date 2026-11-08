@@ -7,21 +7,36 @@ const GRADE_TONE: Record<string, string> = {
   B: "bg-[#EFF6FF] text-[#1D4ED8] ring-[#2563EB]/30",
   C: "bg-[#FFFBEB] text-[#B45309] ring-[#D97706]/30",
   D: "bg-[#FEF2F2] text-[#B91C1C] ring-[#DC2626]/30",
+  PASS: "bg-[#ECFDF3] text-[#15803D] ring-[#16A34A]/30",
+  FAIL: "bg-[#FEF2F2] text-[#B91C1C] ring-[#DC2626]/30",
 };
 
+/** Letter grades (legacy) stay circular; Pass/Fail use a wider pill. */
 export function GradeBadge({ grade, size = "md" }: { grade: string | null | undefined; size?: "sm" | "md" | "lg" }) {
   if (!grade) return null;
-  const tone = GRADE_TONE[grade.toUpperCase()] ?? "bg-[#F6E9FB] text-primary ring-primary/30";
+  const key = grade.toUpperCase();
+  const tone = GRADE_TONE[key] ?? "bg-[#F6E9FB] text-primary ring-primary/30";
+  const isWord = grade.length > 1;
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-full font-extrabold ring-2",
+        "inline-flex items-center justify-center font-extrabold ring-2",
         tone,
-        size === "sm" && "size-7 text-xs",
-        size === "md" && "size-10 text-base",
-        size === "lg" && "size-20 text-4xl",
+        isWord
+          ? cn(
+              "rounded-full px-3",
+              size === "sm" && "h-7 text-xs",
+              size === "md" && "h-10 px-4 text-sm",
+              size === "lg" && "h-14 px-6 text-xl",
+            )
+          : cn(
+              "rounded-full",
+              size === "sm" && "size-7 text-xs",
+              size === "md" && "size-10 text-base",
+              size === "lg" && "size-20 text-4xl",
+            ),
       )}
-      aria-label={`Grade ${grade}`}
+      aria-label={key === "PASS" || key === "FAIL" ? key : `Grade ${grade}`}
     >
       {grade}
     </span>

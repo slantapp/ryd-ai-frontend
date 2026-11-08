@@ -3,6 +3,7 @@ export { formatRunOutput } from "./types";
 export {
   CODE_RUN_LANGUAGES,
   getRunLanguageLabel,
+  isCodeEditorLanguage,
   normalizeRunLanguage,
   type CodeRunLanguage,
 } from "./languages";

@@ -44,6 +44,31 @@ const LANGUAGE_LABELS = Object.fromEntries(
   CODE_RUN_LANGUAGES.map((lang) => [lang.value, lang.label]),
 ) as Record<string, string>;
 
+/**
+ * True when a string names a programming/editor language (not a spoken locale like "en").
+ * Curriculum roots often use `language: "en"` for content locale — that must not drive the code editor.
+ */
+export function isCodeEditorLanguage(language?: string): boolean {
+  const raw = (language || "").toLowerCase().trim();
+  if (!raw) return false;
+  const canonical = LANGUAGE_ALIASES[raw] ?? raw;
+  if (
+    canonical === "html" ||
+    canonical === "css" ||
+    canonical === "web" ||
+    canonical === "html/css" ||
+    canonical === "html+css" ||
+    canonical === "html-css" ||
+    canonical.startsWith("html")
+  ) {
+    return true;
+  }
+  if (canonical === "sql" || canonical === "sqlite" || canonical === "sqlite3") {
+    return true;
+  }
+  return CODE_RUN_LANGUAGES.some((lang) => lang.value === canonical);
+}
+
 /** Map curriculum/course language strings to a canonical dropdown value. */
 export function normalizeRunLanguage(language?: string): string {
   const raw = (language || "javascript").toLowerCase().trim();

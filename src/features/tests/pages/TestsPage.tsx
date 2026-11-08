@@ -185,7 +185,7 @@ export default function TestsPage() {
           <p className="app-type-eyebrow mb-1">Practice</p>
           <h1 className="app-type-page-title">Tests</h1>
           <p className="app-type-page-subtitle mt-1.5">
-            Check what you've learned with quick, interactive cards — then get a grade and what to do next.
+            Check what you've learned with quick, interactive cards — then see if you passed and what to do next.
           </p>
         </div>
         <div className="relative flex w-full items-center gap-2 sm:max-w-xs lg:max-w-sm">
@@ -317,7 +317,7 @@ export default function TestsPage() {
           {history == null ? (
             <Loading />
           ) : history.length === 0 ? (
-            <EmptyState title="No results yet" body="Finish a test and your grades will show up here." />
+            <EmptyState title="No results yet" body="Finish a test and your results will show up here." />
           ) : (
             <div className="flex flex-col gap-4">
               <ul className="divide-y divide-[#EDEAF3] overflow-hidden rounded-xl border border-[#EDEAF3] bg-white">

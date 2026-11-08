@@ -151,7 +151,7 @@ function RecommendationCard({
   retaking: boolean;
   onRetake: () => void;
 }) {
-  const title = rec.label ? `${rec.label} — here's what to do next` : "What to do next";
+  const title = rec.label ? `${rec.label} — what to do next` : "What to do next";
   const followUp = rec.followUp ?? null;
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-primary/20 bg-white p-5 sm:p-6">

@@ -400,6 +400,48 @@ export default function CurriculumPreviewPage() {
     }
   }, [handoff.data, isRemotePreview, publishStatus, sourceFile]);
 
+  /** Publish validated file(s) from the upload screen without entering preview. */
+  const handlePublishFromUpload = useCallback(
+    async (results: PreviewLoadResult[]) => {
+      if (
+        !handoff.data ||
+        isRemotePreview ||
+        !("token" in handoff.data) ||
+        !results.length
+      ) {
+        throw new Error("Publishing is only available when signed in via admin handoff.");
+      }
+      const token = handoff.data.token;
+      let ok = 0;
+      const failures: string[] = [];
+      for (const result of results) {
+        try {
+          await uploadCurriculumFile(result.file, token);
+          ok += 1;
+        } catch (err) {
+          failures.push(
+            `${result.file.name}: ${err instanceof Error ? err.message : "upload failed"}`,
+          );
+        }
+      }
+      if (ok) {
+        toast.success(
+          ok === 1
+            ? "Curriculum published successfully."
+            : `Published ${ok} of ${results.length} curriculum file(s).`,
+        );
+      }
+      if (failures.length) {
+        throw new Error(failures.join(" · "));
+      }
+    },
+    [handoff.data, isRemotePreview],
+  );
+
+  const canPublishFromUpload = Boolean(
+    !isRemotePreview && handoff.data && "token" in handoff.data,
+  );
+
   const handleSelectLesson = useCallback(
     (lesson: Lesson) => {
       stop();
@@ -1060,6 +1102,8 @@ export default function CurriculumPreviewPage() {
           handoff.data && "name" in handoff.data ? handoff.data.name : undefined
         }
         onCurriculumLoaded={handleCurriculumLoaded}
+        canPublish={canPublishFromUpload}
+        onPublishFiles={canPublishFromUpload ? handlePublishFromUpload : undefined}
       />
     );
   }

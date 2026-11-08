@@ -15,6 +15,8 @@ export type WebCodeSources = {
   javascript: string;
 };
 
+export type WebEditorTab = "html" | "css" | "javascript";
+
 export const EMPTY_WEB_CODE: WebCodeSources = {
   html: "",
   css: "",
@@ -100,33 +102,70 @@ export function exampleUsesAuthoredWebPanes(example: WebCodeExampleLike): boolea
 }
 
 /**
+ * Which pane holds the lesson's main `code` / `starterCode`.
+ * JS web lessons (`runtime: "web"` + language javascript) keep code in the JS pane;
+ * HTML/CSS courses put it in their own pane even when runtime is "web" for the preview.
+ */
+export function mainWebPaneForExample(example: WebCodeExampleLike): WebEditorTab {
+  const lang = (example.language || "").toLowerCase().trim();
+  if (lang === "css") return "css";
+  if (lang === "html" || lang === "web" || lang.startsWith("html")) return "html";
+  if (lang === "javascript" || lang === "js" || example.runtime === "web") {
+    return "javascript";
+  }
+  return "html";
+}
+
+/**
  * Build HTML/CSS/JS panes from a code example.
- * - `demo`: main `code` in its language pane + optional `supportingCode` companion.
+ * - `demo`: main `code` in its language pane + optional companion panes.
  * - `practice`: `starterCode` (or empty) in main pane + companion unchanged.
+ * Authored `html` / `css` / `starterHtml` / `starterCss` fill those panes; main code
+ * goes to the pane matching `language` (not always JavaScript).
  */
 export function buildWebCodeFromExample(
   example: WebCodeExampleLike,
   mode: "demo" | "practice",
 ): WebCodeSources {
-  if (exampleUsesAuthoredWebPanes(example)) {
-    return {
-      html:
-        mode === "practice"
-          ? (example.starterHtml ?? example.html ?? "")
-          : (example.html ?? ""),
-      css:
-        mode === "practice"
-          ? (example.starterCss ?? example.css ?? "")
-          : (example.css ?? ""),
-      javascript:
-        mode === "practice" ? (example.starterCode?.trim() ?? "") : example.code,
-    };
-  }
-
   const mainText =
     mode === "practice"
       ? (example.starterCode?.trim() ?? "")
-      : example.code;
+      : (example.code ?? "");
+
+  if (exampleUsesAuthoredWebPanes(example)) {
+    const fieldHtml =
+      mode === "practice"
+        ? (example.starterHtml ?? example.html ?? "")
+        : (example.html ?? "");
+    const fieldCss =
+      mode === "practice"
+        ? (example.starterCss ?? example.css ?? "")
+        : (example.css ?? "");
+    const mainPane = mainWebPaneForExample(example);
+
+    if (mainPane === "html") {
+      return {
+        // Prefer an authored HTML field; otherwise the main code is the HTML.
+        html: fieldHtml || mainText,
+        css: fieldCss,
+        // When HTML is authored separately, leftover main text is treated as JS.
+        javascript: fieldHtml ? mainText : "",
+      };
+    }
+    if (mainPane === "css") {
+      return {
+        html: fieldHtml,
+        css: fieldCss || mainText,
+        javascript: fieldCss ? mainText : "",
+      };
+    }
+    return {
+      html: fieldHtml,
+      css: fieldCss,
+      javascript: mainText,
+    };
+  }
+
   const primary = seedWebCodeFromExample(mainText, example.language);
 
   const supporting = example.supportingCode?.trim();
@@ -271,9 +310,11 @@ export function combineWebCodeForValidation(sources: WebCodeSources): string {
 export function evaluateWebCodeTest(
   sources: WebCodeSources,
   criteria: CodeTestCriteria | undefined,
+  language?: string,
 ): { passed: boolean; testResults: CodeTestResult[] } {
   const testResults: CodeTestResult[] = [];
   let passed = false;
+  const lang = (language || "").toLowerCase().trim();
 
   if (criteria?.expectedHTML) {
     const normalizedExpected = normalizeCodeForMatch(criteria.expectedHTML);
@@ -313,7 +354,14 @@ export function evaluateWebCodeTest(
     });
   } else if (criteria?.expectedCode) {
     const combined = combineWebCodeForValidation(sources);
-    passed = matchExpectedCode(combined, criteria.expectedCode);
+    // Match with the lesson language so HTML/CSS answers are not JS-normalized.
+    const matchLanguage =
+      lang === "css" || lang === "html" || lang === "web" || lang.startsWith("html")
+        ? lang === "css"
+          ? "css"
+          : "html"
+        : lang || "html";
+    passed = matchExpectedCode(combined, criteria.expectedCode, matchLanguage);
     testResults.push({
       test: passed
         ? "Your code matches the expected solution"
@@ -338,12 +386,16 @@ export function evaluateWebCodeTest(
   return { passed, testResults };
 }
 
-export type WebEditorTab = "html" | "css" | "javascript";
-
+/**
+ * Opening tab for the web editor. Language wins over runtime so HTML courses open
+ * on HTML even when `runtime: "web"` (preview layout). JS web lessons still open on JS.
+ */
 export function defaultWebEditorTab(language?: string, runtime?: string): WebEditorTab {
-  if (runtime === "web") return "javascript";
-  const lang = (language || "html").toLowerCase().trim();
+  const lang = (language || "").toLowerCase().trim();
   if (lang === "css") return "css";
+  if (lang === "html" || lang === "web" || lang.startsWith("html")) return "html";
   if (lang === "javascript" || lang === "js") return "javascript";
+  // No language: JS preview lessons default to the script pane; otherwise HTML.
+  if (runtime === "web") return "javascript";
   return "html";
 }

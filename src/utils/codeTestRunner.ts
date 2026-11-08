@@ -172,7 +172,7 @@ export function evaluateSubmissionCodeTest(
   const useWeb = resolveUseWebWorkspace(language, criteria, submission.runtime);
 
   if (useWeb && submission.webCode) {
-    return evaluateWebCodeTest(submission.webCode, criteria);
+    return evaluateWebCodeTest(submission.webCode, criteria, language);
   }
 
   const result = evaluateCodeTest(submission.code, criteria, language);

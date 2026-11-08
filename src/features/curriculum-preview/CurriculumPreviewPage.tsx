@@ -185,9 +185,20 @@ export default function CurriculumPreviewPage() {
     setRunLanguage(inferredRunLanguage);
   }, [inferredRunLanguage]);
 
+  const activeQuestion =
+    lessonPhase === "questions"
+      ? currentLesson?.questions[currentQuestionIndex]
+      : undefined;
+  const activeExample =
+    activeQuestion?.code_example ?? currentLesson?.code_example;
+
   const useWebWorkspace = useMemo(() => {
     if (lessonPhase === "teaching" && isLessonCodeDemo && currentLesson?.code_example) {
-      return isWebWorkspaceLanguage(currentLesson.code_example.language);
+      return isWebWorkspaceLanguage(
+        currentLesson.code_example.language,
+        undefined,
+        currentLesson.code_example.runtime,
+      );
     }
     if (lessonPhase === "questions" && currentLesson) {
       const question = currentLesson.questions[currentQuestionIndex];
@@ -195,6 +206,7 @@ export default function CurriculumPreviewPage() {
         return isWebWorkspaceLanguage(
           question.code_example?.language,
           question.testCriteria,
+          question.code_example?.runtime,
         );
       }
     }
@@ -207,16 +219,9 @@ export default function CurriculumPreviewPage() {
   ]);
 
   const webEditorTab = useMemo(
-    () => defaultWebEditorTab(inferredRunLanguage),
-    [inferredRunLanguage],
+    () => defaultWebEditorTab(inferredRunLanguage, activeExample?.runtime),
+    [activeExample?.runtime, inferredRunLanguage],
   );
-
-  const activeQuestion =
-    lessonPhase === "questions"
-      ? currentLesson?.questions[currentQuestionIndex]
-      : undefined;
-  const activeExample =
-    activeQuestion?.code_example ?? currentLesson?.code_example;
   const programInput = useProgramInput({
     language: runLanguage,
     key:
@@ -238,13 +243,23 @@ export default function CurriculumPreviewPage() {
 
   const runCodeOutput = useCallback(
     async (
-      submission: { code: string; webCode?: WebCodeSources; language: string },
+      submission: {
+        code: string;
+        webCode?: WebCodeSources;
+        language: string;
+        runtime?: string;
+      },
       criteria?: Question["testCriteria"],
       stdin?: string,
       interactive?: boolean,
     ) => {
       return runSubmissionCodeOutput(
-        { code: submission.code, webCode: submission.webCode, language: submission.language },
+        {
+          code: submission.code,
+          webCode: submission.webCode,
+          language: submission.language,
+          runtime: submission.runtime,
+        },
         criteria,
         {
           stdin,
@@ -258,7 +273,12 @@ export default function CurriculumPreviewPage() {
 
   const runLessonExampleCode = useCallback(
     async (
-      submission: { code: string; webCode?: WebCodeSources; language: string },
+      submission: {
+        code: string;
+        webCode?: WebCodeSources;
+        language: string;
+        runtime?: string;
+      },
       criteria?: Question["testCriteria"],
       stdin?: string,
     ) => {
@@ -280,8 +300,9 @@ export default function CurriculumPreviewPage() {
       code,
       webCode: useWebWorkspace ? webCode : undefined,
       language: runLanguage,
+      runtime: activeExample?.runtime,
     }),
-    [code, runLanguage, useWebWorkspace, webCode],
+    [activeExample?.runtime, code, runLanguage, useWebWorkspace, webCode],
   );
 
   const applyV2CurriculumData = useCallback((data: CurriculumV2Data) => {
@@ -503,7 +524,11 @@ export default function CurriculumPreviewPage() {
       setCanStartQuestions(false);
       resetCodeState();
 
-      const isWeb = isWebWorkspaceLanguage(example.language);
+      const isWeb = isWebWorkspaceLanguage(
+        example.language,
+        undefined,
+        example.runtime,
+      );
       const hasQuestions = (lesson.questions?.length ?? 0) > 0;
       const typingSpeed = example.typingSpeed ?? 30;
       let currentIndex = 0;
@@ -584,7 +609,11 @@ export default function CurriculumPreviewPage() {
     setPreviewRefreshKey(0);
     if (
       example &&
-      isWebWorkspaceLanguage(example.language, question.testCriteria)
+      isWebWorkspaceLanguage(
+        example.language,
+        question.testCriteria,
+        example.runtime,
+      )
     ) {
       setWebCode(webCodeForExamplePractice(example));
       setCode("");
@@ -603,6 +632,7 @@ export default function CurriculumPreviewPage() {
       const isWeb = isWebWorkspaceLanguage(
         example.language,
         question.testCriteria,
+        example.runtime,
       );
       const typingSpeed = example.typingSpeed ?? 30;
       let currentIndex = 0;

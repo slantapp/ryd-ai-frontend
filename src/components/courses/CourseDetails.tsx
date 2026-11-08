@@ -68,7 +68,10 @@ import {
   runSubmissionCodeOutput,
   submissionHasContent,
 } from "@/utils/codeTestRunner";
-import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
+import {
+  isCodeEditorLanguage,
+  normalizeRunLanguage,
+} from "@/utils/codeExecution/languages";
 import {
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
@@ -347,19 +350,31 @@ function CourseDetailInner({
     : null;
   const isCodeTestQuestionActive = isCodeTestQuestion(currentQuestion);
   const showCodePanel = isCodeTestQuestionActive || isLessonCodeDemoActive;
+  const activeCodeExample = isCodeTestQuestionActive
+    ? currentQuestion?.code_example
+    : currentLesson?.code_example;
+  const curriculumCodeLanguage = (curriculum as { language?: string } | null)
+    ?.language;
   const codePanelLanguage =
-    (isCodeTestQuestionActive
-      ? currentQuestion?.code_example?.language
-      : currentLesson?.code_example?.language) || "javascript";
+    activeCodeExample?.language ||
+    (isCodeEditorLanguage(curriculumCodeLanguage)
+      ? curriculumCodeLanguage
+      : undefined) ||
+    "javascript";
   const normalizedCodePanelLanguage = normalizeRunLanguage(codePanelLanguage);
   const useWebWorkspace = useMemo(() => {
     if (isLessonCodeDemoActive && currentLesson?.code_example) {
-      return isWebWorkspaceLanguage(currentLesson.code_example.language);
+      return isWebWorkspaceLanguage(
+        currentLesson.code_example.language,
+        undefined,
+        currentLesson.code_example.runtime,
+      );
     }
     if (isCodeTestQuestionActive && currentQuestion) {
       return isWebWorkspaceLanguage(
         currentQuestion.code_example?.language,
         currentQuestion.testCriteria,
+        currentQuestion.code_example?.runtime,
       );
     }
     return false;
@@ -370,8 +385,12 @@ function CourseDetailInner({
     isLessonCodeDemoActive,
   ]);
   const webEditorTab = useMemo(
-    () => defaultWebEditorTab(normalizedCodePanelLanguage),
-    [normalizedCodePanelLanguage],
+    () =>
+      defaultWebEditorTab(
+        normalizedCodePanelLanguage,
+        activeCodeExample?.runtime,
+      ),
+    [activeCodeExample?.runtime, normalizedCodePanelLanguage],
   );
   const isLgUp = useMediaQueryMinLg();
   useAvatarAudioRecovery(avatarRef, isSpeaking);
@@ -489,7 +508,11 @@ function CourseDetailInner({
 
     if (
       example &&
-      isWebWorkspaceLanguage(example.language, question.testCriteria)
+      isWebWorkspaceLanguage(
+        example.language,
+        question.testCriteria,
+        example.runtime,
+      )
     ) {
       setWebCode(webCodeForExamplePractice(example));
       setCode("");
@@ -522,8 +545,9 @@ function CourseDetailInner({
       code,
       webCode: useWebWorkspace ? webCode : undefined,
       language: runLanguage,
+      runtime: activeCodeExample?.runtime,
     }),
-    [code, runLanguage, useWebWorkspace, webCode],
+    [activeCodeExample?.runtime, code, runLanguage, useWebWorkspace, webCode],
   );
 
   const activeTestCriteria = isCodeTestQuestionActive
@@ -931,7 +955,11 @@ function CourseDetailInner({
       stopCodeTyping();
       isTypingCodeRef.current = true;
 
-      const isWeb = isWebWorkspaceLanguage(example.language);
+      const isWeb = isWebWorkspaceLanguage(
+        example.language,
+        undefined,
+        example.runtime,
+      );
       const codeToType = example.code;
       const typingSpeed = example.typingSpeed ?? 30;
       let currentIndex = 0;
@@ -986,7 +1014,11 @@ function CourseDetailInner({
       const hasNextLesson = curriculum
         ? !!getNextLessonInOrder(lesson, curriculum)
         : !!lesson.next_lesson_id;
-      const isWeb = isWebWorkspaceLanguage(example.language);
+      const isWeb = isWebWorkspaceLanguage(
+        example.language,
+        undefined,
+        example.runtime,
+      );
 
       const proceedAfterExample = () => {
         if (example.explanation) {
@@ -1010,6 +1042,7 @@ function CourseDetailInner({
             code: example.code,
             webCode: undefined,
             language: normalizeRunLanguage(example.language),
+            runtime: example.runtime,
           },
           stdinForRun(example),
         ).then(proceedAfterExample);

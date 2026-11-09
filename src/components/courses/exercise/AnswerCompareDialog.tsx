@@ -37,10 +37,29 @@ function panesFor(review: AnswerReview): Pane[] {
   })).filter((pane) => pane.mine.trim() || pane.answer.trim());
 }
 
-/** Prefer the tab the learner was asked to change: the one where their code differs from the answer. */
-function firstDifferent(panes: Pane[]): string {
+/** Prefer the course language tab (HTML for HTML courses), then the first pane that differs. */
+function preferredTabKey(language?: string): string | undefined {
+  const lang = (language || "").toLowerCase().trim();
+  if (lang === "css") return "css";
+  if (lang === "javascript" || lang === "js") return "javascript";
+  if (lang === "html" || lang === "web" || lang.startsWith("html")) return "html";
+  return undefined;
+}
+
+function firstDifferent(panes: Pane[], language?: string): string {
   const changed = panes.filter((p) => p.mine.trim() !== p.answer.trim());
-  return (changed.find((p) => p.key === "javascript") ?? changed[0] ?? panes[0])?.key ?? "code";
+  const pool = changed.length ? changed : panes;
+  const preferred = preferredTabKey(language);
+  if (preferred) {
+    const hit = pool.find((p) => p.key === preferred);
+    if (hit) return hit.key;
+  }
+  // Prefer HTML, then CSS, then JS — never bias toward JavaScript over HTML.
+  for (const key of ["html", "css", "javascript", "code"] as const) {
+    const hit = pool.find((p) => p.key === key);
+    if (hit) return hit.key;
+  }
+  return pool[0]?.key ?? "code";
 }
 
 /**
@@ -60,11 +79,15 @@ export default function AnswerCompareDialog({
   continueLabel?: string;
 }) {
   const panes = useMemo(() => panesFor(review), [review]);
-  const [active, setActive] = useState(() => firstDifferent(panes));
+  const [active, setActive] = useState(() => firstDifferent(panes, review.language));
   const [copied, setCopied] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const pane = panes.find((p) => p.key === active) ?? panes[0];
   const identical = pane ? pane.mine.trim() === pane.answer.trim() : false;
+
+  useEffect(() => {
+    setActive(firstDifferent(panes, review.language));
+  }, [panes, review.language]);
 
   useEffect(() => {
     closeRef.current?.focus();

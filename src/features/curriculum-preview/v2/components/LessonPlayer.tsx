@@ -1090,12 +1090,19 @@ export function LessonPlayer({
         // ("View correct answer"), and the lesson waits for Continue.
         let review: AnswerReview | null = null;
         if (q.type === "code_test") {
-          const lang = normalizeRunLanguage(q.code_example?.language);
+          // Same language as the editor tabs (html / css / javascript).
+          const lang = normalizeRunLanguage(
+            q.code_example?.language || runLanguage,
+          );
           review = buildAnswerReview(
             q,
             { code: opts?.learner?.code ?? "", web: opts?.learner?.web ?? null },
             {
-              web: isWebWorkspaceLanguage(lang, q.testCriteria, q.code_example?.runtime),
+              web: isWebWorkspaceLanguage(
+                lang,
+                q.testCriteria,
+                q.code_example?.runtime,
+              ),
               language: lang,
             },
           );
@@ -1175,6 +1182,7 @@ export function LessonPlayer({
       defaults.incorrect_feedback,
       isAnswerSubmitted,
       isSpeaking,
+      runLanguage,
       speakSequence,
       speakThen,
       wrongAttempts,

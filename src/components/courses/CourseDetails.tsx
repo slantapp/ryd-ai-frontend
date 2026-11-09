@@ -2441,7 +2441,8 @@ function CourseDetailInner({
           { code: submission.code, web: submission.webCode ?? null },
           {
             web: useWebWorkspace,
-            language: normalizeRunLanguage(currentQuestion.code_example?.language),
+            // Same resolved language as the editor tabs (html / css / javascript).
+            language: normalizedCodePanelLanguage,
           },
         );
         setSolutionLocked(true);

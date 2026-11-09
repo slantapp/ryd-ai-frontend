@@ -173,6 +173,8 @@ export interface AnswerResponse {
   recorded: boolean;
   done: boolean;
   correct?: boolean;
+  /** Learning-mode try count after this submit. */
+  tries?: number;
   explanation?: string | null;
   correctAnswer?: unknown;
   matchedCount?: number;

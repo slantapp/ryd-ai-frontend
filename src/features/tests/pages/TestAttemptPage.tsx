@@ -37,7 +37,8 @@ import "../tests.css";
 /** How long a wrong chip / pair stays red before it resets (as in the guide). */
 const WRONG_FLASH_MS = 450;
 
-const RETRY_UNTIL_CORRECT = new Set<TestQuestionType>([
+/** Learning-mode cards that allow a second try before revealing the answer. */
+const RETRY_WITH_LIMIT = new Set<TestQuestionType>([
   "fill_blank",
   "order_lines",
   "build_answer",
@@ -45,6 +46,8 @@ const RETRY_UNTIL_CORRECT = new Set<TestQuestionType>([
   "type_output",
   "place_on_line",
   "sort_buckets",
+  "trace_steps",
+  "spot_bug",
 ]);
 
 function asStringArray(v: unknown): string[] {
@@ -68,6 +71,8 @@ type CardState = {
   wrong: { left: string; right: string } | null;
   /** any wrong try on this card (streak) */
   missed: boolean;
+  /** Learning-mode attempt count for this card (server tries). */
+  tries: number;
   sequence: string[];
   multiSelected: string[];
   typed: string;
@@ -93,7 +98,9 @@ function initialCardState(q: AttemptQuestion, instant: boolean): CardState {
   const done = Boolean(f?.done);
   const revealed = instant && done;
   let blankStatus: BlankStatus = "idle";
-  if (q.type === "fill_blank" && done) blankStatus = instant ? "correct" : "selected";
+  if (q.type === "fill_blank" && done) {
+    blankStatus = !instant ? "selected" : f?.correct === false ? "wrong" : "correct";
+  }
 
   const traceLen = q.type === "trace_steps" ? q.steps.length : 0;
   const traceFrom =
@@ -128,6 +135,7 @@ function initialCardState(q: AttemptQuestion, instant: boolean): CardState {
     selectedLeft: null,
     wrong: null,
     missed: Boolean(f && f.tries > 1) || f?.firstTryCorrect === false,
+    tries: f?.tries ?? 0,
     sequence:
       q.type === "order_lines" || q.type === "build_answer"
         ? asStringArray(done ? f?.value : f?.value)
@@ -335,6 +343,7 @@ export default function TestAttemptPage() {
     }
     const res = await send(word);
     if (!res) return;
+    const tries = res.tries ?? state.tries + 1;
     if (res.correct) {
       patch(question.id, {
         selected: word,
@@ -344,11 +353,31 @@ export default function TestAttemptPage() {
         correct: true,
         firstTryCorrect: !state.missed,
         explanation: res.explanation ?? null,
+        correctAnswer: res.correctAnswer,
+        tries,
       });
       scoreOutcome(!state.missed);
       return;
     }
-    patch(question.id, { selected: word, blankStatus: "wrong", missed: true });
+    if (res.done) {
+      // Second wrong try — reveal the answer and let them move on.
+      patch(question.id, {
+        selected: word,
+        blankStatus: "wrong",
+        done: true,
+        revealed: true,
+        correct: false,
+        firstTryCorrect: false,
+        correctAnswer: res.correctAnswer,
+        explanation: res.explanation ?? null,
+        missed: true,
+        tries,
+      });
+      playLearningSfx("wrong");
+      setStreak(0);
+      return;
+    }
+    patch(question.id, { selected: word, blankStatus: "wrong", missed: true, tries });
     playLearningSfx("wrong");
     setStreak(0);
     const qid = question.id;
@@ -438,7 +467,11 @@ export default function TestAttemptPage() {
     );
   };
 
-  const completeCheck = (qid: number, res: NonNullable<Awaited<ReturnType<typeof send>>>, missed: boolean) => {
+  const completeCheck = (
+    qid: number,
+    res: NonNullable<Awaited<ReturnType<typeof send>>>,
+    missed: boolean,
+  ) => {
     patch(qid, {
       done: true,
       revealed: true,
@@ -447,6 +480,8 @@ export default function TestAttemptPage() {
       correctAnswer: res.correctAnswer,
       explanation: res.explanation ?? null,
       checkWrong: false,
+      tries: res.tries ?? undefined,
+      missed: missed || !res.correct,
     });
     scoreOutcome(!missed && Boolean(res.correct));
   };
@@ -459,11 +494,12 @@ export default function TestAttemptPage() {
     }
     const res = await send(value);
     if (!res) return;
-    if (res.correct) {
-      completeCheck(question.id, res, missed);
+    if (res.done) {
+      // Correct, or tries used up — reveal and unlock Next.
+      completeCheck(question.id, res, missed || !res.correct);
       return;
     }
-    patch(question.id, { missed: true });
+    patch(question.id, { missed: true, tries: res.tries ?? state.tries + 1 });
     flashCheckWrong(question.id);
     playLearningSfx("wrong");
     setStreak(0);
@@ -498,11 +534,15 @@ export default function TestAttemptPage() {
     }
     const res = await send(payload);
     if (!res) return;
-    if (res.correct) {
-      completeCheck(question.id, res, state.missed);
+    if (res.done) {
+      completeCheck(question.id, res, state.missed || !res.correct);
       return;
     }
-    patch(question.id, { traceMisses: state.traceMisses + 1, missed: true });
+    patch(question.id, {
+      traceMisses: state.traceMisses + 1,
+      missed: true,
+      tries: res.tries ?? state.tries + 1,
+    });
     flashCheckWrong(question.id);
     playLearningSfx("wrong");
     setStreak(0);
@@ -518,22 +558,25 @@ export default function TestAttemptPage() {
     }
     const res = await send(payload);
     if (!res) return;
-    if (res.correct) {
+    if (res.done) {
       patch(question.id, {
         done: true,
         revealed: true,
-        correct: true,
-        firstTryCorrect: res.correct && tries <= 2 && !state.missed,
+        correct: res.correct,
+        firstTryCorrect: Boolean(res.correct) && tries <= 2 && !state.missed,
         correctAnswer: res.correctAnswer,
         explanation: res.explanation ?? null,
         bugTries: tries,
+        tries,
+        missed: state.missed || !res.correct,
       });
-      scoreOutcome(tries <= 2 && !state.missed);
+      scoreOutcome(Boolean(res.correct) && tries <= 2 && !state.missed);
       return;
     }
     patch(question.id, {
       missed: true,
       bugTries: tries,
+      tries,
       bugStage: "line",
       bugFixId: null,
     });
@@ -695,10 +738,13 @@ export default function TestAttemptPage() {
     const partialOk =
       question.type === "trace_steps" || question.type === "speed_round"
         ? Boolean(state.firstTryCorrect)
-        : RETRY_UNTIL_CORRECT.has(question.type)
-          ? !state.missed
+        : RETRY_WITH_LIMIT.has(question.type)
+          ? !state.missed && Boolean(state.correct)
           : Boolean(state.correct);
-    const retryEnd = RETRY_UNTIL_CORRECT.has(question.type) || question.type === "match_pairs" || question.type === "fill_blank";
+    const retryEnd =
+      RETRY_WITH_LIMIT.has(question.type) ||
+      question.type === "match_pairs" ||
+      question.type === "fill_blank";
     feedback = partialOk
       ? { tone: "correct", title: "Nice — spot on!", body: state.explanation }
       : retryEnd && state.correct

@@ -178,6 +178,10 @@ export interface AnswerResponse {
   explanation?: string | null;
   correctAnswer?: unknown;
   matchedCount?: number;
+  /** Spot-the-bug: line-only check result. */
+  lineOk?: boolean;
+  /** Spot-the-bug: fix check result. */
+  fixOk?: boolean;
   progress: { answeredCount: number; total: number };
 }
 

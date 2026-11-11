@@ -29,6 +29,7 @@ import {
   SpotMistakeCard,
   TraceStepsCard,
   TypeOutputCard,
+  type SpotBugFlash,
   type SpotBugStage,
 } from "../cards/QuestionCardsExtra";
 import type { AttemptQuestion, AttemptView, TestQuestionType } from "../types";
@@ -37,7 +38,7 @@ import "../tests.css";
 /** How long a wrong chip / pair stays red before it resets (as in the guide). */
 const WRONG_FLASH_MS = 450;
 
-/** Learning-mode cards that allow a second try before revealing the answer. */
+/** Learning-mode cards that finish after one miss (then Next). */
 const RETRY_WITH_LIMIT = new Set<TestQuestionType>([
   "fill_blank",
   "order_lines",
@@ -84,6 +85,8 @@ type CardState = {
   bugLine: number | null;
   bugFixId: string | null;
   bugTries: number;
+  bugLineFlash: SpotBugFlash;
+  bugFixFlash: SpotBugFlash;
   speedResults: { id: string; value: boolean }[];
   speedStarted: boolean;
   speedEndsAt: number | null;
@@ -156,6 +159,8 @@ function initialCardState(q: AttemptQuestion, instant: boolean): CardState {
     bugLine: bugVal?.line ?? null,
     bugFixId: bugVal?.fixId ?? null,
     bugTries: f?.tries ?? 0,
+    bugLineFlash: null,
+    bugFixFlash: null,
     speedResults: speedFrom,
     speedStarted: q.type === "speed_round" && (done || speedFrom.length > 0),
     speedEndsAt: null,
@@ -360,7 +365,7 @@ export default function TestAttemptPage() {
       return;
     }
     if (res.done) {
-      // Second wrong try — reveal the answer and let them move on.
+      // One try used — reveal the answer and let them move on.
       patch(question.id, {
         selected: word,
         blankStatus: "wrong",
@@ -548,41 +553,94 @@ export default function TestAttemptPage() {
     setStreak(0);
   };
 
-  const submitSpotBug = async () => {
-    if (!question || !state || state.done || busy || state.bugLine == null || !state.bugFixId) return;
-    const tries = state.bugTries + 1;
-    const payload = { line: state.bugLine, fixId: state.bugFixId, tries };
+  const pickBugLine = async (index: number) => {
+    if (!question || !state || state.done || busy || state.bugStage !== "line") return;
     if (!instant) {
-      patch(question.id, { selected: payload });
+      patch(question.id, { bugLine: index, bugStage: "fix", bugFixId: null });
       return;
     }
-    const res = await send(payload);
+    patch(question.id, { bugLine: index, bugLineFlash: null });
+    const res = await send({ line: index, check: "line" });
     if (!res) return;
-    if (res.done) {
+    const ok = Boolean(res.lineOk ?? res.correct);
+    if (ok) {
+      patch(question.id, { bugLine: index, bugLineFlash: "correct" });
+      playLearningSfx("correct");
+      const qid = question.id;
+      timers.current.push(
+        window.setTimeout(() => {
+          setStates((prev) => ({
+            ...prev,
+            [qid]: { ...prev[qid], bugStage: "fix", bugLineFlash: null, bugFixId: null },
+          }));
+        }, WRONG_FLASH_MS + 200),
+      );
+      return;
+    }
+    patch(question.id, { bugLine: index, bugLineFlash: "incorrect", missed: true });
+    playLearningSfx("wrong");
+    setStreak(0);
+    const qid = question.id;
+    timers.current.push(
+      window.setTimeout(() => {
+        setStates((prev) =>
+          prev[qid]?.bugLineFlash === "incorrect"
+            ? { ...prev, [qid]: { ...prev[qid], bugLineFlash: null, bugLine: null } }
+            : prev,
+        );
+      }, WRONG_FLASH_MS + 250),
+    );
+  };
+
+  const pickBugFix = async (fixId: string) => {
+    if (!question || !state || state.done || busy || state.bugStage !== "fix" || state.bugLine == null) {
+      return;
+    }
+    if (!instant) {
+      patch(question.id, { bugFixId: fixId, selected: { line: state.bugLine, fixId } });
+      return;
+    }
+    const tries = state.bugTries + 1;
+    patch(question.id, { bugFixId: fixId, bugFixFlash: null });
+    const res = await send({ line: state.bugLine, fixId, tries });
+    if (!res) return;
+    const ok = Boolean(res.fixOk ?? res.correct);
+    if (ok) {
       patch(question.id, {
+        bugFixId: fixId,
+        bugFixFlash: "correct",
         done: true,
         revealed: true,
-        correct: res.correct,
-        firstTryCorrect: Boolean(res.correct) && tries <= 2 && !state.missed,
+        correct: true,
+        firstTryCorrect: !state.missed && tries <= 1,
         correctAnswer: res.correctAnswer,
         explanation: res.explanation ?? null,
         bugTries: tries,
         tries,
-        missed: state.missed || !res.correct,
       });
-      scoreOutcome(Boolean(res.correct) && tries <= 2 && !state.missed);
+      scoreOutcome(!state.missed && tries <= 1);
       return;
     }
+    // Wrong fix: shake/border feedback, then clear so they can pick again.
     patch(question.id, {
-      missed: true,
+      bugFixId: fixId,
+      bugFixFlash: "incorrect",
       bugTries: tries,
       tries,
-      bugStage: "line",
-      bugFixId: null,
+      missed: true,
     });
-    flashCheckWrong(question.id);
     playLearningSfx("wrong");
     setStreak(0);
+    const qid = question.id;
+    timers.current.push(
+      window.setTimeout(() => {
+        setStates((prev) =>
+          prev[qid]?.bugFixFlash === "incorrect"
+            ? { ...prev, [qid]: { ...prev[qid], bugFixFlash: null, bugFixId: null } }
+            : prev,
+        );
+      }, WRONG_FLASH_MS + 250),
+    );
   };
 
   const submitSpeedRound = useCallback(
@@ -596,6 +654,8 @@ export default function TestAttemptPage() {
           correct: res.correct,
           firstTryCorrect: res.correct,
           revealed: instant,
+          correctAnswer: res.correctAnswer,
+          explanation: res.explanation ?? null,
         });
         if (instant) scoreOutcome(Boolean(res.correct));
       } catch (e) {
@@ -741,15 +801,14 @@ export default function TestAttemptPage() {
         : RETRY_WITH_LIMIT.has(question.type)
           ? !state.missed && Boolean(state.correct)
           : Boolean(state.correct);
-    const retryEnd =
-      RETRY_WITH_LIMIT.has(question.type) ||
-      question.type === "match_pairs" ||
-      question.type === "fill_blank";
-    feedback = partialOk
-      ? { tone: "correct", title: "Nice — spot on!", body: state.explanation }
-      : retryEnd && state.correct
-        ? { tone: "neutral", title: "Got there in the end — only first tries score", body: state.explanation }
-        : { tone: "incorrect", title: "Not quite — here's why", body: state.explanation };
+    // Speed round shows its own per-fact summary inside the card.
+    if (question.type === "speed_round") {
+      feedback = null;
+    } else {
+      feedback = partialOk
+        ? { tone: "correct", title: "Nice — spot on!", body: state.explanation }
+        : { tone: "incorrect", title: "Not quite — tap Next to continue", body: state.explanation };
+    }
   } else if (!instant && state.done) {
     feedback = { tone: "neutral", title: "Answer saved", body: "You'll see how you did when you finish the test." };
   }
@@ -977,7 +1036,11 @@ export default function TestAttemptPage() {
             onCheck={() => void submitTrace()}
           />
         );
-      case "spot_bug":
+      case "spot_bug": {
+        const bugAnswer =
+          state.correctAnswer && typeof state.correctAnswer === "object" && !Array.isArray(state.correctAnswer)
+            ? (state.correctAnswer as { line?: number; fixId?: string })
+            : null;
         return (
           <SpotBugCard
             prompt={question.prompt}
@@ -990,20 +1053,26 @@ export default function TestAttemptPage() {
             stage={state.bugStage}
             line={state.bugLine}
             fixId={state.bugFixId}
+            lineFlash={state.bugLineFlash}
+            fixFlash={state.bugFixFlash}
+            correctLine={bugAnswer?.line ?? null}
+            correctFixId={bugAnswer?.fixId ?? null}
             revealed={state.revealed}
             disabled={locked}
             onRun={() => patch(question.id, { bugStage: "line" })}
-            onPickLine={(i) => patch(question.id, { bugLine: i, bugStage: "fix" })}
-            onPickFix={(id) => patch(question.id, { bugFixId: id })}
-            onSubmit={() => void submitSpotBug()}
-            canSubmit={instant && !state.done && state.bugLine != null && Boolean(state.bugFixId)}
+            onPickLine={(i) => void pickBugLine(i)}
+            onPickFix={(id) => void pickBugFix(id)}
           />
         );
+      }
       case "speed_round": {
         const remaining =
           state.speedEndsAt != null
             ? Math.max(0, Math.ceil((state.speedEndsAt - Date.now()) / 1000))
             : question.seconds;
+        const answerKey = Array.isArray(state.correctAnswer)
+          ? (state.correctAnswer as { id: string; value: boolean }[])
+          : null;
         return (
           <SpeedRoundCard
             prompt={question.prompt}
@@ -1014,6 +1083,8 @@ export default function TestAttemptPage() {
             revealed={state.revealed}
             disabled={locked || finishing}
             started={state.speedStarted}
+            explanation={state.explanation}
+            answerKey={answerKey}
             onStart={() =>
               patch(question.id, {
                 speedStarted: true,
@@ -1021,6 +1092,7 @@ export default function TestAttemptPage() {
               })
             }
             onPick={(id, value) => {
+              if (state.done || state.revealed) return;
               if (state.speedResults.some((r) => r.id === id)) return;
               const next = [...state.speedResults, { id, value }];
               patch(question.id, { speedResults: next });

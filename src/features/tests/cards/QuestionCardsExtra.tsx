@@ -729,6 +729,8 @@ export function TraceStepsCard({
 
 export type SpotBugStage = "run" | "line" | "fix";
 
+export type SpotBugFlash = "correct" | "incorrect" | null;
+
 export function SpotBugCard({
   prompt,
   language,
@@ -740,13 +742,15 @@ export function SpotBugCard({
   stage,
   line,
   fixId,
+  lineFlash,
+  fixFlash,
+  correctLine,
+  correctFixId,
   revealed,
   disabled,
   onRun,
   onPickLine,
   onPickFix,
-  onSubmit,
-  canSubmit,
 }: {
   prompt: string;
   language?: string | null;
@@ -758,15 +762,54 @@ export function SpotBugCard({
   stage: SpotBugStage;
   line: number | null;
   fixId: string | null;
+  /** Brief border feedback after a line pick. */
+  lineFlash?: SpotBugFlash;
+  /** Brief border feedback after a fix pick. */
+  fixFlash?: SpotBugFlash;
+  correctLine?: number | null;
+  correctFixId?: string | null;
   revealed: boolean;
   disabled?: boolean;
   onRun: () => void;
   onPickLine: (index: number) => void;
   onPickFix: (id: string) => void;
-  onSubmit: () => void;
-  canSubmit: boolean;
 }) {
   const code = lines.join("\n");
+  const lineLocked = revealed || stage === "fix";
+  const fixLocked = revealed;
+
+  const lineVariant = (i: number) => {
+    if (revealed && correctLine != null) {
+      if (i === correctLine) return VARIANT_CLASS.correct;
+      if (line === i && i !== correctLine) return VARIANT_CLASS.incorrect;
+      return VARIANT_CLASS.dim;
+    }
+    if (line === i && lineFlash === "correct") {
+      return cn(VARIANT_CLASS.correct, "animate-[tests-shake_0.35s]");
+    }
+    if (line === i && lineFlash === "incorrect") {
+      return cn(VARIANT_CLASS.incorrect, "animate-[tests-shake_0.35s]");
+    }
+    if (line === i) return VARIANT_CLASS.selected;
+    return VARIANT_CLASS.idle;
+  };
+
+  const fixVariant = (id: string) => {
+    if (revealed && correctFixId) {
+      if (id === correctFixId) return VARIANT_CLASS.correct;
+      if (fixId === id && id !== correctFixId) return VARIANT_CLASS.incorrect;
+      return VARIANT_CLASS.dim;
+    }
+    if (fixId === id && fixFlash === "correct") {
+      return cn(VARIANT_CLASS.correct, "animate-[tests-shake_0.35s]");
+    }
+    if (fixId === id && fixFlash === "incorrect") {
+      return cn(VARIANT_CLASS.incorrect, "animate-[tests-shake_0.35s]");
+    }
+    if (fixId === id) return VARIANT_CLASS.selected;
+    return VARIANT_CLASS.idle;
+  };
+
   return (
     <>
       <p className="m-0 text-[17px] font-semibold text-[#1F1B24]">{prompt}</p>
@@ -794,44 +837,59 @@ export function SpotBugCard({
       ) : null}
       {stage === "line" || stage === "fix" || revealed ? (
         <div className="flex flex-col gap-2">
-          <p className="m-0 text-[13px] font-semibold text-[#6B6572]">Which line is wrong?</p>
+          <p className="m-0 text-[13px] font-semibold text-[#6B6572]">
+            {stage === "line" && !revealed ? "Which line is wrong? Tap one to check." : "Which line is wrong?"}
+          </p>
           {lines.map((ln, i) => (
             <button
               key={i}
               type="button"
-              disabled={disabled || revealed || stage === "fix"}
+              disabled={disabled || lineLocked || Boolean(lineFlash)}
               onClick={() => onPickLine(i)}
               className={cn(
                 "rounded-xl border-2 px-3 py-2 text-left font-mono text-[13px] font-semibold transition disabled:cursor-default",
-                line === i ? VARIANT_CLASS.selected : VARIANT_CLASS.idle,
+                lineVariant(i),
               )}
             >
               <span className="mr-2 font-bold text-[#9C96A6]">{i + 1}</span>
               {ln}
             </button>
           ))}
+          {lineFlash === "incorrect" ? (
+            <p className="m-0 text-[13px] font-semibold text-[#B91C1C]">Not that line — try another.</p>
+          ) : null}
+          {lineFlash === "correct" ? (
+            <p className="m-0 text-[13px] font-semibold text-[#15803D]">That&apos;s the bug — now pick a fix.</p>
+          ) : null}
         </div>
       ) : null}
       {stage === "fix" || revealed ? (
         <div className="flex flex-col gap-2">
-          <p className="m-0 text-[13px] font-semibold text-[#6B6572]">Pick a fix</p>
+          <p className="m-0 text-[13px] font-semibold text-[#6B6572]">
+            {revealed ? "Pick a fix" : "Pick a fix — you&apos;ll see if it&apos;s right straight away."}
+          </p>
           {fixes.map((f) => (
             <button
               key={f.id}
               type="button"
-              disabled={disabled || revealed}
+              disabled={disabled || fixLocked || Boolean(fixFlash)}
               onClick={() => onPickFix(f.id)}
               className={cn(
                 "rounded-2xl border-2 px-4 py-3 text-left text-[14px] font-semibold transition disabled:cursor-default",
-                fixId === f.id ? VARIANT_CLASS.selected : VARIANT_CLASS.idle,
+                fixVariant(f.id),
               )}
             >
               {f.text}
             </button>
           ))}
+          {fixFlash === "incorrect" ? (
+            <p className="m-0 text-[13px] font-semibold text-[#B91C1C]">Not that fix — try another.</p>
+          ) : null}
+          {fixFlash === "correct" ? (
+            <p className="m-0 text-[13px] font-semibold text-[#15803D]">Nice — that fixes it.</p>
+          ) : null}
         </div>
       ) : null}
-      {canSubmit && !revealed ? <CheckButton onClick={onSubmit} disabled={disabled} label="Submit fix" /> : null}
     </>
   );
 }
@@ -851,6 +909,8 @@ export function SpeedRoundCard({
   onPick,
   started,
   onStart,
+  explanation,
+  answerKey,
 }: {
   prompt: string;
   seconds: number;
@@ -862,12 +922,18 @@ export function SpeedRoundCard({
   onPick: (id: string, value: boolean) => void;
   started: boolean;
   onStart: () => void;
+  /** Shown after the round — question-level explanation. */
+  explanation?: string | null;
+  /** Correct true/false per fact id (from the server after submit). */
+  answerKey?: { id: string; value: boolean }[] | null;
 }) {
   const answeredIds = new Set(results.map((r) => r.id));
   const current = facts.find((f) => !answeredIds.has(f.id)) ?? null;
   const index = current ? facts.findIndex((f) => f.id === current.id) : facts.length;
-  const done = results.length === facts.length;
+  const playDone = results.length === facts.length;
   const pct = Math.max(0, Math.min(100, Math.round((remainingSec / Math.max(1, seconds)) * 100)));
+  const keyById = new Map((answerKey ?? []).map((a) => [a.id, a.value]));
+  const resultById = new Map(results.map((r) => [r.id, r.value]));
 
   return (
     <>
@@ -881,6 +947,42 @@ export function SpeedRoundCard({
         >
           Start — {seconds}s on the clock
         </button>
+      ) : revealed ? (
+        <div className="flex flex-col gap-3">
+          <p className="m-0 text-[14px] font-bold text-[#1F1B24]">Round summary</p>
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {facts.map((f, i) => {
+              const yours = resultById.get(f.id);
+              const right = keyById.has(f.id) ? keyById.get(f.id) : undefined;
+              const ok = right != null && yours === right;
+              return (
+                <li
+                  key={f.id}
+                  className={cn(
+                    "rounded-2xl border-2 px-3 py-3 text-[13px]",
+                    ok ? "border-[#86EFAC] bg-[#ECFDF3]" : "border-[#FCA5A5] bg-[#FEF2F2]",
+                  )}
+                >
+                  <p className="m-0 font-semibold text-[#1F1B24]">
+                    {i + 1}. {f.prompt}
+                  </p>
+                  <p className="m-0 mt-1 text-[#6B6572]">
+                    You: <span className="font-bold">{yours == null ? "—" : yours ? "True" : "False"}</span>
+                    {right != null ? (
+                      <>
+                        {" · "}Correct: <span className="font-bold">{right ? "True" : "False"}</span>
+                      </>
+                    ) : null}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+          {explanation ? (
+            <p className="m-0 rounded-2xl bg-[#FBF5FC] px-3 py-3 text-[13px] text-[#4B4458]">{explanation}</p>
+          ) : null}
+          <p className="m-0 text-center text-[13px] font-semibold text-[#6B6572]">Tap Next when you&apos;re ready.</p>
+        </div>
       ) : (
         <>
           <div className="flex flex-col gap-2">
@@ -906,9 +1008,9 @@ export function SpeedRoundCard({
             </div>
           </div>
 
-          {done || !current ? (
+          {playDone || !current ? (
             <p className="rounded-2xl bg-[#ECFDF3] px-4 py-6 text-center text-[15px] font-semibold text-[#15803D]">
-              All facts answered — saving…
+              All facts answered — preparing your summary…
             </p>
           ) : (
             <div className="flex flex-col gap-4">
@@ -920,7 +1022,7 @@ export function SpeedRoundCard({
                   <button
                     key={String(v)}
                     type="button"
-                    disabled={disabled || revealed}
+                    disabled={disabled}
                     onClick={() => onPick(current.id, v)}
                     className={cn(
                       "flex min-h-[60px] items-center justify-center gap-2 rounded-2xl border-2 text-base font-extrabold transition disabled:cursor-default",
@@ -934,7 +1036,7 @@ export function SpeedRoundCard({
                   </button>
                 ))}
               </div>
-              <p className="m-0 text-center text-[13px] text-[#6B6572]">Tap an answer to move on straight away</p>
+              <p className="m-0 text-center text-[13px] text-[#6B6572]">Keep going — no stopping until the round ends</p>
             </div>
           )}
         </>

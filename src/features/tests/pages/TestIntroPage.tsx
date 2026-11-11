@@ -111,7 +111,7 @@ export default function TestIntroPage() {
             {test.instantFeedback ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" /> : <Eye className="mt-0.5 size-4 shrink-0 text-primary" />}
             <span>
               {test.instantFeedback
-                ? "You'll see if each answer is right straight away. You get up to two tries per card, then we show the answer so you can move on. Only your first try counts towards your score."
+                ? "You'll see if each answer is right straight away. One try per card — if you miss it, check the answer and tap Next. Only a correct first try counts towards your score."
                 : "Exam mode: answers are saved as you go, and you'll see what you got right when you finish."}
               {test.timeLimitMinutes ? " When the time runs out, your answers are submitted automatically." : ""}
             </span>

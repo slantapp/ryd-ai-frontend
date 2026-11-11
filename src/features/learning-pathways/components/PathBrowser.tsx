@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, BookOpen, Code2, Play, Plus } from "lucide-react";
+import { ArrowRight, Code2, Play, Plus } from "lucide-react";
 import type { ApiLearningPath, ApiLearningPathBrowseCategory } from "@/api/learningPaths";
 import { getCategoryIcon } from "@/data/courseCategories";
 import { cn } from "@/lib/utils";
@@ -160,8 +160,6 @@ export function PathBrowser({ categories, progressByPath, onOpenPath }: PathBrow
     () => (activeCategory ? tracksFor(activeCategory, allCards) : []),
     [activeCategory, allCards],
   );
-  const showEnglishSoon = !categories.some((category) => /english/i.test(category.title));
-
   const continueCard = useMemo(() => {
     const started = allCards.filter((card) => card.started && !card.completed);
     if (!started.length) return null;
@@ -213,8 +211,8 @@ export function PathBrowser({ categories, progressByPath, onOpenPath }: PathBrow
                   className={cn(
                     "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold",
                     selected
-                      ? "bg-[#1C1B3A] text-white"
-                      : "border border-[#E6E2EA] bg-white text-[#3E3C55] hover:border-[#C9C4D4]",
+                      ? "bg-primary text-white"
+                      : "border border-[#E6E2EA] bg-white text-[#3E3C55] hover:border-primary/40",
                   )}
                 >
                   {/math/i.test(category.title) ? (
@@ -228,12 +226,6 @@ export function PathBrowser({ categories, progressByPath, onOpenPath }: PathBrow
                 </button>
               );
             })}
-            {showEnglishSoon ? (
-              <span className="inline-flex h-9 items-center gap-1.5 rounded-full border border-dashed border-[#D6D2E0] bg-white px-3.5 text-sm font-semibold text-[#8A8494]">
-                <BookOpen className="size-3.5" aria-hidden />
-                English · soon
-              </span>
-            ) : null}
           </div>
         </div>
 
@@ -331,10 +323,8 @@ function TrackCard({
 
       <div>
         <p className="text-[11px] font-bold tracking-[0.08em] text-[#9A94A3]">CORE PATH · TAP ANY LEVEL TO START THERE</p>
-        <div className="relative mt-4">
-          <div className="pointer-events-none absolute left-[16%] right-[16%] top-[15px] h-px bg-[#E6E2EA]" aria-hidden />
-          <div className="grid grid-cols-3 gap-1">
-            {track.core.map(({ level, card }) => {
+        <div className="mt-4 grid grid-cols-3">
+            {track.core.map(({ level, card }, index) => {
               const hot = active === level.key && !!card;
               const lead = fresh && level.key === "beginner";
               const filled = !!card && !hot && (card.started || lead);
@@ -353,14 +343,20 @@ function TrackCard({
                       if (!card) return;
                       setPinned((current) => (current === level.key ? null : level.key));
                     }}
-                    className="relative flex w-full flex-col items-center rounded-[18px] px-1 py-2 text-center disabled:cursor-default"
+                    className="relative flex w-full flex-col items-center rounded-[18px] px-1.5 pb-1 text-center disabled:cursor-default"
                   >
                     {hot ? (
-                      <span className="pointer-events-none absolute inset-0 rounded-[18px] bg-[#FBF4F9] ring-1 ring-[#E7C0DE]" aria-hidden />
+                      <span className="pointer-events-none absolute inset-x-0 -top-1.5 bottom-0 rounded-[18px] bg-[#FBF4F9] ring-1 ring-[#E7C0DE]" aria-hidden />
+                    ) : null}
+                    {index < track.core.length - 1 ? (
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute left-1/2 top-4 z-[1] h-px w-full -translate-y-1/2 bg-[#E4E0EA]"
+                      />
                     ) : null}
                     <span
                       className={cn(
-                        "relative z-10 flex size-8 items-center justify-center rounded-full border-2 text-sm font-bold",
+                        "relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold",
                         !card && "border-[#E7E4EE] bg-white text-[#C4BFCE]",
                         card && !filled && !hot && "border-[#DDD8E4] bg-white text-[#8A8494]",
                         filled && cn(tone.node, "border-transparent text-white"),
@@ -369,11 +365,11 @@ function TrackCard({
                     >
                       {level.number}
                     </span>
-                    <span className="relative z-10 mt-2 text-[13px] font-semibold text-[#1C1B3A]">{level.label}</span>
-                    <span className="relative z-10 mt-0.5 line-clamp-2 min-h-8 text-[12px] leading-snug text-[#5E5C72]">
+                    <span className="relative z-10 mt-2.5 text-[13px] font-semibold leading-none text-[#1C1B3A]">{level.label}</span>
+                    <span className="relative z-10 mt-1 line-clamp-2 min-h-8 text-[12px] leading-snug text-[#5E5C72]">
                       {card?.api.title ?? "—"}
                     </span>
-                    <span className={cn("relative z-10 mt-0.5 inline-flex items-center gap-1 text-[12px] font-semibold", card?.started || lead ? tone.text : "text-[#8A8494]")}>
+                    <span className={cn("relative z-10 mt-1 inline-flex min-h-4 items-center gap-1 text-[12px] font-semibold", card?.started || lead ? tone.text : "text-[#8A8494]")}>
                       {!card ? null : card.started ? (
                         <>
                           <Play className="size-2.5 fill-current" aria-hidden />
@@ -405,7 +401,6 @@ function TrackCard({
                 </div>
               );
             })}
-          </div>
         </div>
       </div>
 
@@ -426,7 +421,7 @@ function TrackCard({
                     {card.started ? ` · ${card.percent}%` : ""}
                   </span>
                 </span>
-                <span className="shrink-0 text-xs font-bold text-[#7E2C6C]">{card.started ? "Continue" : "Start"}</span>
+                <span className="shrink-0 text-xs font-bold text-primary">{card.started ? "Continue" : "Start"}</span>
               </button>
             </li>
           ))}
@@ -435,7 +430,7 @@ function TrackCard({
 
       <div className="mt-auto flex items-center justify-between gap-3 pt-1">
         {track.extras.length > 0 ? (
-          <button type="button" onClick={onToggleExtras} className="inline-flex items-center gap-1 text-sm font-medium text-[#6B6578] hover:text-[#1C1B3A]">
+          <button type="button" onClick={onToggleExtras} className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary/80">
             View all {track.title} paths (+{track.extras.length} more)
             <ArrowRight className="size-3.5" aria-hidden />
           </button>
@@ -449,8 +444,8 @@ function TrackCard({
             className={cn(
               "inline-flex h-10 shrink-0 items-center gap-1 rounded-full px-4 text-sm font-semibold",
               started
-                ? "bg-[#9B3A86] text-white hover:bg-[#8A3278]"
-                : "border border-[#E4E0EA] bg-white text-[#3E3C55] hover:border-[#C9C4D4]",
+                ? "bg-primary text-white hover:bg-primary/90"
+                : "border border-primary bg-white text-primary hover:bg-primary/5",
             )}
           >
             {started ? "Continue" : "Start"}

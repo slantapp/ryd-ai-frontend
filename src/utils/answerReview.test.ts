@@ -2,11 +2,37 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildAnswerReview,
+  looksLikeReadableSource,
+  looksLikeRegexDebris,
   modelMainAnswer,
   sampleFromExpectedRegex,
   webAnswerPane,
 } from "./answerReview.ts";
+import { CODE_RUN_LANGUAGES } from "./codeExecution/languages.ts";
 import { LESSON_INPUT_PROMPT, programInputState, READ_ALL_INPUT_PROMPT } from "./programInput.ts";
+
+/** Snippets that pass a shared `regex:ok_marker` check — one per runner + web language. */
+const REGEX_SAFE_SNIPPETS: Record<string, string> = {
+  javascript: 'console.log("ok_marker");',
+  typescript: 'const x: string = "ok_marker";',
+  python: 'print("ok_marker")',
+  dart: 'print("ok_marker");',
+  java: 'System.out.println("ok_marker");',
+  kotlin: 'println("ok_marker")',
+  c: 'printf("ok_marker");',
+  cpp: 'std::cout << "ok_marker";',
+  csharp: 'Console.WriteLine("ok_marker");',
+  go: 'fmt.Println("ok_marker")',
+  rust: 'println!("ok_marker");',
+  php: 'echo "ok_marker";',
+  ruby: 'puts "ok_marker"',
+  bash: 'echo ok_marker',
+  lua: 'print("ok_marker")',
+  perl: 'print "ok_marker";',
+  swift: 'print("ok_marker")',
+  html: "<p>ok_marker</p>",
+  css: "p { content: 'ok_marker'; }",
+};
 
 test("webAnswerPane follows the course language", () => {
   assert.equal(webAnswerPane("html"), "html");
@@ -169,6 +195,130 @@ test("CSS course expectedCode lands in the CSS pane", () => {
   assert.equal(review.answer.web.html, "<h1>Hi</h1>");
   assert.equal(review.answer.web.javascript, "");
   assert.equal(review.language, "css");
+});
+
+test("CSS regex expectedCode never shows regex debris — uses the authored solution", () => {
+  const expectedCode =
+    "regex:(?:^|[\\s}])p[\\w.#:\\s-]*\\{[^}]*color\\s*:\\s*green[^}]*\\}";
+  const solution = "h1 {\n  color: brown;\n}\np {\n  color: green;\n}\n";
+  const review = buildAnswerReview(
+    {
+      type: "code_test",
+      code_example: {
+        language: "css",
+        runtime: "web",
+        html: "<h1>Title</h1>\n<p>Hello</p>",
+        code: solution,
+        starterCode: "/* TODO: make the p text green */\nh1 {\n  color: brown;\n}\n",
+      },
+      testCriteria: { expectedCode },
+    },
+    {
+      code: "",
+      web: {
+        html: "<h1>Title</h1>\n<p>Hello</p>",
+        css: "/* TODO: make the p text green */\nh1 {\n  color: brown;\n}\n",
+        javascript: "",
+      },
+    },
+    { web: true, language: "css" },
+  );
+  assert.ok(review && "web" in review.answer);
+  assert.equal(looksLikeRegexDebris(review.answer.web.css), false);
+  assert.match(review.answer.web.css, /color:\s*green/i);
+  assert.match(review.answer.web.css, /p\s*\{/);
+  assert.doesNotMatch(review.answer.web.css, /\[\^|\\s\*|regex:/i);
+});
+
+test("looksLikeRegexDebris catches mangled CSS samples from the compare modal bug", () => {
+  assert.equal(looksLikeRegexDebris("p{=:|^} ]*[: ]color:[^; |\\n]+:; ]|!"), true);
+  assert.equal(looksLikeReadableSource("p {\n  color: green;\n}"), true);
+  assert.equal(looksLikeReadableSource("regex:p\\s*\\{"), false);
+});
+
+test("CSS starterCss + css fields are used for the CSS pane review", () => {
+  const review = buildAnswerReview(
+    {
+      type: "code_test",
+      code_example: {
+        language: "css",
+        runtime: "web",
+        html: "<p>Hi</p>",
+        css: "p { color: green; }",
+        starterCss: "/* TODO */\np {\n\n}\n",
+        code: "/* not the css pane */",
+      },
+      testCriteria: { expectedCode: "regex:color\\s*:\\s*green" },
+    },
+    { code: "", web: { html: "<p>Hi</p>", css: "p{}", javascript: "" } },
+    { web: true, language: "css" },
+  );
+  assert.ok(review && "web" in review.answer);
+  assert.equal(review.answer.web.css, "p { color: green; }");
+});
+
+test("regex debris is never returned as a single-file answer", () => {
+  const answer = modelMainAnswer({
+    language: "python",
+    expectedCode: "regex:print\\s*\\(\\s*['\"]hi['\"]\\s*\\)",
+    starterCode: "# TODO\n",
+    exampleCode: 'print("hi")',
+  });
+  assert.equal(answer, 'print("hi")');
+  assert.equal(looksLikeRegexDebris(answer), false);
+});
+
+test("all 17 runner languages + HTML/CSS never show regex debris in View answer", () => {
+  const runnerLangs = CODE_RUN_LANGUAGES.map((l) => l.value);
+  assert.equal(runnerLangs.length, 17, "CODE_RUN_LANGUAGES should list 17 languages");
+  const allLangs = [...runnerLangs, "html", "css"];
+  for (const language of allLangs) {
+    const solution = REGEX_SAFE_SNIPPETS[language];
+    assert.ok(solution, `missing snippet for ${language}`);
+    const expectedCode = "regex:ok_marker";
+    if (language === "html" || language === "css") {
+      const review = buildAnswerReview(
+        {
+          type: "code_test",
+          code_example: {
+            language,
+            runtime: "web",
+            code: solution,
+            starterCode: language === "css" ? "/* TODO */\n" : "<!-- TODO -->\n",
+            html: language === "html" ? undefined : "<p>Hi</p>",
+          },
+          testCriteria: { expectedCode },
+        },
+        {
+          code: "",
+          web: {
+            html: language === "html" ? "<!-- TODO -->" : "<p>Hi</p>",
+            css: language === "css" ? "/* TODO */" : "",
+            javascript: "",
+          },
+        },
+        { web: true, language },
+      );
+      assert.ok(review && "web" in review.answer, language);
+      const pane = language === "css" ? review.answer.web.css : review.answer.web.html;
+      assert.equal(looksLikeRegexDebris(pane), false, language);
+      assert.match(pane, /ok_marker/, language);
+      assert.doesNotMatch(pane, /^regex:/i, language);
+    } else {
+      const review = buildAnswerReview(
+        {
+          type: "code_test",
+          code_example: { language, code: solution, starterCode: "// TODO\n" },
+          testCriteria: { expectedCode },
+        },
+        { code: "// TODO" },
+        { web: false, language },
+      );
+      assert.ok(review && "code" in review.answer, language);
+      assert.equal(looksLikeRegexDebris(review.answer.code), false, language);
+      assert.equal(review.answer.code, solution, language);
+    }
+  }
 });
 
 test("JavaScript course expectedCode lands in the JavaScript pane", () => {

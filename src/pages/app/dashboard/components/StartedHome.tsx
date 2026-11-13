@@ -155,16 +155,21 @@ export function StartedHome({
     <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-6">
       <section
         aria-labelledby="pathTitle"
-        className="flex flex-col gap-4 rounded-3xl px-5 py-6 text-white sm:px-8 sm:py-8"
+        className="relative flex flex-col gap-2 overflow-hidden rounded-[28px] px-5 py-6 text-white shadow-[0_18px_40px_rgba(48,12,72,0.18)] sm:px-8 sm:py-7"
         style={{
-          backgroundColor: "#1C1B3A",
-          backgroundImage: "radial-gradient(rgba(255,255,255,0.14) 1.1px, transparent 1.1px)",
-          backgroundSize: "18px 18px",
+          backgroundColor: "#1A0C2E",
+          backgroundImage: [
+            "radial-gradient(rgba(255,255,255,0.22) 1px, transparent 1.15px)",
+            "radial-gradient(ellipse 48% 70% at 82% 8%, rgba(255,92,196,0.55), transparent 62%)",
+            "radial-gradient(ellipse 42% 55% at 8% 100%, rgba(148,52,196,0.45), transparent 70%)",
+            "linear-gradient(115deg, #160A28 0%, #2A1248 34%, #5A1874 70%, #8A227C 100%)",
+          ].join(", "),
+          backgroundSize: "18px 18px, auto, auto, auto",
         }}
       >
-        <div className="flex flex-wrap items-end justify-between gap-5">
-          <div className="flex max-w-[640px] flex-col gap-1.5">
-            <div role="tablist" aria-label="Your subjects" className="mb-2 flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="flex max-w-[680px] flex-col gap-1.5">
+            <div role="tablist" aria-label="Your subjects" className="mb-3 flex flex-wrap gap-2">
                 {paths.map((path) => {
                   const selected = path.id === (activePath?.id ?? paths[0]?.id);
                   return (
@@ -177,8 +182,8 @@ export function StartedHome({
                       className={cn(
                         "min-h-9 cursor-pointer rounded-full px-3.5 text-[13px]",
                         selected
-                          ? "bg-white font-bold text-[#1C1B3A]"
-                          : "border border-[#4A4878] bg-transparent font-semibold text-[#CFCBE0]",
+                          ? "bg-white font-bold text-[#1C1B3A] shadow-[0_4px_14px_rgba(0,0,0,0.12)]"
+                          : "border border-white/20 bg-white/10 font-semibold text-white/85 hover:bg-white/15",
                       )}
                     >
                       {path.title} · {path.percent}%
@@ -188,23 +193,23 @@ export function StartedHome({
                 <button
                   type="button"
                   onClick={() => navigate(PRIVATE_PATHS.LEARNING_PATH)}
-                  className="min-h-9 cursor-pointer rounded-full border border-dashed border-[#4A4878] bg-transparent px-3.5 text-[13px] font-semibold text-[#CFCBE0]"
+                  className="min-h-9 cursor-pointer rounded-full border border-dashed border-white/35 bg-white/5 px-3.5 text-[13px] font-semibold text-white/80 hover:bg-white/10"
                 >
                   + Add a subject
                 </button>
             </div>
-            <p className="text-[13px] font-semibold text-[#E7A9D6]">{eyebrow}</p>
-            <h1 id="pathTitle" className="font-solway text-[28px] leading-tight sm:text-4xl">
+            <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#F3B4DE]">{eyebrow}</p>
+            <h1 id="pathTitle" className="font-solway text-[32px] leading-[1.05] sm:text-[42px]">
               {lessonTitle}
             </h1>
-            <p className="text-[#CFCBE0]">{lessonMeta}</p>
+            <p className="text-[15px] text-white/75">{lessonMeta}</p>
           </div>
           <button
             type="button"
             onClick={openContinue}
-            className="inline-flex min-h-[54px] items-center gap-2.5 rounded-[14px] bg-white px-7 text-base font-bold text-[#1C1B3A] transition hover:bg-[#F7ECF4]"
+            className="inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-[#F23CAD] px-5 text-[15px] font-bold text-white shadow-[0_10px_28px_rgba(242,60,173,0.55)] transition hover:bg-[#FF4EBA]"
           >
-            <Play className="size-4 fill-current" aria-hidden />
+            <Play className="size-3.5 fill-current" aria-hidden />
             Continue lesson
           </button>
         </div>

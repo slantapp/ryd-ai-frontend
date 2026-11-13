@@ -67,6 +67,7 @@ import {
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
 import { LessonStartGate } from "@/components/courses/LessonStartGate";
+import { wantsAutoStartLesson } from "@/components/courses/autoStartLesson";
 import { CourseTestLink } from "@/features/tests/components/CourseTestLink";
 import {
   createLearningStreakState,
@@ -171,6 +172,10 @@ function MathCourseDetailsInner() {
   const pendingResumeRef = useRef<PendingResume | null>(null);
   const courseCompletionSpeechRef = useRef(false);
   const [canResume, setCanResume] = useState(false);
+  const [progressHydrated, setProgressHydrated] = useState(false);
+  const [autoStartAttempted, setAutoStartAttempted] = useState(false);
+  const autoStartDone = useRef(false);
+  const autoStartLesson = wantsAutoStartLesson(location.state);
 
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const currentLessonRef = useRef<Lesson | null>(null);
@@ -1216,6 +1221,13 @@ function MathCourseDetailsInner() {
     speakLessonContent,
   ]);
 
+  useEffect(() => {
+    if (!autoStartLesson || !progressHydrated || autoStartDone.current) return;
+    autoStartDone.current = true;
+    handleStartLesson();
+    setAutoStartAttempted(true);
+  }, [autoStartLesson, progressHydrated, handleStartLesson]);
+
   const handleRestartCourse = useCallback(() => {
     if (!exercise || !curriculum) return;
     stopSpeaking();
@@ -1651,11 +1663,15 @@ function MathCourseDetailsInner() {
     let cancelled = false;
 
     void (async () => {
+      try {
       await useCoursesStore.getState().hydrateCourseProgressFromApi(slug);
       if (cancelled) return;
 
       const stored = useCoursesStore.getState().getCourseProgress(slug);
-      if (!stored) return;
+      if (!stored) {
+        setProgressHydrated(true);
+        return;
+      }
 
       const completed = new Set(stored.completedLessons ?? []);
       if (completed.size) {
@@ -1680,7 +1696,10 @@ function MathCourseDetailsInner() {
           : saved.lessonId
             ? findLessonById(saved.lessonId, curriculum)
             : null;
-      if (!lesson || !saved.lessonStarted) return;
+      if (!lesson || !saved.lessonStarted) {
+        setProgressHydrated(true);
+        return;
+      }
 
       const questionCount = lesson.questions?.length ?? 0;
       const questionIndex = saved.questionIndex ?? 0;
@@ -1706,6 +1725,10 @@ function MathCourseDetailsInner() {
         canStartQuestions: saved.canStartQuestions,
         lessonComplete,
       };
+      setProgressHydrated(true);
+      } finally {
+        if (!cancelled) setProgressHydrated(true);
+      }
     })();
 
     return () => {
@@ -2298,6 +2321,10 @@ function MathCourseDetailsInner() {
                     )}
                   </>
                 )}
+              </div>
+            ) : autoStartLesson && !autoStartAttempted ? (
+              <div className="flex min-h-[min(100%,22rem)] flex-1 items-center justify-center px-6 text-sm text-[#5C5468]">
+                Starting your lesson…
               </div>
             ) : (
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

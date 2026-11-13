@@ -307,13 +307,12 @@ function PathwayJourney({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathway.id, completedIds.join("|")]);
 
-  // Land on the current lesson whenever the pathway changes.
+  // Open the current lesson as soon as the path is on screen, so "Begin journey" is not a separate tap.
   useEffect(() => {
-    setOpenNodeId(null);
+    setOpenNodeId(currentNodeId);
     const id = requestAnimationFrame(() => scrollToNode(currentNodeId, "auto"));
     return () => cancelAnimationFrame(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathway.id]);
+  }, [pathway.id, currentNodeId, scrollToNode]);
 
   // Show a "back to my lesson" button when the current node is off-screen.
   useEffect(() => {
@@ -350,7 +349,7 @@ function PathwayJourney({
     const node = findNode(pathway, nodeId);
     if (!node?.slug || states[nodeId] === "locked") return;
     setStartingNodeId(nodeId);
-    navigate(`/courses/${node.slug}`);
+    navigate(`/courses/${node.slug}`, { state: { autoStartLesson: true } });
   };
 
   const handleContinue = () => {
@@ -447,7 +446,7 @@ function PathwayJourney({
                   {finished ? "Every lesson complete. You're a legend!" : currentNode ? `Up next: ${currentNode.title}` : "Pick a lesson below to get started."}
                 </p>
               </div>
-              {!finished && currentNodeId && (
+              {!finished && currentNodeId && progress.completedCount > 0 && (
                 <button
                   type="button"
                   onClick={continueCurrent}
@@ -459,7 +458,7 @@ function PathwayJourney({
                     } as React.CSSProperties
                   }
                 >
-                  {progress.completedCount === 0 ? "Begin journey" : "Continue"}
+                  Continue
                   <span className="flex size-8 items-center justify-center rounded-full bg-white/20 text-white transition-transform group-hover:translate-x-0.5">
                     <Play className="size-3" fill="currentColor" />
                   </span>

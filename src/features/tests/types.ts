@@ -58,6 +58,15 @@ export interface BestResult {
   percent: number;
   grade: string | null;
   passed: boolean | null;
+  /** Questions not right on the first try, including any left blank. */
+  missed?: number | null;
+  total?: number | null;
+}
+
+/** Where an unfinished attempt stopped. `question` is 1-based. */
+export interface OpenProgress {
+  question: number;
+  total: number;
 }
 
 export interface AttemptSummary {
@@ -81,6 +90,7 @@ export interface LearnerTestCard extends TestIntro {
   attemptsLeft: number | null;
   best: BestResult | null;
   openAttemptId: number | null;
+  openProgress?: OpenProgress | null;
   lastAttemptAt: string | null;
 }
 

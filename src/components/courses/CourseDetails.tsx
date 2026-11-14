@@ -76,6 +76,7 @@ import {
 import {
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
+  exampleUsesAuthoredWebPanes,
   isWebWorkspaceLanguage,
   webCodeForExampleDemoStart,
   webCodeForExamplePractice,
@@ -376,17 +377,17 @@ function CourseDetailInner({
   const normalizedCodePanelLanguage = normalizeRunLanguage(codePanelLanguage);
   const useWebWorkspace = useMemo(() => {
     if (isLessonCodeDemoActive && currentLesson?.code_example) {
-      return isWebWorkspaceLanguage(
-        currentLesson.code_example.language,
-        undefined,
-        currentLesson.code_example.runtime,
+      const ex = currentLesson.code_example;
+      return (
+        isWebWorkspaceLanguage(ex.language, undefined, ex.runtime) ||
+        exampleUsesAuthoredWebPanes(ex)
       );
     }
     if (isCodeTestQuestionActive && currentQuestion) {
-      return isWebWorkspaceLanguage(
-        currentQuestion.code_example?.language,
-        currentQuestion.testCriteria,
-        currentQuestion.code_example?.runtime,
+      const ex = currentQuestion.code_example;
+      return (
+        isWebWorkspaceLanguage(ex?.language, currentQuestion.testCriteria, ex?.runtime) ||
+        (ex ? exampleUsesAuthoredWebPanes(ex) : false)
       );
     }
     return false;
@@ -398,11 +399,10 @@ function CourseDetailInner({
   ]);
   const webEditorTab = useMemo(
     () =>
-      defaultWebEditorTab(
-        normalizedCodePanelLanguage,
-        activeCodeExample?.runtime,
-      ),
-    [activeCodeExample?.runtime, normalizedCodePanelLanguage],
+      // Pass raw example language — normalizeRunLanguage("web") → "html" would
+      // wrongly open the HTML tab for JS web lessons tagged language: "web".
+      defaultWebEditorTab(codePanelLanguage, activeCodeExample?.runtime),
+    [activeCodeExample?.runtime, codePanelLanguage],
   );
   const isLgUp = useMediaQueryMinLg();
   useAvatarAudioRecovery(avatarRef, isSpeaking);
@@ -520,11 +520,12 @@ function CourseDetailInner({
 
     if (
       example &&
-      isWebWorkspaceLanguage(
+      (isWebWorkspaceLanguage(
         example.language,
         question.testCriteria,
         example.runtime,
-      )
+      ) ||
+        exampleUsesAuthoredWebPanes(example))
     ) {
       setWebCode(webCodeForExamplePractice(example));
       setCode("");
@@ -3200,6 +3201,7 @@ function CourseDetailInner({
                       results={results}
                       previewRefreshKey={previewRefreshKey}
                       initialTab={webEditorTab}
+                      lockedTabs={activeCodeExample?.lockedTabs}
                       checks={collectPageChecks(activeTestCriteria)}
                       onChecks={(checkResults) => {
                         const mapped = checkResults.map((item) => ({

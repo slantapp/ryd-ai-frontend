@@ -103,14 +103,23 @@ export function exampleUsesAuthoredWebPanes(example: WebCodeExampleLike): boolea
 
 /**
  * Which pane holds the lesson's main `code` / `starterCode`.
- * JS web lessons (`runtime: "web"` + language javascript) keep code in the JS pane;
+ * JS web lessons (`runtime: "web"`, language javascript/js/web) keep code in the JS pane;
  * HTML/CSS courses put it in their own pane even when runtime is "web" for the preview.
+ * Note: bare language `"web"` means the browser workspace (JS tab), not the HTML pane.
  */
 export function mainWebPaneForExample(example: WebCodeExampleLike): WebEditorTab {
   const lang = (example.language || "").toLowerCase().trim();
   if (lang === "css") return "css";
-  if (lang === "html" || lang === "web" || lang.startsWith("html")) return "html";
-  if (lang === "javascript" || lang === "js" || example.runtime === "web") {
+  // Explicit HTML only — do not treat language "web" as HTML (that breaks JS web courses).
+  if (lang === "html" || lang.startsWith("html/") || lang.startsWith("html+") || lang === "html-css") {
+    return "html";
+  }
+  if (
+    lang === "javascript" ||
+    lang === "js" ||
+    lang === "web" ||
+    example.runtime === "web"
+  ) {
     return "javascript";
   }
   return "html";
@@ -401,15 +410,20 @@ export function evaluateWebCodeTest(
 }
 
 /**
- * Opening tab for the web editor. Language wins over runtime so HTML courses open
- * on HTML even when `runtime: "web"` (preview layout). JS web lessons still open on JS.
+ * Opening tab for the web editor.
+ * Explicit HTML/CSS courses open on their pane even with `runtime: "web"`.
+ * JS web lessons (`javascript` / `js` / `web` / runtime web) open on JavaScript.
+ * Prefer the raw example language here — do not pass normalizeRunLanguage("web")
+ * (that maps to "html" and wrongly opens the HTML tab).
  */
 export function defaultWebEditorTab(language?: string, runtime?: string): WebEditorTab {
   const lang = (language || "").toLowerCase().trim();
   if (lang === "css") return "css";
-  if (lang === "html" || lang === "web" || lang.startsWith("html")) return "html";
-  if (lang === "javascript" || lang === "js") return "javascript";
-  // No language: JS preview lessons default to the script pane; otherwise HTML.
+  if (lang === "html" || lang.startsWith("html/") || lang.startsWith("html+") || lang === "html-css") {
+    return "html";
+  }
+  if (lang === "javascript" || lang === "js" || lang === "web") return "javascript";
+  // No useful language: JS preview lessons default to the script pane.
   if (runtime === "web") return "javascript";
   return "html";
 }

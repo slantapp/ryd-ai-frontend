@@ -14,6 +14,14 @@ export function TestsSection({ tests }: { tests: DashboardData["tests"] }) {
   const { latest, suggestions, available } = tests;
   if (!available && !latest) return null;
 
+  const takeTest = (s: DashboardData["tests"]["suggestions"][number]) => {
+    if (s.openAttemptId) {
+      navigate(testAttemptPath(s.testId, s.openAttemptId));
+      return;
+    }
+    navigate(testIntroPath(s.testId, { start: true }));
+  };
+
   return (
     <Panel label="Tests">
       <SectionHeader
@@ -58,9 +66,7 @@ export function TestsSection({ tests }: { tests: DashboardData["tests"] }) {
               size="sm"
               variant={s.openAttemptId ? "default" : "outline"}
               className="h-8 shrink-0 rounded-md font-inter shadow-none sm:w-auto"
-              onClick={() =>
-                navigate(s.openAttemptId ? testAttemptPath(s.testId, s.openAttemptId) : testIntroPath(s.testId))
-              }
+              onClick={() => takeTest(s)}
             >
               {s.openAttemptId ? "Resume test" : "Take test"}
             </Button>

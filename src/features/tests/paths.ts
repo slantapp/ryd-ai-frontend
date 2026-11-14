@@ -1,6 +1,9 @@
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 
-export const testIntroPath = (testId: number | string) => PRIVATE_PATHS.TEST_INTRO.replace(":testId", String(testId));
+export const testIntroPath = (testId: number | string, opts?: { start?: boolean }) => {
+  const path = PRIVATE_PATHS.TEST_INTRO.replace(":testId", String(testId));
+  return opts?.start ? `${path}?start=1` : path;
+};
 
 export const testAttemptPath = (testId: number | string, attemptId: number | string) =>
   PRIVATE_PATHS.TEST_ATTEMPT.replace(":testId", String(testId)).replace(":attemptId", String(attemptId));

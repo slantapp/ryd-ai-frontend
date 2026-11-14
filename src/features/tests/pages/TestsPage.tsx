@@ -97,6 +97,18 @@ export default function TestsPage() {
   const [tab, setTab] = useState("available");
   const [resultPage, setResultPage] = useState(1);
 
+  const goToAttempt = (test: LearnerTestCard) => {
+    if (test.openAttemptId) {
+      navigate(testAttemptPath(test.id, test.openAttemptId));
+      return;
+    }
+    if (test.attemptsLeft === 0) {
+      navigate(testIntroPath(test.id));
+      return;
+    }
+    navigate(testIntroPath(test.id, { start: true }));
+  };
+
   useEffect(() => {
     let cancelled = false;
     fetchVisibleTests()
@@ -302,7 +314,7 @@ export default function TestsPage() {
                       <TestCardItem
                         key={t.id}
                         test={t}
-                        onOpen={() => navigate(testIntroPath(t.id))}
+                        onOpen={() => goToAttempt(t)}
                         onResume={t.openAttemptId ? () => navigate(testAttemptPath(t.id, t.openAttemptId!)) : null}
                       />
                     ))}

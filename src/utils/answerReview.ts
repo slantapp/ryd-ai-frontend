@@ -31,6 +31,8 @@ export type AnswerReviewQuestion = {
     expectedHTML?: string;
     expectedCSS?: string;
     expectedJS?: string;
+    /** Style / DOM checks — used to fill concrete CSS values when expectedCode is a regex. */
+    domChecks?: Array<Record<string, unknown>>;
   };
 };
 
@@ -152,6 +154,158 @@ function safeSource(sample: string): string {
   return looksLikeReadableSource(sample) ? text(sample) : "";
 }
 
+/** Map a DOM style check name to a CSS property. */
+export function styleCheckToCssProp(style: string): string {
+  const map: Record<string, string> = {
+    color: "color",
+    backgroundColor: "background-color",
+    borderTopColor: "border-color",
+    borderBottomColor: "border-color",
+    borderLeftColor: "border-color",
+    borderRightColor: "border-color",
+    borderColor: "border-color",
+    fontSize: "font-size",
+    fontWeight: "font-weight",
+  };
+  if (map[style]) return map[style];
+  return style.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
+}
+
+/**
+ * Build CSS rules from curriculum `domChecks` style assertions.
+ * Skips `:not(...)` baseline checks that only confirm the starter is unchanged.
+ */
+export function cssFromDomChecks(
+  domChecks?: Array<Record<string, unknown>>,
+): string {
+  if (!domChecks?.length) return "";
+  const rules = new Map<string, Map<string, string>>();
+
+  for (const check of domChecks) {
+    const style = typeof check.style === "string" ? check.style : "";
+    const equals = typeof check.equals === "string" ? check.equals.trim() : "";
+    const selector = typeof check.selector === "string" ? check.selector.trim() : "";
+    if (!style || !equals || !selector) continue;
+    if (/:not\s*\(/i.test(selector)) continue;
+
+    // Prefer the right-most class — `.profile .profile__name` → `.profile__name`
+    const classes = selector.match(/\.[a-zA-Z_][\w-]*/g);
+    if (!classes?.length) continue;
+    const sel = classes[classes.length - 1];
+    const prop = styleCheckToCssProp(style);
+
+    if (!rules.has(sel)) rules.set(sel, new Map());
+    rules.get(sel)!.set(prop, equals);
+  }
+
+  if (!rules.size) return "";
+  return [...rules.entries()]
+    .map(([sel, decls]) => {
+      const body = [...decls.entries()].map(([p, v]) => `  ${p}: ${v};`).join("\n");
+      return `${sel} {\n${body}\n}`;
+    })
+    .join("\n\n");
+}
+
+/**
+ * Extract `.selector { prop: … }` shapes from CSS grading regexes, including
+ * lookahead forms like `\.profile__name\s*\{(?=...color\s*:)`.
+ * Values may be missing — callers fill them from TODOs / domChecks.
+ */
+export function cssRuleShapesFromRegex(expectedCode: string): Array<{
+  selector: string;
+  prop: string;
+  value?: string;
+}> {
+  const raw = text(expectedCode);
+  const pattern = raw.startsWith("regex:") ? raw.slice("regex:".length) : raw;
+  const shapes: Array<{ selector: string; prop: string; value?: string }> = [];
+
+  // Lookahead form: \.name\s*\{(?=...prop\s*:\s*(?:literal|[^...]))
+  const lookahead = pattern.matchAll(
+    /\.([\w-]+)\\s\*\\\{(?:\(\?\=)?(?:[^)]*?)\b([a-z-]+)\\s\*:\\s\*(?:([^\[\\|+*?{()]+)|)/gi,
+  );
+  for (const m of lookahead) {
+    const selector = `.${m[1]}`;
+    const prop = m[2];
+    const value = m[3]?.replace(/\\/g, "").trim();
+    if (prop && !shapes.some((s) => s.selector === selector && s.prop === prop)) {
+      shapes.push({
+        selector,
+        prop,
+        value: value && /^[a-z0-9#%()._-]+$/i.test(value) ? value : undefined,
+      });
+    }
+  }
+
+  // Simple form: \.name\s*\{\s*prop\s*:\s*value
+  if (!shapes.length) {
+    for (const m of pattern.matchAll(
+      /\.([\w-]+)(?:\\s\*|\\s\+|\s)*\\?\{(?:\\s\*|\\s\+|\s)*([a-z-]+)(?:\\s\*|\\s\+|\s)*:(?:\\s\*|\\s\+|\s)*([a-z0-9#%()._-]+)/gi,
+    )) {
+      shapes.push({ selector: `.${m[1]}`, prop: m[2], value: m[3] });
+    }
+  }
+
+  return shapes;
+}
+
+/** Build readable CSS from a grading regex + optional value hints (TODO / domChecks). */
+export function cssSampleFromExpectedRegex(
+  expectedCode: string,
+  valueHints: Array<{ selector: string; prop: string; value: string }> = [],
+): string {
+  const shapes = cssRuleShapesFromRegex(expectedCode);
+  if (!shapes.length) return "";
+
+  const hintMap = new Map(
+    valueHints.map((h) => [`${h.selector}::${h.prop}`, h.value] as const),
+  );
+
+  const rules = new Map<string, Map<string, string>>();
+  for (const shape of shapes) {
+    const value =
+      shape.value ||
+      hintMap.get(`${shape.selector}::${shape.prop}`) ||
+      [...hintMap.entries()].find(([k]) => k.startsWith(`${shape.selector}::`))?.[1];
+    if (!value) continue;
+    if (!rules.has(shape.selector)) rules.set(shape.selector, new Map());
+    rules.get(shape.selector)!.set(shape.prop, value);
+  }
+  if (!rules.size) return "";
+  return [...rules.entries()]
+    .map(([sel, decls]) => {
+      const body = [...decls.entries()].map(([p, v]) => `  ${p}: ${v};`).join("\n");
+      return `${sel} {\n${body}\n}`;
+    })
+    .join("\n\n");
+}
+
+/**
+ * Turn a CSS `/* TODO … *​/` hint into a rule.
+ * e.g. "make every profile__name navy" → `.profile__name { color: navy; }`
+ */
+export function cssFromTodoHint(hint: string): string {
+  const h = hint.replace(/\s+/g, " ").trim();
+  if (!h) return "";
+
+  const className =
+    h.match(/\b([\w-]+__[\w-]+)\b/)?.[1] ||
+    h.match(/\b([\w-]+--[\w-]+)\b/)?.[1] ||
+    h.match(/\b([a-z][\w-]*(?:__|--)[\w-]+)\b/i)?.[1] ||
+    "";
+  if (!className) return "";
+
+  const colour =
+    h.match(
+      /\b(navy|limegreen|seagreen|forestgreen|dodgerblue|coral|gold|crimson|tomato|orange|purple|pink|brown|black|white|gray|grey|red|blue|green|yellow|#[0-9a-fA-F]{3,8}|rgba?\([^)]+\))\b/i,
+    )?.[1] || "";
+  if (!colour) return "";
+
+  const prop = /\bborder\b/i.test(h) ? "border-color" : "color";
+  return `.${className} {\n  ${prop}: ${colour};\n}`;
+}
+
 /**
  * Turn a grading `regex:…` pattern into a short readable sample (not for matching).
  * HTML layout tags and CSS `prop: value` checks are the common curriculum shapes.
@@ -162,6 +316,10 @@ export function sampleFromExpectedRegex(expectedCode: string): string {
     return safeSource(raw);
   }
   let pattern = raw.startsWith("regex:") ? raw.slice("regex:".length) : raw;
+
+  // --- CSS BEM / lookahead rules (profile__name, card--featured, …) ---
+  const bemCss = cssSampleFromExpectedRegex(raw);
+  if (bemCss && looksLikeReadableSource(bemCss)) return bemCss;
 
   // --- CSS: build a tiny rule from selector + declarations before the generic scrub ---
   const cssDecls = Array.from(
@@ -183,7 +341,7 @@ export function sampleFromExpectedRegex(expectedCode: string): string {
     )?.[1] ??
     "";
 
-  if (cssDecls.length && /\\?\{[^}]*\\?\}/.test(pattern)) {
+  if (cssDecls.length && (/\\?\{/.test(pattern) || cssSelector)) {
     const selector = cssSelector || "p";
     const built = `${selector} {\n  ${[...new Set(cssDecls)].join("\n  ")}\n}`;
     if (looksLikeReadableSource(built)) return built;
@@ -300,12 +458,26 @@ export function htmlFromTodoHint(hint: string): string {
   return "";
 }
 
-/** Replace `<!-- TODO: … -->` markers with markup derived from the hint text. */
-export function fillTodosInStarter(starter: string): string {
-  return starter.replace(/<!--\s*TODO:\s*([\s\S]*?)-->/gi, (full, hint: string) => {
+/**
+ * Replace HTML / CSS TODO markers with markup or rules derived from the hint text.
+ * Supports `<!-- TODO: … -->` and `/* TODO: … *​/` / `/* TODO 1: … *​/`.
+ */
+export function fillTodosInStarter(starter: string, language?: string): string {
+  const lang = (language || "").toLowerCase().trim();
+  let out = starter.replace(/<!--\s*TODO:\s*([\s\S]*?)-->/gi, (full, hint: string) => {
     const built = htmlFromTodoHint(String(hint));
     return built ? `\n${built}\n` : full;
   });
+
+  out = out.replace(/\/\*\s*TODO(?:\s*\d+)?\s*:\s*([\s\S]*?)\*\//gi, (full, hint: string) => {
+    const built =
+      lang === "css" || (!lang && /\b(color|colour|border|navy|limegreen)\b/i.test(hint))
+        ? cssFromTodoHint(String(hint))
+        : htmlFromTodoHint(String(hint)) || cssFromTodoHint(String(hint));
+    return built ? `\n${built}\n` : full;
+  });
+
+  return out;
 }
 
 /**
@@ -428,6 +600,7 @@ export function modelMainAnswer(opts: {
   expectedCode?: string;
   starterCode?: string;
   exampleCode?: string;
+  domChecks?: Array<Record<string, unknown>>;
 }): string {
   const expected = text(opts.expectedCode);
   const starter = text(opts.starterCode);
@@ -436,11 +609,12 @@ export function modelMainAnswer(opts: {
   const isRegex =
     Boolean(expected) && (expected.startsWith("regex:") || isRegexExpectedCode(expected));
 
+  // Plain expectedCode is the authored answer — show it as-is.
   if (expected && !isRegex) {
     return safeSource(expected) || expected;
   }
 
-  const todoFilled = starter ? fillTodosInStarter(starter) : "";
+  const todoFilled = starter ? fillTodosInStarter(starter, language) : "";
   const practiceSource = todoFilled || starter;
   const cleanedStarter = practiceSource ? stripPracticeComments(practiceSource, language) : "";
   // Ignore leftover TODO markers that stripPracticeComments did not remove
@@ -455,15 +629,77 @@ export function modelMainAnswer(opts: {
   const hasPractice = Boolean(practiceBody);
   const demoPasses = Boolean(demo && safeSource(demo) && passesExpected(demo, expected, language));
   const demoFails = Boolean(demo) && !demoPasses;
-  // When the teach demo fails the grader (Ada vs Leo), never fall back to it.
+  // When the teach demo fails the grader (Ada vs Leo / card vs profile), never fall back to it.
   const preferPractice = !demo || demoFails;
 
   if (hasPractice && passesExpected(cleanedStarter, expected, language)) {
     return cleanedStarter;
   }
 
+  // CSS: merge starter + rules from TODOs / domChecks / expectedCode shapes.
+  const fromDom = language === "css" ? cssFromDomChecks(opts.domChecks) : "";
+  const todoHints: Array<{ selector: string; prop: string; value: string }> = [];
+  if (language === "css" && starter) {
+    for (const m of starter.matchAll(/\/\*\s*TODO(?:\s*\d+)?\s*:\s*([\s\S]*?)\*\//gi)) {
+      const rule = cssFromTodoHint(m[1]);
+      const parsed = rule.match(/^\s*(\.[^\s{]+)\s*\{\s*([a-z-]+)\s*:\s*([^;]+);/i);
+      if (parsed) {
+        todoHints.push({
+          selector: parsed[1],
+          prop: parsed[2],
+          value: parsed[3].trim(),
+        });
+      }
+    }
+  }
+  const fromRegexCss =
+    language === "css" && expected
+      ? cssSampleFromExpectedRegex(withRegexPrefix(expected), [
+          ...todoHints,
+          ...[...fromDom.matchAll(/^\s*(\.[^\s{]+)\s*\{([^}]+)\}/gm)].flatMap((m) => {
+            const sel = m[1];
+            return [...m[2].matchAll(/([a-z-]+)\s*:\s*([^;]+);/gi)].map((d) => ({
+              selector: sel,
+              prop: d[1],
+              value: d[2].trim(),
+            }));
+          }),
+        ])
+      : "";
+
+  const cssAddition = [fromDom, fromRegexCss]
+    .filter(Boolean)
+    .find((block) => block && !practiceBody.includes(block.split("{")[0].trim())) ||
+    fromDom ||
+    fromRegexCss;
+
+  if (language === "css" && (cssAddition || todoFilled !== starter)) {
+    const base = cleanedStarter || stripPracticeComments(todoFilled || starter, language);
+    let merged = base;
+    for (const block of [fromDom, fromRegexCss, cssFromDomChecks(opts.domChecks)]) {
+      if (!block) continue;
+      for (const rule of block.split(/\n\n+/)) {
+        const sel = rule.match(/^\s*([^{]+)\s*\{/)?.[1]?.trim();
+        if (!sel) continue;
+        if (new RegExp(`${escapeRegExp(sel)}\\s*\\{`).test(merged)) continue;
+        merged = `${merged}\n\n${rule.trim()}`.trim();
+      }
+    }
+    // Also fold in TODO-filled rules that stripPracticeComments already kept.
+    if (safeSource(merged)) {
+      if (passesExpected(merged, expected, language) || preferPractice) {
+        return merged;
+      }
+    }
+  }
+
   const sample =
-    isRegex && expected ? sampleFromExpectedRegex(withRegexPrefix(expected)) : "";
+    isRegex && expected
+      ? language === "css"
+        ? cssSampleFromExpectedRegex(withRegexPrefix(expected), todoHints) ||
+          sampleFromExpectedRegex(withRegexPrefix(expected))
+        : sampleFromExpectedRegex(withRegexPrefix(expected))
+      : "";
   const usableSample = safeSource(sample);
 
   // Complete a real practice skeleton (not an empty TODO-only starter).
@@ -476,7 +712,6 @@ export function modelMainAnswer(opts: {
   }
 
   // Authored solution in `code` — only when it satisfies the grader.
-  // Must beat a bare regex token like `ok_marker` when the solution is real source.
   if (demoPasses) return demo;
 
   if (usableSample && passesExpected(usableSample, expected, language)) {
@@ -486,7 +721,7 @@ export function modelMainAnswer(opts: {
 
   if (hasPractice && safeSource(cleanedStarter)) return cleanedStarter;
 
-  // Deliberately do NOT return a failing teach demo — that was the Ada-as-answer bug.
+  // Deliberately do NOT return a failing teach demo — that was the Ada/card-as-answer bug.
   return "";
 }
 
@@ -542,6 +777,7 @@ export function buildAnswerReview(
       expectedCode: criteria.expectedCode,
       starterCode: starter,
       exampleCode: demo,
+      domChecks: criteria.domChecks,
     });
 
     if (!answer[pane] && safeSource(main)) {
@@ -578,6 +814,7 @@ export function buildAnswerReview(
     expectedCode: criteria.expectedCode,
     starterCode: example.starterCode,
     exampleCode: example.code,
+    domChecks: criteria.domChecks,
   });
   if (!safeSource(code)) return null;
   return { language, learner: { code: learner.code }, answer: { code: safeSource(code) } };

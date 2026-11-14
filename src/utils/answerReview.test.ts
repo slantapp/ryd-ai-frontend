@@ -202,6 +202,52 @@ test("HTML Step 8 aside wraps the practice fun-fact paragraph", () => {
   assert.equal((html.match(/Fun fact:/gi) || []).length, 1);
 });
 
+test("CSS BEM practice: expectedCode regex + TODOs/domChecks beat the card demo", () => {
+  const expectedCode =
+    "regex:^(?=[\\s\\S]*(?<![\\w.#:-])(?:[a-zA-Z][\\w-]*)?\\.profile__name\\s*\\{(?=(?:[^}]*[;\\s])?color\\s*:\\s*[^;}\\n]+\\s*(?:;|\\}|!)))(?=[\\s\\S]*(?<![\\w.#:-])(?:[a-zA-Z][\\w-]*)?\\.profile--online\\s*\\{(?=(?:[^}]*[;\\s])?border-color\\s*:\\s*[^;}\\n]+\\s*(?:;|\\}|!)))";
+  const review = buildAnswerReview(
+    {
+      type: "code_test",
+      code_example: {
+        language: "css",
+        runtime: "web",
+        code: ".card {\n  padding: 12px;\n}\n.card__title {\n  color: #333;\n}\n.card--featured {\n  border-color: gold;\n}\n",
+        html: '<div class="profile profile--online"><h3 class="profile__name">Mia</h3></div>',
+        starterCode:
+          ".profile {\n  padding: 10px;\n  margin: 8px;\n  border: 3px solid #cccccc;\n}\n\n/* TODO 1: make every profile__name navy */\n\n/* TODO 2: give the profile--online version a limegreen border colour */\n",
+      },
+      testCriteria: {
+        expectedCode,
+        domChecks: [
+          { style: "color", equals: "navy", selector: ".profile:nth-of-type(1) .profile__name" },
+          { style: "borderTopColor", equals: "limegreen", selector: ".profile--online" },
+          {
+            style: "borderTopColor",
+            equals: "rgb(204, 204, 204)",
+            selector: ".profile:not(.profile--online)",
+          },
+        ],
+      },
+    },
+    {
+      code: "",
+      web: {
+        html: '<div class="profile profile--online"><h3 class="profile__name">Mia</h3></div>',
+        css: ".profile { border: 3px solid #cccccc; }",
+        javascript: "",
+      },
+    },
+    { web: true, language: "css" },
+  );
+  assert.ok(review && "web" in review.answer);
+  const css = review.answer.web.css;
+  assert.match(css, /\.profile__name\s*\{[^}]*color:\s*navy/i);
+  assert.match(css, /\.profile--online\s*\{[^}]*border-color:\s*limegreen/i);
+  assert.match(css, /\.profile\s*\{/);
+  assert.doesNotMatch(css, /\.card\b/);
+  assert.equal(looksLikeRegexDebris(css), false);
+});
+
 test("HTML Step 8 multi-TODO page builds My Hobbies, not Kofi's demo", () => {
   const review = buildAnswerReview(
     {

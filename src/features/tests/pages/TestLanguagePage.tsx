@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ChevronDown, Clock, Loader2, Play, Target, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 import { fetchVisibleTests } from "../api";
-import { languageBoards, squareStatus, type NumberedTest, type SquareStatus } from "../board";
+import { displayTestTitle, languageBoards, squareStatus, type NumberedTest, type SquareStatus } from "../board";
 import { LanguageMark } from "../components/LanguageMark";
 import { testAttemptPath, testIntroPath, testLanguagePath } from "../paths";
 import type { LearnerTestCard } from "../types";
@@ -170,12 +171,15 @@ export default function TestLanguagePage() {
           className="flex flex-wrap items-center gap-4 rounded-2xl px-4 py-3 text-white sm:px-5"
           style={{ background: "linear-gradient(100deg, #6D2A86 0%, #9B3A9A 55%, #B84AA8 100%)" }}
         >
-          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-white/15 text-lg font-bold">{focus.number}</span>
+          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-white/15 text-lg font-bold">{focus.label}</span>
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-bold tracking-[0.12em] text-white/70">YOU STOPPED HERE</p>
-            <p className="truncate font-solway text-lg font-bold">{focus.test.title}</p>
+            <p className="truncate font-solway text-lg font-bold">
+              Test {focus.number} · {displayTestTitle(board.title, focus.test.title)}
+            </p>
           </div>
-          <p className="hidden text-sm text-white/80 sm:block">
+          <p className="hidden items-center gap-1.5 text-sm text-white/80 sm:flex">
+            <Clock className="size-3.5" aria-hidden />
             {focus.test.openProgress
               ? `Question ${focus.test.openProgress.question} of ${focus.test.openProgress.total} · `
               : ""}
@@ -215,24 +219,35 @@ export default function TestLanguagePage() {
           if (!visible.length) return null;
           const passed = step.tests.filter((item) => item.test.best?.passed).length;
           return (
-            <section key={`${step.index}-${step.title}`} className="rounded-2xl border border-[#E7E4EE] bg-white px-4 py-3">
+            <section
+              key={`${step.index}-${step.title}`}
+              className={cn(
+                "rounded-2xl border px-4 py-3",
+                step.tests.some((item) => item.test.id === focusId)
+                  ? "border-[#F3D7EE] bg-[#FBF4F8]"
+                  : "border-[#E7E4EE] bg-white",
+              )}
+            >
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[12px] font-semibold text-[#8A8494]">
                     Step {step.index} · tests {step.from}–{step.to}
                   </p>
-                  {step.title !== "Tests" ? <p className="font-solway text-base font-bold">{step.title}</p> : null}
+                  {step.title ? <p className="font-solway text-base font-bold">{step.title}</p> : null}
                 </div>
                 <p className="text-[13px] font-semibold text-[#5E5C72]">
                   {passed}/{step.tests.length}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-[repeat(14,2.75rem)] justify-start gap-2 overflow-x-auto py-1">
                 {visible.map((item) => (
                   <Square
                     key={item.test.id}
                     item={item}
+                    language={board.title}
+                    total={board.tests.length}
                     status={squareStatus(item.test, focusId)}
+                    isFocus={item.test.id === focusId}
                     open={openId === item.test.id}
                     onToggle={() => setOpenId((current) => (current === item.test.id ? null : item.test.id))}
                     onOpen={() => openTest(navigate, item.test)}
@@ -279,27 +294,72 @@ function Legend({ swatch, label }: { swatch: string; label: string }) {
 
 function Square({
   item,
+  language,
+  total,
   status,
+  isFocus,
   open,
   onToggle,
   onOpen,
 }: {
   item: NumberedTest;
+  language: string;
+  total: number;
   status: SquareStatus;
+  isFocus: boolean;
   open: boolean;
   onToggle: () => void;
   onOpen: () => void;
 }) {
   const test = item.test;
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [box, setBox] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const node = buttonRef.current;
+      if (!node) return;
+      const rect = node.getBoundingClientRect();
+      const width = 292;
+      const height = 248;
+      const sidebar = window.innerWidth >= 1024 ? 256 : 12;
+      let left = rect.left + rect.width / 2 - width / 2;
+      left = Math.max(sidebar, Math.min(left, window.innerWidth - width - 12));
+      let top = rect.bottom + 10;
+      if (top + height > window.innerHeight - 12) top = Math.max(12, rect.top - height - 10);
+      setBox({ top, left });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open]);
+
+  const note =
+    status === "halfway" && test.openProgress
+      ? `Left halfway · question ${test.openProgress.question} of ${test.openProgress.total}`
+      : status === "failed" && test.best?.missed != null && test.best.total
+        ? `Not passed · ${test.best.missed} of ${test.best.total} missed`
+        : status === "passed"
+          ? "Passed"
+          : isFocus
+            ? "Not tried yet · this is where you stopped"
+            : "Not tried yet";
+
   return (
     <div className="relative" data-test-square>
       <button
+        ref={buttonRef}
         type="button"
         aria-expanded={open}
-        aria-label={`${STATUS_LABEL[status]}. Test ${item.number}. ${test.title}`}
+        aria-label={`${STATUS_LABEL[status]}. Test ${item.label}. ${test.title}`}
         onClick={onToggle}
         className={cn(
-          "grid size-9 place-items-center rounded-lg text-[13px] font-bold",
+          "relative grid size-11 place-items-center rounded-[10px] text-[11px] font-bold tabular-nums",
           status === "passed" && "bg-[#1F9D55] text-white",
           status === "failed" && "border border-[#F3B4C4] bg-[#FFF5F7] text-[#E11D48]",
           status === "next" && "bg-primary text-white shadow-[0_0_0_3px_#F3D7EE]",
@@ -307,48 +367,50 @@ function Square({
           status === "fresh" && "border border-[#E4E0EA] bg-white text-[#6B6578]",
         )}
       >
-        {item.number}
+        {item.label}
+        {status === "failed" ? <span className="absolute -right-1 -top-1 size-2.5 rounded-full border border-white bg-[#E11D48]" /> : null}
       </button>
-      {open ? (
-        <div className="absolute left-1/2 top-[calc(100%+8px)] z-30 w-[240px] -translate-x-1/2 rounded-2xl border border-[#E7E4EE] bg-white p-4 text-left shadow-[0_18px_40px_rgba(28,27,58,0.16)]">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-[11px] font-bold tracking-[0.08em] text-[#8A8494]">
-              STEP · TEST {item.number}
-            </p>
-            <button type="button" aria-label="Close" onClick={onToggle} className="text-[#8A8494]">
-              <X className="size-3.5" />
-            </button>
-          </div>
-          <p className="mt-1 font-solway text-base font-bold leading-snug">{test.title}</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <span className="rounded-xl bg-[#F7F6FA] px-2 py-2 text-center text-[12px]">
-              <Clock className="mx-auto mb-1 size-3.5 text-[#8A8494]" aria-hidden />
-              <span className="block font-bold">{test.timeLimitMinutes ? `${test.timeLimitMinutes} min` : "No limit"}</span>
-              <span className="text-[#8A8494]">to complete</span>
-            </span>
-            <span className="rounded-xl bg-[#F7F6FA] px-2 py-2 text-center text-[12px]">
-              <Target className="mx-auto mb-1 size-3.5 text-[#8A8494]" aria-hidden />
-              <span className="block font-bold">{test.passMark}%</span>
-              <span className="text-[#8A8494]">to pass</span>
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={onOpen}
-            className="mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-primary text-sm font-bold text-white"
-          >
-            <Play className="size-3.5 fill-current" aria-hidden />
-            {test.openAttemptId ? "Continue" : test.best?.passed ? "Review" : test.best ? "Retry" : "Start test"}
-          </button>
-          <p className="mt-2 text-center text-[12px] text-[#8A8494]">
-            {status === "halfway" && test.openProgress
-              ? `Left halfway · question ${test.openProgress.question} of ${test.openProgress.total}`
-              : status === "failed" && test.best?.missed != null && test.best.total
-                ? `Not passed · ${test.best.missed} of ${test.best.total} missed`
-                : STATUS_LABEL[status]}
-          </p>
-        </div>
-      ) : null}
+      {open && box
+        ? createPortal(
+            <div
+              data-test-square
+              className="fixed z-[80] w-[292px] rounded-[20px] border border-[#E7E4EE] bg-white p-4 text-left shadow-[0_18px_50px_rgba(28,27,58,0.18)]"
+              style={{ top: box.top, left: box.left }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[11px] font-bold tracking-[0.08em] text-[#8A8494]">
+                  STEP {item.stepNumber} · TEST {item.label} OF {total}
+                </p>
+                <button type="button" aria-label="Close" onClick={onToggle} className="text-[#8A8494]">
+                  <X className="size-3.5" />
+                </button>
+              </div>
+              <p className="mt-1.5 font-solway text-[17px] font-bold leading-snug">{displayTestTitle(language, test.title)}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <span className="rounded-2xl bg-[#F6F5F8] px-2 py-2.5 text-center text-[12px]">
+                  <Clock className="mx-auto mb-1 size-3.5 text-[#8A8494]" aria-hidden />
+                  <span className="block font-bold">{test.timeLimitMinutes ? `${test.timeLimitMinutes} min` : "No limit"}</span>
+                  <span className="text-[#8A8494]">to complete</span>
+                </span>
+                <span className="rounded-2xl bg-[#F6F5F8] px-2 py-2.5 text-center text-[12px]">
+                  <Target className="mx-auto mb-1 size-3.5 text-[#8A8494]" aria-hidden />
+                  <span className="block font-bold">{test.passMark}%</span>
+                  <span className="text-[#8A8494]">to pass</span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={onOpen}
+                className="mt-3 inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-primary text-sm font-bold text-white"
+              >
+                <Play className="size-3.5 fill-current" aria-hidden />
+                {test.openAttemptId ? "Continue" : test.best?.passed ? "Review" : test.best ? "Retry" : "Start test"}
+              </button>
+              <p className="mt-2.5 text-center text-[12px] text-[#8A8494]">{note}</p>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

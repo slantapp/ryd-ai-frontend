@@ -1,4 +1,4 @@
-import { Code2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function languageMark(title: string): { letters: string; className: string } {
@@ -50,8 +50,8 @@ export function SubjectIcon({ title }: { title: string }) {
     );
   }
   return (
-    <span className="inline-flex size-10 items-center justify-center rounded-xl bg-[#F8E7F4] text-primary" aria-hidden>
-      <Code2 className="size-5" />
+    <span className="inline-flex size-10 items-center justify-center rounded-xl bg-[#F8E7F4] text-[13px] font-bold text-primary" aria-hidden>
+      {"</>"}
     </span>
   );
 }

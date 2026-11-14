@@ -2,13 +2,20 @@ import type { LearnerTestCard } from "./types";
 
 export type SquareStatus = "passed" | "failed" | "halfway" | "next" | "fresh";
 
-export type NumberedTest = { test: LearnerTestCard; number: number };
+export type NumberedTest = {
+  test: LearnerTestCard;
+  /** Position in this language, 1…n. */
+  number: number;
+  /** Shown on the square. A title like "2.1 If statements" keeps "2.1". */
+  label: string;
+  stepNumber: number;
+};
 
 export type TestStep = {
   index: number;
   title: string;
-  from: number;
-  to: number;
+  from: string;
+  to: string;
   tests: NumberedTest[];
 };
 
@@ -45,17 +52,71 @@ export function squareStatus(test: LearnerTestCard, focusId: number | null): Squ
   return "fresh";
 }
 
+/** "1.1 Print" and "2.1 If" are step 1 item 1 and step 2 item 1. */
+export function testCode(title: string): { step: number; item: number; label: string } | null {
+  const match = title.trim().match(/^(\d+)\.(\d+)\b/);
+  if (!match) return null;
+  return { step: Number(match[1]), item: Number(match[2]), label: `${match[1]}.${match[2]}` };
+}
+
 function stepsFrom(tests: NumberedTest[]): TestStep[] {
   const steps: TestStep[] = [];
   for (const item of tests) {
-    const title = item.test.courseTitle?.trim() || "Tests";
+    const course = item.test.courseTitle?.trim() || "";
     const last = steps[steps.length - 1];
-    if (last && last.title === title) last.tests.push(item);
-    else steps.push({ index: steps.length + 1, title, from: item.number, to: item.number, tests: [item] });
+    const sameStep = last && last.index === item.stepNumber;
+    if (sameStep) {
+      last.tests.push(item);
+      if (!last.title && course) last.title = course;
+    } else {
+      steps.push({
+        index: item.stepNumber,
+        title: course,
+        from: item.label,
+        to: item.label,
+        tests: [item],
+      });
+    }
     const current = steps[steps.length - 1];
-    current.to = item.number;
+    current.to = item.label;
+  }
+  for (const step of steps) {
+    if (step.title) continue;
+    const names = step.tests.map((item) => item.test.description?.trim() || "");
+    if (names.length > 0 && names.every((name) => name && name === names[0])) step.title = names[0];
   }
   return steps;
+}
+
+/** "1.1 Print hello" → "Python 1.1 · Print hello" for banners. */
+export function displayTestTitle(language: string, title: string): string {
+  const code = testCode(title);
+  if (!code) return title;
+  const rest = title.slice(code.label.length).replace(/^[\s·:\-–]+/, "");
+  return rest ? `${language} ${code.label} · ${rest}` : `${language} ${code.label}`;
+}
+
+/** "1.1 Print hello" → "1.1 · Print hello" for a language card. */
+export function shortTestTitle(title: string): string {
+  const code = testCode(title);
+  if (!code) return title;
+  const rest = title.slice(code.label.length).replace(/^[\s·:\-–]+/, "");
+  return rest ? `${code.label} · ${rest}` : code.label;
+}
+
+function orderTests(tests: LearnerTestCard[]): LearnerTestCard[] {
+  const coded = tests.filter((test) => testCode(test.title));
+  if (coded.length < Math.ceil(tests.length / 2)) return tests;
+  return [...tests].sort((a, b) => {
+    const left = testCode(a.title);
+    const right = testCode(b.title);
+    if (left && right && (left.step !== right.step || left.item !== right.item)) {
+      return left.step - right.step || left.item - right.item;
+    }
+    if (left && !right) return -1;
+    if (!left && right) return 1;
+    return (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id;
+  });
 }
 
 /** One language (subcategory), tests numbered in the order the API already returns. */
@@ -69,7 +130,32 @@ export function languageBoards(tests: LearnerTestCard[]): LanguageBoard[] {
     groups.set(id, list);
   }
   return [...groups.entries()].map(([id, items]) => {
-    const numbered = items.map((test, index) => ({ test, number: index + 1 }));
+    const ordered = orderTests(items);
+    const numbered = ordered.map((test, index) => {
+      const code = testCode(test.title);
+      return {
+        test,
+        number: index + 1,
+        label: code?.label ?? String(index + 1),
+        stepNumber: code?.step ?? index + 1,
+      };
+    });
+    const plain = numbered.filter((item) => !testCode(item.test.title));
+    if (plain.length === numbered.length) {
+      let step = 1;
+      numbered.forEach((item, index) => {
+        const course = item.test.courseTitle?.trim() || "";
+        const previous = index > 0 ? numbered[index - 1].test.courseTitle?.trim() || "" : course;
+        if (index > 0 && course !== previous) step += 1;
+        item.stepNumber = step;
+        item.label = String(index + 1);
+      });
+    } else if (plain.length) {
+      const nextStep = Math.max(...numbered.map((item) => item.stepNumber)) + 1;
+      plain.forEach((item) => {
+        item.stepNumber = nextStep;
+      });
+    }
     const focus = focusTest(items);
     const focusItem = numbered.find((item) => item.test.id === focus?.id) ?? null;
     const sub = items[0].subcategory!;

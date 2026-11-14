@@ -8,7 +8,7 @@ import { formatDuration, testAttemptPath, testIntroPath, testLanguagePath, testR
 import { GradeBadge } from "../components/TestBits";
 import { LanguageMark, SubjectIcon } from "../components/LanguageMark";
 import { Pager } from "../components/Pager";
-import { categoryKey, focusTest, languageBoards, languageStarted, lowestScore, type LanguageBoard } from "../board";
+import { categoryKey, displayTestTitle, focusTest, languageBoards, languageStarted, shortTestTitle, type LanguageBoard } from "../board";
 import type { LearnerTestCard, ResultHistoryRow } from "../types";
 
 const RESULTS_PER_PAGE = 10;
@@ -27,6 +27,7 @@ export default function TestsPage() {
   const [query, setQuery] = useState("");
   const [showResults, setShowResults] = useState(false);
   const [resultPage, setResultPage] = useState(1);
+  const [weakIndex, setWeakIndex] = useState(0);
   const subject = params.get("subject");
 
   useEffect(() => {
@@ -65,8 +66,11 @@ export default function TestsPage() {
   const notStarted = visibleBoards.filter((board) => !languageStarted(board));
   const activeTests = (tests ?? []).filter((test) => categoryKey(test) === activeKey);
   const resume = focusTest(activeTests.filter((test) => !q || test.title.toLowerCase().includes(q) || test.subcategory?.title.toLowerCase().includes(q)));
-  const weak = lowestScore(activeTests.filter((test) => test.best && !test.best.passed));
-  const weakCount = activeTests.filter((test) => test.best && !test.best.passed).length;
+  const weakList = activeTests
+    .filter((test) => test.best && !test.best.passed)
+    .sort((a, b) => (a.best?.percent ?? 0) - (b.best?.percent ?? 0));
+  const weak = weakList[weakIndex] ?? weakList[0] ?? null;
+  const weakAt = weak ? Math.max(0, weakList.findIndex((test) => test.id === weak.id)) : 0;
   const resumeBoard = resume ? boards.find((board) => board.tests.some((item) => item.test.id === resume.id)) : null;
   const resumeNumber = resumeBoard?.tests.find((item) => item.test.id === resume?.id)?.number ?? null;
   const resumeStep = resumeBoard?.steps.find((step) => step.tests.some((item) => item.test.id === resume?.id));
@@ -85,7 +89,7 @@ export default function TestsPage() {
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8A8494]">Practice</p>
           <h1 className="mt-1 font-solway text-[32px] font-bold leading-none">Knowledge Tests</h1>
-          <p className="mt-2 text-sm text-[#5E5C72]">Short checks on what you just learned. Pass at the test’s own mark to tick the lesson off.</p>
+          <p className="mt-2 text-sm text-[#5E5C72]">Short 4-minute checks. Pass at 70% to tick the lesson off.</p>
         </div>
         <div className="flex w-full items-center gap-2 sm:max-w-sm">
           <div className="relative min-w-0 flex-1">
@@ -146,7 +150,7 @@ export default function TestsPage() {
                   <span className="min-w-0 flex-1">
                     <span className="block font-solway text-lg font-bold">{item.title}</span>
                     <span className="block text-[13px] text-[#5E5C72]">
-                      {mine.length} language{mine.length === 1 ? "" : "s"}
+                      {mine.length} {/coding/i.test(item.title) ? `language${mine.length === 1 ? "" : "s"}` : `topic${mine.length === 1 ? "" : "s"}`}
                       {started ? ` · ${started} in progress` : " · not started"}
                     </span>
                   </span>
@@ -162,16 +166,19 @@ export default function TestsPage() {
                 className="flex flex-wrap items-center gap-4 rounded-[24px] px-5 py-5 text-white"
                 style={{ background: "linear-gradient(100deg, #5C1F6E 0%, #8E347F 48%, #C026A0 100%)" }}
               >
-                <span className="grid size-16 shrink-0 place-items-center rounded-full border-[5px] border-white/30 text-xl font-bold">
-                  {resumeNumber ?? "·"}
-                </span>
+                <ScoreRing
+                  value={resumeBoard && resumeNumber ? Math.round((resumeNumber / resumeBoard.tests.length) * 100) : 0}
+                  label={resumeNumber != null ? String(resumeNumber) : "·"}
+                  light
+                />
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-bold tracking-[0.12em] text-white/75">PICK UP WHERE YOU LEFT OFF</p>
-                  <h2 className="mt-1 truncate font-solway text-[22px] font-bold">{resume.title}</h2>
+                  <h2 className="mt-1 truncate font-solway text-[22px] font-bold">
+                    {displayTestTitle(resumeBoard?.title ?? "Test", resume.title)}
+                  </h2>
                   <p className="mt-1 text-sm text-white/80">
-                    {resumeBoard ? `${resumeBoard.title}` : "Test"}
-                    {resumeNumber && resumeBoard ? ` · Test ${resumeNumber} of ${resumeBoard.tests.length}` : ""}
-                    {resumeStep?.title && resumeStep.title !== "Tests" ? ` · ${resumeStep.title}` : ""}
+                    {resumeNumber && resumeBoard ? `Test ${resumeNumber} of ${resumeBoard.tests.length}` : "Test"}
+                    {resumeStep ? ` · Step ${resumeStep.index}${resumeStep.title ? `, ${resumeStep.title}` : ""}` : ""}
                     {resume.timeLimitMinutes ? ` · ${resume.timeLimitMinutes} min` : ""}
                   </p>
                 </div>
@@ -194,12 +201,12 @@ export default function TestsPage() {
               {weak?.best ? (
                 <>
                   <div className="flex items-start gap-3">
-                    <span className="grid size-14 shrink-0 place-items-center rounded-full border-[5px] border-[#F8C9D2] text-sm font-bold text-[#E11D48]">
-                      {Math.round(weak.best.percent)}%
-                    </span>
+                    <ScoreRing value={Math.round(weak.best.percent)} label={`${Math.round(weak.best.percent)}%`} />
                     <div className="min-w-0">
                       <p className="text-[11px] font-bold tracking-[0.1em] text-[#E11D48]">FIX YOUR WEAK SPOT</p>
-                      <p className="mt-1 truncate font-solway text-lg font-bold">{weak.title}</p>
+                      <p className="mt-1 truncate font-solway text-lg font-bold">
+                        {displayTestTitle(boards.find((board) => board.tests.some((item) => item.test.id === weak.id))?.title ?? "", weak.title)}
+                      </p>
                       <p className="text-[13px] text-[#5E5C72]">
                         {weak.best.missed != null && weak.best.total
                           ? `Your lowest score · ${weak.best.missed} of ${weak.best.total} missed`
@@ -208,11 +215,33 @@ export default function TestsPage() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-[12px] text-[#8A8494]">{weakCount} to fix</p>
+                    <div className="flex items-center gap-1.5 text-[12px] text-[#8A8494]">
+                      <button
+                        type="button"
+                        aria-label="Previous weak spot"
+                        disabled={weakList.length < 2}
+                        onClick={() => setWeakIndex((index) => (index - 1 + weakList.length) % weakList.length)}
+                        className="grid size-6 place-items-center rounded-full border border-[#E7E4EE] disabled:opacity-40"
+                      >
+                        <ChevronLeft className="size-3.5" />
+                      </button>
+                      <span>
+                        {weakAt + 1} of {weakList.length} to fix
+                      </span>
+                      <button
+                        type="button"
+                        aria-label="Next weak spot"
+                        disabled={weakList.length < 2}
+                        onClick={() => setWeakIndex((index) => (index + 1) % weakList.length)}
+                        className="grid size-6 place-items-center rounded-full border border-[#E7E4EE] disabled:opacity-40"
+                      >
+                        <ChevronRight className="size-3.5" />
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() => openTest(navigate, weak)}
-                      className="inline-flex h-9 items-center rounded-full border border-[#E7E4EE] px-4 text-sm font-semibold"
+                      className="inline-flex h-9 items-center rounded-full border border-[#E7E4EE] bg-[#F7F6FA] px-4 text-sm font-semibold"
                     >
                       Retry
                     </button>
@@ -231,19 +260,16 @@ export default function TestsPage() {
             title="In progress"
             boards={inProgress}
             empty="No language in progress yet."
+            pageSize={3}
             onOpen={(board) => navigate(testLanguagePath(board.id))}
-            onAction={(board) => {
-              const test = board.focus?.test;
-              if (test) openTest(navigate, test);
-              else navigate(testLanguagePath(board.id));
-            }}
           />
           <LanguageRow
             title="Not started"
+            hint="Start begins at test 1.1"
             boards={notStarted}
             empty="Every language here has been started."
+            pageSize={4}
             onOpen={(board) => navigate(testLanguagePath(board.id))}
-            onAction={(board) => navigate(testLanguagePath(board.id))}
             compact
           />
         </>
@@ -254,33 +280,61 @@ export default function TestsPage() {
 
 function LanguageRow({
   title,
+  hint,
   boards,
   empty,
+  pageSize,
   onOpen,
-  onAction,
   compact = false,
 }: {
   title: string;
+  hint?: string;
   boards: LanguageBoard[];
   empty: string;
+  pageSize: number;
   onOpen: (board: LanguageBoard) => void;
-  onAction: (board: LanguageBoard) => void;
   compact?: boolean;
 }) {
-  const scroller = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState(false);
-  const scroll = (direction: number) => scroller.current?.scrollBy({ left: direction * 280, behavior: "smooth" });
+  const pageCount = Math.max(1, Math.ceil(boards.length / pageSize));
+  const safePage = Math.min(page, pageCount - 1);
+  const start = safePage * pageSize;
+  const visible = expanded ? boards : boards.slice(start, start + pageSize);
+  const from = boards.length ? start + 1 : 0;
+  const to = Math.min(start + visible.length, boards.length);
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-solway text-xl font-bold">
-          {title} <span className="text-base font-semibold text-[#8A8494]">{boards.length} language{boards.length === 1 ? "" : "s"}</span>
+          {title}{" "}
+          <span className="text-base font-semibold text-[#8A8494]">
+            {boards.length} language{boards.length === 1 ? "" : "s"}
+            {hint ? ` · ${hint}` : ""}
+          </span>
         </h2>
-        <div className="flex items-center gap-2">
-          <button type="button" aria-label="Previous" onClick={() => scroll(-1)} className="grid size-8 place-items-center rounded-full border border-[#E7E4EE] bg-white">
+        <div className="flex items-center gap-2 text-sm text-[#8A8494]">
+          {boards.length > 0 && !expanded ? (
+            <span>
+              {from}–{to} of {boards.length}
+            </span>
+          ) : null}
+          <button
+            type="button"
+            aria-label="Previous"
+            disabled={expanded || safePage === 0}
+            onClick={() => setPage((value) => Math.max(0, value - 1))}
+            className="grid size-8 place-items-center rounded-full border border-[#E7E4EE] bg-white disabled:opacity-40"
+          >
             <ChevronLeft className="size-4" />
           </button>
-          <button type="button" aria-label="Next" onClick={() => scroll(1)} className="grid size-8 place-items-center rounded-full border border-[#E7E4EE] bg-white">
+          <button
+            type="button"
+            aria-label="Next"
+            disabled={expanded || safePage >= pageCount - 1}
+            onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))}
+            className="grid size-8 place-items-center rounded-full border border-[#E7E4EE] bg-white disabled:opacity-40"
+          >
             <ChevronRight className="size-4" />
           </button>
           <button type="button" onClick={() => setExpanded((value) => !value)} className="text-sm font-semibold text-[#5E5C72]">
@@ -291,9 +345,9 @@ function LanguageRow({
       {boards.length === 0 ? (
         <p className="text-sm text-[#8A8494]">{empty}</p>
       ) : (
-        <div ref={scroller} className={cn("flex gap-3", expanded ? "flex-wrap" : "overflow-x-auto scroll-smooth pb-1 scrollbar-hide")}>
-          {boards.map((board) => (
-            <LanguageCard key={board.id} board={board} compact={compact} onOpen={() => onOpen(board)} onAction={() => onAction(board)} />
+        <div className={cn("grid gap-3", compact ? "sm:grid-cols-2 xl:grid-cols-4" : "lg:grid-cols-3")}>
+          {visible.map((board) => (
+            <LanguageCard key={board.id} board={board} compact={compact} onOpen={() => onOpen(board)} />
           ))}
         </div>
       )}
@@ -301,63 +355,102 @@ function LanguageRow({
   );
 }
 
-function LanguageCard({
-  board,
-  compact,
-  onOpen,
-  onAction,
-}: {
-  board: LanguageBoard;
-  compact: boolean;
-  onOpen: () => void;
-  onAction: () => void;
-}) {
+function LanguageCard({ board, compact, onOpen }: { board: LanguageBoard; compact: boolean; onOpen: () => void }) {
   const percent = board.tests.length ? Math.round((board.passed / board.tests.length) * 100) : 0;
   const focus = board.focus;
-  const started = languageStarted(board);
-  return (
-    <article className={cn("flex shrink-0 flex-col gap-3 rounded-2xl border border-[#E7E4EE] bg-white p-4", compact ? "w-[220px]" : "w-[300px]")}>
-      <button type="button" onClick={onOpen} className="flex items-start gap-3 text-left">
-        <LanguageMark title={board.title} size={compact ? "sm" : "md"} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-solway text-lg font-bold">{board.title}</span>
-          <span className="block text-[13px] text-[#5E5C72]">
-            {started
-              ? `${board.passed} of ${board.tests.length} passed · ${board.steps.length} step${board.steps.length === 1 ? "" : "s"}`
-              : `${board.tests.length} test${board.tests.length === 1 ? "" : "s"} · ${board.steps.length} step${board.steps.length === 1 ? "" : "s"}`}
+  const paused = focus?.test.openAttemptId != null;
+  if (compact) {
+    return (
+      <article className="flex items-center gap-3 rounded-[20px] border border-[#E7E4EE] bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(28,27,58,0.04)]">
+        <LanguageMark title={board.title} size="sm" />
+        <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
+          <span className="block truncate font-solway text-base font-bold">{board.title}</span>
+          <span className="block truncate text-[12px] text-[#8A8494]">
+            {board.tests.length} test{board.tests.length === 1 ? "" : "s"} · {board.steps.length} step{board.steps.length === 1 ? "" : "s"}
           </span>
-        </span>
-        {started ? <span className="text-sm font-bold text-[#5E5C72]">{percent}%</span> : null}
-      </button>
-      {started ? (
-        <div className="h-1.5 overflow-hidden rounded-full bg-[#F1EFF5]">
-          <div className="h-full rounded-full bg-[#3B82F6]" style={{ width: `${percent}%` }} />
-        </div>
-      ) : null}
-      <div className="mt-auto flex items-center justify-between gap-2">
-        {focus && started ? (
-          <p className="min-w-0 truncate text-[12px] font-semibold text-[#5E5C72]">
-            <span className="text-primary">{focus.test.openAttemptId ? "PAUSED" : "UP NEXT"}</span>
-            {" · "}
-            {focus.test.openProgress
-              ? `QUESTION ${focus.test.openProgress.question} OF ${focus.test.openProgress.total}`
-              : focus.test.title}
-          </p>
-        ) : (
-          <span />
-        )}
+        </button>
         <button
           type="button"
-          onClick={onAction}
-          className={cn(
-            "inline-flex h-9 shrink-0 items-center rounded-full px-4 text-sm font-semibold",
-            started ? "bg-primary text-white" : "border border-[#E4E0EA] bg-white text-[#3E3C55]",
-          )}
+          onClick={onOpen}
+          className="inline-flex h-9 shrink-0 items-center rounded-full border border-[#E4E0EA] bg-white px-4 text-sm font-semibold text-[#3E3C55]"
         >
-          {started ? (focus?.test.openAttemptId ? "Resume" : "Continue") : "Start"}
+          Start
+        </button>
+      </article>
+    );
+  }
+  return (
+    <article className="flex flex-col rounded-[20px] border border-[#E7E4EE] bg-white p-4 shadow-[0_1px_2px_rgba(28,27,58,0.04)]">
+      <button type="button" onClick={onOpen} className="flex items-start gap-3 text-left">
+        <LanguageMark title={board.title} size="md" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-solway text-lg font-bold">{board.title}</span>
+          <span className="block text-[13px] text-[#8A8494]">
+            {board.passed} of {board.tests.length} passed · {board.steps.length} step{board.steps.length === 1 ? "" : "s"}
+          </span>
+        </span>
+        <span className="text-[15px] font-bold text-[#3E3C55]">{percent}%</span>
+      </button>
+      <SegmentBar percent={percent} />
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#F1EFF5] pt-3">
+        <div className="min-w-0">
+          <p className={cn("flex items-center gap-1 text-[11px] font-bold tracking-[0.04em]", paused ? "text-[#C2410C]" : "text-primary")}>
+            <Play className="size-3 fill-current" aria-hidden />
+            {paused ? "PAUSED" : "UP NEXT"}
+            {paused && focus?.test.openProgress
+              ? ` · QUESTION ${focus.test.openProgress.question} OF ${focus.test.openProgress.total}`
+              : focus
+                ? ` · TEST ${focus.number}`
+                : ""}
+          </p>
+          {focus ? <p className="truncate text-[13px] font-semibold text-[#1C1B3A]">{shortTestTitle(focus.test.title)}</p> : null}
+        </div>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="inline-flex h-9 shrink-0 items-center rounded-full bg-primary px-4 text-sm font-semibold text-white"
+        >
+          {paused ? "Resume" : "Continue"}
         </button>
       </div>
     </article>
+  );
+}
+
+function SegmentBar({ percent }: { percent: number }) {
+  const total = 12;
+  const filled = Math.round((Math.min(100, Math.max(0, percent)) / 100) * total);
+  return (
+    <div className="mt-3 flex gap-1" aria-hidden>
+      {Array.from({ length: total }, (_, index) => (
+        <span key={index} className={cn("h-1.5 flex-1 rounded-full", index < filled ? "bg-[#3B82F6]" : "bg-[#E6E2EA]")} />
+      ))}
+    </div>
+  );
+}
+
+function ScoreRing({ value, label, light = false }: { value: number; label: string; light?: boolean }) {
+  const amount = Math.max(0, Math.min(100, value));
+  const radius = 22;
+  const circumference = 2 * Math.PI * radius;
+  const dash = (amount / 100) * circumference;
+  return (
+    <span className="relative grid size-16 shrink-0 place-items-center">
+      <svg viewBox="0 0 56 56" className="size-16 -rotate-90" aria-hidden>
+        <circle cx="28" cy="28" r={radius} fill="none" stroke={light ? "rgba(255,255,255,0.28)" : "#F8C9D2"} strokeWidth="5" />
+        <circle
+          cx="28"
+          cy="28"
+          r={radius}
+          fill="none"
+          stroke={light ? "#fff" : "#E11D48"}
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${circumference - dash}`}
+        />
+      </svg>
+      <span className={cn("absolute text-sm font-bold", light ? "text-white" : "text-[#E11D48]")}>{label}</span>
+    </span>
   );
 }
 

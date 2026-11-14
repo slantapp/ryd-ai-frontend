@@ -140,6 +140,19 @@ function formatScore(n: number | null) {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
+/** Prefer a human course title; never show a slug like python-basics-3. */
+function courseDisplayName(course: { title?: string | null; slug?: string | null } | null | undefined): string {
+  const title = (course?.title || "").trim();
+  if (title && title !== course?.slug) return title;
+  const slug = (course?.slug || "").trim();
+  if (!slug) return "this course";
+  return slug
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function RecommendationCard({
   rec,
   attemptsLeft,
@@ -170,7 +183,7 @@ function RecommendationCard({
         {followUp?.course ? (
           <ActionLink to={coursePath(followUp.course.slug)} icon={<ArrowRight className="size-4" />} primary>
             {followUp.when === "pass" ? "Recommended next: " : "Recommended course: "}
-            {followUp.course.title}
+            {courseDisplayName(followUp.course)}
           </ActionLink>
         ) : null}
         {followUp?.test ? (
@@ -181,7 +194,7 @@ function RecommendationCard({
         {rec.nextCourse && rec.nextCourse.id !== followUp?.course?.id ? (
           <ActionLink to={coursePath(rec.nextCourse.slug)} icon={<ArrowRight className="size-4" />} primary>
             {rec.action === "next_level" && rec.nextLevel ? `Move up to ${rec.nextLevel}: ` : "Next course: "}
-            {rec.nextCourse.title}
+            {courseDisplayName(rec.nextCourse)}
           </ActionLink>
         ) : null}
         {rec.action === "next_level" && !rec.nextCourse ? (
@@ -194,19 +207,9 @@ function RecommendationCard({
             Follow the learning path: {rec.learningPath.title}
           </ActionLink>
         ) : null}
-        {rec.reviewLessons.length ? (
-          <div className="flex flex-col gap-1.5">
-            <p className="app-type-label">Lessons to review</p>
-            {rec.reviewLessons.map((l) => (
-              <ActionLink key={`${l.courseSlug}-${l.lessonId}`} to={coursePath(l.courseSlug)} icon={<BookOpen className="size-4" />}>
-                {l.lessonTitle || "Open the lesson"}
-              </ActionLink>
-            ))}
-          </div>
-        ) : null}
-        {rec.course && !rec.reviewLessons.length && rec.action !== "next_course" && rec.action !== "next_level" ? (
+        {rec.course && rec.action !== "next_course" && rec.action !== "next_level" && rec.course.id !== followUp?.course?.id ? (
           <ActionLink to={coursePath(rec.course.slug)} icon={<BookOpen className="size-4" />}>
-            Back to {rec.course.title}
+            Back to {courseDisplayName(rec.course)}
           </ActionLink>
         ) : null}
         {rec.canRetake ? (
@@ -275,11 +278,6 @@ function ReviewCard({ item, n, language }: { item: ReviewItem; n: number; langua
       <p className="m-0 font-semibold text-[#1F1B24]">{q.prompt}</p>
       <AnswerLines item={item} />
       {item.explanation ? <p className="rounded-xl bg-[#F6F3FA] px-3 py-2 text-[13px] text-[#4B4458]">{item.explanation}</p> : null}
-      {item.lessonRef?.courseSlug && !right ? (
-        <Link to={coursePath(item.lessonRef.courseSlug)} className="app-type-link inline-flex items-center gap-1 text-sm">
-          <BookOpen className="size-4" aria-hidden /> Review: {item.lessonRef.lessonTitle || "the lesson"}
-        </Link>
-      ) : null}
     </article>
   );
 }

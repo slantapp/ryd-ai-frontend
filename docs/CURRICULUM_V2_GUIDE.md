@@ -47,7 +47,7 @@ Use this when authoring or building upload validation. **Full backend rules:** [
 | Beat: `id`, `type`, `advance` | `phase`, most `avatar` lines |
 | `speak` → `avatar.text` | `avatar.show` |
 | `display` → `body` | `title`, `speak_body`, `avatar` |
-| `code_example` → `code`, `language` | **`starterCode`**, **`supportingCode`**, `description`, `explanation`, `autoRun`, `typingSpeed` |
+| `code_example` → `code`, `language` | **`starterCode`**, **`solutionCode`** (View Answer), **`supportingCode`**, `description`, `explanation`, `autoRun`, `typingSpeed` |
 | `code_test` → `type`, `question` | **`code_example`**, **`testCriteria`**, `explanation` |
 | `formula_test` → `type`, `question`, `testCriteria.expectedFormula` | `formula_example` |
 
@@ -454,6 +454,7 @@ This temporary demo key is **browser-visible**, even though the audio request us
 | `autoRun` | No | Run after typing (default: false) |
 | `typingSpeed` | No | ms per character (default ~40) |
 | `starterCode` | No | Used on **question** handoff — skeleton in the main pane, **not** the full solution |
+| `solutionCode` | **Strongly recommended** on `code_test` | Exact practice answer for **View correct answer**. Required in practice when `expectedCode` is a `regex:` grader or the teach demo uses a different theme than practice. Must pass `testCriteria.expectedCode`. |
 | `supportingCode` | No | Companion pane (e.g. HTML to style when `language` is `css`) |
 | `supportingLanguage` | No | Language of `supportingCode` (defaults: `html` when main is `css`) |
 
@@ -529,6 +530,7 @@ The `question` object uses the **same shape as v1** (`question`, `options`, `ans
 4. Question text is spoken
 5. Editor opens — seeded with **`starterCode`** if you provided it (skeleton with comments, not the full solution)
 6. Learner submits → retry flow
+7. After tries are used up, **View correct answer** shows **`solutionCode`** (never the raw regex grader, and never a teach demo that uses a different theme)
 
 ```json
 {
@@ -544,7 +546,8 @@ The `question` object uses the **same shape as v1** (`question`, `options`, `ans
       "language": "javascript",
       "description": "Here's an example.",
       "explanation": "We use let, then the name.",
-      "starterCode": "// Create a variable called message\n\n"
+      "starterCode": "// Create a variable called message\n\n",
+      "solutionCode": "let message = 'Hello World';\nconsole.log(message);\n"
     }
   },
   "avatar": {
@@ -814,7 +817,10 @@ Authors should **preview** before publishing to hear speech, test code runs, and
 8. **Stable beat IDs** — used by the skip panel in preview; don’t rename casually.
 9. **Unique lesson IDs** — prefix with module: `module_02__lesson_03`.
 10. **`starterCode` on code tests** — skeleton with comments, not the full answer.
-11. **Set `schema_version: 2`** on the root object.
+11. **`solutionCode` on code tests** — exact practice answer for View correct answer. Always add it when `expectedCode` starts with `regex:` or when the teach demo theme differs from practice (Ada vs Leo, etc.). It must pass `expectedCode`.
+12. **Set `schema_version: 2`** on the root object.
+
+See also: [CURRICULUM_CODE_TEST_CONTRACT.md](./CURRICULUM_CODE_TEST_CONTRACT.md) — field meanings, View Answer rules, and teacher checklist.
 
 ### Suggested pattern for a ~10-minute lesson
 

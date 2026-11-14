@@ -202,6 +202,40 @@ test("HTML Step 8 aside wraps the practice fun-fact paragraph", () => {
   assert.equal((html.match(/Fun fact:/gi) || []).length, 1);
 });
 
+test("JS canvas fillRect: sample keeps parentheses and replaces the TODO line", () => {
+  const expectedCode =
+    "regex:ctx\\.fillRect\\s*\\(\\s*100\\s*,\\s*50\\s*,\\s*40\\s*,\\s*40\\s*\\)";
+  const starterCode = `const ctx = document.getElementById("game").getContext("2d");
+ctx.fillStyle = "red";
+// TODO: draw a 40 by 40 square with its top-left corner at x 100, y 50
+ctx.fillRect(20, 20, 60, 40);
+console.log("Drew a red square");
+`;
+  const review = buildAnswerReview(
+    {
+      type: "code_test",
+      code_example: {
+        language: "javascript",
+        runtime: "web",
+        code: 'ctx.fillRect(1, 1, 2, 2);\nconsole.log("demo");',
+        starterCode,
+        html: '<canvas id="game"></canvas>',
+      },
+      testCriteria: { expectedCode },
+    },
+    { code: "", web: { html: "", css: "", javascript: starterCode } },
+    { web: true, language: "javascript" },
+  );
+  assert.ok(review && "web" in review.answer);
+  const js = review.answer.web.javascript;
+  assert.match(js, /ctx\.fillRect\(\s*100\s*,\s*50\s*,\s*40\s*,\s*40\s*\);/);
+  assert.doesNotMatch(js, /fillRect100|fillRect\(20/);
+  assert.match(js, /console\.log\("Drew a red square"\)/);
+  // Correct call comes before console.log
+  assert.ok(js.indexOf("fillRect(100") < js.indexOf("console.log"));
+  assert.equal(looksLikeRegexDebris(js), false);
+});
+
 test("CSS BEM practice: expectedCode regex + TODOs/domChecks beat the card demo", () => {
   const expectedCode =
     "regex:^(?=[\\s\\S]*(?<![\\w.#:-])(?:[a-zA-Z][\\w-]*)?\\.profile__name\\s*\\{(?=(?:[^}]*[;\\s])?color\\s*:\\s*[^;}\\n]+\\s*(?:;|\\}|!)))(?=[\\s\\S]*(?<![\\w.#:-])(?:[a-zA-Z][\\w-]*)?\\.profile--online\\s*\\{(?=(?:[^}]*[;\\s])?border-color\\s*:\\s*[^;}\\n]+\\s*(?:;|\\}|!)))";

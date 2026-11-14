@@ -185,7 +185,10 @@ export default function CurriculumEditPage() {
         );
         toast.success("Curriculum updated successfully.");
       } else {
-        await uploadCurriculumJson(normalized, handoff.data.token);
+        await uploadCurriculumJson(normalized, handoff.data.token, {
+          role: handoff.data.role === "admin" ? "admin" : "teacher",
+          publish: false,
+        });
         toast.success("Curriculum uploaded successfully.");
       }
 

@@ -68,6 +68,7 @@ import {
   runSubmissionCodeOutput,
   submissionHasContent,
 } from "@/utils/codeTestRunner";
+import type { CodeTestResult } from "@/utils/codeTestValidation";
 import {
   isCodeEditorLanguage,
   normalizeRunLanguage,
@@ -81,6 +82,10 @@ import {
   webCodeForExampleTyping,
   type WebCodeSources,
 } from "@/utils/webCodeWorkspace";
+import {
+  collectPageChecks,
+  hasPageChecks,
+} from "@/utils/webPreviewBridge";
 import {
   editorConsoleMinSizes,
   editorConsoleSplitSizes,
@@ -326,6 +331,8 @@ function CourseDetailInner({
   const [code, setCode] = useState("");
   const [webCode, setWebCode] = useState<WebCodeSources>(EMPTY_WEB_CODE);
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+  const pageChecksRef = useRef<CodeTestResult[] | undefined>(undefined);
+  const pageWaiterRef = useRef<((results: CodeTestResult[]) => void) | null>(null);
   const [isExecutingCode, setIsExecutingCode] = useState(false);
   const [runLanguage, setRunLanguage] = useState("javascript");
   const [results, setResults] = useState<string[]>([]);
@@ -2352,14 +2359,28 @@ function CourseDetailInner({
       : await programInput.collect("Run program");
     if (stdin === null) return;
 
-    if (useWebWorkspace) {
-      setPreviewRefreshKey((key) => key + 1);
-    } else {
+    if (!useWebWorkspace) {
       setIsExecutingCode(true);
       setResults(["⏳ Running code..."]);
     }
 
     try {
+      let pageResults: CodeTestResult[] | undefined;
+      if (useWebWorkspace) {
+        pageChecksRef.current = undefined;
+        const pending = hasPageChecks(currentQuestion.testCriteria)
+          ? new Promise<CodeTestResult[]>((resolve) => {
+              pageWaiterRef.current = resolve;
+              window.setTimeout(
+                () => resolve(pageChecksRef.current ?? []),
+                3500,
+              );
+            })
+          : null;
+        setPreviewRefreshKey((key) => key + 1);
+        pageResults = pending ? await pending : undefined;
+      }
+
       const outcome = useWebWorkspace
         ? { lines: [] as string[], raw: [] as string[] }
         : await runSubmissionCodeOutput(
@@ -2376,6 +2397,7 @@ function CourseDetailInner({
         submission,
         currentQuestion.testCriteria,
         outcome.raw,
+        pageResults,
       );
       setResults([
         ...outcome.lines,
@@ -2405,14 +2427,28 @@ function CourseDetailInner({
     if (stdin === null) return;
     answerSubmissionInFlightRef.current = true;
 
-    if (useWebWorkspace) {
-      setPreviewRefreshKey((key) => key + 1);
-    } else {
+    if (!useWebWorkspace) {
       setIsExecutingCode(true);
       setResults(["⏳ Running code..."]);
     }
 
     try {
+      let pageResults: CodeTestResult[] | undefined;
+      if (useWebWorkspace) {
+        pageChecksRef.current = undefined;
+        const pending = hasPageChecks(currentQuestion.testCriteria)
+          ? new Promise<CodeTestResult[]>((resolve) => {
+              pageWaiterRef.current = resolve;
+              window.setTimeout(
+                () => resolve(pageChecksRef.current ?? []),
+                3500,
+              );
+            })
+          : null;
+        setPreviewRefreshKey((key) => key + 1);
+        pageResults = pending ? await pending : undefined;
+      }
+
       const outcome = useWebWorkspace
         ? { lines: [] as string[], raw: [] as string[] }
         : await runSubmissionCodeOutput(
@@ -2432,6 +2468,7 @@ function CourseDetailInner({
         submission,
         currentQuestion.testCriteria,
         outcome.raw,
+        pageResults,
       );
       setResults([
         ...outcome.lines,
@@ -3163,6 +3200,17 @@ function CourseDetailInner({
                       results={results}
                       previewRefreshKey={previewRefreshKey}
                       initialTab={webEditorTab}
+                      checks={collectPageChecks(activeTestCriteria)}
+                      onChecks={(checkResults) => {
+                        const mapped = checkResults.map((item) => ({
+                          test: item.test,
+                          passed: item.passed,
+                          plain: true as const,
+                        }));
+                        pageChecksRef.current = mapped;
+                        pageWaiterRef.current?.(mapped);
+                        pageWaiterRef.current = null;
+                      }}
                       answerReview={reviewControls}
                     />
                   ) : (

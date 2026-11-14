@@ -5,6 +5,9 @@ export const testIntroPath = (testId: number | string, opts?: { start?: boolean 
   return opts?.start ? `${path}?start=1` : path;
 };
 
+export const testLanguagePath = (subcategoryId: number | string) =>
+  PRIVATE_PATHS.TEST_LANGUAGE.replace(":subcategoryId", String(subcategoryId));
+
 export const testAttemptPath = (testId: number | string, attemptId: number | string) =>
   PRIVATE_PATHS.TEST_ATTEMPT.replace(":testId", String(testId)).replace(":attemptId", String(attemptId));
 

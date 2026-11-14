@@ -36,6 +36,8 @@ export const PRIVATE_PATHS = {
   MARKETING_TOOL: "/marketing-tool",
   /** Interactive tests (flashcard-style cards, grades and recommendations). */
   TESTS: "/tests",
+  /** One language's tests, as a numbered board. Must be registered before TEST_INTRO. */
+  TEST_LANGUAGE: "/tests/language/:subcategoryId",
   TEST_INTRO: "/tests/:testId",
   TEST_ATTEMPT: "/tests/:testId/attempt/:attemptId",
   TEST_RESULT: "/tests/attempts/:attemptId",

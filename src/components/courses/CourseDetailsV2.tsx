@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { usePreviewAvatar } from "@/features/curriculum-preview/components/PreviewAvatar";
 import { LessonPlayer } from "@/features/curriculum-preview/v2/components/LessonPlayer";
 import {
@@ -29,6 +29,7 @@ import {
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
 import { LessonStartGate } from "@/components/courses/LessonStartGate";
+import { wantsAutoStartLesson } from "@/components/courses/autoStartLesson";
 import { CourseTestLink } from "@/features/tests/components/CourseTestLink";
 import {
   clearV2LessonDraft,
@@ -69,6 +70,9 @@ export default function CourseDetailsV2() {
   /** True when returning to an in-progress lesson — gate asks to continue, then speech starts on tap. */
   const [canResume, setCanResume] = useState(false);
   const [resumeDraft, setResumeDraft] = useState<V2LessonDraft | null>(null);
+  const [autoStartAttempted, setAutoStartAttempted] = useState(false);
+  const autoStartDone = useRef(false);
+  const autoStartLesson = wantsAutoStartLesson(useLocation().state);
   const courseCompletionSpeechRef = useRef(false);
 
   const {
@@ -107,8 +111,8 @@ export default function CourseDetailsV2() {
     prefetchMonacoEditor();
   }, []);
 
-  // Hydrate progress, then pick the lesson — always wait for a Continue/Start tap
-  // so avatar speech runs inside a user gesture (autoplay policies after async load).
+  // Hydrate progress, then pick the lesson. A learning-path start skips the gate;
+  // opening a course directly still waits for a tap so speech can start.
   useEffect(() => {
     if (!curriculum || !exercise) {
       setProgressReady(false);
@@ -237,6 +241,13 @@ export default function CourseDetailsV2() {
     resumeDraft?.beatIndex,
     unlockMobileAudio,
   ]);
+
+  useEffect(() => {
+    if (!autoStartLesson || !progressReady || !currentLesson || autoStartDone.current) return;
+    autoStartDone.current = true;
+    handleStartLesson();
+    setAutoStartAttempted(true);
+  }, [autoStartLesson, progressReady, currentLesson, handleStartLesson]);
 
   const selectLesson = useCallback(
     (lesson: LessonV2) => {
@@ -430,6 +441,11 @@ export default function CourseDetailsV2() {
       </div>
 
       {!lessonStarted ? (
+        autoStartLesson && !autoStartAttempted ? (
+          <div className="flex h-full min-h-80 items-center justify-center p-6 text-sm text-[#5C5468]">
+            Starting your lesson…
+          </div>
+        ) : (
         <LessonStartGate
           heading={canResume ? "Continue your lesson?" : "Ready to Learn?"}
           courseOrLessonTitle={
@@ -458,6 +474,7 @@ export default function CourseDetailsV2() {
             </>
           }
         />
+        )
       ) : isCourseCompleted && currentLesson ? (
         <CourseCompletionCelebration
           className="h-full w-full rounded-none"

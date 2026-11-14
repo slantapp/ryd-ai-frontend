@@ -5,7 +5,7 @@ import { ChevronDown, Clock, Loader2, Play, Target, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 import { fetchVisibleTests } from "../api";
-import { displayTestTitle, languageBoards, squareStatus, type NumberedTest, type SquareStatus } from "../board";
+import { displayTestTitle, languageBoards, lastCompletedTest, squareStatus, type NumberedTest, type SquareStatus } from "../board";
 import { LanguageMark } from "../components/LanguageMark";
 import { testAttemptPath, testIntroPath, testLanguagePath } from "../paths";
 import type { LearnerTestCard } from "../types";
@@ -83,7 +83,7 @@ export default function TestLanguagePage() {
 
   const focusId = board.focus?.test.id ?? null;
   const percent = board.tests.length ? Math.round((board.passed / board.tests.length) * 100) : 0;
-  const focus = board.focus;
+  const latest = lastCompletedTest(board.tests);
 
   return (
     <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-4 font-inter text-[#1C1B3A]">
@@ -166,34 +166,31 @@ export default function TestLanguagePage() {
         ) : null}
       </div>
 
-      {focus ? (
+      {latest ? (
         <section
           className="flex flex-wrap items-center gap-4 rounded-2xl px-4 py-3 text-white sm:px-5"
           style={{ background: "linear-gradient(100deg, #6D2A86 0%, #9B3A9A 55%, #B84AA8 100%)" }}
         >
-          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-white/15 text-lg font-bold">{focus.label}</span>
+          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-white/15 text-lg font-bold">{latest.label}</span>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold tracking-[0.12em] text-white/70">YOU STOPPED HERE</p>
+            <p className="text-[11px] font-bold tracking-[0.12em] text-white/70">LAST COMPLETED TEST</p>
             <p className="truncate font-solway text-lg font-bold">
-              Test {focus.number} · {displayTestTitle(board.title, focus.test.title)}
+              Test {latest.number} · {displayTestTitle(board.title, latest.test.title)}
             </p>
           </div>
           <p className="hidden items-center gap-1.5 text-sm text-white/80 sm:flex">
             <Clock className="size-3.5" aria-hidden />
-            {focus.test.openProgress
-              ? `Question ${focus.test.openProgress.question} of ${focus.test.openProgress.total} · `
-              : ""}
-            {focus.test.timeLimitMinutes ? `${focus.test.timeLimitMinutes} min` : "No time limit"}
+            {latest.test.timeLimitMinutes ? `${latest.test.timeLimitMinutes} min` : "No time limit"}
             {" · "}
-            {focus.test.passMark}% to pass
+            {latest.test.passMark}% to pass
           </p>
           <button
             type="button"
-            onClick={() => openTest(navigate, focus.test)}
+            onClick={() => openTest(navigate, latest.test)}
             className="inline-flex h-10 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-bold text-[#1C1B3A]"
           >
             <Play className="size-3.5 fill-current" aria-hidden />
-            {focus.test.openAttemptId ? "Continue" : focus.test.best ? "Retry" : "Continue"}
+            {latest.test.openAttemptId ? "Continue" : latest.test.best?.passed ? "Review" : "Retry"}
           </button>
         </section>
       ) : null}

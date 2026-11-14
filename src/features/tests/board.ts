@@ -44,6 +44,17 @@ export function focusTest(tests: LearnerTestCard[]): LearnerTestCard | null {
   return tests.find((test) => test.openAttemptId != null) ?? tests.find((test) => !test.best?.passed) ?? null;
 }
 
+/** The finished test with the latest attempt. An open attempt that was never submitted does not count. */
+export function lastCompletedTest(tests: NumberedTest[]): NumberedTest | null {
+  const finished = tests.filter((item) => item.test.best);
+  if (!finished.length) return null;
+  return [...finished].sort((a, b) => {
+    const left = Date.parse(a.test.lastAttemptAt || "") || 0;
+    const right = Date.parse(b.test.lastAttemptAt || "") || 0;
+    return right - left || b.number - a.number;
+  })[0];
+}
+
 export function squareStatus(test: LearnerTestCard, focusId: number | null): SquareStatus {
   if (test.openAttemptId != null) return "halfway";
   if (test.best?.passed) return "passed";

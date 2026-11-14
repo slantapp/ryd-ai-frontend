@@ -13,9 +13,17 @@ import type { LearnerTestCard, ResultHistoryRow } from "../types";
 
 const RESULTS_PER_PAGE = 10;
 
+/** Resume an open attempt, or jump straight into a new one (skips the intro tap). */
 function openTest(navigate: (path: string) => void, test: LearnerTestCard) {
-  if (test.openAttemptId) navigate(testAttemptPath(test.id, test.openAttemptId));
-  else navigate(testIntroPath(test.id));
+  if (test.openAttemptId) {
+    navigate(testAttemptPath(test.id, test.openAttemptId));
+    return;
+  }
+  if (test.attemptsLeft === 0) {
+    navigate(testIntroPath(test.id));
+    return;
+  }
+  navigate(testIntroPath(test.id, { start: true }));
 }
 
 export default function TestsPage() {

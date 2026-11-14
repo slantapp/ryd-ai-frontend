@@ -260,8 +260,15 @@ export default function TestLanguagePage() {
 }
 
 function openTest(navigate: (path: string) => void, test: LearnerTestCard) {
-  if (test.openAttemptId) navigate(testAttemptPath(test.id, test.openAttemptId));
-  else navigate(testIntroPath(test.id));
+  if (test.openAttemptId) {
+    navigate(testAttemptPath(test.id, test.openAttemptId));
+    return;
+  }
+  if (test.attemptsLeft === 0) {
+    navigate(testIntroPath(test.id));
+    return;
+  }
+  navigate(testIntroPath(test.id, { start: true }));
 }
 
 function FilterChip({ active, onClick, label, dot }: { active: boolean; onClick: () => void; label: string; dot?: string }) {

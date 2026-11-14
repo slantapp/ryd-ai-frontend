@@ -121,6 +121,116 @@ test("modelMainAnswer never prefers the demo when a practice starter exists", ()
   assert.doesNotMatch(answer, /Ada/);
 });
 
+test("failing teach demo is never shown as the answer", () => {
+  const answer = modelMainAnswer({
+    language: "html",
+    expectedCode:
+      "regex:<footer(?:\\s[^>]*)?>\\s*<p(?:\\s[^>]*)?>\\s*Made\\s+by\\s+Leo\\s*</p\\s*>\\s*</footer\\s*>",
+    starterCode: "",
+    exampleCode: "<footer>\n  <p>Made by Ada, 2026</p>\n</footer>\n",
+  });
+  assert.doesNotMatch(answer, /Ada/);
+  assert.equal(looksLikeRegexDebris(answer), false);
+  if (answer) assert.match(answer, /Leo|footer/i);
+});
+
+test("CSS regex expectedCode builds a real rule, never debris", () => {
+  const expectedCode =
+    "regex:(?:^|[\\s}])p[\\w.#:\\s-]*\\{[^}]*color\\s*:\\s*green[^}]*\\}";
+  const answer = modelMainAnswer({
+    language: "css",
+    expectedCode,
+    starterCode: "/* TODO: make the p text green */\nh1 {\n  color: brown;\n}\n",
+    exampleCode: "",
+  });
+  assert.equal(looksLikeRegexDebris(answer), false);
+  assert.doesNotMatch(answer, /regex:|\[\^|\\s\*/i);
+  assert.match(answer, /color:\s*green/i);
+  assert.match(answer, /p\s*\{/);
+  assert.match(answer, /h1/);
+});
+
+test("HTML Step 8 nav wraps Mia's links — never the Space Club demo", () => {
+  const expectedCode =
+    "regex:<nav(?:\\s[^>]*)?>\\s*(?:<!--[\\s\\S]*?-->\\s*)*<a[^>]*>\\s*Games\\s*</a\\s*>\\s*<a[^>]*>\\s*Books\\s*</a\\s*>\\s*</nav\\s*>";
+  const review = buildAnswerReview(
+    {
+      type: "code_test",
+      code_example: {
+        language: "html",
+        runtime: "web",
+        code: "<header>\n  <h1>Space Club</h1>\n  <nav>\n    <a href=\"#planets\">Planets</a>\n    <a href=\"#stars\">Stars</a>\n  </nav>\n</header>\n",
+        starterCode:
+          "<header>\n  <h1>Mia's Corner</h1>\n  <!-- TODO: put these two links inside a nav -->\n  <a href=\"#games\">Games</a>\n  <a href=\"#books\">Books</a>\n</header>\n",
+      },
+      testCriteria: { expectedCode },
+    },
+    { code: "", web: { html: "", css: "", javascript: "" } },
+    { web: true, language: "html" },
+  );
+  assert.ok(review && "web" in review.answer);
+  const html = review.answer.web.html;
+  assert.match(html, /Mia's Corner/);
+  assert.match(html, /<nav>[\s\S]*#games[\s\S]*Games[\s\S]*#books[\s\S]*Books[\s\S]*<\/nav>/i);
+  assert.doesNotMatch(html, /Space Club|Planets/);
+  assert.equal(looksLikeRegexDebris(html), false);
+});
+
+test("HTML Step 8 aside wraps the practice fun-fact paragraph", () => {
+  const review = buildAnswerReview(
+    {
+      type: "code_test",
+      code_example: {
+        language: "html",
+        runtime: "web",
+        code: "<main><aside><p>Fun fact: sand is made of tiny rocks.</p></aside></main>",
+        starterCode:
+          "<main>\n  <article>\n    <h2>My Visit to the Farm</h2>\n    <p>I fed the goats.</p>\n  </article>\n  <!-- TODO: put the fun fact paragraph inside an aside -->\n  <p>Fun fact: goats have no top front teeth.</p>\n</main>\n",
+      },
+      testCriteria: {
+        expectedCode:
+          "regex:<aside(?:\\s[^>]*)?>\\s*(?:<!--[\\s\\S]*?-->\\s*)*<p(?:\\s[^>]*)?>\\s*Fun\\s+fact:[^<]*</p\\s*>\\s*</aside\\s*>",
+      },
+    },
+    { code: "", web: { html: "", css: "", javascript: "" } },
+    { web: true, language: "html" },
+  );
+  assert.ok(review && "web" in review.answer);
+  const html = review.answer.web.html;
+  assert.match(html, /<aside>[\s\S]*goats have no top front teeth[\s\S]*<\/aside>/i);
+  assert.doesNotMatch(html, /sand is made of tiny rocks/);
+  assert.equal((html.match(/Fun fact:/gi) || []).length, 1);
+});
+
+test("HTML Step 8 multi-TODO page builds My Hobbies, not Kofi's demo", () => {
+  const review = buildAnswerReview(
+    {
+      type: "code_test",
+      code_example: {
+        language: "html",
+        runtime: "web",
+        code: "<header>\n  <h1>Kofi's Football Page</h1>\n</header>\n<main>\n  <section>\n    <h2>My Team</h2>\n    <p>I play for the Lions.</p>\n  </section>\n</main>\n<footer>\n  <p>Made by Kofi</p>\n</footer>\n",
+        starterCode:
+          "<!-- TODO: a header with an h1: My Hobbies -->\n\n<!-- TODO: a main with one section: an h2 Drawing and a paragraph about drawing -->\n\n<!-- TODO: a footer with a paragraph: Made by me -->\n\n",
+      },
+      testCriteria: {
+        expectedCode:
+          "regex:<header(?:\\s[^>]*)?>[\\s\\S]*?<h1(?:\\s[^>]*)?>\\s*My\\s+Hobbies\\s*</h1\\s*>[\\s\\S]*?</header\\s*>\\s*(?:<!--[\\s\\S]*?-->\\s*)*<main(?:\\s[^>]*)?>\\s*<section(?:\\s[^>]*)?>[\\s\\S]*?</section\\s*>\\s*</main\\s*>\\s*(?:<!--[\\s\\S]*?-->\\s*)*<footer(?:\\s[^>]*)?>[\\s\\S]*?</footer\\s*>",
+      },
+    },
+    { code: "", web: { html: "", css: "", javascript: "" } },
+    { web: true, language: "html" },
+  );
+  assert.ok(review && "web" in review.answer);
+  const html = review.answer.web.html;
+  assert.match(html, /My Hobbies/);
+  assert.match(html, /<h2>\s*Drawing\s*<\/h2>/i);
+  assert.match(html, /Made by me/);
+  assert.doesNotMatch(html, /Kofi|Football|My Team/);
+  assert.equal((html.match(/<header\b/gi) || []).length, 1);
+  assert.equal(looksLikeRegexDebris(html), false);
+});
+
 test("expectedHTML/CSS/JS win over expectedCode and the example", () => {
   const review = buildAnswerReview(
     {

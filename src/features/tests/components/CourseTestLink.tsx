@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ClipboardCheck } from "lucide-react";
 import { fetchVisibleTests } from "../api";
-import { testIntroPath } from "../paths";
+import { testAttemptPath, testIntroPath } from "../paths";
 import { GradeBadge } from "./TestBits";
 import type { LearnerTestCard } from "../types";
 
@@ -11,6 +11,7 @@ import type { LearnerTestCard } from "../types";
  * course's tests). Renders nothing when the course has no published test or the call fails.
  */
 export function CourseTestLink({ courseSlug }: { courseSlug: string | null | undefined }) {
+  const navigate = useNavigate();
   const [tests, setTests] = useState<LearnerTestCard[]>([]);
 
   useEffect(() => {
@@ -44,6 +45,18 @@ export function CourseTestLink({ courseSlug }: { courseSlug: string | null | und
       ? "Retake the course test"
       : "Take the course test";
 
+  const go = () => {
+    if (target.openAttemptId) {
+      navigate(testAttemptPath(target.id, target.openAttemptId));
+      return;
+    }
+    if (target.attemptsLeft === 0) {
+      navigate(testIntroPath(target.id));
+      return;
+    }
+    navigate(testIntroPath(target.id, { start: true }));
+  };
+
   return (
     <div className="mt-3 flex items-center justify-center gap-2 font-inter text-sm">
       {best ? (
@@ -52,13 +65,14 @@ export function CourseTestLink({ courseSlug }: { courseSlug: string | null | und
           <span className="tabular-nums">{Math.round(best.percent)}%</span>
         </span>
       ) : null}
-      <Link
-        to={testIntroPath(target.id)}
+      <button
+        type="button"
+        onClick={go}
         className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline"
       >
         <ClipboardCheck className="size-4" aria-hidden />
         {label}
-      </Link>
+      </button>
     </div>
   );
 }

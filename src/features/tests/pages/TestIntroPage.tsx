@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ArrowLeft, BookOpen, CheckCircle2, ClipboardList, Clock, Eye, Loader2, RotateCcw, Target } from "lucide-react";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
@@ -10,10 +10,12 @@ import type { LearnerTestDetail } from "../types";
 
 export default function TestIntroPage() {
   const { testId = "" } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [test, setTest] = useState<LearnerTestDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  const autoStarted = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,17 +30,32 @@ export default function TestIntroPage() {
     };
   }, [testId]);
 
-  const start = async () => {
-    if (!test || starting) return;
+  const start = async (t = test) => {
+    if (!t || starting) return;
+    if (t.openAttemptId) {
+      navigate(testAttemptPath(t.id, t.openAttemptId));
+      return;
+    }
+    if (t.attemptsLeft === 0) return;
     setStarting(true);
     try {
-      const { attemptId } = await startAttempt(test.id);
-      navigate(testAttemptPath(test.id, attemptId));
+      const { attemptId } = await startAttempt(t.id);
+      navigate(testAttemptPath(t.id, attemptId));
     } catch (e) {
       setStarting(false);
       toast.error(apiErrorMessage(e, "Could not start the test."));
     }
   };
+
+  // Start / Try again on a test card appends ?start=1 so we skip the extra tap.
+  useEffect(() => {
+    if (!test || starting || autoStarted.current) return;
+    if (searchParams.get("start") !== "1") return;
+    if (test.attemptsLeft === 0 && !test.openAttemptId) return;
+    autoStarted.current = true;
+    void start(test);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- auto-start once when the test loads
+  }, [test?.id, searchParams]);
 
   if (error) {
     return (
@@ -51,10 +68,10 @@ export default function TestIntroPage() {
     );
   }
 
-  if (!test) {
+  if (!test || (searchParams.get("start") === "1" && starting)) {
     return (
       <div className="flex h-64 items-center justify-center text-primary">
-        <Loader2 className="size-6 animate-spin" aria-label="Loading test" />
+        <Loader2 className="size-6 animate-spin" aria-label="Starting test" />
       </div>
     );
   }

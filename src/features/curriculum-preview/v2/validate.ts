@@ -2,6 +2,10 @@ import {
   AVATAR_GESTURE_NAMES,
   resolveAvatarGestureName,
 } from "./avatarGesture";
+import {
+  lintCurriculumCodeTests,
+  partitionCodeContractIssues,
+} from "@/utils/curriculumCodeContract";
 
 const BEAT_TYPES = new Set([
   "speak",
@@ -46,6 +50,12 @@ function validateCodeExample(
     typeof ex.starterCode !== "string"
   ) {
     errors.push(`${label}: code_example.starterCode must be a string when provided`);
+  }
+  if (
+    ex.solutionCode !== undefined &&
+    typeof ex.solutionCode !== "string"
+  ) {
+    errors.push(`${label}: code_example.solutionCode must be a string when provided`);
   }
   if (
     ex.supportingCode !== undefined &&
@@ -138,8 +148,18 @@ function validateQuestion(
       });
     }
   }
-  if (qType === "code_test" && q.code_example) {
-    validateCodeExample(q.code_example, label, errors);
+  if (qType === "code_test") {
+    if (q.code_example) {
+      validateCodeExample(q.code_example, label, errors);
+    }
+    if (
+      q.testCriteria &&
+      typeof q.testCriteria === "object" &&
+      (q.testCriteria as Record<string, unknown>).solutionCode !== undefined &&
+      typeof (q.testCriteria as Record<string, unknown>).solutionCode !== "string"
+    ) {
+      errors.push(`${label}: testCriteria.solutionCode must be a string when provided`);
+    }
   }
   if (qType === "formula_test") {
     const criteria = q.testCriteria as Record<string, unknown> | undefined;
@@ -423,8 +443,11 @@ function validateBeat(
 export function validateCurriculumV2(data: unknown): {
   valid: boolean;
   errors: string[];
+  /** Non-blocking guidance for teachers (e.g. add solutionCode for regex graders). */
+  warnings?: string[];
 } {
   const errors: string[] = [];
+  const warnings: string[] = [];
 
   if (!data || typeof data !== "object") {
     return { valid: false, errors: ["File must contain a valid JSON object"] };
@@ -544,7 +567,16 @@ export function validateCurriculumV2(data: unknown): {
     });
   });
 
-  return { valid: errors.length === 0, errors };
+  // View Answer / grading contract — errors block publish; warnings guide authors.
+  const contract = partitionCodeContractIssues(lintCurriculumCodeTests(data));
+  errors.push(...contract.errors);
+  warnings.push(...contract.warnings);
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    ...(warnings.length ? { warnings } : {}),
+  };
 }
 
 /** One turtle check names one thing the drawing must do. */

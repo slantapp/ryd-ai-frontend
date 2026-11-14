@@ -353,21 +353,35 @@ export function evaluateWebCodeTest(
       expected: criteria.expectedJS,
     });
   } else if (criteria?.expectedCode) {
-    const combined = combineWebCodeForValidation(sources);
-    // Match with the lesson language so HTML/CSS answers are not JS-normalized.
+    // Match the graded pane first (JS lessons → javascript, CSS → css, …).
+    // Combined HTML+CSS+JS breaks `^…` regexes and can miss a correct fillRect.
     const matchLanguage =
       lang === "css" || lang === "html" || lang === "web" || lang.startsWith("html")
         ? lang === "css"
           ? "css"
           : "html"
-        : lang || "html";
-    passed = matchExpectedCode(combined, criteria.expectedCode, matchLanguage);
+        : lang === "javascript" || lang === "js" || lang === "typescript" || lang === "ts"
+          ? "javascript"
+          : lang || "html";
+    const paneHaystack =
+      matchLanguage === "css"
+        ? sources.css
+        : matchLanguage === "javascript"
+          ? sources.javascript
+          : matchLanguage === "html"
+            ? sources.html
+            : "";
+    const haystack =
+      typeof paneHaystack === "string" && paneHaystack.trim()
+        ? paneHaystack
+        : combineWebCodeForValidation(sources);
+    passed = matchExpectedCode(haystack, criteria.expectedCode, matchLanguage);
     testResults.push({
       test: passed
         ? "Your code matches the expected solution"
         : "Your code does not match the expected solution",
       passed,
-      actual: combined.trim() || "(empty)",
+      actual: haystack.trim() || "(empty)",
       expected: criteria.expectedCode,
     });
   } else {

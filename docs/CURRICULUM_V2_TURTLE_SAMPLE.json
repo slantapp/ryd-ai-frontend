@@ -103,7 +103,8 @@
                     "description": "First, see how a loop can draw a triangle by repeating three times.",
                     "explanation": "The same pattern works for a square, but a square needs four repeats and 90-degree turns.",
                     "typingSpeed": 25,
-                    "starterCode": "import turtle\n\npen = turtle.Turtle()\npen.color(\"blue\")\npen.pensize(4)\npen.speed(0)\n\n# Draw a square: complete the loop body\nfor side in range(4):\n    pen.forward(120)\n    # Add the correct left turn here\n"
+                    "starterCode": "import turtle\n\npen = turtle.Turtle()\npen.color(\"blue\")\npen.pensize(4)\npen.speed(0)\n\n# Draw a square: complete the loop body\nfor side in range(4):\n    pen.forward(120)\n    # Add the correct left turn here\n",
+                    "solutionCode": "import turtle\n\npen = turtle.Turtle()\npen.color(\"blue\")\npen.pensize(4)\npen.speed(0)\n\n# Draw a square: complete the loop body\nfor side in range(4):\n    pen.forward(120)\n    pen.left(90)\n"
                   },
                   "testCriteria": {
                     "expectedCode": "regex:for\\s+\\w+\\s+in\\s+range\\s*\\(\\s*4\\s*\\)[\\s\\S]*left\\s*\\(\\s*90\\s*\\)"

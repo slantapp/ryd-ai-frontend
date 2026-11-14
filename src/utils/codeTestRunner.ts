@@ -103,7 +103,20 @@ export function evaluateSubmissionCodeTest(
   }
 
   if (hasPageChecks(criteria)) {
-    if (!pageResults?.length) {
+    if (pageResults?.length) {
+      return {
+        passed: pageResults.every((result) => result.passed),
+        testResults: pageResults.map((result) => ({ ...result, plain: true })),
+      };
+    }
+    // Preview checks did not arrive. Fall through to expectedCode / pane grading when
+    // authored, instead of failing a correct fillRect (etc.) that already matches source.
+    const hasSourceGrade =
+      Boolean(criteria?.expectedCode?.trim()) ||
+      criteria?.expectedHTML !== undefined ||
+      criteria?.expectedCSS !== undefined ||
+      criteria?.expectedJS !== undefined;
+    if (!hasSourceGrade) {
       return {
         passed: false,
         testResults: [
@@ -111,10 +124,6 @@ export function evaluateSubmissionCodeTest(
         ],
       };
     }
-    return {
-      passed: pageResults.every((result) => result.passed),
-      testResults: pageResults.map((result) => ({ ...result, plain: true })),
-    };
   }
 
   const language = graded ?? "javascript";

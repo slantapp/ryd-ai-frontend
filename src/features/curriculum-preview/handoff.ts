@@ -234,7 +234,18 @@ export async function fetchCurriculumPreview(
   return extractCurriculumDataFromPreviewResponse(body?.data ?? body);
 }
 
-export async function uploadCurriculumFile(file: File, token: string) {
+export type UploadCurriculumOptions = {
+  /** Admin handoff uses POST /admin/curriculum/upload; teachers use /teacher/… */
+  role?: "admin" | "teacher";
+  /** When true (admin only), make the curriculum visible to learners immediately. */
+  publish?: boolean;
+};
+
+export async function uploadCurriculumFile(
+  file: File,
+  token: string,
+  options: UploadCurriculumOptions = {},
+) {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -243,7 +254,16 @@ export async function uploadCurriculumFile(file: File, token: string) {
     throw new Error("API URL is not configured. Set VITE_API_URL.");
   }
 
-  const response = await fetch(`${apiUrl}/teacher/curriculum/upload`, {
+  const isAdmin = options.role === "admin";
+  const path = isAdmin
+    ? "/admin/curriculum/upload"
+    : "/teacher/curriculum/upload";
+  const qs =
+    isAdmin && options.publish
+      ? "?publish=true"
+      : "";
+
+  const response = await fetch(`${apiUrl}${path}${qs}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -447,9 +467,10 @@ export async function updateAdminCurriculum(
 export async function uploadCurriculumJson(
   json: string,
   token: string,
+  options: UploadCurriculumOptions = {},
 ): Promise<void> {
   const file = new File([json], "curriculum.json", {
     type: "application/json",
   });
-  await uploadCurriculumFile(file, token);
+  await uploadCurriculumFile(file, token, options);
 }

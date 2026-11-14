@@ -202,6 +202,86 @@ test("HTML Step 8 aside wraps the practice fun-fact paragraph", () => {
   assert.equal((html.match(/Fun fact:/gi) || []).length, 1);
 });
 
+test("JS canvas fillRect: sample keeps parentheses and replaces the TODO line", () => {
+  const expectedCode =
+    "regex:ctx\\.fillRect\\s*\\(\\s*100\\s*,\\s*50\\s*,\\s*40\\s*,\\s*40\\s*\\)";
+  const starterCode = `const ctx = document.getElementById("game").getContext("2d");
+ctx.fillStyle = "red";
+// TODO: draw a 40 by 40 square with its top-left corner at x 100, y 50
+ctx.fillRect(20, 20, 60, 40);
+console.log("Drew a red square");
+`;
+  const review = buildAnswerReview(
+    {
+      type: "code_test",
+      code_example: {
+        language: "javascript",
+        runtime: "web",
+        code: 'ctx.fillRect(1, 1, 2, 2);\nconsole.log("demo");',
+        starterCode,
+        html: '<canvas id="game"></canvas>',
+      },
+      testCriteria: { expectedCode },
+    },
+    { code: "", web: { html: "", css: "", javascript: starterCode } },
+    { web: true, language: "javascript" },
+  );
+  assert.ok(review && "web" in review.answer);
+  const js = review.answer.web.javascript;
+  assert.match(js, /ctx\.fillRect\(\s*100\s*,\s*50\s*,\s*40\s*,\s*40\s*\);/);
+  assert.doesNotMatch(js, /fillRect100|fillRect\(20/);
+  assert.match(js, /console\.log\("Drew a red square"\)/);
+  // Correct call comes before console.log
+  assert.ok(js.indexOf("fillRect(100") < js.indexOf("console.log"));
+  assert.equal(looksLikeRegexDebris(js), false);
+});
+
+test("CSS BEM practice: expectedCode regex + TODOs/domChecks beat the card demo", () => {
+  const expectedCode =
+    "regex:^(?=[\\s\\S]*(?<![\\w.#:-])(?:[a-zA-Z][\\w-]*)?\\.profile__name\\s*\\{(?=(?:[^}]*[;\\s])?color\\s*:\\s*[^;}\\n]+\\s*(?:;|\\}|!)))(?=[\\s\\S]*(?<![\\w.#:-])(?:[a-zA-Z][\\w-]*)?\\.profile--online\\s*\\{(?=(?:[^}]*[;\\s])?border-color\\s*:\\s*[^;}\\n]+\\s*(?:;|\\}|!)))";
+  const review = buildAnswerReview(
+    {
+      type: "code_test",
+      code_example: {
+        language: "css",
+        runtime: "web",
+        code: ".card {\n  padding: 12px;\n}\n.card__title {\n  color: #333;\n}\n.card--featured {\n  border-color: gold;\n}\n",
+        html: '<div class="profile profile--online"><h3 class="profile__name">Mia</h3></div>',
+        starterCode:
+          ".profile {\n  padding: 10px;\n  margin: 8px;\n  border: 3px solid #cccccc;\n}\n\n/* TODO 1: make every profile__name navy */\n\n/* TODO 2: give the profile--online version a limegreen border colour */\n",
+      },
+      testCriteria: {
+        expectedCode,
+        domChecks: [
+          { style: "color", equals: "navy", selector: ".profile:nth-of-type(1) .profile__name" },
+          { style: "borderTopColor", equals: "limegreen", selector: ".profile--online" },
+          {
+            style: "borderTopColor",
+            equals: "rgb(204, 204, 204)",
+            selector: ".profile:not(.profile--online)",
+          },
+        ],
+      },
+    },
+    {
+      code: "",
+      web: {
+        html: '<div class="profile profile--online"><h3 class="profile__name">Mia</h3></div>',
+        css: ".profile { border: 3px solid #cccccc; }",
+        javascript: "",
+      },
+    },
+    { web: true, language: "css" },
+  );
+  assert.ok(review && "web" in review.answer);
+  const css = review.answer.web.css;
+  assert.match(css, /\.profile__name\s*\{[^}]*color:\s*navy/i);
+  assert.match(css, /\.profile--online\s*\{[^}]*border-color:\s*limegreen/i);
+  assert.match(css, /\.profile\s*\{/);
+  assert.doesNotMatch(css, /\.card\b/);
+  assert.equal(looksLikeRegexDebris(css), false);
+});
+
 test("HTML Step 8 multi-TODO page builds My Hobbies, not Kofi's demo", () => {
   const review = buildAnswerReview(
     {

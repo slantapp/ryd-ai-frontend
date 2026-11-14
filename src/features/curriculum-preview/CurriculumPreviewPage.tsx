@@ -408,9 +408,16 @@ export default function CurriculumPreviewPage() {
 
     try {
       setPublishStatus("uploading");
-      await uploadCurriculumFile(sourceFile, handoff.data.token);
+      await uploadCurriculumFile(sourceFile, handoff.data.token, {
+        role: handoff.data.role === "admin" ? "admin" : "teacher",
+        publish: handoff.data.role === "admin",
+      });
       setPublishStatus("published");
-      toast.success("Curriculum published successfully.");
+      toast.success(
+        handoff.data.role === "admin"
+          ? "Curriculum uploaded and published successfully."
+          : "Curriculum published successfully.",
+      );
     } catch (err) {
       setPublishStatus("idle");
       toast.error(
@@ -430,14 +437,18 @@ export default function CurriculumPreviewPage() {
         !("token" in handoff.data) ||
         !results.length
       ) {
-        throw new Error("Publishing is only available when signed in via admin handoff.");
+        throw new Error("Publishing is only available when signed in via admin or teacher handoff.");
       }
       const token = handoff.data.token;
+      const role = handoff.data.role === "admin" ? "admin" : "teacher";
       let ok = 0;
       const failures: string[] = [];
       for (const result of results) {
         try {
-          await uploadCurriculumFile(result.file, token);
+          await uploadCurriculumFile(result.file, token, {
+            role,
+            publish: role === "admin",
+          });
           ok += 1;
         } catch (err) {
           failures.push(
@@ -448,7 +459,9 @@ export default function CurriculumPreviewPage() {
       if (ok) {
         toast.success(
           ok === 1
-            ? "Curriculum published successfully."
+            ? role === "admin"
+              ? "Curriculum uploaded and published successfully."
+              : "Curriculum published successfully."
             : `Published ${ok} of ${results.length} curriculum file(s).`,
         );
       }

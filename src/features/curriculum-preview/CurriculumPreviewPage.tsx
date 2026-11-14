@@ -64,6 +64,7 @@ import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import {
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
+  exampleUsesAuthoredWebPanes,
   isWebWorkspaceLanguage,
   webCodeForExampleDemoStart,
   webCodeForExamplePractice,
@@ -194,19 +195,19 @@ export default function CurriculumPreviewPage() {
 
   const useWebWorkspace = useMemo(() => {
     if (lessonPhase === "teaching" && isLessonCodeDemo && currentLesson?.code_example) {
-      return isWebWorkspaceLanguage(
-        currentLesson.code_example.language,
-        undefined,
-        currentLesson.code_example.runtime,
+      const ex = currentLesson.code_example;
+      return (
+        isWebWorkspaceLanguage(ex.language, undefined, ex.runtime) ||
+        exampleUsesAuthoredWebPanes(ex)
       );
     }
     if (lessonPhase === "questions" && currentLesson) {
       const question = currentLesson.questions[currentQuestionIndex];
       if (question?.type === "code_test") {
-        return isWebWorkspaceLanguage(
-          question.code_example?.language,
-          question.testCriteria,
-          question.code_example?.runtime,
+        const ex = question.code_example;
+        return (
+          isWebWorkspaceLanguage(ex?.language, question.testCriteria, ex?.runtime) ||
+          (ex ? exampleUsesAuthoredWebPanes(ex) : false)
         );
       }
     }
@@ -219,8 +220,12 @@ export default function CurriculumPreviewPage() {
   ]);
 
   const webEditorTab = useMemo(
-    () => defaultWebEditorTab(inferredRunLanguage, activeExample?.runtime),
-    [activeExample?.runtime, inferredRunLanguage],
+    () =>
+      defaultWebEditorTab(
+        activeExample?.language || inferredRunLanguage,
+        activeExample?.runtime,
+      ),
+    [activeExample?.language, activeExample?.runtime, inferredRunLanguage],
   );
   const programInput = useProgramInput({
     language: runLanguage,
@@ -1553,6 +1558,7 @@ export default function CurriculumPreviewPage() {
                       results={results}
                       previewRefreshKey={previewRefreshKey}
                       initialTab={webEditorTab}
+                      lockedTabs={activeExample?.lockedTabs}
                     />
                   ) : (
                     <Split
@@ -1672,6 +1678,7 @@ export default function CurriculumPreviewPage() {
                           results={results}
                           previewRefreshKey={previewRefreshKey}
                           initialTab={webEditorTab}
+                          lockedTabs={activeExample?.lockedTabs}
                         />
                       ) : (
                         <Split

@@ -1,3 +1,5 @@
+import { looksLikeRegexDebris, modelMainAnswer } from "./answerReview";
+
 /** Wrong submits allowed before the avatar states the stored answer. */
 export const ANSWER_ATTEMPT_LIMIT = 2;
 
@@ -28,7 +30,13 @@ type StoredCriteria = {
 export type StoredAnswerQuestion = {
   type: string;
   answer?: string | boolean;
-  code_example?: { code?: string };
+  code_example?: {
+    code?: string;
+    language?: string;
+    starterCode?: string;
+    html?: string;
+    css?: string;
+  };
   testCriteria?: StoredCriteria;
 };
 
@@ -66,18 +74,23 @@ export function describeStoredAnswer(question: StoredAnswerQuestion): StoredAnsw
   if (question.type !== "code_test") return { spoken: null };
 
   const criteria = question.testCriteria;
+  const example = question.code_example;
   const web = {
     html: criteria?.expectedHTML?.trim() || undefined,
     css: criteria?.expectedCSS?.trim() || undefined,
     javascript: criteria?.expectedJS?.trim() || undefined,
   };
   const hasWeb = !!(web.html || web.css || web.javascript);
-  let code = "";
-  if (criteria?.expectedCode && !criteria.expectedCode.startsWith("regex:")) {
-    code = criteria.expectedCode.trim();
-  } else if (question.code_example?.code?.trim()) {
-    code = question.code_example.code.trim();
-  }
+
+  // Same rules as the compare modal: plain expected → completed starter → demo only if it passes.
+  // Never fall back to the teach demo just because expectedCode is a regex.
+  let code = modelMainAnswer({
+    language: example?.language || "python",
+    expectedCode: criteria?.expectedCode,
+    starterCode: example?.starterCode,
+    exampleCode: example?.code,
+  });
+  if (code && looksLikeRegexDebris(code)) code = "";
 
   if (!code && !hasWeb && criteria?.expectedVariable) {
     const value =

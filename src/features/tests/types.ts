@@ -16,7 +16,10 @@ export type TestQuestionType =
   | "listen_answer"
   | "trace_steps"
   | "spot_bug"
-  | "speed_round";
+  | "speed_round"
+  | "tap_element"
+  | "css_cascade"
+  | "match_design";
 
 export type TestLevel = "Beginner" | "Intermediate" | "Advanced";
 
@@ -101,6 +104,8 @@ export interface LearnerTestDetail extends LearnerTestCard {
 export interface QuestionOption {
   id: string;
   label: string;
+  /** Optional HTML tile for code_prediction (all options or none). */
+  preview?: string;
 }
 
 interface QuestionBase {
@@ -111,7 +116,40 @@ interface QuestionBase {
 }
 
 export type PublicQuestion =
-  | (QuestionBase & { type: "code_prediction" | "multiple_choice"; options: QuestionOption[] })
+  | (QuestionBase & {
+      type: "code_prediction";
+      options: QuestionOption[];
+      previewBase?: string;
+      language?: string | null;
+    })
+  | (QuestionBase & { type: "multiple_choice"; options: QuestionOption[] })
+  | (QuestionBase & {
+      type: "tap_element";
+      page: string;
+      pageCss: string;
+      mode: "single" | "multi";
+      highlightLines: number[];
+      language?: string | null;
+    })
+  | (QuestionBase & {
+      type: "css_cascade";
+      html: string;
+      property: string;
+      rules: { id: string; css: string }[];
+      options: (QuestionOption & { swatch?: string })[];
+      showResult: boolean;
+      language?: string | null;
+    })
+  | (QuestionBase & {
+      type: "match_design";
+      html: string;
+      baseCss: string;
+      selector: string;
+      /** Target look (baseCss + answer rule), safe to show before answering. */
+      targetCss: string;
+      blanks: { property: string; choices: string[]; start: string }[];
+      language?: string | null;
+    })
   | (QuestionBase & { type: "true_false" })
   | (QuestionBase & { type: "fill_blank"; pre: string; post: string; options: string[] })
   | (QuestionBase & {

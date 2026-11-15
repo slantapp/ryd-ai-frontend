@@ -7,7 +7,10 @@ import {
   Link2,
   ListChecks,
   ListOrdered,
+  MousePointerClick,
+  Palette,
   Puzzle,
+  Scale,
   Search,
   SlidersHorizontal,
   SquareCheck,
@@ -35,6 +38,9 @@ export const TYPE_META: Record<TestQuestionType, { label: string; icon: typeof C
   trace_steps: { label: "Trace it", icon: Footprints },
   spot_bug: { label: "Spot the bug", icon: Bug },
   speed_round: { label: "Speed round", icon: Timer },
+  tap_element: { label: "Tap the element", icon: MousePointerClick },
+  css_cascade: { label: "Which rule wins", icon: Scale },
+  match_design: { label: "Match the design", icon: Palette },
 };
 
 export type CardFeedback = {

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { Check, RotateCcw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CodeBlock, InlineCode } from "./CodeBlock";
+import { LivePreviewBox } from "./LivePreviewBox";
 import { VARIANT_CLASS, type Variant } from "./cardStyles";
 import type { QuestionOption } from "../types";
 
@@ -25,6 +26,7 @@ export function ChoiceCard({
   revealed,
   disabled,
   onPick,
+  previewBase,
 }: {
   prompt: string;
   code?: string | null;
@@ -36,42 +38,131 @@ export function ChoiceCard({
   revealed: boolean;
   disabled?: boolean;
   onPick: (id: string) => void;
+  /** Shared CSS for option preview tiles (code_prediction). */
+  previewBase?: string | null;
 }) {
+  const usePreviewGrid =
+    options.length > 0 && options.every((o) => Object.prototype.hasOwnProperty.call(o, "preview"));
+
   return (
     <>
       {code ? <CodeBlock code={code} language={language} /> : null}
       <p className="m-0 text-[17px] font-semibold text-[#1F1B24]">{prompt}</p>
-      <div className="flex flex-col gap-2.5" role="radiogroup" aria-label={prompt}>
-        {options.map((o, i) => {
-          let variant: Variant = selected === o.id ? "selected" : "idle";
-          if (revealed) {
-            if (correctAnswer != null && o.id === String(correctAnswer)) variant = "correct";
-            else if (o.id === selected) variant = "incorrect";
-            else variant = "dim";
-          }
-          return (
-            <button
-              key={o.id}
-              type="button"
-              role="radio"
-              aria-checked={selected === o.id}
-              disabled={disabled || revealed}
-              onClick={() => onPick(o.id)}
-              className={cn(
-                "flex min-h-[52px] w-full items-center gap-3.5 rounded-2xl border-2 px-4 py-3.5 text-left text-[15px] font-semibold transition disabled:cursor-default",
-                VARIANT_CLASS[variant],
-              )}
-            >
-              <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[#F3EEF7] text-xs font-extrabold text-[#6B6572]">
-                {LETTERS[i] ?? o.id.toUpperCase()}
-              </span>
-              <span className="flex-1">{o.label}</span>
-              {variant === "correct" ? <Check className="size-5 shrink-0 text-[#16A34A]" strokeWidth={2.6} aria-label="Correct answer" /> : null}
-              {variant === "incorrect" ? <X className="size-5 shrink-0 text-[#DC2626]" strokeWidth={2.6} aria-label="Your answer" /> : null}
-            </button>
-          );
-        })}
-      </div>
+      {usePreviewGrid ? (
+        <div className="grid grid-cols-2 gap-2.5" role="radiogroup" aria-label={prompt}>
+          {options.map((o, i) => {
+            let variant: Variant = selected === o.id ? "selected" : "idle";
+            let badge: { text: string; bg: string } | null = null;
+            if (revealed) {
+              if (correctAnswer != null && o.id === String(correctAnswer)) {
+                variant = "correct";
+                badge = { text: "RIGHT", bg: "#16A34A" };
+              } else if (o.id === selected) {
+                variant = "incorrect";
+                badge = { text: "YOURS", bg: "#DC2626" };
+              } else {
+                variant = "dim";
+              }
+            }
+            return (
+              <div
+                key={o.id}
+                role="radio"
+                tabIndex={disabled || revealed ? -1 : 0}
+                aria-checked={selected === o.id}
+                aria-label={o.label}
+                aria-disabled={disabled || revealed || undefined}
+                onClick={() => {
+                  if (disabled || revealed) return;
+                  onPick(o.id);
+                }}
+                onKeyDown={(e) => {
+                  if (disabled || revealed) return;
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onPick(o.id);
+                  }
+                }}
+                className={cn(
+                  "relative flex flex-col rounded-2xl border-2 p-1.5 text-left transition outline-none",
+                  !(disabled || revealed) && "cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40",
+                  (disabled || revealed) && "cursor-default",
+                  VARIANT_CLASS[variant],
+                )}
+              >
+                {badge ? (
+                  <span
+                    className="absolute -top-2.5 right-2.5 z-10 rounded-md px-2 py-0.5 text-[10.5px] font-extrabold tracking-wide text-white"
+                    style={{ background: badge.bg }}
+                  >
+                    {badge.text}
+                  </span>
+                ) : null}
+                {/* Visual of option.preview HTML — same tile stage as the design HTML. */}
+                <div className="pointer-events-none h-[86px] overflow-hidden rounded-[11px] bg-[#FAF8FC]">
+                  <LivePreviewBox
+                    html={o.preview ?? ""}
+                    css={previewBase}
+                    mode="tile"
+                    className="h-full min-h-[86px]"
+                    title={o.label}
+                    fallback={o.label}
+                  />
+                </div>
+                <span className="flex items-center gap-2 px-1 pb-0.5 pt-2 text-[12.5px] font-semibold text-[#4A4660]">
+                  <span
+                    className={cn(
+                      "flex size-[22px] shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold",
+                      variant === "selected" || variant === "correct"
+                        ? "bg-primary text-white"
+                        : variant === "incorrect"
+                          ? "bg-[#DC2626] text-white"
+                          : "bg-[#F3EEF7] text-[#6B6572]",
+                    )}
+                  >
+                    {LETTERS[i] ?? o.id.toUpperCase()}
+                  </span>
+                  <span className="line-clamp-2 flex-1">{o.label}</span>
+                  {variant === "correct" ? <Check className="size-4 shrink-0 text-[#16A34A]" strokeWidth={2.6} /> : null}
+                  {variant === "incorrect" ? <X className="size-4 shrink-0 text-[#DC2626]" strokeWidth={2.6} /> : null}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2.5" role="radiogroup" aria-label={prompt}>
+          {options.map((o, i) => {
+            let variant: Variant = selected === o.id ? "selected" : "idle";
+            if (revealed) {
+              if (correctAnswer != null && o.id === String(correctAnswer)) variant = "correct";
+              else if (o.id === selected) variant = "incorrect";
+              else variant = "dim";
+            }
+            return (
+              <button
+                key={o.id}
+                type="button"
+                role="radio"
+                aria-checked={selected === o.id}
+                disabled={disabled || revealed}
+                onClick={() => onPick(o.id)}
+                className={cn(
+                  "flex min-h-[52px] w-full items-center gap-3.5 rounded-2xl border-2 px-4 py-3.5 text-left text-[15px] font-semibold transition disabled:cursor-default",
+                  VARIANT_CLASS[variant],
+                )}
+              >
+                <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[#F3EEF7] text-xs font-extrabold text-[#6B6572]">
+                  {LETTERS[i] ?? o.id.toUpperCase()}
+                </span>
+                <span className="flex-1">{o.label}</span>
+                {variant === "correct" ? <Check className="size-5 shrink-0 text-[#16A34A]" strokeWidth={2.6} aria-label="Correct answer" /> : null}
+                {variant === "incorrect" ? <X className="size-5 shrink-0 text-[#DC2626]" strokeWidth={2.6} aria-label="Your answer" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }

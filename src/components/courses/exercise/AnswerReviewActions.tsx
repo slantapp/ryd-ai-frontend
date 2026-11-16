@@ -26,7 +26,7 @@ export function AnswerReviewActions({ controls, compact = false }: { controls: A
         type="button"
         onClick={() => setOpen(true)}
         title="Compare your code with the correct answer"
-        className="flex shrink-0 items-center gap-1.5 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 transition-colors hover:bg-amber-100 sm:gap-2 sm:px-3 sm:text-sm"
+        className="flex shrink-0 items-center gap-1.5 rounded border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary transition-colors hover:border-primary/45 hover:bg-primary/15 sm:gap-2 sm:px-3 sm:text-sm"
       >
         <Eye size={14} aria-hidden />
         {compact ? "Answer" : "View correct answer"}

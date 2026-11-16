@@ -64,6 +64,7 @@ import { normalizeRunLanguage } from "@/utils/codeExecution/languages";
 import {
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
+  exampleUsesAuthoredWebPanes,
   isWebWorkspaceLanguage,
   webCodeForExampleDemoStart,
   webCodeForExamplePractice,
@@ -194,19 +195,19 @@ export default function CurriculumPreviewPage() {
 
   const useWebWorkspace = useMemo(() => {
     if (lessonPhase === "teaching" && isLessonCodeDemo && currentLesson?.code_example) {
-      return isWebWorkspaceLanguage(
-        currentLesson.code_example.language,
-        undefined,
-        currentLesson.code_example.runtime,
+      const ex = currentLesson.code_example;
+      return (
+        isWebWorkspaceLanguage(ex.language, undefined, ex.runtime) ||
+        exampleUsesAuthoredWebPanes(ex)
       );
     }
     if (lessonPhase === "questions" && currentLesson) {
       const question = currentLesson.questions[currentQuestionIndex];
       if (question?.type === "code_test") {
-        return isWebWorkspaceLanguage(
-          question.code_example?.language,
-          question.testCriteria,
-          question.code_example?.runtime,
+        const ex = question.code_example;
+        return (
+          isWebWorkspaceLanguage(ex?.language, question.testCriteria, ex?.runtime) ||
+          (ex ? exampleUsesAuthoredWebPanes(ex) : false)
         );
       }
     }
@@ -219,8 +220,12 @@ export default function CurriculumPreviewPage() {
   ]);
 
   const webEditorTab = useMemo(
-    () => defaultWebEditorTab(inferredRunLanguage, activeExample?.runtime),
-    [activeExample?.runtime, inferredRunLanguage],
+    () =>
+      defaultWebEditorTab(
+        activeExample?.language || inferredRunLanguage,
+        activeExample?.runtime,
+      ),
+    [activeExample?.language, activeExample?.runtime, inferredRunLanguage],
   );
   const programInput = useProgramInput({
     language: runLanguage,
@@ -408,9 +413,16 @@ export default function CurriculumPreviewPage() {
 
     try {
       setPublishStatus("uploading");
-      await uploadCurriculumFile(sourceFile, handoff.data.token);
+      await uploadCurriculumFile(sourceFile, handoff.data.token, {
+        role: handoff.data.role === "admin" ? "admin" : "teacher",
+        publish: handoff.data.role === "admin",
+      });
       setPublishStatus("published");
-      toast.success("Curriculum published successfully.");
+      toast.success(
+        handoff.data.role === "admin"
+          ? "Curriculum uploaded and published successfully."
+          : "Curriculum published successfully.",
+      );
     } catch (err) {
       setPublishStatus("idle");
       toast.error(
@@ -430,14 +442,18 @@ export default function CurriculumPreviewPage() {
         !("token" in handoff.data) ||
         !results.length
       ) {
-        throw new Error("Publishing is only available when signed in via admin handoff.");
+        throw new Error("Publishing is only available when signed in via admin or teacher handoff.");
       }
       const token = handoff.data.token;
+      const role = handoff.data.role === "admin" ? "admin" : "teacher";
       let ok = 0;
       const failures: string[] = [];
       for (const result of results) {
         try {
-          await uploadCurriculumFile(result.file, token);
+          await uploadCurriculumFile(result.file, token, {
+            role,
+            publish: role === "admin",
+          });
           ok += 1;
         } catch (err) {
           failures.push(
@@ -448,7 +464,9 @@ export default function CurriculumPreviewPage() {
       if (ok) {
         toast.success(
           ok === 1
-            ? "Curriculum published successfully."
+            ? role === "admin"
+              ? "Curriculum uploaded and published successfully."
+              : "Curriculum published successfully."
             : `Published ${ok} of ${results.length} curriculum file(s).`,
         );
       }
@@ -1540,6 +1558,7 @@ export default function CurriculumPreviewPage() {
                       results={results}
                       previewRefreshKey={previewRefreshKey}
                       initialTab={webEditorTab}
+                      lockedTabs={activeExample?.lockedTabs}
                     />
                   ) : (
                     <Split
@@ -1659,6 +1678,7 @@ export default function CurriculumPreviewPage() {
                           results={results}
                           previewRefreshKey={previewRefreshKey}
                           initialTab={webEditorTab}
+                          lockedTabs={activeExample?.lockedTabs}
                         />
                       ) : (
                         <Split

@@ -16,10 +16,26 @@ test("defaultWebEditorTab follows course language, not runtime alone", () => {
   assert.equal(defaultWebEditorTab("css", "web"), "css");
   assert.equal(defaultWebEditorTab("javascript", "web"), "javascript");
   assert.equal(defaultWebEditorTab("js", "web"), "javascript");
+  // Bare language "web" is the browser workspace (JS tab), not HTML.
+  // normalizeRunLanguage("web") → "html" must NOT be passed here.
+  assert.equal(defaultWebEditorTab("web", "web"), "javascript");
+  assert.equal(defaultWebEditorTab("web"), "javascript");
   // JS web lessons with no language still open on the script pane.
   assert.equal(defaultWebEditorTab(undefined, "web"), "javascript");
   assert.equal(defaultWebEditorTab("html"), "html");
   assert.equal(defaultWebEditorTab(), "html");
+});
+
+test("mainWebPaneForExample treats language web as javascript pane", () => {
+  assert.equal(
+    mainWebPaneForExample({
+      code: "console.log(1)",
+      language: "web",
+      runtime: "web",
+      html: "<div id='app'></div>",
+    }),
+    "javascript",
+  );
 });
 
 test("main pane for HTML + runtime web is html, not javascript", () => {

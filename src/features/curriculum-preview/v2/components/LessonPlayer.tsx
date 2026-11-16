@@ -853,11 +853,9 @@ export function LessonPlayer({
       webExampleContextRef.current = example;
       setExtraFiles(example.files ?? {});
       setActiveFile("main");
-      const webPractice = isWebWorkspaceLanguage(
-        example.language,
-        undefined,
-        example.runtime,
-      );
+      const webPractice =
+        isWebWorkspaceLanguage(example.language, undefined, example.runtime) ||
+        exampleUsesAuthoredWebPanes(example);
       if (webPractice) {
         setWebCode(webCodeForExamplePractice(example));
         setCode("");
@@ -1383,15 +1381,21 @@ export function LessonPlayer({
 
   const useWeb =
     showCodePanel &&
-    isWebWorkspaceLanguage(
-      codeLang,
+    (isWebWorkspaceLanguage(
+      activeCodeExample?.language || codeLang,
       beat?.type === "question" ? beat.question.testCriteria : undefined,
       activeCodeExample?.runtime,
-    );
+    ) ||
+      (activeCodeExample ? exampleUsesAuthoredWebPanes(activeCodeExample) : false));
 
   const webEditorTab = useMemo(
-    () => defaultWebEditorTab(codeLang, activeCodeExample?.runtime),
-    [codeLang, activeCodeExample?.runtime],
+    () =>
+      // Raw example language — avoid normalizeRunLanguage("web") → "html".
+      defaultWebEditorTab(
+        activeCodeExample?.language || codeLang,
+        activeCodeExample?.runtime,
+      ),
+    [activeCodeExample?.language, activeCodeExample?.runtime, codeLang],
   );
 
   // Keep editor in sync while the instructor types

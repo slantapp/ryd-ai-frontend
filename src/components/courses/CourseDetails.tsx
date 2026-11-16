@@ -68,6 +68,7 @@ import {
   runSubmissionCodeOutput,
   submissionHasContent,
 } from "@/utils/codeTestRunner";
+import type { CodeTestResult } from "@/utils/codeTestValidation";
 import {
   isCodeEditorLanguage,
   normalizeRunLanguage,
@@ -75,12 +76,17 @@ import {
 import {
   defaultWebEditorTab,
   EMPTY_WEB_CODE,
+  exampleUsesAuthoredWebPanes,
   isWebWorkspaceLanguage,
   webCodeForExampleDemoStart,
   webCodeForExamplePractice,
   webCodeForExampleTyping,
   type WebCodeSources,
 } from "@/utils/webCodeWorkspace";
+import {
+  collectPageChecks,
+  hasPageChecks,
+} from "@/utils/webPreviewBridge";
 import {
   editorConsoleMinSizes,
   editorConsoleSplitSizes,
@@ -327,6 +333,8 @@ function CourseDetailInner({
   const [code, setCode] = useState("");
   const [webCode, setWebCode] = useState<WebCodeSources>(EMPTY_WEB_CODE);
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+  const pageChecksRef = useRef<CodeTestResult[] | undefined>(undefined);
+  const pageWaiterRef = useRef<((results: CodeTestResult[]) => void) | null>(null);
   const [isExecutingCode, setIsExecutingCode] = useState(false);
   const [runLanguage, setRunLanguage] = useState("javascript");
   const [results, setResults] = useState<string[]>([]);
@@ -370,17 +378,17 @@ function CourseDetailInner({
   const normalizedCodePanelLanguage = normalizeRunLanguage(codePanelLanguage);
   const useWebWorkspace = useMemo(() => {
     if (isLessonCodeDemoActive && currentLesson?.code_example) {
-      return isWebWorkspaceLanguage(
-        currentLesson.code_example.language,
-        undefined,
-        currentLesson.code_example.runtime,
+      const ex = currentLesson.code_example;
+      return (
+        isWebWorkspaceLanguage(ex.language, undefined, ex.runtime) ||
+        exampleUsesAuthoredWebPanes(ex)
       );
     }
     if (isCodeTestQuestionActive && currentQuestion) {
-      return isWebWorkspaceLanguage(
-        currentQuestion.code_example?.language,
-        currentQuestion.testCriteria,
-        currentQuestion.code_example?.runtime,
+      const ex = currentQuestion.code_example;
+      return (
+        isWebWorkspaceLanguage(ex?.language, currentQuestion.testCriteria, ex?.runtime) ||
+        (ex ? exampleUsesAuthoredWebPanes(ex) : false)
       );
     }
     return false;
@@ -392,11 +400,10 @@ function CourseDetailInner({
   ]);
   const webEditorTab = useMemo(
     () =>
-      defaultWebEditorTab(
-        normalizedCodePanelLanguage,
-        activeCodeExample?.runtime,
-      ),
-    [activeCodeExample?.runtime, normalizedCodePanelLanguage],
+      // Pass raw example language — normalizeRunLanguage("web") → "html" would
+      // wrongly open the HTML tab for JS web lessons tagged language: "web".
+      defaultWebEditorTab(codePanelLanguage, activeCodeExample?.runtime),
+    [activeCodeExample?.runtime, codePanelLanguage],
   );
   const isLgUp = useMediaQueryMinLg();
   useAvatarAudioRecovery(avatarRef, isSpeaking);
@@ -514,11 +521,12 @@ function CourseDetailInner({
 
     if (
       example &&
-      isWebWorkspaceLanguage(
+      (isWebWorkspaceLanguage(
         example.language,
         question.testCriteria,
         example.runtime,
-      )
+      ) ||
+        exampleUsesAuthoredWebPanes(example))
     ) {
       setWebCode(webCodeForExamplePractice(example));
       setCode("");
@@ -2353,14 +2361,28 @@ function CourseDetailInner({
       : await programInput.collect("Run program");
     if (stdin === null) return;
 
-    if (useWebWorkspace) {
-      setPreviewRefreshKey((key) => key + 1);
-    } else {
+    if (!useWebWorkspace) {
       setIsExecutingCode(true);
       setResults(["⏳ Running code..."]);
     }
 
     try {
+      let pageResults: CodeTestResult[] | undefined;
+      if (useWebWorkspace) {
+        pageChecksRef.current = undefined;
+        const pending = hasPageChecks(currentQuestion.testCriteria)
+          ? new Promise<CodeTestResult[]>((resolve) => {
+              pageWaiterRef.current = resolve;
+              window.setTimeout(
+                () => resolve(pageChecksRef.current ?? []),
+                3500,
+              );
+            })
+          : null;
+        setPreviewRefreshKey((key) => key + 1);
+        pageResults = pending ? await pending : undefined;
+      }
+
       const outcome = useWebWorkspace
         ? { lines: [] as string[], raw: [] as string[] }
         : await runSubmissionCodeOutput(
@@ -2377,6 +2399,7 @@ function CourseDetailInner({
         submission,
         currentQuestion.testCriteria,
         outcome.raw,
+        pageResults,
       );
       setResults([
         ...outcome.lines,
@@ -2406,14 +2429,28 @@ function CourseDetailInner({
     if (stdin === null) return;
     answerSubmissionInFlightRef.current = true;
 
-    if (useWebWorkspace) {
-      setPreviewRefreshKey((key) => key + 1);
-    } else {
+    if (!useWebWorkspace) {
       setIsExecutingCode(true);
       setResults(["⏳ Running code..."]);
     }
 
     try {
+      let pageResults: CodeTestResult[] | undefined;
+      if (useWebWorkspace) {
+        pageChecksRef.current = undefined;
+        const pending = hasPageChecks(currentQuestion.testCriteria)
+          ? new Promise<CodeTestResult[]>((resolve) => {
+              pageWaiterRef.current = resolve;
+              window.setTimeout(
+                () => resolve(pageChecksRef.current ?? []),
+                3500,
+              );
+            })
+          : null;
+        setPreviewRefreshKey((key) => key + 1);
+        pageResults = pending ? await pending : undefined;
+      }
+
       const outcome = useWebWorkspace
         ? { lines: [] as string[], raw: [] as string[] }
         : await runSubmissionCodeOutput(
@@ -2433,6 +2470,7 @@ function CourseDetailInner({
         submission,
         currentQuestion.testCriteria,
         outcome.raw,
+        pageResults,
       );
       setResults([
         ...outcome.lines,
@@ -3183,6 +3221,18 @@ function CourseDetailInner({
                       results={results}
                       previewRefreshKey={previewRefreshKey}
                       initialTab={webEditorTab}
+                      lockedTabs={activeCodeExample?.lockedTabs}
+                      checks={collectPageChecks(activeTestCriteria)}
+                      onChecks={(checkResults) => {
+                        const mapped = checkResults.map((item) => ({
+                          test: item.test,
+                          passed: item.passed,
+                          plain: true as const,
+                        }));
+                        pageChecksRef.current = mapped;
+                        pageWaiterRef.current?.(mapped);
+                        pageWaiterRef.current = null;
+                      }}
                       answerReview={reviewControls}
                     />
                   ) : (

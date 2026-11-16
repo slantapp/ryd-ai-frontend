@@ -73,7 +73,7 @@ If `schema_version` is omitted but lessons use `flow[]`, treat as v2 when all le
 | **Module** | `id`, `title`, `lessons` (≥1) | `unlock` |
 | **Lesson** | `id`, `title`, `flow` (≥1 beat) | `goal`, `estimated_minutes` |
 | **Every beat** | `id`, `type`, `advance` | `phase`, `avatar` (depends on type) |
-| **`code_example`** | `code`, `language` | `description`, `explanation`, `autoRun`, `typingSpeed`, `starterCode`, `supportingCode`, `supportingLanguage` |
+| **`code_example`** | `code`, `language` | `description`, `explanation`, `autoRun`, `typingSpeed`, `starterCode`, `solutionCode`, `supportingCode`, `supportingLanguage` |
 | **`question` (code_test)** | `type`, `question` | `id`, `options`, `answer`, `explanation`, `code_example`, `formula_example`, `testCriteria` |
 | **`avatar` on beat** | Depends on beat type | Most lines optional except `speak` requires `avatar.text` |
 
@@ -261,6 +261,7 @@ Used on `code_demo` beats and optionally on `code_test` questions.
   "autoRun": true,
   "typingSpeed": 45,
   "starterCode": "/* your CSS here */\n",
+  "solutionCode": ".card {\n  background-color: #1a5fb4;\n}\n",
   "supportingCode": "<h1>My Page</h1>\n<p>Welcome!</p>",
   "supportingLanguage": "html"
 }
@@ -268,13 +269,14 @@ Used on `code_demo` beats and optionally on `code_test` questions.
 
 | Field | Required | Purpose |
 |-------|----------|---------|
-| `code` | **Yes** | Worked example typed in demo; full solution reference |
+| `code` | **Yes** | Worked example typed in demo (may use a different theme than practice) |
 | `language` | **Yes** | e.g. `javascript`, `python`, `html`, `css`, `web` |
 | `description` | No | Avatar line before typing (player default if omitted) |
 | `explanation` | No | Avatar line after typing |
 | `autoRun` | No | Default `false` — run after demo finishes typing |
 | `typingSpeed` | No | ms per character; default ~40 |
 | `starterCode` | No | Editor seed **after** demo on `code_test` handoff — skeleton only, **not** the answer |
+| `solutionCode` | No (strongly recommended on `code_test`) | Exact practice answer for **View correct answer**. Must pass `testCriteria.expectedCode`. Prefer when `expectedCode` is `regex:` or demo theme ≠ practice. |
 | `supportingCode` | No | Companion pane code (e.g. HTML to style when `language` is `css`) |
 | `supportingLanguage` | No | Language of `supportingCode`; if omitted: `html` when main is `css`, `css` when main is `html` |
 
@@ -282,16 +284,18 @@ Used on `code_demo` beats and optionally on `code_test` questions.
 
 These open HTML / CSS / JS panes: `html`, `css`, `web`, `html/css`, `html+css`, `html-css`, or when `testCriteria.expectedHTML` / `expectedCSS` is set.
 
-### `starterCode` vs `supportingCode`
+### `code` vs `starterCode` vs `solutionCode` vs `supportingCode`
 
-| | `code` | `starterCode` | `supportingCode` |
-|---|--------|---------------|------------------|
-| **When** | Demo typing | Student practice | Demo + practice |
-| **Pane** | Main (`language`) | Main (`language`) | Companion pane |
-| **Required?** | Yes | **No** | **No** |
-| **Typical CSS lesson** | Full rule `h1 { color: red; }` | `/* Write selector */\n` or empty | `<h1>Title</h1>` HTML |
+| | `code` | `starterCode` | `solutionCode` | `supportingCode` |
+|---|--------|---------------|----------------|------------------|
+| **When** | Demo typing | Student practice | View correct answer | Demo + practice |
+| **Pane** | Main (`language`) | Main (`language`) | Main (`language`) | Companion pane |
+| **Required?** | Yes | **No** | **No** (recommended) | **No** |
+| **Typical CSS lesson** | Full rule (demo theme) | `/* Write selector */\n` | Finished practice CSS | `<h1>Title</h1>` HTML |
 
-**Do not require `starterCode` or `supportingCode` for upload to succeed.**
+**Do not require `starterCode`, `solutionCode`, or `supportingCode` for upload to succeed** — but preview lint will **warn** when a regex grader has no `solutionCode`, and **error** if an authored `solutionCode` fails `expectedCode`.
+
+See [CURRICULUM_CODE_TEST_CONTRACT.md](./CURRICULUM_CODE_TEST_CONTRACT.md).
 
 ---
 

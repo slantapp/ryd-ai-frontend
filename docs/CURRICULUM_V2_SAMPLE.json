@@ -224,7 +224,8 @@
                     "explanation": "We use let to declare, pick a name, and assign a string value in quotes.",
                     "autoRun": false,
                     "typingSpeed": 60,
-                    "starterCode": "// Create a variable called message\n// Set it to 'Hello World'\n// Then print it with console.log\n\n"
+                    "starterCode": "// Create a variable called message\n// Set it to 'Hello World'\n// Then print it with console.log\n\n",
+                    "solutionCode": "let message = 'Hello World';\nconsole.log(message);\n"
                   },
                   "testCriteria": {
                     "expectedCode": "let message"

@@ -303,12 +303,43 @@ function AnswerLines({ item }: { item: ReviewItem }) {
     </p>
   );
 
-  if (q.type === "code_prediction" || q.type === "multiple_choice") {
+  if (q.type === "code_prediction" || q.type === "multiple_choice" || q.type === "css_cascade") {
     const label = (id: unknown) => q.options.find((o) => o.id === String(id))?.label ?? "—";
+    const rightId =
+      q.type === "css_cascade" && item.correctAnswer && typeof item.correctAnswer === "object"
+        ? (item.correctAnswer as { answer?: string }).answer
+        : item.correctAnswer;
     return (
       <div className="flex flex-col gap-1">
         {line("Your answer:", a ? label(a.value) : "—", "you")}
-        {!a?.firstTryCorrect ? line("Right answer:", label(item.correctAnswer), "right") : null}
+        {!a?.firstTryCorrect ? line("Right answer:", label(rightId), "right") : null}
+      </div>
+    );
+  }
+  if (q.type === "tap_element") {
+    const right =
+      item.correctAnswer && typeof item.correctAnswer === "object"
+        ? ((item.correctAnswer as { answer?: string[] }).answer || []).join(", ")
+        : "—";
+    const yours = Array.isArray(a?.value) ? a.value.map(String).join(", ") : "—";
+    return (
+      <div className="flex flex-col gap-1">
+        {line("Your taps:", yours || "—", "you")}
+        {!a?.firstTryCorrect ? line("Right taps:", right || "—", "right") : null}
+      </div>
+    );
+  }
+  if (q.type === "match_design") {
+    const fmt = (v: unknown) =>
+      v && typeof v === "object" && !Array.isArray(v)
+        ? Object.entries(v as Record<string, string>)
+            .map(([k, val]) => `${k}: ${val}`)
+            .join("; ")
+        : "—";
+    return (
+      <div className="flex flex-col gap-1">
+        {line("Your values:", a ? fmt(a.value) : "—", "you")}
+        {!a?.firstTryCorrect ? line("Right values:", fmt(item.correctAnswer), "right") : null}
       </div>
     );
   }

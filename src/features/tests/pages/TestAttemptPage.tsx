@@ -32,6 +32,7 @@ import {
   type SpotBugFlash,
   type SpotBugStage,
 } from "../cards/QuestionCardsExtra";
+import { CssCascadeCard, MatchDesignCard, TapElementCard } from "../cards/QuestionCardsHtml";
 import type { AttemptQuestion, AttemptView, TestQuestionType } from "../types";
 import "../tests.css";
 
@@ -93,6 +94,12 @@ type CardState = {
   speedEndsAt: number | null;
   showSpokenText: boolean;
   checkWrong: boolean;
+  /** match_design: chosen property → value */
+  designPicks: Record<string, string>;
+  /** tap_element / css_cascade reveal extras from correctAnswer */
+  tapNotes: Record<string, string>;
+  cascadeWinner: string | null;
+  cascadeNotes: Record<string, string>;
 };
 
 function initialCardState(q: AttemptQuestion, instant: boolean): CardState {
@@ -118,6 +125,23 @@ function initialCardState(q: AttemptQuestion, instant: boolean): CardState {
       ? (f.value as { id: string; value: boolean }[])
       : [];
 
+  const cascadeReveal =
+    q.type === "css_cascade" && f?.correctAnswer && typeof f.correctAnswer === "object"
+      ? (f.correctAnswer as { answer?: string; winner?: string; ruleNotes?: Record<string, string> })
+      : null;
+  const tapReveal =
+    q.type === "tap_element" && f?.correctAnswer && typeof f.correctAnswer === "object"
+      ? (f.correctAnswer as { answer?: string[]; tapNotes?: Record<string, string> })
+      : null;
+  const designStarts =
+    q.type === "match_design" && Array.isArray(q.blanks)
+      ? Object.fromEntries(q.blanks.map((b) => [b.property, b.start]))
+      : {};
+  const designFromValue =
+    q.type === "match_design" && f?.value && typeof f.value === "object" && !Array.isArray(f.value)
+      ? (f.value as Record<string, string>)
+      : null;
+
   return {
     done,
     revealed,
@@ -127,11 +151,14 @@ function initialCardState(q: AttemptQuestion, instant: boolean): CardState {
     explanation: f?.explanation ?? null,
     lessonRef: f?.lessonRef?.courseSlug && f.lessonRef.lessonId ? f.lessonRef : null,
     selected: (() => {
-      if (f?.value == null) return null;
+      if (f?.value == null) return q.type === "tap_element" ? [] : null;
       if (q.type === "spot_mistake" && typeof f.value === "number") return f.value;
       if (q.type === "listen_answer") return String(f.value);
       if (q.type === "true_false" && typeof f.value === "boolean") return f.value;
-      if (q.type === "code_prediction" || q.type === "multiple_choice") return String(f.value);
+      if (q.type === "code_prediction" || q.type === "multiple_choice" || q.type === "css_cascade") {
+        return String(f.value);
+      }
+      if (q.type === "tap_element") return asStringArray(f.value);
       if (done && (q.type === "fill_blank" || q.type === "type_output")) return f.value;
       return done ? f.value : null;
     })(),
@@ -168,6 +195,10 @@ function initialCardState(q: AttemptQuestion, instant: boolean): CardState {
     speedEndsAt: null,
     showSpokenText: false,
     checkWrong: false,
+    designPicks: designFromValue || designStarts,
+    tapNotes: tapReveal?.tapNotes || {},
+    cascadeWinner: cascadeReveal?.winner ?? null,
+    cascadeNotes: cascadeReveal?.ruleNotes || {},
   };
 }
 
@@ -335,6 +366,10 @@ export default function TestAttemptPage() {
     patch(question.id, { selected: value });
     const res = await send(value);
     if (!res) return;
+    const cascade =
+      question.type === "css_cascade" && res.correctAnswer && typeof res.correctAnswer === "object"
+        ? (res.correctAnswer as { winner?: string; ruleNotes?: Record<string, string> })
+        : null;
     patch(question.id, {
       done: true,
       revealed: true,
@@ -342,6 +377,35 @@ export default function TestAttemptPage() {
       firstTryCorrect: res.correct,
       correctAnswer: res.correctAnswer,
       explanation: res.explanation ?? null,
+      cascadeWinner: cascade?.winner ?? null,
+      cascadeNotes: cascade?.ruleNotes || {},
+    });
+    scoreOutcome(Boolean(res.correct));
+  };
+
+  /** One Check for tap_element / match_design — then reveal and Next (no free retries). */
+  const checkComposite = async (value: unknown, extra?: Partial<CardState>) => {
+    if (!question || !state || state.done || busy) return;
+    if (!instant) {
+      patch(question.id, { ...(extra || {}), selected: value });
+      return;
+    }
+    const res = await send(value);
+    if (!res) return;
+    const tap =
+      question.type === "tap_element" && res.correctAnswer && typeof res.correctAnswer === "object"
+        ? (res.correctAnswer as { tapNotes?: Record<string, string> })
+        : null;
+    patch(question.id, {
+      ...(extra || {}),
+      selected: value,
+      done: true,
+      revealed: true,
+      correct: res.correct,
+      firstTryCorrect: res.correct,
+      correctAnswer: res.correctAnswer,
+      explanation: res.explanation ?? null,
+      tapNotes: tap?.tapNotes || {},
     });
     scoreOutcome(Boolean(res.correct));
   };
@@ -715,6 +779,10 @@ export default function TestAttemptPage() {
         return { line: s.bugLine, fixId: s.bugFixId, tries: s.bugTries || 1 };
       case "speed_round":
         return { results: s.speedResults };
+      case "tap_element":
+        return Array.isArray(s.selected) ? s.selected : [];
+      case "match_design":
+        return s.designPicks;
       default:
         return s.selected;
     }
@@ -743,6 +811,10 @@ export default function TestAttemptPage() {
         return s.bugLine != null && Boolean(s.bugFixId);
       case "speed_round":
         return s.speedResults.length === q.facts.length;
+      case "tap_element":
+        return Array.isArray(s.selected) && s.selected.length > 0;
+      case "match_design":
+        return q.blanks.every((b) => Boolean(s.designPicks[b.property]));
       default:
         return s.selected != null;
     }
@@ -831,6 +903,20 @@ export default function TestAttemptPage() {
     const locked = busy || finishing || (!instant && state.done);
     switch (question.type) {
       case "code_prediction":
+        return (
+          <ChoiceCard
+            prompt={question.prompt}
+            code={question.code}
+            language={question.language || language}
+            options={question.options}
+            selected={state.selected == null ? null : String(state.selected)}
+            correctAnswer={state.correctAnswer == null ? null : String(state.correctAnswer)}
+            revealed={state.revealed}
+            disabled={locked}
+            previewBase={question.previewBase}
+            onPick={(id) => void pickSingle(id)}
+          />
+        );
       case "multiple_choice":
         return (
           <ChoiceCard
@@ -843,6 +929,96 @@ export default function TestAttemptPage() {
             revealed={state.revealed}
             disabled={locked}
             onPick={(id) => void pickSingle(id)}
+          />
+        );
+      case "tap_element": {
+        if (!("page" in question) || !question.page) {
+          return (
+            <p className="m-0 text-sm font-semibold text-[#B91C1C]">
+              This Tap the element card is missing its page. Restart the API so it serves the new question shape, then reopen the test.
+            </p>
+          );
+        }
+        const correctIds =
+          state.correctAnswer && typeof state.correctAnswer === "object" && !Array.isArray(state.correctAnswer)
+            ? ((state.correctAnswer as { answer?: string[] }).answer ?? null)
+            : Array.isArray(state.correctAnswer)
+              ? (state.correctAnswer as string[])
+              : null;
+        return (
+          <TapElementCard
+            prompt={question.prompt}
+            code={question.code}
+            language={question.language || language}
+            page={question.page}
+            pageCss={question.pageCss}
+            mode={question.mode}
+            selected={Array.isArray(state.selected) ? state.selected.map(String) : []}
+            correctIds={correctIds}
+            tapNotes={state.tapNotes}
+            revealed={state.revealed}
+            disabled={locked}
+            onChange={(ids) => patch(question.id, { selected: ids })}
+            onCheck={() => void checkComposite(Array.isArray(state.selected) ? state.selected : [])}
+          />
+        );
+      }
+      case "css_cascade": {
+        if (!("rules" in question) || !question.rules?.length) {
+          return (
+            <p className="m-0 text-sm font-semibold text-[#B91C1C]">
+              This cascade card is missing its rules. Restart the API so it serves the new question shape, then reopen the test.
+            </p>
+          );
+        }
+        const ca =
+          state.correctAnswer && typeof state.correctAnswer === "object"
+            ? (state.correctAnswer as { answer?: string })
+            : null;
+        return (
+          <CssCascadeCard
+            prompt={question.prompt}
+            html={question.html}
+            property={question.property}
+            rules={question.rules}
+            options={question.options}
+            selected={state.selected == null ? null : String(state.selected)}
+            correctAnswer={ca?.answer ?? (state.correctAnswer == null ? null : String(state.correctAnswer))}
+            winnerId={state.cascadeWinner}
+            ruleNotes={state.cascadeNotes}
+            showResult={question.showResult}
+            revealed={state.revealed}
+            disabled={locked}
+            onPick={(id) => void pickSingle(id)}
+          />
+        );
+      }
+      case "match_design":
+        if (!("blanks" in question) || !Array.isArray(question.blanks) || !question.targetCss) {
+          return (
+            <p className="m-0 text-sm font-semibold text-[#B91C1C]">
+              This Match the design card is missing its blanks. Restart the API so it serves the new question shape, then reopen the test.
+            </p>
+          );
+        }
+        return (
+          <MatchDesignCard
+            prompt={question.prompt}
+            html={question.html}
+            baseCss={question.baseCss}
+            selector={question.selector}
+            targetCss={question.targetCss}
+            blanks={question.blanks}
+            picks={state.designPicks}
+            correctAnswer={
+              state.correctAnswer && typeof state.correctAnswer === "object" && !Array.isArray(state.correctAnswer)
+                ? (state.correctAnswer as Record<string, string>)
+                : null
+            }
+            revealed={state.revealed}
+            disabled={locked}
+            onChange={(next) => patch(question.id, { designPicks: next })}
+            onCheck={() => void checkComposite(state.designPicks, { designPicks: state.designPicks })}
           />
         );
       case "true_false":

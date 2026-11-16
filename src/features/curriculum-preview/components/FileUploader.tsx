@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import curriculumV2Guide from "../../../../docs/CURRICULUM_V2_GUIDE.md?raw";
 import curriculumV2BackendSpec from "../../../../docs/CURRICULUM_V2_BACKEND_SPEC.md?raw";
+import curriculumCodeTestContract from "../../../../docs/CURRICULUM_CODE_TEST_CONTRACT.md?raw";
 import {
   extractCurriculumV2Data,
   isCurriculumV2,
@@ -34,6 +35,7 @@ type QueuedFile = {
   result: PreviewLoadResult | null;
   error: string | null;
   validationErrors: string[];
+  validationWarnings: string[];
 };
 
 function parseCurriculumFile(file: File): Promise<Omit<QueuedFile, "key" | "file">> {
@@ -43,6 +45,7 @@ function parseCurriculumFile(file: File): Promise<Omit<QueuedFile, "key" | "file
         result: null,
         error: "Please upload a JSON file",
         validationErrors: [],
+        validationWarnings: [],
       });
       return;
     }
@@ -60,6 +63,7 @@ function parseCurriculumFile(file: File): Promise<Omit<QueuedFile, "key" | "file
               result: null,
               error: null,
               validationErrors: validation.errors,
+              validationWarnings: validation.warnings ?? [],
             });
             return;
           }
@@ -73,6 +77,7 @@ function parseCurriculumFile(file: File): Promise<Omit<QueuedFile, "key" | "file
             },
             error: null,
             validationErrors: [],
+            validationWarnings: validation.warnings ?? [],
           });
           return;
         }
@@ -90,6 +95,7 @@ function parseCurriculumFile(file: File): Promise<Omit<QueuedFile, "key" | "file
             ? "Preview only accepts a flow curriculum (v2). This file is a classic v1 curriculum, so it cannot be previewed here."
             : "This file is not a flow curriculum (v2), so preview cannot open it.",
           validationErrors: [],
+          validationWarnings: [],
         });
       } catch (err) {
         console.error(err);
@@ -97,6 +103,7 @@ function parseCurriculumFile(file: File): Promise<Omit<QueuedFile, "key" | "file
           result: null,
           error: "Invalid JSON format. Please check your file.",
           validationErrors: [],
+          validationWarnings: [],
         });
       }
     };
@@ -105,6 +112,7 @@ function parseCurriculumFile(file: File): Promise<Omit<QueuedFile, "key" | "file
         result: null,
         error: "Failed to read file",
         validationErrors: [],
+        validationWarnings: [],
       });
     };
     reader.readAsText(file);
@@ -156,6 +164,14 @@ export function FileUploader({
     downloadFile(
       curriculumV2BackendSpec,
       "CURRICULUM_V2_BACKEND_SPEC.md",
+      "text/markdown;charset=utf-8",
+    );
+  }, [downloadFile]);
+
+  const handleDownloadCodeTestContract = useCallback(() => {
+    downloadFile(
+      curriculumCodeTestContract,
+      "CURRICULUM_CODE_TEST_CONTRACT.md",
       "text/markdown;charset=utf-8",
     );
   }, [downloadFile]);
@@ -346,6 +362,16 @@ export function FileUploader({
                           )}
                         </ul>
                       )}
+                      {item.validationWarnings.length > 0 && (
+                        <ul className="mt-1 space-y-0.5 text-sm text-amber-800">
+                          {item.validationWarnings.slice(0, 4).map((warn, i) => (
+                            <li key={i}>{warn}</li>
+                          ))}
+                          {item.validationWarnings.length > 4 && (
+                            <li>…and {item.validationWarnings.length - 4} more warnings</li>
+                          )}
+                        </ul>
+                      )}
                     </div>
                     {ok && item.result && (
                       <div className="flex flex-wrap gap-2">
@@ -427,7 +453,8 @@ export function FileUploader({
 
         {!canPublish && (
           <p className="mt-3 text-center text-xs text-gray-500">
-            Sign in via the admin curriculum handoff to publish from this screen.
+            Open this page from Admin → Manage Curriculum → Preview upload (or a teacher
+            handoff) to publish from this screen.
           </p>
         )}
 
@@ -470,6 +497,14 @@ export function FileUploader({
               >
                 <BookOpen className="h-4 w-4" />
                 Backend validation spec
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadCodeTestContract}
+                className="inline-flex items-center gap-2 rounded-lg border border-amber-500/70 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900 transition-all hover:bg-amber-100"
+              >
+                <FileText className="h-4 w-4" />
+                Code test contract
               </button>
             </div>
           </div>

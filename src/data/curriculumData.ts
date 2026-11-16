@@ -25,6 +25,12 @@ export interface CodeExample {
    */
   starterCode?: string;
   /**
+   * Exact practice solution for “View correct answer”.
+   * Prefer this whenever expectedCode is a regex or the teach demo uses a different theme.
+   * Must pass testCriteria.expectedCode when both are set.
+   */
+  solutionCode?: string;
+  /**
    * Optional companion code in another web-workspace pane (e.g. HTML to style when
    * `language` is `css`). Shown during demos and kept visible for practice.
    */
@@ -73,6 +79,8 @@ export interface Question {
     expectedCSS?: string;
     expectedJS?: string;
     expectedCode?: string;
+    /** Optional alias for code_example.solutionCode (View Answer lock). */
+    solutionCode?: string;
     expectedOutput?: string;
     expectedRows?: string[][];
     tests?: Array<{ call: string; expect: string }>;

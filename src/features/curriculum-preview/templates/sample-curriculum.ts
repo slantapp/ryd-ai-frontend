@@ -85,6 +85,10 @@ export const sampleCurriculum: Curriculum = {
                     "Watch how I create a variable. I type 'let' to declare it, then the name 'message', an equals sign, and the value in quotes. This stores 'Hello World' in our variable!",
                   autoRun: false,
                   typingSpeed: 60,
+                  starterCode:
+                    "// Create a variable called message\n// Set it to 'Hello World'\n\n",
+                  // Exact practice answer for View correct answer (required when expectedCode is regex:)
+                  solutionCode: "let message = 'Hello World';\nconsole.log(message);\n",
                 },
                 testCriteria: {
                   expectedCode: "let message",

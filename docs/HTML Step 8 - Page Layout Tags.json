@@ -1,0 +1,1038 @@
+{
+  "slug": "html-step-08-page-layout-tags",
+  "schema_version": 2,
+  "curriculum": {
+    "title": "HTML Step 8: Page Layout Tags",
+    "description": "Shape a page with header, nav, main, section, article, aside and footer, learn why they beat a pile of divs, and build a whole page.",
+    "language": "en",
+    "category": "coding",
+    "age": 11,
+    "class": "Grade 6",
+    "grade": 6,
+    "level": "Intermediate",
+    "duration": "27",
+    "defaults": {
+      "avatar": {
+        "continue_prompt": "Tap Continue.",
+        "handoff_to_practice": "Your turn. Fill in the TODO lines.",
+        "correct_feedback": "Correct!",
+        "incorrect_feedback": "Not quite. Try again."
+      },
+      "advance": {
+        "pause_min_seconds": 3
+      },
+      "question_retry": {
+        "max": 2,
+        "on_exhausted": "continue"
+      }
+    },
+    "modules": [
+      {
+        "id": "module_01",
+        "title": "Top and Bottom",
+        "unlock": null,
+        "lessons": [
+          {
+            "id": "module_01__lesson_01",
+            "title": "Header and Footer",
+            "goal": "to add a header and a footer to a page.",
+            "estimated_minutes": 5,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Most websites have a top part and a bottom part. HTML has special tags for them!",
+                  "gesture": "welcomeSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "<header>\n  <h1>Ada's Pets</h1>\n</header>\n<p>Welcome to my page about pets.</p>\n<footer>\n  <p>Made by Ada, 2026</p>\n</footer>\n",
+                  "language": "html",
+                  "description": "Watch a page get a top and a bottom.",
+                  "explanation": "Lines 1 to 3 are the header: the top part of the page, with its title. The locked CSS paints it blue.",
+                  "autoRun": false,
+                  "typingSpeed": 18,
+                  "runtime": "web",
+                  "css": "body { font-family: sans-serif; background: #f3f8ff; color: #222; padding: 20px; line-height: 1.5; max-width: 560px; }\nh1, h2 { margin: 4px 0; }\nh2 { color: #1a5fb4; }\nheader { background: rgb(26, 95, 180); color: white; padding: 10px 14px; border-radius: 10px; }\nnav a { color: white; margin-right: 14px; font-weight: bold; }\nmain { display: block; padding: 6px 0; }\nsection, article { background: white; border: 1px solid #c0d4f0; border-radius: 10px; padding: 8px 12px; margin: 10px 0; }\naside { background: rgb(255, 243, 196); padding: 8px 12px; border-radius: 10px; margin: 10px 0; }\nfooter { color: #555; border-top: 2px solid #c0d4f0; margin-top: 12px; padding-top: 6px; font-size: 14px; }",
+                  "lockedTabs": [
+                    "css"
+                  ]
+                },
+                "advance": "auto",
+                "avatar": {
+                  "gesture": "whiteboard"
+                }
+              },
+              {
+                "id": "walk_2",
+                "type": "pause",
+                "phase": "teach",
+                "avatar": {
+                  "text": "Lines 5 to 7 are the footer: the bottom of the page, for things like who made it. Header at the top, footer at the bottom.",
+                  "show": [
+                    {
+                      "say": "footer",
+                      "as": "<footer> ... </footer>"
+                    }
+                  ]
+                },
+                "advance": "manual",
+                "min_seconds": 3,
+                "keep_previous": true
+              },
+              {
+                "id": "check_header",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_header_q",
+                  "type": "multiple_choice",
+                  "question": "Where does a header usually go?",
+                  "options": [
+                    "At the top of the page",
+                    "At the bottom",
+                    "In the middle of a paragraph",
+                    "Inside a link"
+                  ],
+                  "answer": "At the top of the page",
+                  "explanation": "Yes! The header is the top part."
+                },
+                "avatar": {
+                  "on_correct": "Yes! The header is the top part.",
+                  "on_wrong": "Not quite. The header is the top part of the page.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Where was Ada's Pets?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "check_footer",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_footer_q",
+                  "type": "true_false",
+                  "question": "A footer is a good place to say who made the page.",
+                  "answer": true,
+                  "explanation": "Correct! Like Made by Ada."
+                },
+                "avatar": {
+                  "on_correct": "Correct! Like Made by Ada.",
+                  "on_wrong": "Not quite. Footers often say who made the page.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "What was in Ada's footer?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "code_practice",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "code_practice_q",
+                  "type": "code_test",
+                  "question": "Your turn: add a footer at the bottom with a paragraph that says Made by Leo. Tap Run to test it, then Submit.",
+                  "explanation": "Remember: lines 5 to 7 are the footer.",
+                  "code_example": {
+                    "code": "<header>\n  <h1>Ada's Pets</h1>\n</header>\n<p>Welcome to my page about pets.</p>\n<footer>\n  <p>Made by Ada, 2026</p>\n</footer>\n",
+                    "language": "html",
+                    "description": "Watch the key lines.",
+                    "explanation": "Remember: lines 5 to 7 are the footer.",
+                    "autoRun": false,
+                    "typingSpeed": 6,
+                    "starterCode": "<header>\n  <h1>Leo's Robots</h1>\n</header>\n<p>I build robots from boxes.</p>\n<!-- TODO: add a footer with a paragraph that says Made by Leo -->\n\n",
+                    "solutionCode": "<header>\n  <h1>Leo's Robots</h1>\n</header>\n<p>I build robots from boxes.</p>\n<footer>\n  <p>Made by Leo</p>\n</footer>\n",
+                    "runtime": "web",
+                    "css": "body { font-family: sans-serif; background: #f3f8ff; color: #222; padding: 20px; line-height: 1.5; max-width: 560px; }\nh1, h2 { margin: 4px 0; }\nh2 { color: #1a5fb4; }\nheader { background: rgb(26, 95, 180); color: white; padding: 10px 14px; border-radius: 10px; }\nnav a { color: white; margin-right: 14px; font-weight: bold; }\nmain { display: block; padding: 6px 0; }\nsection, article { background: white; border: 1px solid #c0d4f0; border-radius: 10px; padding: 8px 12px; margin: 10px 0; }\naside { background: rgb(255, 243, 196); padding: 8px 12px; border-radius: 10px; margin: 10px 0; }\nfooter { color: #555; border-top: 2px solid #c0d4f0; margin-top: 12px; padding-top: 6px; font-size: 14px; }",
+                    "lockedTabs": [
+                      "css"
+                    ]
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:<footer(?:\\s[^>]*)?>\\s*<p(?:\\s[^>]*)?>\\s*Made\\s+by\\s+Leo\\s*</p\\s*>\\s*</footer\\s*>",
+                    "domChecks": [
+                      {
+                        "selector": "footer",
+                        "count": 1
+                      },
+                      {
+                        "selector": "footer p",
+                        "text": "Made by Leo"
+                      },
+                      {
+                        "selector": "p + footer",
+                        "exists": true
+                      }
+                    ]
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Before you try, one quick look at the example.",
+                  "handoff": "Got it? I'll clear the example now.",
+                  "on_correct": "Great! Your page has a top and a bottom.",
+                  "on_wrong": "Not yet. Open a footer, put a p with Made by Leo inside it, then close the footer.",
+                  "gesture": "invite",
+                  "gesture_on_correct": "celebrateSequence",
+                  "gesture_on_wrong": "gentleCorrectionSequence"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Copy Ada's footer and change the words.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "header is the top of the page.",
+                  "footer is the bottom.",
+                  "Each one wraps the parts inside it."
+                ],
+                "avatar": {
+                  "text": "Nice work! Here's what you learned.",
+                  "gesture": "recapSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "bridge_next",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "Next up: a menu of links.",
+                  "gesture": "transition"
+                },
+                "next": "module_01__lesson_02",
+                "advance": "manual"
+              }
+            ]
+          },
+          {
+            "id": "module_01__lesson_02",
+            "title": "The Menu: nav",
+            "goal": "to group a site's menu links in a nav.",
+            "estimated_minutes": 5,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "How do you get around a website? With a menu. In HTML, the menu goes in a nav.",
+                  "gesture": "transition"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "<header>\n  <h1>Space Club</h1>\n  <nav>\n    <a href=\"#planets\">Planets</a>\n    <a href=\"#stars\">Stars</a>\n  </nav>\n</header>\n",
+                  "language": "html",
+                  "description": "Watch a menu appear in the header.",
+                  "explanation": "Lines 3 to 6 are a nav: the menu of links that helps people move around the site.",
+                  "autoRun": false,
+                  "typingSpeed": 18,
+                  "runtime": "web",
+                  "css": "body { font-family: sans-serif; background: #f3f8ff; color: #222; padding: 20px; line-height: 1.5; max-width: 560px; }\nh1, h2 { margin: 4px 0; }\nh2 { color: #1a5fb4; }\nheader { background: rgb(26, 95, 180); color: white; padding: 10px 14px; border-radius: 10px; }\nnav a { color: white; margin-right: 14px; font-weight: bold; }\nmain { display: block; padding: 6px 0; }\nsection, article { background: white; border: 1px solid #c0d4f0; border-radius: 10px; padding: 8px 12px; margin: 10px 0; }\naside { background: rgb(255, 243, 196); padding: 8px 12px; border-radius: 10px; margin: 10px 0; }\nfooter { color: #555; border-top: 2px solid #c0d4f0; margin-top: 12px; padding-top: 6px; font-size: 14px; }",
+                  "lockedTabs": [
+                    "css"
+                  ]
+                },
+                "advance": "auto",
+                "avatar": {
+                  "gesture": "whiteboard"
+                }
+              },
+              {
+                "id": "walk_2",
+                "type": "pause",
+                "phase": "teach",
+                "avatar": {
+                  "text": "The nav sits inside the header here, so the menu is at the top. Screen readers can jump straight to the nav.",
+                  "show": [
+                    {
+                      "say": "nav",
+                      "as": "<nav> ... </nav>"
+                    }
+                  ]
+                },
+                "advance": "manual",
+                "min_seconds": 3,
+                "keep_previous": true
+              },
+              {
+                "id": "check_nav",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_nav_q",
+                  "type": "multiple_choice",
+                  "question": "What belongs in a nav?",
+                  "options": [
+                    "The menu links",
+                    "A long story",
+                    "A picture caption",
+                    "The page title only"
+                  ],
+                  "answer": "The menu links",
+                  "explanation": "Yes! The nav holds the menu."
+                },
+                "avatar": {
+                  "on_correct": "Yes! The nav holds the menu.",
+                  "on_wrong": "Not quite. A nav holds the menu links.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "What was inside the nav?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "check_reader",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_reader_q",
+                  "type": "true_false",
+                  "question": "Screen readers can jump straight to the nav.",
+                  "answer": true,
+                  "explanation": "Correct! That helps people find the menu fast."
+                },
+                "avatar": {
+                  "on_correct": "Correct! That helps people find the menu fast.",
+                  "on_wrong": "Not quite. They can jump right to it.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Why is nav helpful?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "code_practice",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "code_practice_q",
+                  "type": "code_test",
+                  "question": "Your turn: put the Games and Books links inside a nav, inside the header. Tap Run to test it, then Submit.",
+                  "explanation": "Remember: lines 3 to 6 put the links in a nav.",
+                  "code_example": {
+                    "code": "<header>\n  <h1>Space Club</h1>\n  <nav>\n    <a href=\"#planets\">Planets</a>\n    <a href=\"#stars\">Stars</a>\n  </nav>\n</header>\n",
+                    "language": "html",
+                    "description": "Watch the key lines.",
+                    "explanation": "Remember: lines 3 to 6 put the links in a nav.",
+                    "autoRun": false,
+                    "typingSpeed": 6,
+                    "starterCode": "<header>\n  <h1>Mia's Corner</h1>\n  <!-- TODO: put these two links inside a nav -->\n  <a href=\"#games\">Games</a>\n  <a href=\"#books\">Books</a>\n</header>\n",
+                    "solutionCode": "<header>\n  <h1>Mia's Corner</h1>\n  <nav>\n    <a href=\"#games\">Games</a>\n    <a href=\"#books\">Books</a>\n  </nav>\n</header>\n",
+                    "runtime": "web",
+                    "css": "body { font-family: sans-serif; background: #f3f8ff; color: #222; padding: 20px; line-height: 1.5; max-width: 560px; }\nh1, h2 { margin: 4px 0; }\nh2 { color: #1a5fb4; }\nheader { background: rgb(26, 95, 180); color: white; padding: 10px 14px; border-radius: 10px; }\nnav a { color: white; margin-right: 14px; font-weight: bold; }\nmain { display: block; padding: 6px 0; }\nsection, article { background: white; border: 1px solid #c0d4f0; border-radius: 10px; padding: 8px 12px; margin: 10px 0; }\naside { background: rgb(255, 243, 196); padding: 8px 12px; border-radius: 10px; margin: 10px 0; }\nfooter { color: #555; border-top: 2px solid #c0d4f0; margin-top: 12px; padding-top: 6px; font-size: 14px; }",
+                    "lockedTabs": [
+                      "css"
+                    ]
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:<nav(?:\\s[^>]*)?>\\s*(?:<!--[\\s\\S]*?-->\\s*)*<a[^>]*>\\s*Games\\s*</a\\s*>\\s*<a[^>]*>\\s*Books\\s*</a\\s*>\\s*</nav\\s*>",
+                    "domChecks": [
+                      {
+                        "selector": "header nav",
+                        "count": 1
+                      },
+                      {
+                        "selector": "nav a",
+                        "count": 2
+                      },
+                      {
+                        "selector": "header > a",
+                        "exists": false
+                      }
+                    ]
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Before you try, one quick look at the example.",
+                  "handoff": "Got it? I'll clear the example now.",
+                  "on_correct": "Brilliant! Mia's site has a menu.",
+                  "on_wrong": "Not yet. Put an opening nav above the Games link, and a closing nav below the Books link.",
+                  "gesture": "invite",
+                  "gesture_on_correct": "celebrateSequence",
+                  "gesture_on_wrong": "gentleCorrectionSequence"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Open nav before the first link, close it after the second.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "nav holds the menu links.",
+                  "It often sits in the header.",
+                  "It helps people find their way."
+                ],
+                "avatar": {
+                  "text": "Great job! Here's what you learned.",
+                  "gesture": "recapSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "bridge_next",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "Next up: the main part of the page.",
+                  "gesture": "transition"
+                },
+                "next": "module_02__lesson_01",
+                "advance": "manual"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "module_02",
+        "title": "The Middle",
+        "unlock": null,
+        "lessons": [
+          {
+            "id": "module_02__lesson_01",
+            "title": "Main and Section",
+            "goal": "to put the main content in main, split into sections.",
+            "estimated_minutes": 6,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Between the header and the footer is the most important part: the main content.",
+                  "gesture": "transition"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "<header>\n  <h1>Zoo Guide</h1>\n</header>\n<main>\n  <section>\n    <h2>Lions</h2>\n    <p>Lions sleep up to 20 hours a day.</p>\n  </section>\n  <section>\n    <h2>Zebras</h2>\n    <p>Every zebra has different stripes.</p>\n  </section>\n</main>\n",
+                  "language": "html",
+                  "description": "Watch the main part fill with sections.",
+                  "explanation": "Line 4 opens main: the main content of the page. A page has only one main.",
+                  "autoRun": false,
+                  "typingSpeed": 18,
+                  "runtime": "web",
+                  "css": "body { font-family: sans-serif; background: #f3f8ff; color: #222; padding: 20px; line-height: 1.5; max-width: 560px; }\nh1, h2 { margin: 4px 0; }\nh2 { color: #1a5fb4; }\nheader { background: rgb(26, 95, 180); color: white; padding: 10px 14px; border-radius: 10px; }\nnav a { color: white; margin-right: 14px; font-weight: bold; }\nmain { display: block; padding: 6px 0; }\nsection, article { background: white; border: 1px solid #c0d4f0; border-radius: 10px; padding: 8px 12px; margin: 10px 0; }\naside { background: rgb(255, 243, 196); padding: 8px 12px; border-radius: 10px; margin: 10px 0; }\nfooter { color: #555; border-top: 2px solid #c0d4f0; margin-top: 12px; padding-top: 6px; font-size: 14px; }",
+                  "lockedTabs": [
+                    "css"
+                  ]
+                },
+                "advance": "auto",
+                "avatar": {
+                  "gesture": "whiteboard"
+                }
+              },
+              {
+                "id": "walk_2",
+                "type": "pause",
+                "phase": "teach",
+                "avatar": {
+                  "text": "Inside main, each section is one topic with its own heading: Lions, then Zebras. One main, many sections.",
+                  "show": [
+                    {
+                      "say": "section",
+                      "as": "<section> ... </section>"
+                    }
+                  ]
+                },
+                "advance": "manual",
+                "min_seconds": 3,
+                "keep_previous": true
+              },
+              {
+                "id": "check_main",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_main_q",
+                  "type": "multiple_choice",
+                  "question": "How many main elements should a page have?",
+                  "options": [
+                    "One",
+                    "One per section",
+                    "Two",
+                    "None"
+                  ],
+                  "answer": "One",
+                  "explanation": "Yes! Just one main."
+                },
+                "avatar": {
+                  "on_correct": "Yes! Just one main.",
+                  "on_wrong": "Not quite. A page has only one main.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "How many mains did the Zoo Guide have?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "check_section",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_section_q",
+                  "type": "true_false",
+                  "question": "A section is one topic, usually with its own heading.",
+                  "answer": true,
+                  "explanation": "Correct! Like Lions or Zebras."
+                },
+                "avatar": {
+                  "on_correct": "Correct! Like Lions or Zebras.",
+                  "on_wrong": "Not quite. Each section is one topic with a heading.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "What did each section start with?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "code_practice",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "code_practice_q",
+                  "type": "code_test",
+                  "question": "Your turn: add a second section inside main, with an h2 Penguins and the paragraph Penguins can't fly, but they swim fast. Tap Run to test it, then Submit.",
+                  "explanation": "Remember: each section has a heading and its own content.",
+                  "code_example": {
+                    "code": "<header>\n  <h1>Zoo Guide</h1>\n</header>\n<main>\n  <section>\n    <h2>Lions</h2>\n    <p>Lions sleep up to 20 hours a day.</p>\n  </section>\n  <section>\n    <h2>Zebras</h2>\n    <p>Every zebra has different stripes.</p>\n  </section>\n</main>\n",
+                    "language": "html",
+                    "description": "Watch the key lines.",
+                    "explanation": "Remember: each section has a heading and its own content.",
+                    "autoRun": false,
+                    "typingSpeed": 6,
+                    "starterCode": "<header>\n  <h1>Bird Guide</h1>\n</header>\n<main>\n  <section>\n    <h2>Owls</h2>\n    <p>Owls can turn their heads very far.</p>\n  </section>\n  <!-- TODO: add a section with an h2 Penguins and a paragraph: Penguins can't fly, but they swim fast. -->\n\n</main>\n",
+                    "solutionCode": "<header>\n  <h1>Bird Guide</h1>\n</header>\n<main>\n  <section>\n    <h2>Owls</h2>\n    <p>Owls can turn their heads very far.</p>\n  </section>\n  <section>\n    <h2>Penguins</h2>\n    <p>Penguins can't fly, but they swim fast.</p>\n  </section>\n</main>\n",
+                    "runtime": "web",
+                    "css": "body { font-family: sans-serif; background: #f3f8ff; color: #222; padding: 20px; line-height: 1.5; max-width: 560px; }\nh1, h2 { margin: 4px 0; }\nh2 { color: #1a5fb4; }\nheader { background: rgb(26, 95, 180); color: white; padding: 10px 14px; border-radius: 10px; }\nnav a { color: white; margin-right: 14px; font-weight: bold; }\nmain { display: block; padding: 6px 0; }\nsection, article { background: white; border: 1px solid #c0d4f0; border-radius: 10px; padding: 8px 12px; margin: 10px 0; }\naside { background: rgb(255, 243, 196); padding: 8px 12px; border-radius: 10px; margin: 10px 0; }\nfooter { color: #555; border-top: 2px solid #c0d4f0; margin-top: 12px; padding-top: 6px; font-size: 14px; }",
+                    "lockedTabs": [
+                      "css"
+                    ]
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:</section\\s*>\\s*(?:<!--[\\s\\S]*?-->\\s*)*<section(?:\\s[^>]*)?>\\s*<h2(?:\\s[^>]*)?>\\s*Penguins\\s*</h2\\s*>[\\s\\S]*?</section\\s*>\\s*</main\\s*>",
+                    "domChecks": [
+                      {
+                        "selector": "main",
+                        "count": 1
+                      },
+                      {
+                        "selector": "main > section",
+                        "count": 2
+                      },
+                      {
+                        "selector": "section + section h2",
+                        "text": "Penguins"
+                      },
+                      {
+                        "selector": "section + section p",
+                        "text": "Penguins can't fly, but they swim fast."
+                      }
+                    ]
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Before you try, one quick look at the example.",
+                  "handoff": "Got it? I'll clear the example now.",
+                  "on_correct": "Excellent! Two neat sections.",
+                  "on_wrong": "Not yet. Copy the Owls section inside main, then change the heading and the paragraph.",
+                  "gesture": "invite",
+                  "gesture_on_correct": "celebrateSequence",
+                  "gesture_on_wrong": "gentleCorrectionSequence"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Copy the whole Owls section and change the words.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "main holds the main content.",
+                  "A page has only one main.",
+                  "Each section is one topic with a heading."
+                ],
+                "avatar": {
+                  "text": "Fantastic! Here's what you learned.",
+                  "gesture": "recapSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "bridge_next",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "Next up: stories and side notes.",
+                  "gesture": "transition"
+                },
+                "next": "module_02__lesson_02",
+                "advance": "manual"
+              }
+            ]
+          },
+          {
+            "id": "module_02__lesson_02",
+            "title": "Article and Aside",
+            "goal": "to mark a story with article and a side note with aside.",
+            "estimated_minutes": 6,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Some content stands on its own, like a story. Some is extra, like a fun fact on the side.",
+                  "gesture": "transition"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "<main>\n  <article>\n    <h2>My Trip to the Beach</h2>\n    <p>We built a giant sandcastle.</p>\n  </article>\n  <aside>\n    <p>Fun fact: sand is made of tiny rocks.</p>\n  </aside>\n</main>\n",
+                  "language": "html",
+                  "description": "Watch a story and a side note appear.",
+                  "explanation": "Lines 2 to 5 are an article: something that makes sense on its own, like a story or a blog post.",
+                  "autoRun": false,
+                  "typingSpeed": 18,
+                  "runtime": "web",
+                  "css": "body { font-family: sans-serif; background: #f3f8ff; color: #222; padding: 20px; line-height: 1.5; max-width: 560px; }\nh1, h2 { margin: 4px 0; }\nh2 { color: #1a5fb4; }\nheader { background: rgb(26, 95, 180); color: white; padding: 10px 14px; border-radius: 10px; }\nnav a { color: white; margin-right: 14px; font-weight: bold; }\nmain { display: block; padding: 6px 0; }\nsection, article { background: white; border: 1px solid #c0d4f0; border-radius: 10px; padding: 8px 12px; margin: 10px 0; }\naside { background: rgb(255, 243, 196); padding: 8px 12px; border-radius: 10px; margin: 10px 0; }\nfooter { color: #555; border-top: 2px solid #c0d4f0; margin-top: 12px; padding-top: 6px; font-size: 14px; }",
+                  "lockedTabs": [
+                    "css"
+                  ]
+                },
+                "advance": "auto",
+                "avatar": {
+                  "gesture": "whiteboard"
+                }
+              },
+              {
+                "id": "walk_2",
+                "type": "pause",
+                "phase": "teach",
+                "avatar": {
+                  "text": "Lines 6 to 8 are an aside: extra information on the side. The story still makes sense without it.",
+                  "show": [
+                    {
+                      "say": "aside",
+                      "as": "<aside> ... </aside>"
+                    }
+                  ]
+                },
+                "advance": "manual",
+                "min_seconds": 3,
+                "keep_previous": true
+              },
+              {
+                "id": "check_article",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_article_q",
+                  "type": "multiple_choice",
+                  "question": "Which fits best in an article?",
+                  "options": [
+                    "A blog post about your weekend",
+                    "The site menu",
+                    "Who made the page",
+                    "One fun fact on the side"
+                  ],
+                  "answer": "A blog post about your weekend",
+                  "explanation": "Yes! It makes sense on its own."
+                },
+                "avatar": {
+                  "on_correct": "Yes! It makes sense on its own.",
+                  "on_wrong": "Not quite. An article is a whole story that stands on its own.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "What was inside the article?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "check_aside",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_aside_q",
+                  "type": "true_false",
+                  "question": "The story needs the aside to make sense.",
+                  "answer": false,
+                  "explanation": "Correct, that's false. An aside is extra."
+                },
+                "avatar": {
+                  "on_correct": "Correct, that's false. An aside is extra.",
+                  "on_wrong": "Not quite. An aside is only extra information.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Would the beach story work without the fun fact?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "code_practice",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "code_practice_q",
+                  "type": "code_test",
+                  "question": "Your turn: put the fun fact paragraph inside an aside. Tap Run to test it, then Submit.",
+                  "explanation": "Remember: lines 6 to 8 put the fun fact in an aside.",
+                  "code_example": {
+                    "code": "<main>\n  <article>\n    <h2>My Trip to the Beach</h2>\n    <p>We built a giant sandcastle.</p>\n  </article>\n  <aside>\n    <p>Fun fact: sand is made of tiny rocks.</p>\n  </aside>\n</main>\n",
+                    "language": "html",
+                    "description": "Watch the key lines.",
+                    "explanation": "Remember: lines 6 to 8 put the fun fact in an aside.",
+                    "autoRun": false,
+                    "typingSpeed": 6,
+                    "starterCode": "<main>\n  <article>\n    <h2>My Visit to the Farm</h2>\n    <p>I fed the goats.</p>\n  </article>\n  <!-- TODO: put the fun fact paragraph inside an aside -->\n  <p>Fun fact: goats have no top front teeth.</p>\n</main>\n",
+                    "solutionCode": "<main>\n  <article>\n    <h2>My Visit to the Farm</h2>\n    <p>I fed the goats.</p>\n  </article>\n  <aside>\n    <p>Fun fact: goats have no top front teeth.</p>\n  </aside>\n</main>\n",
+                    "runtime": "web",
+                    "css": "body { font-family: sans-serif; background: #f3f8ff; color: #222; padding: 20px; line-height: 1.5; max-width: 560px; }\nh1, h2 { margin: 4px 0; }\nh2 { color: #1a5fb4; }\nheader { background: rgb(26, 95, 180); color: white; padding: 10px 14px; border-radius: 10px; }\nnav a { color: white; margin-right: 14px; font-weight: bold; }\nmain { display: block; padding: 6px 0; }\nsection, article { background: white; border: 1px solid #c0d4f0; border-radius: 10px; padding: 8px 12px; margin: 10px 0; }\naside { background: rgb(255, 243, 196); padding: 8px 12px; border-radius: 10px; margin: 10px 0; }\nfooter { color: #555; border-top: 2px solid #c0d4f0; margin-top: 12px; padding-top: 6px; font-size: 14px; }",
+                    "lockedTabs": [
+                      "css"
+                    ]
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:<aside(?:\\s[^>]*)?>\\s*(?:<!--[\\s\\S]*?-->\\s*)*<p(?:\\s[^>]*)?>\\s*Fun\\s+fact:[^<]*</p\\s*>\\s*</aside\\s*>",
+                    "domChecks": [
+                      {
+                        "selector": "aside p",
+                        "text": "Fun fact: goats have no top front teeth."
+                      },
+                      {
+                        "selector": "article aside",
+                        "exists": false
+                      },
+                      {
+                        "selector": "main > aside",
+                        "count": 1
+                      },
+                      {
+                        "selector": "article",
+                        "count": 1
+                      }
+                    ]
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Before you try, one quick look at the example.",
+                  "handoff": "Got it? I'll clear the example now.",
+                  "on_correct": "Well done! A story with a side note.",
+                  "on_wrong": "Not yet. Put an opening aside before the fun fact paragraph, and a closing aside after it.",
+                  "gesture": "invite",
+                  "gesture_on_correct": "celebrateSequence",
+                  "gesture_on_wrong": "gentleCorrectionSequence"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Wrap the fun fact paragraph: aside, the paragraph, closing aside.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "article: a whole story that stands alone.",
+                  "aside: extra information on the side.",
+                  "The story works without the aside."
+                ],
+                "avatar": {
+                  "text": "Well done! Here's what you learned.",
+                  "gesture": "recapSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "bridge_next",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "Next up: build a whole page!",
+                  "gesture": "transition"
+                },
+                "next": "module_03__lesson_01",
+                "advance": "manual"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "module_03",
+        "title": "Project",
+        "unlock": null,
+        "lessons": [
+          {
+            "id": "module_03__lesson_01",
+            "title": "Project: A Whole Page",
+            "goal": "to build a page from layout tags, not just divs.",
+            "estimated_minutes": 5,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Project time! You'll build a whole page with layout tags.",
+                  "gesture": "transition"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "<header>\n  <h1>Kofi's Football Page</h1>\n</header>\n<main>\n  <section>\n    <h2>My Team</h2>\n    <p>I play for the Lions.</p>\n  </section>\n</main>\n<footer>\n  <p>Made by Kofi</p>\n</footer>\n",
+                  "language": "html",
+                  "description": "Watch a whole page come together.",
+                  "explanation": "A whole page: header at the top, main in the middle with a section, footer at the bottom.",
+                  "autoRun": false,
+                  "typingSpeed": 18,
+                  "runtime": "web",
+                  "css": "body { font-family: sans-serif; background: #f3f8ff; color: #222; padding: 20px; line-height: 1.5; max-width: 560px; }\nh1, h2 { margin: 4px 0; }\nh2 { color: #1a5fb4; }\nheader { background: rgb(26, 95, 180); color: white; padding: 10px 14px; border-radius: 10px; }\nnav a { color: white; margin-right: 14px; font-weight: bold; }\nmain { display: block; padding: 6px 0; }\nsection, article { background: white; border: 1px solid #c0d4f0; border-radius: 10px; padding: 8px 12px; margin: 10px 0; }\naside { background: rgb(255, 243, 196); padding: 8px 12px; border-radius: 10px; margin: 10px 0; }\nfooter { color: #555; border-top: 2px solid #c0d4f0; margin-top: 12px; padding-top: 6px; font-size: 14px; }",
+                  "lockedTabs": [
+                    "css"
+                  ]
+                },
+                "advance": "auto",
+                "avatar": {
+                  "gesture": "whiteboard"
+                }
+              },
+              {
+                "id": "walk_2",
+                "type": "pause",
+                "phase": "teach",
+                "avatar": {
+                  "text": "You could build this with divs, but layout tags tell browsers, search engines and screen readers what each part is for. That's why we use them."
+                },
+                "advance": "manual",
+                "min_seconds": 3,
+                "keep_previous": true
+              },
+              {
+                "id": "check_why",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_why_q",
+                  "type": "multiple_choice",
+                  "question": "Why use header, main and footer instead of only divs?",
+                  "options": [
+                    "They say what each part is for",
+                    "They make the page load slower",
+                    "Divs are broken",
+                    "They add colours"
+                  ],
+                  "answer": "They say what each part is for",
+                  "explanation": "Yes! They give each part a meaning."
+                },
+                "avatar": {
+                  "on_correct": "Yes! They give each part a meaning.",
+                  "on_wrong": "Not quite. Layout tags tell everyone what each part is for.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "What do the tag names describe?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "check_order",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_order_q",
+                  "type": "true_false",
+                  "question": "The header comes before main, and the footer comes after it.",
+                  "answer": true,
+                  "explanation": "Correct! Top, middle, bottom."
+                },
+                "avatar": {
+                  "on_correct": "Correct! Top, middle, bottom.",
+                  "on_wrong": "Not quite. Header, then main, then footer.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Where was the footer?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "code_practice",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "code_practice_q",
+                  "type": "code_test",
+                  "question": "Your turn: build the whole page. Follow the TODO lines from top to bottom. Tap Run to test it, then Submit.",
+                  "explanation": "Remember: header, then main with a section, then footer.",
+                  "code_example": {
+                    "code": "<header>\n  <h1>Kofi's Football Page</h1>\n</header>\n<main>\n  <section>\n    <h2>My Team</h2>\n    <p>I play for the Lions.</p>\n  </section>\n</main>\n<footer>\n  <p>Made by Kofi</p>\n</footer>\n",
+                    "language": "html",
+                    "description": "Watch the key lines.",
+                    "explanation": "Remember: header, then main with a section, then footer.",
+                    "autoRun": false,
+                    "typingSpeed": 6,
+                    "starterCode": "<!-- TODO: a header with an h1: My Hobbies -->\n\n<!-- TODO: a main with one section: an h2 Drawing and a paragraph about drawing -->\n\n<!-- TODO: a footer with a paragraph: Made by me -->\n\n",
+                    "solutionCode": "<header>\n  <h1>My Hobbies</h1>\n</header>\n<main>\n  <section>\n    <h2>Drawing</h2>\n    <p>I like to draw animals and robots.</p>\n  </section>\n</main>\n<footer>\n  <p>Made by me</p>\n</footer>\n",
+                    "runtime": "web",
+                    "css": "body { font-family: sans-serif; background: #f3f8ff; color: #222; padding: 20px; line-height: 1.5; max-width: 560px; }\nh1, h2 { margin: 4px 0; }\nh2 { color: #1a5fb4; }\nheader { background: rgb(26, 95, 180); color: white; padding: 10px 14px; border-radius: 10px; }\nnav a { color: white; margin-right: 14px; font-weight: bold; }\nmain { display: block; padding: 6px 0; }\nsection, article { background: white; border: 1px solid #c0d4f0; border-radius: 10px; padding: 8px 12px; margin: 10px 0; }\naside { background: rgb(255, 243, 196); padding: 8px 12px; border-radius: 10px; margin: 10px 0; }\nfooter { color: #555; border-top: 2px solid #c0d4f0; margin-top: 12px; padding-top: 6px; font-size: 14px; }",
+                    "lockedTabs": [
+                      "css"
+                    ]
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:<header(?:\\s[^>]*)?>[\\s\\S]*?<h1(?:\\s[^>]*)?>\\s*My\\s+Hobbies\\s*</h1\\s*>[\\s\\S]*?</header\\s*>\\s*(?:<!--[\\s\\S]*?-->\\s*)*<main(?:\\s[^>]*)?>\\s*<section(?:\\s[^>]*)?>[\\s\\S]*?</section\\s*>\\s*</main\\s*>\\s*(?:<!--[\\s\\S]*?-->\\s*)*<footer(?:\\s[^>]*)?>[\\s\\S]*?</footer\\s*>",
+                    "domChecks": [
+                      {
+                        "selector": "header h1",
+                        "text": "My Hobbies"
+                      },
+                      {
+                        "selector": "main section h2",
+                        "text": "Drawing"
+                      },
+                      {
+                        "selector": "main section p",
+                        "count": 1
+                      },
+                      {
+                        "selector": "footer p",
+                        "text": "Made by me"
+                      },
+                      {
+                        "selector": "header ~ main ~ footer",
+                        "exists": true
+                      }
+                    ]
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Before you try, one quick look at the example.",
+                  "handoff": "Got it? I'll clear the example now.",
+                  "on_correct": "Amazing! A real page with real structure.",
+                  "on_wrong": "Not yet. Go TODO by TODO: header with h1, main with a section, footer with a paragraph.",
+                  "gesture": "invite",
+                  "gesture_on_correct": "celebrateSequence",
+                  "gesture_on_wrong": "gentleCorrectionSequence"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Copy Kofi's page and change the words.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "header, main and footer shape the page.",
+                  "Sections split main into topics.",
+                  "Layout tags say what each part is for."
+                ],
+                "avatar": {
+                  "text": "Amazing! Here's what you learned.",
+                  "gesture": "recapSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "bridge_next",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "You finished HTML Step 8! Next, HTML Step 9: tables.",
+                  "gesture": "goodbyeSequence"
+                },
+                "next": null,
+                "advance": "manual"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

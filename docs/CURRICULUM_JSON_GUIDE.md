@@ -316,12 +316,25 @@ The instructor teaches code from the question’s `code_example`, then asks the 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `code` | string | Code shown/typed by the instructor. Use `\n` for new lines. |
+| `code` | string | Teach **demo** typed by the instructor. May use a different theme than practice. Use `\n` for new lines. |
 | `language` | string | e.g. `javascript`, `html`, `css`, `python`. |
+| `starterCode` | string | Practice skeleton the learner edits (TODO comments OK). **Not** the full answer. |
+| `solutionCode` | string | **Exact practice answer** for “View correct answer”. Prefer this whenever `expectedCode` is a regex or the demo theme differs from practice. Must pass `testCriteria.expectedCode`. |
 | `description` | string | Optional short label. |
 | `explanation` | string | Optional spoken walkthrough of the code. |
 | `autoRun` | boolean | Optional. If `true`, code may run automatically after typing. |
 | `typingSpeed` | number | Optional. Characters per second for typing animation (e.g. `60`). |
+
+**Field contract (do not mix these up):**
+
+| Field | Role | Shown as the answer? |
+|-------|------|----------------------|
+| `code` | Teach demo | Only if it also passes the grader (same theme) |
+| `starterCode` | Practice skeleton | Never (incomplete) |
+| `solutionCode` | Locked practice solution | **Yes — preferred** |
+| `testCriteria.expectedCode` | Grader (`regex:…` or plain) | Never show raw regex |
+
+Full details: [CURRICULUM_CODE_TEST_CONTRACT.md](./CURRICULUM_CODE_TEST_CONTRACT.md).
 
 ### `testCriteria` options
 
@@ -336,7 +349,9 @@ Use one or more checks appropriate to the exercise:
 | `expectedValue` | A variable must equal this value. |
 | `expectedValues` | Multiple acceptable values. |
 | `expectedFunction` | A function with this name must exist. |
-| `expectedCode` | Full code must match a regular expression (string form). |
+| `expectedCode` | Grader: plain source substring, or `regex:…` pattern. **Never** shown raw in View Answer — pair with `solutionCode`. |
+| `solutionCode` | Optional alias for `code_example.solutionCode`. |
+| `domChecks` | Live page checks (selectors, text, counts). |
 | `testCases` | Array of `{ "input": [...], "expected": ... }` for function tests. |
 
 **Example (HTML):**

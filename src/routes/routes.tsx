@@ -22,6 +22,7 @@ import {
 import CourseRunner from "@/components/courses/CourseRunner";
 import DemoSneakPeekPage from "@/pages/app/demo/DemoSneakPeekPage";
 import { CurriculumPreviewPage, CurriculumEditPage } from "@/features/curriculum-preview";
+import { TestEditPage } from "@/features/test-edit";
 import { MarketingToolPage } from "@/features/marketing-tool";
 import { TeacherPlaygroundPage } from "@/features/teacher-playground";
 import { LearningPathwaysPage } from "@/features/learning-pathways";
@@ -38,7 +39,7 @@ interface AppRoute {
   ];
 }
 
-const { DASHBOARD, COURSES, COURSE_QUIZ, LEARNING_PATH, LEGACY_PATHWAYS, DEMO_SNEAK_PEEK, SETTINGS, WISHLISTS, SUPPORT, CURRICULUM_PREVIEW, CURRICULUM_EDIT, MARKETING_TOOL, TESTS, TEST_LANGUAGE, TEST_INTRO, TEST_ATTEMPT, TEST_RESULT } =
+const { DASHBOARD, COURSES, COURSE_QUIZ, LEARNING_PATH, LEGACY_PATHWAYS, DEMO_SNEAK_PEEK, SETTINGS, WISHLISTS, SUPPORT, CURRICULUM_PREVIEW, CURRICULUM_EDIT, TEST_EDIT, MARKETING_TOOL, TESTS, TEST_LANGUAGE, TEST_INTRO, TEST_ATTEMPT, TEST_RESULT } =
   PRIVATE_PATHS;
 
 const {
@@ -153,6 +154,10 @@ export const PRIVATE_ROUTES: AppRoute[] = [
   {
     path: CURRICULUM_EDIT,
     element: <CurriculumEditPage />,
+  },
+  {
+    path: TEST_EDIT,
+    element: <TestEditPage />,
   },
   {
     path: MARKETING_TOOL,

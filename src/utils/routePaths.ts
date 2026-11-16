@@ -33,6 +33,8 @@ export const PRIVATE_PATHS = {
   SETTINGS: "/settings",
   CURRICULUM_PREVIEW: "/curriculum-preview",
   CURRICULUM_EDIT: "/curriculum-edit",
+  /** Admin handoff: edit interactive test JSON (same pattern as curriculum-edit). */
+  TEST_EDIT: "/test-edit",
   MARKETING_TOOL: "/marketing-tool",
   /** Interactive tests (flashcard-style cards, grades and recommendations). */
   TESTS: "/tests",

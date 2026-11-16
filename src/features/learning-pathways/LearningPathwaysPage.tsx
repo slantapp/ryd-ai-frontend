@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowDown, ArrowLeft, ArrowUp, Flag, Loader2, Map as MapIcon, Play, Trophy } from "lucide-react";
+import { ArrowDown, ArrowUp, Flag, Loader2, Map as MapIcon, Trophy } from "lucide-react";
 import {
   fetchLearningPathBrowse,
   fetchVisibleLearningPaths,
@@ -15,14 +15,13 @@ import { buildPathway, pathwayId, type BuiltPathway } from "./fromApi";
 import { computePathProgress, type PathProgress } from "./lessonProgress";
 import { findNode } from "./progress";
 import { usePathwayUi } from "./store";
-import type { Badge, PathNodeState, PathUnit, Pathway } from "./types";
+import type { PathNodeState, PathUnit, Pathway } from "./types";
 import { UnitSection } from "./components/UnitSection";
-import { PathwaySwitcher } from "./components/PathwaySwitcher";
 import { PathBrowser } from "./components/PathBrowser";
 import { CelebrationModal, type CelebrationData } from "./components/Celebration";
 import { GuidebookDialog } from "./components/GuidebookDialog";
-import { pathwayIcon } from "./components/icons";
-import { BadgesCard, DailyGoalCard, StatChips, StreakCard } from "./components/SideRail";
+import { PathStickyBar } from "./components/PathStickyBar";
+import { PathSidePanel } from "./components/PathRail";
 import "./pathways.css";
 
 /** v2 courses keep the current beat in a local draft that can be ahead of the saved one. */
@@ -369,104 +368,35 @@ function PathwayJourney({
   };
 
   const finished = progress.totalCount > 0 && progress.completedCount === progress.totalCount;
-  const badges: Badge[] = useMemo(
-    () => [
-      ...(stats?.badges ?? []),
-      {
-        id: "graduate",
-        title: "Graduate",
-        description: "Finish a whole learning path",
-        icon: "graduation",
-        unlocked: Object.values(progressByPath).some((p) => p.totalCount > 0 && p.completedCount === p.totalCount),
-      },
-    ],
-    [stats, progressByPath],
-  );
-
-  const PathIcon = pathwayIcon(pathway.icon);
+  const position = pathPosition(pathway, currentNodeId);
 
   return (
     <div className="min-h-full">
-      <div className="mx-auto grid max-w-[1180px] gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mx-auto grid max-w-[1180px] items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
-          {/* Header */}
-          <header className="relative flex flex-wrap items-end justify-between gap-4">
-            <div className="relative">
-              {onBackToBrowse && (
-                <button
-                  type="button"
-                  onClick={onBackToBrowse}
-                  className="mb-2 inline-flex items-center gap-1.5 font-inter text-sm font-semibold text-[#AA468E] transition-opacity hover:opacity-80"
-                >
-                  <ArrowLeft className="size-4" aria-hidden />
-                  All paths
-                </button>
-              )}
-              <p className="app-type-eyebrow">Learning Path</p>
-              <h1 className="app-type-page-title mt-1">Chart your course, one lesson at a time.</h1>
-              <p className="app-type-page-subtitle mt-1 max-w-lg">
-                Every lesson lights up as you learn it, and glows gold once you&apos;ve finished its practice questions.
-              </p>
-            </div>
-            <div className="relative">
-              <StatChips stats={stats} />
-            </div>
-          </header>
-
-          {!onBackToBrowse && (
-            <div className="mt-5">
-              <PathwaySwitcher
-                pathways={pathways}
-                activeId={pathway.id}
-                percents={percents}
-                onSelect={ui.setActivePathway}
-              />
-            </div>
-          )}
+          <PathStickyBar
+            pathway={pathway}
+            pathways={pathways}
+            percent={progress.percent}
+            unitNumber={position.unitNumber}
+            unitTotal={position.unitTotal}
+            lessonNumber={position.lessonNumber}
+            lessonTotal={position.lessonTotal}
+            finished={finished}
+            onBack={onBackToBrowse}
+            onSelectPath={ui.setActivePathway}
+            onUpNext={!finished && currentNodeId ? continueCurrent : undefined}
+          />
 
           {/* The journey — one calm white canvas */}
           <div
             key={pathway.id}
-            className="lp-rise relative mt-5 overflow-clip rounded-[32px] border border-[#EADCE8] bg-linear-to-b from-[#FBF3FA] via-white to-white px-4 pb-12 pt-5 shadow-[0_10px_30px_-14px_rgba(170,70,142,0.22)] sm:px-8 sm:pt-7"
+            className="lp-rise relative overflow-clip rounded-[32px] border border-[#EADCE8] bg-linear-to-b from-[#FBF3FA] via-white to-white px-4 pb-12 pt-8 shadow-[0_10px_30px_-14px_rgba(170,70,142,0.22)] sm:px-8"
           >
             {/* Faint polka dots behind the trail */}
             <div className="lp-dots pointer-events-none absolute inset-0 opacity-[0.06]" aria-hidden />
 
-            {/* Journey header */}
-            <div className="relative flex flex-wrap items-center gap-4 rounded-3xl border border-[#EADCE8] bg-linear-to-r from-[#F8EAF3] via-[#FAF5FF] to-[#F3ECFE] p-4 shadow-[0_6px_20px_-10px_rgba(170,70,142,0.25)] sm:p-5">
-              <JourneyRing percent={progress.percent} palette={pathway.palette}>
-                <PathIcon className="size-6" style={{ color: pathway.palette.base }} strokeWidth={2.1} />
-              </JourneyRing>
-              <div className="min-w-0 flex-1">
-                <p className="font-inter text-[10px] font-bold uppercase tracking-[0.2em] text-[#5C5468]">
-                  Your journey · {progress.completedCount}/{progress.totalCount} lessons · {progress.percent}%
-                </p>
-                <h2 className="mt-0.5 truncate font-solway text-xl font-bold text-[#132050] sm:text-2xl">{pathway.title}</h2>
-                <p className="mt-0.5 truncate font-inter text-sm text-[#5C5468]">
-                  {finished ? "Every lesson complete. You're a legend!" : currentNode ? `Up next: ${currentNode.title}` : "Pick a lesson below to get started."}
-                </p>
-              </div>
-              {!finished && currentNodeId && progress.completedCount > 0 && (
-                <button
-                  type="button"
-                  onClick={continueCurrent}
-                  className="group flex h-12 items-center gap-2 rounded-full bg-(--lp-cta) pl-5 pr-2.5 font-solway text-sm font-bold text-white shadow-[0_8px_18px_-8px_rgba(170,70,142,0.6)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-(--lp-cta-hover) active:scale-[0.98] max-sm:w-full max-sm:justify-center"
-                  style={
-                    {
-                      "--lp-cta": pathway.palette.base,
-                      "--lp-cta-hover": pathway.palette.shade,
-                    } as React.CSSProperties
-                  }
-                >
-                  Continue
-                  <span className="flex size-8 items-center justify-center rounded-full bg-white/20 text-white transition-transform group-hover:translate-x-0.5">
-                    <Play className="size-3" fill="currentColor" />
-                  </span>
-                </button>
-              )}
-            </div>
-
-            <div className="relative mt-12 space-y-16">
+            <div className="relative space-y-16">
               {pathway.units.map((unit, i) => {
                 const course = unit.courseSlug ? progress.byCourse[unit.courseSlug] : undefined;
                 const holdsUpNext = !!currentNodeId && unit.nodes.some((n) => n.id === currentNodeId);
@@ -512,21 +442,20 @@ function PathwayJourney({
             )}
           </div>
 
-          {/* Rail content below the map on smaller screens */}
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:hidden">
-            <StreakCard stats={stats} />
-            <DailyGoalCard stats={stats} />
-            <div className="sm:col-span-2">
-              <BadgesCard badges={badges} />
-            </div>
-          </div>
         </div>
 
-        {/* Stays in view while the path scrolls; scrolls itself if taller than the screen. */}
-        <aside className="hidden flex-col gap-4 xl:sticky xl:top-2 xl:flex xl:max-h-[calc(100vh-7rem)] xl:self-start xl:overflow-y-auto scrollbar-hide">
-          <StreakCard stats={stats} />
-          <DailyGoalCard stats={stats} />
-          <BadgesCard badges={badges} />
+        {/* Below the map on small screens; a sticky column beside it on wide screens. */}
+        <aside className="mt-6 flex flex-col gap-4 xl:sticky xl:top-1 xl:mt-0 xl:max-h-[calc(100vh-7rem)] xl:self-start xl:overflow-y-auto scrollbar-hide">
+          <PathSidePanel
+            pathway={pathway}
+            pathways={pathways}
+            currentNodeId={currentNodeId}
+            currentLessonTitle={currentNode?.title ?? null}
+            percents={percents}
+            stats={stats}
+            onSelectPath={ui.setActivePathway}
+            onViewAll={onBackToBrowse}
+          />
         </aside>
       </div>
 
@@ -536,39 +465,28 @@ function PathwayJourney({
   );
 }
 
-function JourneyRing({
-  percent,
-  palette,
-  children,
-}: {
-  percent: number;
-  palette: Pathway["palette"];
-  children: React.ReactNode;
-}) {
-  const r = 27;
-  const c = 2 * Math.PI * r;
-  return (
-    <div className="relative flex size-16 shrink-0 items-center justify-center">
-      <svg viewBox="0 0 64 64" className="absolute inset-0 size-16 -rotate-90" aria-hidden>
-        <circle cx="32" cy="32" r={r} fill="none" stroke="#FFFFFF" strokeOpacity={0.9} strokeWidth="4" />
-        <circle
-          cx="32"
-          cy="32"
-          r={r}
-          fill="none"
-          stroke={palette.base}
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - percent / 100)}
-          className="transition-[stroke-dashoffset] duration-1000 ease-out"
-        />
-      </svg>
-      <span className="flex size-11 items-center justify-center rounded-full bg-white shadow-[0_2px_6px_-2px_rgba(170,70,142,0.3)]">
-        {children}
-      </span>
-    </div>
-  );
+function pathPosition(pathway: Pathway, currentNodeId: string | null) {
+  const nodes = pathway.units.flatMap((unit) => unit.nodes);
+  const lessonTotal = nodes.length;
+  const index = currentNodeId ? nodes.findIndex((node) => node.id === currentNodeId) : -1;
+  const lessonNumber = index >= 0 ? index + 1 : lessonTotal;
+
+  let unitTotal = 0;
+  const unitNumberById = new Map<string, number>();
+  for (const unit of pathway.units) {
+    if (unit.sectionTitle) unitTotal += 1;
+    unitNumberById.set(unit.id, Math.max(unitTotal, 1));
+  }
+  if (!unitTotal) unitTotal = pathway.units.length || 1;
+  const currentUnit =
+    (currentNodeId && pathway.units.find((unit) => unit.nodes.some((node) => node.id === currentNodeId))) ||
+    pathway.units[pathway.units.length - 1];
+  return {
+    lessonNumber: lessonNumber || 0,
+    lessonTotal,
+    unitNumber: currentUnit ? (unitNumberById.get(currentUnit.id) ?? 1) : 1,
+    unitTotal,
+  };
 }
 
 function FinishLine({ finished, title }: { finished: boolean; title: string }) {

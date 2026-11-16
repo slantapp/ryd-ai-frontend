@@ -29,7 +29,7 @@ import {
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
 import { LessonStartGate } from "@/components/courses/LessonStartGate";
-import { wantsAutoStartLesson } from "@/components/courses/autoStartLesson";
+import { playLessonId, wantsAutoStartLesson } from "@/components/courses/autoStartLesson";
 import { CourseTestLink } from "@/features/tests/components/CourseTestLink";
 import {
   clearV2LessonDraft,
@@ -72,7 +72,9 @@ export default function CourseDetailsV2() {
   const [resumeDraft, setResumeDraft] = useState<V2LessonDraft | null>(null);
   const [autoStartAttempted, setAutoStartAttempted] = useState(false);
   const autoStartDone = useRef(false);
-  const autoStartLesson = wantsAutoStartLesson(useLocation().state);
+  const location = useLocation();
+  const requestedLessonId = playLessonId(location.search);
+  const autoStartLesson = wantsAutoStartLesson(location.state) || Boolean(requestedLessonId);
   const courseCompletionSpeechRef = useRef(false);
 
   const {
@@ -125,6 +127,23 @@ export default function CourseDetailsV2() {
     void (async () => {
       await useCoursesStore.getState().hydrateCourseProgressFromApi(exercise);
       if (cancelled) return;
+
+      if (requestedLessonId) {
+        const target = findLessonV2ById(curriculum, requestedLessonId);
+        if (target) {
+          clearV2LessonDraft(
+            typeof window !== "undefined" ? window.localStorage : null,
+            exercise,
+            target.id,
+          );
+          setCurrentLesson(target);
+          setLessonStarted(false);
+          setCanResume(false);
+          setResumeDraft(null);
+          setProgressReady(true);
+          return;
+        }
+      }
 
       const stored = getCourseProgress(exercise);
 

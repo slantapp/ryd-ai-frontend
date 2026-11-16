@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { playCorrectOrStreakSfx, playLearningSfx } from "@/features/curriculum-preview/v2/learningSfx";
 import { answerQuestion, apiErrorMessage, apiErrorStatus, fetchAttempt, submitAttempt } from "../api";
-import { testIntroPath, testResultPath } from "../paths";
+import { referenceGuidePath, testIntroPath, testResultPath } from "../paths";
 import { CardShell } from "../cards/CardShell";
 import type { CardFeedback } from "../cards/cardStyles";
 import { ChoiceCard, FillBlankCard, MatchPairsCard, TrueFalseCard, type BlankStatus } from "../cards/QuestionCards";
@@ -63,6 +63,7 @@ type CardState = {
   firstTryCorrect?: boolean;
   correctAnswer?: unknown;
   explanation?: string | null;
+  lessonRef?: { courseSlug: string; lessonId: string | null; lessonTitle: string | null } | null;
   /** choice id, boolean, or word chip */
   selected: unknown;
   blankStatus: BlankStatus;
@@ -124,6 +125,7 @@ function initialCardState(q: AttemptQuestion, instant: boolean): CardState {
     firstTryCorrect: f?.firstTryCorrect,
     correctAnswer: f?.correctAnswer,
     explanation: f?.explanation ?? null,
+    lessonRef: f?.lessonRef?.courseSlug && f.lessonRef.lessonId ? f.lessonRef : null,
     selected: (() => {
       if (f?.value == null) return null;
       if (q.type === "spot_mistake" && typeof f.value === "number") return f.value;
@@ -294,7 +296,11 @@ export default function TestAttemptPage() {
       if (!question) return null;
       setBusy(true);
       try {
-        return await answerQuestion(attemptId, question.id, value);
+        const res = await answerQuestion(attemptId, question.id, value);
+        if (res?.lessonRef?.courseSlug && res.lessonRef.lessonId) {
+          patch(question.id, { lessonRef: res.lessonRef });
+        }
+        return res;
       } catch (e) {
         await handleAnswerError(e);
         return null;
@@ -302,7 +308,7 @@ export default function TestAttemptPage() {
         setBusy(false);
       }
     },
-    [attemptId, question, handleAnswerError],
+    [attemptId, question, handleAnswerError, patch],
   );
 
   const scoreOutcome = (firstTryCorrect: boolean) => {
@@ -805,9 +811,13 @@ export default function TestAttemptPage() {
     if (question.type === "speed_round") {
       feedback = null;
     } else {
+      const guideHref =
+        state.lessonRef?.courseSlug && state.lessonRef.lessonId
+          ? referenceGuidePath({ courseSlug: state.lessonRef.courseSlug, lessonId: state.lessonRef.lessonId })
+          : null;
       feedback = partialOk
         ? { tone: "correct", title: "Nice — spot on!", body: state.explanation }
-        : { tone: "incorrect", title: "Not quite — tap Next to continue", body: state.explanation };
+        : { tone: "incorrect", title: "Not quite — tap Next to continue", body: state.explanation, guideHref };
     }
   } else if (!instant && state.done) {
     feedback = { tone: "neutral", title: "Answer saved", body: "You'll see how you did when you finish the test." };

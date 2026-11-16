@@ -67,7 +67,7 @@ import {
 import { CourseCompletionCelebration } from "@/components/courses/CourseCompletionCelebration";
 import { CourseProgressResetLink } from "@/components/courses/CourseProgressResetLink";
 import { LessonStartGate } from "@/components/courses/LessonStartGate";
-import { wantsAutoStartLesson } from "@/components/courses/autoStartLesson";
+import { playLessonId, wantsAutoStartLesson } from "@/components/courses/autoStartLesson";
 import { CourseTestLink } from "@/features/tests/components/CourseTestLink";
 import {
   createLearningStreakState,
@@ -175,7 +175,8 @@ function MathCourseDetailsInner() {
   const [progressHydrated, setProgressHydrated] = useState(false);
   const [autoStartAttempted, setAutoStartAttempted] = useState(false);
   const autoStartDone = useRef(false);
-  const autoStartLesson = wantsAutoStartLesson(location.state);
+  const requestedLessonId = playLessonId(location.search);
+  const autoStartLesson = wantsAutoStartLesson(location.state) || Boolean(requestedLessonId);
 
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const currentLessonRef = useRef<Lesson | null>(null);
@@ -1666,6 +1667,25 @@ function MathCourseDetailsInner() {
       try {
       await useCoursesStore.getState().hydrateCourseProgressFromApi(slug);
       if (cancelled) return;
+
+      if (requestedLessonId) {
+        const target = findLessonById(requestedLessonId, curriculum);
+        if (target) {
+          const index = getLessonIndexInCurriculum(target, curriculum);
+          if (typeof index === "number") lessonFlatIndexRef.current = index;
+          setCurrentLesson(target);
+          setLessonStarted(false);
+          setCanResume(false);
+          pendingResumeRef.current = {
+            lesson: target,
+            questionIndex: 0,
+            canStartQuestions: false,
+            lessonComplete: false,
+          };
+          setProgressHydrated(true);
+          return;
+        }
+      }
 
       const stored = useCoursesStore.getState().getCourseProgress(slug);
       if (!stored) {

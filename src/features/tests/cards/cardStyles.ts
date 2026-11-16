@@ -41,6 +41,8 @@ export type CardFeedback = {
   tone: "correct" | "incorrect" | "neutral";
   title: string;
   body?: string | null;
+  /** Replay link for the lesson behind a missed question. */
+  guideHref?: string | null;
 };
 
 /** Option / chip colours shared by every card (guide: idle, correct, incorrect, dim, selected). */

@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, BookOpen, Check, ClipboardList, Clock, Loader2, 
 import { cn } from "@/lib/utils";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 import { apiErrorMessage, apiErrorStatus, fetchResult, startAttempt } from "../api";
-import { coursePath, formatDuration, testAttemptPath, testIntroPath } from "../paths";
+import { coursePath, formatDuration, referenceGuidePath, testAttemptPath, testIntroPath } from "../paths";
 import { TYPE_META } from "../cards/cardStyles";
 import { CodeBlock } from "../cards/CodeBlock";
 import { GradeBadge } from "../components/TestBits";
@@ -278,6 +278,17 @@ function ReviewCard({ item, n, language }: { item: ReviewItem; n: number; langua
       <p className="m-0 font-semibold text-[#1F1B24]">{q.prompt}</p>
       <AnswerLines item={item} />
       {item.explanation ? <p className="rounded-xl bg-[#F6F3FA] px-3 py-2 text-[13px] text-[#4B4458]">{item.explanation}</p> : null}
+      {!right && item.lessonRef?.courseSlug && item.lessonRef.lessonId ? (
+        <a
+          href={referenceGuidePath({ courseSlug: item.lessonRef.courseSlug, lessonId: item.lessonRef.lessonId })}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#FEF2F2] px-3 py-1.5 text-[13px] font-bold text-[#9F1239] hover:bg-[#FDE8E8]"
+        >
+          <BookOpen className="size-3.5" aria-hidden />
+          Reference Guide
+        </a>
+      ) : null}
     </article>
   );
 }

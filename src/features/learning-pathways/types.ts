@@ -64,6 +64,10 @@ export type Pathway = {
   icon: string;
   palette: UnitPalette;
   units: PathUnit[];
+  /** beginner | intermediate | advanced, when the path has one. */
+  level?: string | null;
+  /** Track name, e.g. "Python" or "HTML". */
+  subcategoryTitle?: string | null;
 };
 
 export type Badge = {

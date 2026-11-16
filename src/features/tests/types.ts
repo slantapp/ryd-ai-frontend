@@ -169,6 +169,8 @@ export interface LiveFeedback {
   explanation?: string | null;
   correctAnswer?: unknown;
   matched?: { left: string; right: string }[];
+  /** Lesson to replay when this card was missed. */
+  lessonRef?: ReviewLesson | null;
 }
 
 export type AttemptQuestion = PublicQuestion & { feedback: LiveFeedback | null };
@@ -186,6 +188,8 @@ export interface AnswerResponse {
   /** Learning-mode try count after this submit. */
   tries?: number;
   explanation?: string | null;
+  /** Set when this answer was wrong and the question has a lesson to replay. */
+  lessonRef?: ReviewLesson | null;
   correctAnswer?: unknown;
   matchedCount?: number;
   /** Spot-the-bug: line-only check result. */

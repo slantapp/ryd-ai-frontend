@@ -16,8 +16,8 @@ function curve(samples: Point[]): string {
 }
 
 /**
- * Winding path for the home hero. Done lessons are filled, the current one
- * shows a play marker, and the last node is the certificate.
+ * Winding path for the home hero. Done lessons are filled, and the current one
+ * shows a play marker.
  */
 export function PathMap({
   completed,
@@ -36,11 +36,11 @@ export function PathMap({
       : 0;
   const current = finished ? stops : doneStops;
 
+  const nodeT = (index: number) => (stops <= 1 ? 1 : index / (stops - 1));
   const samples = Array.from({ length: 48 }, (_, i) => pointAt(i / 47));
-  const doneT = current <= 0 ? 0 : current / stops;
+  const doneT = finished ? 1 : nodeT(Math.min(current, stops - 1));
   const doneSamples = samples.filter((_, i) => i / 47 <= doneT + 0.001);
-  const nodes = Array.from({ length: stops }, (_, i) => pointAt((i + 0.5) / stops));
-  const end = pointAt(1);
+  const nodes = Array.from({ length: stops }, (_, i) => pointAt(nodeT(i)));
 
   const youAreHere = !finished && current < stops ? nodes[current] : null;
 
@@ -49,7 +49,7 @@ export function PathMap({
       role="img"
       aria-label={
         finished
-          ? "Path complete, certificate earned"
+          ? "Path complete"
           : `${completed} lessons done, you are on lesson ${completed + 1}${total ? ` of ${total}` : ""}`
       }
       viewBox="0 0 1000 196"
@@ -61,11 +61,6 @@ export function PathMap({
           <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
           <stop offset="42%" stopColor="#F6B6E4" stopOpacity="0.55" />
           <stop offset="100%" stopColor="#F23CAD" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient id="pathCertGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#FFE08A" stopOpacity="0.95" />
-          <stop offset="45%" stopColor="#F5B423" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#F5B423" stopOpacity="0" />
         </radialGradient>
       </defs>
       <path d={curve(samples)} fill="none" stroke="rgba(255,186,230,0.45)" strokeWidth="3" strokeDasharray="1.6 8" strokeLinecap="round" />
@@ -105,16 +100,6 @@ export function PathMap({
           </g>
         );
       })}
-
-      <circle cx={end.x} cy={end.y} r="34" fill="url(#pathCertGlow)" />
-      <circle cx={end.x} cy={end.y} r="16" fill={finished ? "#FFE7A3" : "#F6C453"} />
-      <path
-        d={`M ${end.x} ${end.y - 7.5} l 2.1 4.6 5 .6 -3.7 3.4 1 4.9 -4.4 -2.5 -4.4 2.5 1 -4.9 -3.7 -3.4 5 -.6 z`}
-        fill="#FFF8E6"
-      />
-      <text x={end.x} y={end.y + 36} textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="13" fill="rgba(255,255,255,0.82)">
-        Certificate
-      </text>
 
       {youAreHere ? (
         <g>

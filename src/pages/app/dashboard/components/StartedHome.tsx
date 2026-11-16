@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, Flame, Headphones, Play } from "lucide-react";
 import type { DashboardData, DashboardPath, DashboardResume } from "@/api/dashboard";
 import type { LearningStats } from "@/api/learningStats";
+import { CourseRecommendedTests } from "@/features/learning-pathways/components/PathRail";
 import { fetchResult } from "@/features/tests/api";
-import { testAttemptPath, testIntroPath, testResultPath } from "@/features/tests/paths";
+import { testResultPath } from "@/features/tests/paths";
 import type { AttemptResult } from "@/features/tests/types";
 import { useCoursesStore, type Course } from "@/stores/coursesStore";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
@@ -124,7 +125,6 @@ export function StartedHome({
   const completedLessons = activePath?.completedLessons ?? resumeForPath?.lessonNumber ?? 0;
   const totalLessons = activePath?.totalLessons || resumeForPath?.lessonCount || 0;
 
-  const suggestion = tests?.suggestions[0] ?? null;
   const accuracy = tests?.latest?.percent ?? tests?.best?.percent ?? null;
   const weekMinutes = stats ? stats.last7Days.reduce((sum, day) => sum + day.minutes, 0) : 0;
   const minutePct = Math.min(100, Math.round((weekMinutes / WEEKLY_MINUTE_GOAL) * 100));
@@ -139,17 +139,11 @@ export function StartedHome({
     navigate(PRIVATE_PATHS.LEARNING_PATH);
   };
 
-  const openQuiz = () => {
-    if (!suggestion) {
-      navigate(PRIVATE_PATHS.TESTS);
-      return;
-    }
-    navigate(
-      suggestion.openAttemptId
-        ? testAttemptPath(suggestion.testId, suggestion.openAttemptId)
-        : testIntroPath(suggestion.testId),
-    );
-  };
+  const selectedCourseSlug = activePath ? activePath.nextCourse?.slug ?? null : continueSlug;
+  const selectedCourseTitle =
+    activePath?.nextCourse?.title || continueCourse?.title || activePath?.currentUnit || activePath?.title || "This course";
+  const selectedLessonTitle =
+    resumeForPath && resumeForPath.slug === selectedCourseSlug ? resumeForPath.lessonTitle : null;
 
   return (
     <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-6">
@@ -190,13 +184,6 @@ export function StartedHome({
                     </button>
                   );
                 })}
-                <button
-                  type="button"
-                  onClick={() => navigate(PRIVATE_PATHS.LEARNING_PATH)}
-                  className="min-h-9 cursor-pointer rounded-full border border-dashed border-white/35 bg-white/5 px-3.5 text-[13px] font-semibold text-white/80 hover:bg-white/10"
-                >
-                  + Add a subject
-                </button>
             </div>
             <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#F3B4DE]">{eyebrow}</p>
             <h1 id="pathTitle" className="font-solway text-[32px] leading-[1.05] sm:text-[42px]">
@@ -279,50 +266,11 @@ export function StartedHome({
           </div>
         </section>
 
-        <section
-          aria-labelledby="testTitle"
-          className="flex flex-col gap-3.5 rounded-[20px] border border-[#E7E4EE] bg-white p-6"
-        >
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 id="testTitle" className="font-solway text-[22px] text-[#1C1B3A]">
-              Test your knowledge
-            </h2>
-            {suggestion ? (
-              <span className="shrink-0 text-[13px] text-[#5E5C72]">
-                {suggestion.questionCount ? `${suggestion.questionCount} questions` : "Quiz"}
-                {suggestion.timeLimitMinutes ? ` · ${suggestion.timeLimitMinutes} min` : ""}
-              </span>
-            ) : null}
-          </div>
-          <div className="relative mx-1.5 mt-1 h-[148px]" aria-hidden>
-            <div className="absolute inset-x-4 -bottom-1.5 top-2.5 rotate-3 rounded-[14px] bg-[#E9CFE2]" />
-            <div className="absolute inset-x-2 top-1 bottom-0 -rotate-2 rounded-[14px] bg-[#F7ECF4]" />
-            <div className="absolute inset-0 flex flex-col justify-between rounded-[14px] bg-[#1C1B3A] p-4">
-              <p className="line-clamp-2 font-mono text-sm text-[#E9E4F0]">
-                {suggestion?.title || "A short quiz on what you’ve learned"}
-              </p>
-              <p className="text-[13px] text-[#CFCBE0]">
-                {suggestion?.courseTitle || "True or false, from your lessons"}
-              </p>
-              <div className="flex gap-2">
-                <span className="flex-1 rounded-lg border border-[#55537A] py-1.5 text-center text-[13px] font-semibold text-white">
-                  True
-                </span>
-                <span className="flex-1 rounded-lg border border-[#55537A] py-1.5 text-center text-[13px] font-semibold text-white">
-                  False
-                </span>
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={openQuiz}
-            className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl bg-[#9B3A86] font-bold text-white transition hover:brightness-105"
-          >
-            {suggestion?.openAttemptId ? "Resume quiz" : "Start quiz"}
-            <ArrowRight className="size-4" />
-          </button>
-        </section>
+        <CourseRecommendedTests
+          courseSlug={selectedCourseSlug}
+          courseTitle={selectedCourseTitle}
+          lessonTitle={selectedLessonTitle}
+        />
 
         {latestAttemptId && review === null ? (
           <section className="flex flex-col justify-center rounded-[20px] border border-[#E7E4EE] bg-white p-6">

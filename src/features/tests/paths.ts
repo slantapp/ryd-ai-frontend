@@ -16,6 +16,12 @@ export const testResultPath = (attemptId: number | string) =>
 
 export const coursePath = (slug: string) => `${PRIVATE_PATHS.COURSES}/${slug}`;
 
+/** Opens the lesson for a missed question and starts it playing. */
+export function referenceGuidePath(ref: { courseSlug: string; lessonId: string }) {
+  const params = new URLSearchParams({ playLesson: ref.lessonId });
+  return `${coursePath(ref.courseSlug)}?${params.toString()}`;
+}
+
 export function formatDuration(seconds: number | null | undefined): string {
   if (seconds == null) return "—";
   const m = Math.floor(seconds / 60);

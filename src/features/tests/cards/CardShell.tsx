@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowRight, CheckCircle2, Code2, Flame, XCircle } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, Code2, Flame, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TestQuestionType } from "../types";
 import { TYPE_META, type CardFeedback } from "./cardStyles";
@@ -88,6 +88,17 @@ export function CardShell({
             <div className="flex flex-col gap-1">
               <strong className="text-sm">{feedback.title}</strong>
               {feedback.body ? <span className="text-[13px] font-medium opacity-85">{feedback.body}</span> : null}
+              {feedback.tone === "incorrect" && feedback.guideHref ? (
+                <a
+                  href={feedback.guideHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-flex w-fit items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[13px] font-bold text-[#9F1239] shadow-sm hover:bg-[#FFF1F2]"
+                >
+                  <BookOpen className="size-3.5" aria-hidden />
+                  Reference Guide
+                </a>
+              ) : null}
             </div>
           </div>
           {onNext ? <NextButton onClick={onNext} label={nextLabel} disabled={nextDisabled} /> : null}

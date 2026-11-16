@@ -79,6 +79,8 @@ export function buildPathway(api: ApiLearningPath, getCurriculumJson: (slug: str
       icon: api.icon,
       palette,
       units,
+      level: api.level ?? null,
+      subcategoryTitle: api.subcategory?.title ?? null,
     },
     outlines,
   };

@@ -89,10 +89,11 @@ function tapBlocksFromPage(page: string): TapBlock[] {
   return blocks;
 }
 
-function tapButtonStyle(
-  item: TapTarget,
-  opts: { picked: boolean; revealed: boolean; correct: boolean },
-): { border: string; bg: string; noteBg: string; dim: boolean } {
+function tapButtonStyle(opts: {
+  picked: boolean;
+  revealed: boolean;
+  correct: boolean;
+}): { border: string; bg: string; noteBg: string; dim: boolean } {
   const { picked, revealed, correct } = opts;
   if (revealed) {
     if (correct && picked) return { border: "2px solid #16A34A", bg: "#ECFDF3", noteBg: "#16A34A", dim: false };
@@ -152,7 +153,7 @@ export function TapElementCard({
   const renderTap = (item: TapTarget, outside = false) => {
     const isPicked = picked.has(item.id);
     const isCorrect = correct.has(item.id);
-    const style = tapButtonStyle(item, { picked: isPicked, revealed, correct: isCorrect });
+    const style = tapButtonStyle({ picked: isPicked, revealed, correct: isCorrect });
     const note = revealed ? tapNotes?.[item.id] : null;
     const missed = revealed && isCorrect && !isPicked;
     return (

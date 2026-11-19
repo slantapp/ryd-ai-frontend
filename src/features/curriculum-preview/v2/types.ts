@@ -5,9 +5,11 @@ import type {
   CurriculumLevel,
   Question,
 } from "../types";
+import type { CurriculumSay } from "@/data/curriculumData";
+import type { MathDiagram } from "@/utils/mathDiagram";
 import type { AvatarGesture } from "./avatarGesture";
 
-export type { CodeExample, FormulaExample, Question };
+export type { CodeExample, FormulaExample, Question, CurriculumSay, MathDiagram };
 export type { AvatarGesture, AvatarGestureName } from "./avatarGesture";
 export { AVATAR_GESTURE_NAMES } from "./avatarGesture";
 
@@ -72,6 +74,8 @@ interface BeatBase {
   phase?: BeatPhase;
   advance: BeatAdvance;
   avatar?: BeatAvatarLines;
+  /** Spoken overrides for on-screen fields (maths). */
+  say?: CurriculumSay;
 }
 
 export interface SpeakBeat extends BeatBase {
@@ -88,6 +92,8 @@ export interface DisplayBeat extends BeatBase {
    * (avatar.text / title only). Default: true (student-friendly authors should set false for long bodies).
    */
   speak_body?: boolean;
+  /** Optional maths diagram above the body. */
+  diagram?: MathDiagram;
 }
 
 export interface MediaBeat extends BeatBase {
@@ -113,6 +119,8 @@ export interface QuestionBeat extends BeatBase {
   type: "question";
   question: Question;
   advance: "on_answer";
+  /** Optional diagram above the question (maths). */
+  diagram?: MathDiagram;
   /** Student retry loop — wrong answers stay on the beat until max attempts. */
   retry?: QuestionRetry;
 }

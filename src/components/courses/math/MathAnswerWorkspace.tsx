@@ -34,6 +34,12 @@ export default function MathAnswerWorkspace({
   speakingWait = false,
   compact = false,
 }: MathAnswerWorkspaceProps) {
+  const showSideBySide =
+    isSubmitted &&
+    isCorrect === false &&
+    showExpected &&
+    !!expectedAnswer;
+
   return (
     <div className={cn("min-w-0", compact ? "space-y-3" : "space-y-4 sm:space-y-5")}>
       <div className="min-w-0">
@@ -41,7 +47,7 @@ export default function MathAnswerWorkspace({
           Your turn
         </p>
         <h3 className="text-lg font-bold leading-snug text-gray-900 sm:text-xl">
-          <MathText>{question}</MathText>
+          <MathText mode="marked">{question}</MathText>
         </h3>
       </div>
 
@@ -72,6 +78,7 @@ export default function MathAnswerWorkspace({
             "w-full min-w-0 rounded-xl border-2 px-3 py-3 text-base font-medium text-gray-900 outline-none transition-colors sm:px-4 sm:py-3.5 sm:text-lg",
             "border-primary/20 focus:border-primary focus:ring-4 focus:ring-primary/10",
             (disabled || isSubmitted) && "cursor-not-allowed bg-gray-50 opacity-80",
+            showSideBySide && "border-rose-300 bg-rose-50/40",
           )}
         />
         <p className="mt-2 text-xs text-gray-500">
@@ -121,7 +128,7 @@ export default function MathAnswerWorkspace({
           ) : (
             <XCircle className="mt-0.5 size-5 shrink-0 text-rose-600 sm:size-6" />
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 space-y-1">
             <p
               className={cn(
                 "text-sm font-bold sm:text-base",
@@ -134,11 +141,17 @@ export default function MathAnswerWorkspace({
                   ? "Not quite — try again."
                   : "Not quite — let's look at the idea together."}
             </p>
-            {!isCorrect && showExpected && expectedAnswer && (
-              <p className="mt-1 break-words text-xs text-rose-700 sm:text-sm">
-                Expected answer:{" "}
-                <MathText className="font-semibold">{expectedAnswer}</MathText>
-              </p>
+            {showSideBySide && (
+              <div className="mt-1 space-y-0.5 text-xs sm:text-sm">
+                <p className="break-words text-rose-800">
+                  <span className="font-semibold">Your answer:</span>{" "}
+                  <span className="font-mono">{value || "—"}</span>
+                </p>
+                <p className="break-words text-emerald-800">
+                  <span className="font-semibold">Right answer:</span>{" "}
+                  <span className="font-mono">{expectedAnswer}</span>
+                </p>
+              </div>
             )}
           </div>
         </div>

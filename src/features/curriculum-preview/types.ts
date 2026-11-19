@@ -4,13 +4,24 @@ export type { CodeExample, FormulaExample };
 
 export interface Question {
   id?: string;
-  type: "multiple_choice" | "true_false" | "code_test" | "formula_test";
+  type:
+    | "multiple_choice"
+    | "true_false"
+    | "code_test"
+    | "formula_test"
+    | "number_line_place";
   question: string;
   options?: string[];
-  answer?: string | boolean;
+  answer?: string | boolean | number;
   explanation?: string;
   code_example?: CodeExample;
   formula_example?: FormulaExample;
+  diagram?: import("@/utils/mathDiagram").MathDiagram;
+  say?: import("@/data/curriculumData").CurriculumSay;
+  keyboard?: string[];
+  min?: number;
+  max?: number;
+  step?: number;
   /** Input for this question when it must differ from `code_example.stdin`. */
   stdin?: string;
   testCriteria?: {
@@ -23,6 +34,7 @@ export interface Question {
     expectedJS?: string;
     expectedCode?: string;
     expectedFormula?: string;
+    accept?: string[];
     expectedOutput?: string;
     expectedRows?: string[][];
     tests?: Array<{ call: string; expect: string }>;

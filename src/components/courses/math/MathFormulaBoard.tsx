@@ -17,7 +17,13 @@ export default function MathFormulaBoard({
   compact = false,
   className,
 }: MathFormulaBoardProps) {
-  const formula = formatFormulaBoardText(liveFormula ?? example.formula);
+  const raw = liveFormula ?? example.formula ?? "";
+  // Keep authored newlines/spaces; only tidy "; " separators for multi-statements
+  // that were written on one line without \n.
+  const formula = /\n/.test(raw)
+    ? raw.replace(/\r\n/g, "\n")
+    : formatFormulaBoardText(raw).replace(/\s*;\s*/g, "\n");
+  const notation = example.notation === "latex" ? "latex" : "plain";
 
   return (
     <div
@@ -41,7 +47,7 @@ export default function MathFormulaBoard({
         </div>
         <MathText
           displayMode
-          forceMath
+          mode={notation}
           className={cn(
             "text-gray-900",
             compact
@@ -54,18 +60,18 @@ export default function MathFormulaBoard({
       </div>
 
       {example.description && !compact && (
-        <p className="mt-3 min-w-0 text-sm leading-relaxed text-gray-600 wrap-anywhere">
-          {example.description}
+        <p className="mt-3 min-w-0 text-sm leading-relaxed text-gray-600 wrap-anywhere whitespace-pre-wrap">
+          <MathText mode="marked">{example.description}</MathText>
         </p>
       )}
       {example.explanation && !liveFormula && (
         <p
           className={cn(
-            "min-w-0 leading-relaxed text-gray-700 wrap-anywhere",
+            "min-w-0 leading-relaxed text-gray-700 wrap-anywhere whitespace-pre-wrap",
             compact ? "mt-2 text-xs sm:text-sm" : "mt-3 text-sm sm:text-base",
           )}
         >
-          {example.explanation}
+          <MathText mode="marked">{example.explanation}</MathText>
         </p>
       )}
     </div>

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import MathText from "@/components/courses/math/MathText";
+import MathDiagram from "@/components/courses/math/MathDiagram";
 import { RichBody } from "../RichBody";
 import { applySubtitleShow } from "../../subtitleShow";
 import type { Beat, DisplayBeat, MediaBeat, RecapBeat, SpeakBeat } from "../../types";
@@ -44,9 +45,14 @@ export function DisplayBeatView({ beat }: { beat: DisplayBeat }) {
     <Panel label={meta?.label ?? "Learn"}>
       {beat.title && (
         <h2 className="mb-2 text-base font-bold text-gray-900 sm:text-lg">
-          <MathText>{beat.title}</MathText>
+          <MathText mode="marked">{beat.title}</MathText>
         </h2>
       )}
+      {beat.diagram ? (
+        <div className="mb-3">
+          <MathDiagram diagram={beat.diagram} />
+        </div>
+      ) : null}
       <RichBody text={beat.body} />
     </Panel>
   );

@@ -1,0 +1,908 @@
+{
+  "slug": "python-taster-00-guessing-game",
+  "schema_version": 2,
+  "curriculum": {
+    "title": "Python Taster: Build a Game in 20 Minutes",
+    "description": "Free taster. Make Python talk, ask questions, make decisions and repeat, then put it all together into a real number-guessing game.",
+    "language": "en",
+    "category": "coding",
+    "age": 10,
+    "class": "Grade 5",
+    "grade": 5,
+    "level": "Beginner",
+    "duration": "20",
+    "defaults": {
+      "avatar": {
+        "continue_prompt": "Tap Continue.",
+        "handoff_to_practice": "Your turn. Fill in the TODO lines.",
+        "correct_feedback": "Correct!",
+        "incorrect_feedback": "Not quite. Try again."
+      },
+      "advance": {
+        "pause_min_seconds": 3
+      },
+      "question_retry": {
+        "max": 2,
+        "on_exhausted": "continue"
+      }
+    },
+    "modules": [
+      {
+        "id": "module_01",
+        "title": "Talk and Listen",
+        "unlock": null,
+        "lessons": [
+          {
+            "id": "module_01__lesson_01",
+            "title": "Make Python Talk",
+            "goal": "to print text and let Python do maths.",
+            "estimated_minutes": 4,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "In 20 minutes you'll build a real game in Python, the language used at Google, NASA and Netflix. Let's start by making the computer talk with print!",
+                  "show": [
+                    {
+                      "say": "print",
+                      "as": "print()"
+                    }
+                  ],
+                  "gesture": "welcomeSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "print(\"Hi! I'm Python.\")\nprint(\"Seconds in a day:\", 60 * 60 * 24)\n",
+                  "language": "python",
+                  "description": "Watch Python talk, then do maths.",
+                  "explanation": "Line 1 prints text. Text goes inside quote marks. Line 2 prints some text, then a sum. The star means times. Python works out the answer for you.",
+                  "autoRun": false,
+                  "typingSpeed": 18
+                },
+                "advance": "auto",
+                "avatar": {
+                  "gesture": "whiteboard"
+                }
+              },
+              {
+                "id": "walk_2",
+                "type": "pause",
+                "phase": "teach",
+                "avatar": {
+                  "text": "Quote marks mean: show these words exactly. No quote marks means: work this out. That's why line 2 shows 86400, not the sum."
+                },
+                "advance": "manual",
+                "min_seconds": 3,
+                "keep_previous": true
+              },
+              {
+                "id": "check_quotes",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_quotes_q",
+                  "type": "multiple_choice",
+                  "question": "What does print(\"5 + 5\") show?",
+                  "options": [
+                    "5 + 5",
+                    "10",
+                    "55",
+                    "An error"
+                  ],
+                  "answer": "5 + 5",
+                  "explanation": "Yes! Inside quote marks, it's just text."
+                },
+                "avatar": {
+                  "on_correct": "Yes! Inside quote marks, it's just text.",
+                  "on_wrong": "Not quite. Quote marks mean show the words exactly, so it shows 5 + 5.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Look at the quote marks.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "check_star",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_star_q",
+                  "type": "true_false",
+                  "question": "In Python, the star * means times.",
+                  "answer": true,
+                  "explanation": "Correct! 60 * 60 means 60 times 60."
+                },
+                "avatar": {
+                  "on_correct": "Correct! 60 * 60 means 60 times 60.",
+                  "on_wrong": "Not quite. The star is how Python writes times.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "What did 60 * 60 * 24 work out?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "code_practice",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "code_practice_q",
+                  "type": "code_test",
+                  "question": "Your turn: on line 3, print Seconds in a year: and the sum 60 * 60 * 24 * 365. Tap Run to test it, then Submit.",
+                  "explanation": "Remember: line 2 prints text, a comma, then a sum.",
+                  "code_example": {
+                    "code": "print(\"Hi! I'm Python.\")\nprint(\"Seconds in a day:\", 60 * 60 * 24)\n",
+                    "language": "python",
+                    "description": "Watch the key lines.",
+                    "explanation": "Remember: line 2 prints text, a comma, then a sum.",
+                    "autoRun": false,
+                    "typingSpeed": 6,
+                    "starterCode": "print(\"Hi! I'm Python.\")\nprint(\"Seconds in a day:\", 60 * 60 * 24)\n# TODO: print  Seconds in a year:  and  60 * 60 * 24 * 365\n",
+                    "solutionCode": "print(\"Hi! I'm Python.\")\nprint(\"Seconds in a day:\", 60 * 60 * 24)\nprint(\"Seconds in a year:\", 60 * 60 * 24 * 365)\n"
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:\\n[ \\t]*print\\(\\s*([\"'])Seconds in a year:\\s*\\1\\s*,[^\\n]*365[^\\n]*\\)",
+                    "expectedOutput": "Hi! I'm Python.\nSeconds in a day: 86400\nSeconds in a year: 31536000"
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Before you try, one quick look at the example.",
+                  "handoff": "Got it? I'll clear the example now.",
+                  "on_correct": "Brilliant! Over 31 million seconds, worked out in a blink.",
+                  "on_wrong": "Not yet. Copy line 2, change day to year, and add * 365 to the end.",
+                  "gesture": "invite",
+                  "gesture_on_correct": "celebrateSequence",
+                  "gesture_on_wrong": "gentleCorrectionSequence"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Copy line 2, then change day to year and add * 365.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "print shows things on the screen.",
+                  "Quote marks mean: show these words exactly.",
+                  "Without quote marks, Python works out the answer."
+                ],
+                "avatar": {
+                  "text": "Great start! Here's what you learned.",
+                  "gesture": "recapSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "bridge_next",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "Next up: Python asks YOU a question.",
+                  "gesture": "transition"
+                },
+                "next": "module_01__lesson_02",
+                "advance": "manual"
+              }
+            ]
+          },
+          {
+            "id": "module_01__lesson_02",
+            "title": "Python Asks You",
+            "goal": "to ask a question and use the answer.",
+            "estimated_minutes": 4,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Programs get exciting when they listen to you. Let's make Python ask a question with input!",
+                  "show": [
+                    {
+                      "say": "input",
+                      "as": "input()"
+                    }
+                  ],
+                  "gesture": "transition"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "name = input(\"What's your name? \")\nprint(f\"Nice to meet you, {name}!\")\n",
+                  "language": "python",
+                  "description": "Watch Python ask a question and remember the answer.",
+                  "explanation": "Line 1 asks a question and waits. Whatever you type is saved in a box called name. That box is a variable.",
+                  "autoRun": false,
+                  "typingSpeed": 18
+                },
+                "advance": "auto",
+                "avatar": {
+                  "gesture": "whiteboard"
+                }
+              },
+              {
+                "id": "walk_2",
+                "type": "pause",
+                "phase": "teach",
+                "avatar": {
+                  "text": "Line 2 has an f before the quote marks. That lets you drop a variable into the text with curly brackets. So {name} becomes whatever you typed."
+                },
+                "advance": "manual",
+                "min_seconds": 3,
+                "keep_previous": true
+              },
+              {
+                "id": "check_var",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_var_q",
+                  "type": "multiple_choice",
+                  "question": "In line 1, where is your answer saved?",
+                  "options": [
+                    "In the variable name",
+                    "In print",
+                    "In the question",
+                    "It is not saved"
+                  ],
+                  "answer": "In the variable name",
+                  "explanation": "Yes! The answer goes into the box on the left of the equals sign."
+                },
+                "avatar": {
+                  "on_correct": "Yes! The answer goes into the box on the left of the equals sign.",
+                  "on_wrong": "Not quite. The answer is saved in name, on the left of the equals sign.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Look left of the equals sign.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "check_f",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_f_q",
+                  "type": "true_false",
+                  "question": "The f before the quote marks lets you put {name} inside the text.",
+                  "answer": true,
+                  "explanation": "Correct! f-strings fill in the curly brackets."
+                },
+                "avatar": {
+                  "on_correct": "Correct! f-strings fill in the curly brackets.",
+                  "on_wrong": "Not quite. Without the f, it would print {name} exactly.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "What does the f do?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "code_practice",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "code_practice_q",
+                  "type": "code_test",
+                  "question": "Your turn: print Yum! I love and then the food, using an f-string. Tap Run, type a food, then Submit.",
+                  "explanation": "Remember: line 2 uses f and curly brackets.",
+                  "code_example": {
+                    "code": "name = input(\"What's your name? \")\nprint(f\"Nice to meet you, {name}!\")\n",
+                    "language": "python",
+                    "description": "Watch the key lines.",
+                    "explanation": "Remember: line 2 uses f and curly brackets.",
+                    "autoRun": false,
+                    "typingSpeed": 6,
+                    "starterCode": "food = input(\"What's your favourite food? \")\n# TODO: print  Yum! I love  and then the food, using an f-string\n",
+                    "solutionCode": "food = input(\"What's your favourite food? \")\nprint(f\"Yum! I love {food}!\")\n"
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:\\n[ \\t]*print\\(\\s*f([\"'])Yum! I love \\{\\s*food\\s*\\}[^\"'\\n]*\\1\\s*\\)"
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Before you try, one quick look at the example.",
+                  "handoff": "Got it? I'll clear the example now.",
+                  "on_correct": "Awesome! Your program answers back.",
+                  "on_wrong": "Not yet. Write print, then f, then quote marks with Yum! I love {food} inside.",
+                  "gesture": "invite",
+                  "gesture_on_correct": "celebrateSequence",
+                  "gesture_on_wrong": "gentleCorrectionSequence"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Copy line 2 from the example, but use Yum! I love and {food}.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "input asks a question and waits.",
+                  "A variable is a box that saves the answer.",
+                  "An f-string drops a variable into text."
+                ],
+                "avatar": {
+                  "text": "Nice! Here's what you learned.",
+                  "gesture": "recapSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "bridge_next",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "Next up: Python makes a decision.",
+                  "gesture": "transition"
+                },
+                "next": "module_02__lesson_01",
+                "advance": "manual"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "module_02",
+        "title": "Decide and Repeat",
+        "unlock": null,
+        "lessons": [
+          {
+            "id": "module_02__lesson_01",
+            "title": "Python Decides",
+            "goal": "to make a choice with if and else.",
+            "estimated_minutes": 4,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Every game needs decisions. Did you win or lose? Let's teach Python to decide with if and else!",
+                  "show": [
+                    {
+                      "say": "if",
+                      "as": "if"
+                    },
+                    {
+                      "say": "else",
+                      "as": "else"
+                    }
+                  ],
+                  "gesture": "transition"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "secret = 7\nguess = int(input(\"Guess my number from 1 to 10: \"))\nif guess == secret:\n    print(\"You got it!\")\nelse:\n    print(\"Nope! It was\", secret)\n",
+                  "language": "python",
+                  "description": "Watch Python check your guess.",
+                  "explanation": "Line 1 hides the number 7. Line 2 asks for a guess. int turns your answer into a number. Line 3 asks: is the guess the same as the secret?",
+                  "autoRun": false,
+                  "typingSpeed": 18
+                },
+                "advance": "auto",
+                "avatar": {
+                  "gesture": "whiteboard"
+                }
+              },
+              {
+                "id": "walk_2",
+                "type": "pause",
+                "phase": "teach",
+                "avatar": {
+                  "text": "Two equals signs mean: are these the same? If yes, line 4 runs. If not, the else part runs. The spaces at the start show which lines belong to each part."
+                },
+                "advance": "manual",
+                "min_seconds": 3,
+                "keep_previous": true
+              },
+              {
+                "id": "check_eq",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_eq_q",
+                  "type": "multiple_choice",
+                  "question": "What does == mean?",
+                  "options": [
+                    "Are these the same?",
+                    "Save this in a box",
+                    "Add these up",
+                    "Print this"
+                  ],
+                  "answer": "Are these the same?",
+                  "explanation": "Yes! Two equals signs compare. One equals sign saves."
+                },
+                "avatar": {
+                  "on_correct": "Yes! Two equals signs compare. One equals sign saves.",
+                  "on_wrong": "Not quite. == asks if two things are the same.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "One = saves. What does == do?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "check_else",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_else_q",
+                  "type": "true_false",
+                  "question": "The else part runs when the guess is wrong.",
+                  "answer": true,
+                  "explanation": "Correct! else means: otherwise."
+                },
+                "avatar": {
+                  "on_correct": "Correct! else means: otherwise.",
+                  "on_wrong": "Not quite. else runs when the if question is no.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "When did Nope! show up?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "code_practice",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "code_practice_q",
+                  "type": "code_test",
+                  "question": "Your turn: add the else part that prints Nope! It was and the secret. Tap Run, guess, then Submit.",
+                  "explanation": "Remember: lines 5 and 6 are the else part.",
+                  "code_example": {
+                    "code": "secret = 7\nguess = int(input(\"Guess my number from 1 to 10: \"))\nif guess == secret:\n    print(\"You got it!\")\nelse:\n    print(\"Nope! It was\", secret)\n",
+                    "language": "python",
+                    "description": "Watch the key lines.",
+                    "explanation": "Remember: lines 5 and 6 are the else part.",
+                    "autoRun": false,
+                    "typingSpeed": 6,
+                    "starterCode": "secret = 7\nguess = int(input(\"Guess my number from 1 to 10: \"))\nif guess == secret:\n    print(\"You got it!\")\n# TODO: add else, then under it print  Nope! It was  and secret\n",
+                    "solutionCode": "secret = 7\nguess = int(input(\"Guess my number from 1 to 10: \"))\nif guess == secret:\n    print(\"You got it!\")\nelse:\n    print(\"Nope! It was\", secret)\n"
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:\\n[ \\t]*else\\s*:[ \\t]*\\n[ \\t]+print\\(\\s*([\"'])Nope! It was\\s*\\1\\s*,\\s*secret\\s*\\)"
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Before you try, one quick look at the example.",
+                  "handoff": "Got it? I'll clear the example now.",
+                  "on_correct": "Excellent! Python can now tell a right guess from a wrong one.",
+                  "on_wrong": "Not yet. Write else and a colon. On the next line, add 4 spaces and the print.",
+                  "gesture": "invite",
+                  "gesture_on_correct": "celebrateSequence",
+                  "gesture_on_wrong": "gentleCorrectionSequence"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Copy lines 5 and 6 from the example. Don't forget the spaces.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "if asks a yes or no question.",
+                  "== checks if two things are the same.",
+                  "else runs when the answer is no."
+                ],
+                "avatar": {
+                  "text": "Well done! Here's what you learned.",
+                  "gesture": "recapSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "bridge_next",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "Next up: making Python repeat things.",
+                  "gesture": "transition"
+                },
+                "next": "module_02__lesson_02",
+                "advance": "manual"
+              }
+            ]
+          },
+          {
+            "id": "module_02__lesson_02",
+            "title": "Python Repeats",
+            "goal": "to repeat code with a for loop.",
+            "estimated_minutes": 4,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "Computers never get bored. Let's make Python repeat something, with a for loop of just two lines!",
+                  "show": [
+                    {
+                      "say": "for loop",
+                      "as": "for"
+                    }
+                  ],
+                  "gesture": "transition"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "for turn in range(3):\n    print(\"Hip hip hooray!\")\nprint(\"Done!\")\n",
+                  "language": "python",
+                  "description": "Watch one line run three times.",
+                  "explanation": "Line 1 is a loop. range(3) means: do this 3 times. Line 2 has spaces at the start, so it is inside the loop and repeats.",
+                  "autoRun": false,
+                  "typingSpeed": 18
+                },
+                "advance": "auto",
+                "avatar": {
+                  "gesture": "whiteboard"
+                }
+              },
+              {
+                "id": "walk_2",
+                "type": "pause",
+                "phase": "teach",
+                "avatar": {
+                  "text": "Line 3 has no spaces at the start, so it is outside the loop. It runs once, after the loop is finished. Change 3 to 1000 and Python happily does it 1000 times."
+                },
+                "advance": "manual",
+                "min_seconds": 3,
+                "keep_previous": true
+              },
+              {
+                "id": "check_range",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_range_q",
+                  "type": "multiple_choice",
+                  "question": "How many times does a loop with range(5) repeat?",
+                  "options": [
+                    "5",
+                    "4",
+                    "6",
+                    "Forever"
+                  ],
+                  "answer": "5",
+                  "explanation": "Yes! range(5) means 5 times."
+                },
+                "avatar": {
+                  "on_correct": "Yes! range(5) means 5 times.",
+                  "on_wrong": "Not quite. range(5) repeats 5 times.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "range(3) printed 3 lines.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "check_indent",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_indent_q",
+                  "type": "true_false",
+                  "question": "Done! printed 3 times, because it is in the loop.",
+                  "answer": false,
+                  "explanation": "Correct, that's false. It has no spaces, so it ran once."
+                },
+                "avatar": {
+                  "on_correct": "Correct, that's false. It has no spaces, so it ran once.",
+                  "on_wrong": "Not quite. Line 3 has no spaces, so it is outside the loop.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "How many times did Done! show?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "code_practice",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "code_practice_q",
+                  "type": "code_test",
+                  "question": "Your turn: write a loop that prints I can code! 5 times. Tap Run to test it, then Submit.",
+                  "explanation": "Remember: line 1 says how many times, and line 2 has spaces at the start.",
+                  "code_example": {
+                    "code": "for turn in range(3):\n    print(\"Hip hip hooray!\")\nprint(\"Done!\")\n",
+                    "language": "python",
+                    "description": "Watch the key lines.",
+                    "explanation": "Remember: line 1 says how many times, and line 2 has spaces at the start.",
+                    "autoRun": false,
+                    "typingSpeed": 6,
+                    "starterCode": "# TODO: repeat 5 times: print  I can code!\n\nprint(\"Done!\")\n",
+                    "solutionCode": "for turn in range(5):\n    print(\"I can code!\")\nprint(\"Done!\")\n"
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:(?:^|\\n)[ \\t]*for\\s+\\w+\\s+in\\s+range\\(\\s*5\\s*\\)\\s*:[ \\t]*\\n[ \\t]+print\\(\\s*([\"'])I can code!\\1\\s*\\)",
+                    "expectedOutput": "I can code!\nI can code!\nI can code!\nI can code!\nI can code!\nDone!"
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Before you try, one quick look at the example.",
+                  "handoff": "Got it? I'll clear the example now.",
+                  "on_correct": "Fantastic! Five lines from two lines of code.",
+                  "on_wrong": "Not yet. Write for turn in range(5): then the print on the next line, with 4 spaces first.",
+                  "gesture": "invite",
+                  "gesture_on_correct": "celebrateSequence",
+                  "gesture_on_wrong": "gentleCorrectionSequence"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Copy lines 1 and 2 from the example. Change 3 to 5 and the words.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "A for loop repeats code.",
+                  "range(5) means 5 times.",
+                  "Lines with spaces at the start are inside the loop."
+                ],
+                "avatar": {
+                  "text": "Super! Here's what you learned.",
+                  "gesture": "recapSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "bridge_next",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "Last one: put it all together into a real game!",
+                  "gesture": "transition"
+                },
+                "next": "module_03__lesson_01",
+                "advance": "manual"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "module_03",
+        "title": "Your First Game",
+        "unlock": null,
+        "lessons": [
+          {
+            "id": "module_03__lesson_01",
+            "title": "Build a Guessing Game",
+            "goal": "to build a real game from print, input, if and a loop.",
+            "estimated_minutes": 5,
+            "flow": [
+              {
+                "id": "hook",
+                "type": "speak",
+                "phase": "hook",
+                "avatar": {
+                  "text": "This is it. Everything you learned, all in one real game. Python picks a secret number, and you have 3 tries to find it!",
+                  "gesture": "transition"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "demo",
+                "type": "code_demo",
+                "phase": "teach",
+                "code_example": {
+                  "code": "import random\nsecret = random.randint(1, 10)\nfor turn in range(3):\n    guess = int(input(\"Guess a number from 1 to 10: \"))\n    if guess == secret:\n        print(\"You win!\")\n        break\n    else:\n        print(\"Wrong! Try again.\")\nprint(\"The number was\", secret)\n",
+                  "language": "python",
+                  "description": "Watch everything you learned become one game.",
+                  "explanation": "Line 1 brings in random. Line 2 picks a secret number from 1 to 10, so it is different every game. Line 3 gives you 3 turns.",
+                  "autoRun": false,
+                  "typingSpeed": 18
+                },
+                "advance": "auto",
+                "avatar": {
+                  "gesture": "whiteboard"
+                }
+              },
+              {
+                "id": "walk_2",
+                "type": "pause",
+                "phase": "teach",
+                "avatar": {
+                  "text": "Inside the loop: ask for a guess, then check it. break stops the loop early when you win. Now let's make it smarter. elif means: else if. It asks a second question."
+                },
+                "advance": "manual",
+                "min_seconds": 3,
+                "keep_previous": true
+              },
+              {
+                "id": "check_random",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_random_q",
+                  "type": "multiple_choice",
+                  "question": "Why is the secret number different every game?",
+                  "options": [
+                    "random picks a new number each time",
+                    "You type it in",
+                    "It is always 7",
+                    "The loop changes it"
+                  ],
+                  "answer": "random picks a new number each time",
+                  "explanation": "Yes! random.randint(1, 10) picks any number from 1 to 10."
+                },
+                "avatar": {
+                  "on_correct": "Yes! random.randint(1, 10) picks any number from 1 to 10.",
+                  "on_wrong": "Not quite. random.randint picks a new number every game.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "Look at line 2.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "check_break",
+                "type": "question",
+                "phase": "assess",
+                "question": {
+                  "id": "check_break_q",
+                  "type": "true_false",
+                  "question": "break stops the loop early when you win.",
+                  "answer": true,
+                  "explanation": "Correct! No more guesses needed once you win."
+                },
+                "avatar": {
+                  "on_correct": "Correct! No more guesses needed once you win.",
+                  "on_wrong": "Not quite. break jumps out of the loop straight away.",
+                  "gesture_on_correct": "celebrate",
+                  "gesture_on_wrong": "encourage"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "What happens after You win! shows?",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "code_practice",
+                "type": "question",
+                "phase": "practice",
+                "question": {
+                  "id": "code_practice_q",
+                  "type": "code_test",
+                  "question": "Your turn: give a hint! Add elif so a guess lower than the secret prints Too low!. Play it, then Submit.",
+                  "explanation": "Remember: elif goes between the if part and the else part, lined up with them.",
+                  "code_example": {
+                    "code": "import random\nsecret = random.randint(1, 10)\nfor turn in range(3):\n    guess = int(input(\"Guess a number from 1 to 10: \"))\n    if guess == secret:\n        print(\"You win!\")\n        break\n    else:\n        print(\"Wrong! Try again.\")\nprint(\"The number was\", secret)\n",
+                    "language": "python",
+                    "description": "Watch the key lines.",
+                    "explanation": "Remember: elif goes between the if part and the else part, lined up with them.",
+                    "autoRun": false,
+                    "typingSpeed": 6,
+                    "starterCode": "import random\nsecret = random.randint(1, 10)\nfor turn in range(3):\n    guess = int(input(\"Guess a number from 1 to 10: \"))\n    if guess == secret:\n        print(\"You win!\")\n        break\n    # TODO: elif guess is less than secret, print  Too low!\n\n    else:\n        print(\"Too high!\")\nprint(\"The number was\", secret)\n",
+                    "solutionCode": "import random\nsecret = random.randint(1, 10)\nfor turn in range(3):\n    guess = int(input(\"Guess a number from 1 to 10: \"))\n    if guess == secret:\n        print(\"You win!\")\n        break\n    elif guess < secret:\n        print(\"Too low!\")\n    else:\n        print(\"Too high!\")\nprint(\"The number was\", secret)\n"
+                  },
+                  "testCriteria": {
+                    "expectedCode": "regex:\\n[ \\t]+elif\\s+guess\\s*<\\s*secret\\s*:[ \\t]*\\n[ \\t]+print\\(\\s*([\"'])Too low!\\1\\s*\\)"
+                  }
+                },
+                "avatar": {
+                  "before_demo": "Before you try, one quick look at the example.",
+                  "handoff": "Got it? I'll clear the example now.",
+                  "on_correct": "You did it! You just built a real game with hints.",
+                  "on_wrong": "Not yet. Write elif guess < secret: lined up with if, then the print on the next line with more spaces.",
+                  "gesture": "invite",
+                  "gesture_on_correct": "celebrateSequence",
+                  "gesture_on_wrong": "gentleCorrectionSequence"
+                },
+                "retry": {
+                  "max": 2,
+                  "hint": "The < sign means less than. Write elif guess < secret: then print Too low! under it.",
+                  "on_exhausted": "continue"
+                },
+                "advance": "on_answer"
+              },
+              {
+                "id": "recap",
+                "type": "recap",
+                "phase": "reflect",
+                "points": [
+                  "print and input talk to the player.",
+                  "if, elif and else make decisions.",
+                  "A loop gives turns, and random makes every game new."
+                ],
+                "avatar": {
+                  "text": "Amazing! You built a real game. Here's what you used.",
+                  "gesture": "recapSequence"
+                },
+                "advance": "auto"
+              },
+              {
+                "id": "bridge_next",
+                "type": "bridge",
+                "phase": "reflect",
+                "avatar": {
+                  "text": "You just used 5 ideas real programmers use every day. Python Step 1 starts the full journey, from first lines to your own apps and games. See you there!",
+                  "gesture": "goodbyeSequence"
+                },
+                "next": null,
+                "advance": "manual"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

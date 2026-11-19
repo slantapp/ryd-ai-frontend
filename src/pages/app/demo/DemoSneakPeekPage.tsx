@@ -256,9 +256,9 @@ export default function DemoSneakPeekPage() {
             courseOrLessonTitle={curriculum.title}
             description={
               <>
-                Meet your AI instructor and write real code with{" "}
-                <span className="font-semibold">p</span> and{" "}
-                <span className="font-semibold">h1</span> tags. No subscription
+                Meet your AI instructor and write real{" "}
+                <span className="font-semibold">Python</span> — make it talk,
+                then keep going toward a number-guessing game. No subscription
                 needed for this peek.
               </>
             }
@@ -266,7 +266,7 @@ export default function DemoSneakPeekPage() {
             onStart={handleStartLesson}
             avatarSlot={avatarSlot}
             showAvatar={isLgUp}
-            chips={["Free peek", "Real coding", "AI instructor"]}
+            chips={["Free peek", "Python", "AI instructor"]}
           />
         ) : (
           <LessonPlayer
@@ -304,8 +304,9 @@ export default function DemoSneakPeekPage() {
           <DialogHeader>
             <DialogTitle className="font-solway text-lg">Lessons</DialogTitle>
             <DialogDescription className="font-inter text-sm text-gray-600">
-              This sneak peek covers the p and h1 tags. Subscribe to unlock the
-              button lesson and keep building with your AI instructor.
+              This free peek starts with making Python talk. Subscribe to unlock
+              asking questions, decisions, loops, and building a guessing game
+              with your AI instructor.
             </DialogDescription>
           </DialogHeader>
           <ul className="space-y-2">
@@ -390,14 +391,13 @@ export default function DemoSneakPeekPage() {
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-solway text-xl">
-              Ready to add your button?
+              Ready to build your game?
             </DialogTitle>
             <DialogDescription className="font-inter text-sm text-gray-600">
-              You wrote real code with <span className="font-semibold">p</span> and{" "}
-              <span className="font-semibold">h1</span> tags. Subscribe to unlock
-              the next step: building a clickable{" "}
-              <span className="font-semibold">button</span>, and the rest of
-              every course with your AI instructor.
+              You made Python talk. Subscribe to unlock the next steps —
+              asking questions, making decisions, repeating code, and building
+              a real <span className="font-semibold">number-guessing game</span>{" "}
+              — plus the rest of every course with your AI instructor.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">

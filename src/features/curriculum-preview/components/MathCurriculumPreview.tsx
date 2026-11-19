@@ -23,7 +23,9 @@ import {
 } from "../lessonSegments";
 import MathFormulaBoard from "@/components/courses/math/MathFormulaBoard";
 import MathAnswerWorkspace from "@/components/courses/math/MathAnswerWorkspace";
+import { RichBody } from "@/features/curriculum-preview/v2/components/RichBody";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
+import { toSpeech } from "@/utils/mathSpeech";
 
 type LessonPhase = "intro" | "teaching" | "questions" | "complete";
 
@@ -108,7 +110,7 @@ export function MathCurriculumPreview({
   const speakWithCallback = useCallback(
     (text: string, onComplete?: () => void) => {
       pendingAfterSpeechRef.current = onComplete ?? null;
-      speak(text);
+      speak(toSpeech(text));
     },
     [speak],
   );
@@ -401,8 +403,9 @@ export function MathCurriculumPreview({
     if (question.type !== "formula_test") return;
 
     const expected = question.testCriteria?.expectedFormula?.trim() ?? "";
+    const accept = question.testCriteria?.accept;
     const isCorrect = expected
-      ? compareFormulaAnswer(studentAnswer, expected)
+      ? compareFormulaAnswer(studentAnswer, expected, accept)
       : false;
     setIsAnswerSubmitted(true);
     setLastAnswerCorrect(isCorrect);
@@ -676,9 +679,9 @@ export function MathCurriculumPreview({
                     <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
                       {currentLesson.title}
                     </h2>
-                    <p className="mt-4 text-sm leading-relaxed text-gray-700 sm:text-base">
-                      {currentLesson.body}
-                    </p>
+                    <div className="mt-4">
+                      <RichBody text={currentLesson.body} />
+                    </div>
                     {currentLesson.avatar_script &&
                       currentLesson.avatar_script !== currentLesson.body && (
                         <div className="mt-4 rounded-lg border-l-4 border-primary bg-primary/10 p-4">

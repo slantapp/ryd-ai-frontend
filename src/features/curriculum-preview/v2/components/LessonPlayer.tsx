@@ -53,6 +53,10 @@ import { collectPageChecks, hasPageChecks } from "@/utils/webPreviewBridge";
 import { useProgramInput } from "@/hooks/useProgramInput";
 import { formulaProblemOnly, formatFormulaBoardText } from "@/utils/formulaBoard";
 import MathAnswerWorkspace from "@/components/courses/math/MathAnswerWorkspace";
+import MathDiagram from "@/components/courses/math/MathDiagram";
+import MathFormulaBoard from "@/components/courses/math/MathFormulaBoard";
+import NumberLinePlaceQuestion from "@/components/courses/math/NumberLinePlaceQuestion";
+import { isMathematicsPreview } from "../../types";
 import type { V2LessonDraft } from "../lessonPersist";
 import {
   buildWebCodeFromExample,
@@ -74,7 +78,7 @@ import {
   resolveExhaustedWrongTeachingLines,
   resolveQuestionRetry,
 } from "../studentFlow";
-import { stripMarkdownForSpeech } from "../speechText";
+import { prepareSpeechText, stripMarkdownForSpeech } from "../speechText";
 import {
   normalizeSpeechPart,
   withShow,
@@ -217,6 +221,7 @@ export function LessonPlayer({
 }: LessonPlayerProps) {
   const isLgUp = useMediaQueryMinLg();
   const showInstructorWait = isInstructorWaiting ?? isAvatarLoading;
+  const isMathsCourse = isMathematicsPreview(curriculum);
   const isInstructorActive = isSpeaking && !isPaused;
   const defaults = useMemo(() => resolveAvatarDefaults(curriculum), [curriculum]);
   const [beatIndex, setBeatIndex] = useState(() =>
@@ -431,7 +436,7 @@ export function LessonPlayer({
           if (!u) return null;
           return {
             ...u,
-            text: stripMarkdownForSpeech(u.text),
+            text: prepareSpeechText(u.text, isMathsCourse),
           };
         })
         .filter((u): u is NonNullable<typeof u> => !!u && !!u.text);
@@ -449,7 +454,7 @@ export function LessonPlayer({
       };
       run(0);
     },
-    [speakThen],
+    [isMathsCourse, speakThen],
   );
 
   const enableManualContinue = useCallback(() => {
@@ -577,8 +582,10 @@ export function LessonPlayer({
         const timing = beat.avatar?.timing ?? "with_display";
         const show = beat.avatar?.show;
         const gesture = beat.avatar?.gesture;
-        const titleLine = beat.title
-          ? `Let's look at this: ${beat.title}.`
+        const say = beat.say;
+        const titleSpoken = say?.title ?? beat.title;
+        const titleLine = titleSpoken
+          ? `Let's look at this: ${titleSpoken}.`
           : undefined;
         const speakBody = beat.speak_body !== false;
         const bodyLine =
@@ -835,7 +842,7 @@ export function LessonPlayer({
         example.description ?? "Let's work through this step by step.",
       ],
       () => {
-        typed.type(example.formula, example.typingSpeed ?? 40, () => {
+        const finishBoard = () => {
           speakSequence(
             [
               example.explanation,
@@ -843,7 +850,26 @@ export function LessonPlayer({
             ],
             () => finishAutoOrManual(demoBeat),
           );
-        });
+        };
+        // LaTeX can't be drawn half-typed — reveal whole lines instead.
+        if (example.notation === "latex") {
+          const lines = example.formula.replace(/\r\n/g, "\n").split("\n");
+          let shown = "";
+          let i = 0;
+          const revealNext = () => {
+            if (i >= lines.length) {
+              finishBoard();
+              return;
+            }
+            shown = shown ? `${shown}\n${lines[i]}` : (lines[i] ?? "");
+            i += 1;
+            typed.setText(shown);
+            window.setTimeout(revealNext, 450);
+          };
+          revealNext();
+          return;
+        }
+        typed.type(example.formula, example.typingSpeed ?? 40, finishBoard);
       },
     );
   };
@@ -893,6 +919,8 @@ export function LessonPlayer({
     const avatar = qBeat.avatar;
     const show = avatar?.show;
     const gesture = avatar?.gesture;
+    const questionSpoken =
+      qBeat.say?.question ?? q.say?.question ?? q.question;
 
     if (q.type === "code_test" && q.code_example) {
       const example = q.code_example;
@@ -909,7 +937,7 @@ export function LessonPlayer({
         else applyStudentStarter(example);
         speakSequence([
           goalLine,
-          withShow(avatar?.on_ask ?? q.question, show, gesture),
+          withShow(avatar?.on_ask ?? questionSpoken, show, gesture),
           "Pick up where you left off in the editor.",
         ]);
         return;
@@ -935,7 +963,7 @@ export function LessonPlayer({
               [
                 example.explanation,
                 withShow(avatar?.handoff ?? defaults.handoff_to_practice, show),
-                withShow(avatar?.on_ask ?? q.question, show, gesture),
+                withShow(avatar?.on_ask ?? questionSpoken, show, gesture),
               ],
               () => {
                 applyStudentStarter(example);
@@ -977,7 +1005,7 @@ export function LessonPlayer({
         speakSequence([
           goalLine,
           withShow(avatar?.on_ask, show, gesture),
-          withShow(q.question, show),
+          withShow(questionSpoken, show),
         ]);
         return;
       }
@@ -990,12 +1018,21 @@ export function LessonPlayer({
           example.description,
         ],
         () => {
-          typed.type(example.formula, example.typingSpeed ?? 40, () => {
+          // LaTeX boards reveal line-by-line; plain boards keep character typing.
+          const speed =
+            example.notation === "latex"
+              ? Math.max(example.typingSpeed ?? 40, 80)
+              : (example.typingSpeed ?? 40);
+          const boardText =
+            example.notation === "latex"
+              ? example.formula.split(/\n/).join("\n")
+              : example.formula;
+          typed.type(boardText, speed, () => {
             speakSequence(
               [
                 example.explanation,
                 withShow(avatar?.handoff ?? defaults.handoff_to_practice, show),
-                withShow(avatar?.on_ask ?? q.question, show, gesture),
+                withShow(avatar?.on_ask ?? questionSpoken, show, gesture),
               ],
               () => {
                 typed.reset();
@@ -1008,11 +1045,22 @@ export function LessonPlayer({
       return;
     }
 
+    if (q.type === "number_line_place") {
+      setDemoMode("practice");
+      speakSequence([
+        goalLine,
+        withShow(avatar?.on_ask, show, gesture),
+        withShow(questionSpoken, show),
+        "Tap the number line, then check your answer.",
+      ]);
+      return;
+    }
+
     setDemoMode("practice");
     speakSequence([
       goalLine,
       withShow(avatar?.on_ask, show, gesture),
-      withShow(q.question, show),
+      withShow(questionSpoken, show),
       q.type === "multiple_choice"
         ? "Pick the best answer."
         : q.type === "true_false"
@@ -1197,7 +1245,16 @@ export function LessonPlayer({
   const handleSubmitFormula = () => {
     if (!beat || beat.type !== "question") return;
     const expected = beat.question.testCriteria?.expectedFormula ?? "";
-    handleQuestionOutcome(compareFormulaAnswer(formulaAnswer, expected));
+    const accept = beat.question.testCriteria?.accept;
+    handleQuestionOutcome(
+      compareFormulaAnswer(formulaAnswer, expected, accept),
+    );
+  };
+
+  const handleSubmitNumberLine = (value: number) => {
+    if (!beat || beat.type !== "question") return;
+    if (beat.question.type !== "number_line_place") return;
+    handleQuestionOutcome(Number(beat.question.answer) === value);
   };
 
   const handleSubmitCode = async () => {
@@ -1789,6 +1846,24 @@ export function LessonPlayer({
    */
   const sideBySide = kidsStage && fillWorkspace;
 
+  const formulaExampleForBoard = (() => {
+    if (beat?.type === "formula_demo") return beat.formula_example;
+    if (beat?.type === "question" && beat.question.formula_example) {
+      return beat.question.formula_example;
+    }
+    if (pauseReviewingFormula && previousBeat?.type === "formula_demo") {
+      return previousBeat.formula_example;
+    }
+    if (
+      pauseReviewingFormula &&
+      previousBeat?.type === "question" &&
+      previousBeat.question.formula_example
+    ) {
+      return previousBeat.question.formula_example;
+    }
+    return null;
+  })();
+
   const formulaWorkspace = showFormulaPanel ? (
     <div className="flex min-h-0 flex-1 flex-col space-y-3 overflow-y-auto">
       {(beat?.type === "formula_demo" ||
@@ -1803,21 +1878,49 @@ export function LessonPlayer({
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
           Formula board
         </p>
-        <div className="min-h-[120px] rounded-lg bg-primary/5 p-3 font-mono text-base text-gray-900">
-          {formulaBoardText ? (
-            <MathText displayMode forceMath>
+        {formulaExampleForBoard && formulaBoardText ? (
+          <MathFormulaBoard
+            example={{
+              ...formulaExampleForBoard,
+              formula: formulaBoardText,
+              // Hide nested description/explanation — DemoIntro already covers copy.
+              description: undefined,
+              explanation: undefined,
+            }}
+            compact
+          />
+        ) : formulaBoardText ? (
+          <div className="min-h-[120px] rounded-lg bg-primary/5 p-3 text-base text-gray-900">
+            <MathText
+              displayMode
+              mode={
+                formulaExampleForBoard?.notation === "latex" ? "latex" : "plain"
+              }
+            >
               {formulaBoardText}
             </MathText>
-          ) : (
+          </div>
+        ) : (
+          <div className="min-h-[120px] rounded-lg bg-primary/5 p-3">
             <p className="text-sm text-gray-500">
               {isFormulaTestPractice
                 ? "Work out your answer, then type it below."
                 : "Your example will appear here."}
             </p>
-          )}
-        </div>
+          </div>
+        )}
         {isFormulaTestPractice && beat?.type === "question" ? (
           <div className="mt-4">
+            {beat.diagram ? (
+              <div className="mb-3">
+                <MathDiagram diagram={beat.diagram} />
+              </div>
+            ) : null}
+            {beat.question.diagram ? (
+              <div className="mb-3">
+                <MathDiagram diagram={beat.question.diagram} />
+              </div>
+            ) : null}
             <MathAnswerWorkspace
               question={beat.question.question}
               value={formulaAnswer}
@@ -2060,6 +2163,7 @@ export function LessonPlayer({
                     wrongAttempts={wrongAttempts}
                     retryMax={questionRetry?.max ?? 0}
                     retryHint={questionRetry?.hint}
+                    onSubmitNumberLine={handleSubmitNumberLine}
                   />
                 )}
               </>
@@ -2211,6 +2315,7 @@ export function LessonPlayer({
               wrongAttempts={wrongAttempts}
               retryMax={questionRetry?.max ?? 0}
               retryHint={questionRetry?.hint}
+              onSubmitNumberLine={handleSubmitNumberLine}
             />
           )}
         </>
@@ -2430,14 +2535,22 @@ export function LessonPlayer({
             Subtitle stage is for teaching beats only. Questions / bridge must
             show their UI immediately (like CourseDetails), even while the
             avatar is still speaking the prompt.
+            Maths / with_display: keep the card visible above the speech strip.
           */}
-          {isInstructorActive &&
-            beat?.type !== "question" &&
-            beat?.type !== "bridge" &&
-            beat?.type !== "recap" ? (
-            <div className="flex min-h-[200px] flex-1 items-center justify-center sm:min-h-[260px] lg:min-h-[300px]">
-              <div className="mx-auto max-w-2xl px-4 sm:px-6">
-                <div className="mb-6 flex items-center justify-center gap-2">
+          {(() => {
+            const withDisplay =
+              isMathsCourse ||
+              beat?.avatar?.timing === "with_display";
+            const speechOnlyOverlay =
+              isInstructorActive &&
+              beat?.type !== "question" &&
+              beat?.type !== "bridge" &&
+              beat?.type !== "recap" &&
+              !withDisplay;
+
+            const speechStrip = (
+              <div className="mx-auto w-full max-w-2xl px-2 sm:px-4">
+                <div className="mb-3 flex items-center justify-center gap-2">
                   <div className="flex items-center gap-1">
                     <div
                       className="h-2 w-2 animate-bounce rounded-full bg-primary"
@@ -2456,16 +2569,41 @@ export function LessonPlayer({
                     Your instructor is speaking...
                   </span>
                 </div>
-                <div className="rounded-2xl border-2 border-primary/20 bg-white/80 p-5 shadow-xl backdrop-blur-md sm:p-8">
-                  <p className="text-center text-lg font-medium leading-relaxed text-gray-800 sm:text-2xl md:text-3xl">
+                <div className="rounded-2xl border-2 border-primary/20 bg-white/80 p-4 shadow-xl backdrop-blur-md sm:p-6">
+                  <p className="text-center text-base font-medium leading-relaxed text-gray-800 sm:text-xl md:text-2xl">
                     {currentSubtitle || "…"}
                   </p>
                 </div>
               </div>
-            </div>
-          ) : (
-            beatBoard
-          )}
+            );
+
+            if (speechOnlyOverlay) {
+              return (
+                <div className="flex min-h-[200px] flex-1 items-center justify-center sm:min-h-[260px] lg:min-h-[300px]">
+                  {speechStrip}
+                </div>
+              );
+            }
+
+            if (
+              withDisplay &&
+              isInstructorActive &&
+              beat?.type !== "question" &&
+              beat?.type !== "bridge" &&
+              beat?.type !== "recap"
+            ) {
+              return (
+                <div className="flex min-h-0 flex-col gap-4">
+                  <div className="min-h-0 flex-1 overflow-y-auto">{beatBoard}</div>
+                  <div className="max-h-[35vh] shrink-0 overflow-y-auto">
+                    {speechStrip}
+                  </div>
+                </div>
+              );
+            }
+
+            return beatBoard;
+          })()}
         </div>
       </div>
     );
@@ -2767,6 +2905,7 @@ function QuestionPanel({
   wrongAttempts,
   retryMax,
   retryHint,
+  onSubmitNumberLine,
 }: {
   beat: QuestionBeat;
   selectedAnswer: string | boolean | null;
@@ -2778,6 +2917,7 @@ function QuestionPanel({
   wrongAttempts: number;
   retryMax: number;
   retryHint?: string;
+  onSubmitNumberLine?: (value: number) => void;
 }) {
   const q = beat.question;
   const triesLeft = Math.max(0, retryMax - wrongAttempts);
@@ -2787,22 +2927,28 @@ function QuestionPanel({
     typeof q.answer === "boolean" ? q.answer : undefined;
   const revealAnswer =
     isSubmitted && (showCelebration || triesLeft === 0);
+  const numberLineCorrect =
+    isSubmitted && showCelebration
+      ? true
+      : isSubmitted
+        ? false
+        : null;
 
   return (
     <Panel label="Quick check">
-      {retryMax > 0 && !showCelebration && (
+      {retryMax > 0 && !showCelebration && q.type !== "number_line_place" && (
         <p className="mb-2 text-[0.7rem] font-medium text-gray-500">
           Tries left: {triesLeft}
           {retryHint ? " · A hint plays after a wrong answer" : ""}
         </p>
       )}
-      {showCelebration && (
+      {showCelebration && q.type !== "number_line_place" && (
         <div className="mb-3 flex items-center gap-2 rounded-lg bg-primary/15 px-2.5 py-1.5 text-xs font-semibold text-primary">
           <CheckCircle2 className="h-4 w-4" />
           Awesome! You got it!
         </div>
       )}
-      {isSubmitted && !showCelebration && (
+      {isSubmitted && !showCelebration && q.type !== "number_line_place" && (
         <div className="mb-3 flex items-center gap-2 rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs font-semibold text-gray-700">
           <XCircle className="h-4 w-4 text-primary" />
           {triesLeft > 0
@@ -2811,10 +2957,36 @@ function QuestionPanel({
         </div>
       )}
 
+      {(beat.diagram || q.diagram) && (
+        <div className="mb-3 space-y-2">
+          {beat.diagram ? <MathDiagram diagram={beat.diagram} /> : null}
+          {q.diagram ? <MathDiagram diagram={q.diagram} /> : null}
+        </div>
+      )}
+
+      {q.type === "number_line_place" && onSubmitNumberLine ? (
+        <NumberLinePlaceQuestion
+          question={{
+            type: "number_line_place",
+            question: q.question,
+            min: Number(q.min ?? 0),
+            max: Number(q.max ?? 10),
+            step: q.step,
+            answer: Number(q.answer),
+            explanation: q.explanation,
+          }}
+          disabled={isSubmitted}
+          isSubmitted={isSubmitted}
+          isCorrect={numberLineCorrect}
+          isSpeaking={isSpeaking}
+          onSubmit={onSubmitNumberLine}
+        />
+      ) : null}
+
       {isMcTf ? (
         <div className="min-w-0">
           <h3 className="mb-2 text-base font-semibold leading-snug text-gray-900 sm:text-lg">
-            <MathText>{q.question}</MathText>
+            <MathText mode="marked">{q.question}</MathText>
           </h3>
           <div className="mb-3 h-0.5 w-14 rounded-full bg-linear-to-r from-primary via-primary/80 to-primary/60" />
 
@@ -2878,7 +3050,7 @@ function QuestionPanel({
                 {selectedAnswer === q.answer ? "Correct!" : "Here's the idea"}
               </p>
               <p className="mt-1 text-sm leading-relaxed text-gray-700">
-                <MathText>{q.explanation}</MathText>
+                <MathText mode="marked">{q.explanation}</MathText>
               </p>
             </div>
           ) : null}

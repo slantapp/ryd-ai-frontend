@@ -250,7 +250,7 @@ const DashboardLayout = ({ children }: DashboardProps) => {
 
       <div
         className={cn(
-          "relative mx-auto flex h-full min-h-0 w-full max-w-[1440px] flex-1 flex-col",
+          "relative flex h-full min-h-0 w-full flex-1 flex-col",
           // Offset for full-height sidebar on desktop
           "lg:pl-60",
         )}

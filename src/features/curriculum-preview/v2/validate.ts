@@ -79,6 +79,9 @@ function validateCodeExample(
   if (ex.runtime !== undefined && ex.runtime !== "node" && ex.runtime !== "web") {
     errors.push(`${label}: code_example.runtime must be "node" or "web"`);
   }
+  if (ex.view !== undefined && ex.view !== "output_only") {
+    errors.push(`${label}: code_example.view must be "output_only" when provided`);
+  }
   for (const field of ["html", "css", "starterHtml", "starterCss", "version", "setupSql"] as const) {
     if (ex[field] !== undefined && typeof ex[field] !== "string") {
       errors.push(`${label}: code_example.${field} must be a string when provided`);
@@ -108,6 +111,81 @@ function validateFormulaExample(
   if (!ex.formula || typeof ex.formula !== "string") {
     errors.push(`${label}: formula_example requires a 'formula' string`);
   }
+  if (
+    ex.notation !== undefined &&
+    ex.notation !== "plain" &&
+    ex.notation !== "latex"
+  ) {
+    errors.push(`${label}: formula_example.notation must be "plain" or "latex"`);
+  }
+}
+
+function validateSay(
+  value: unknown,
+  label: string,
+  errors: string[],
+): void {
+  if (value === undefined) return;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    errors.push(`${label}: say must be an object`);
+    return;
+  }
+  const say = value as Record<string, unknown>;
+  for (const key of [
+    "title",
+    "question",
+    "description",
+    "answer",
+    "hint",
+    "explanation",
+  ] as const) {
+    if (say[key] !== undefined && typeof say[key] !== "string") {
+      errors.push(`${label}: say.${key} must be a string`);
+    }
+  }
+  if (say.points !== undefined && !Array.isArray(say.points)) {
+    errors.push(`${label}: say.points must be an array of strings`);
+  }
+  if (say.options !== undefined && !Array.isArray(say.options)) {
+    errors.push(`${label}: say.options must be an array of strings`);
+  }
+}
+
+function validateDiagram(
+  value: unknown,
+  label: string,
+  errors: string[],
+): void {
+  if (value === undefined) return;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    errors.push(`${label}: diagram must be an object`);
+    return;
+  }
+  const d = value as Record<string, unknown>;
+  if (!d.kind || typeof d.kind !== "string") {
+    errors.push(`${label}: diagram.kind is required`);
+    return;
+  }
+  if (d.kind === "svg") {
+    if (!d.svg || typeof d.svg !== "string") {
+      errors.push(`${label}: diagram.svg is required for kind "svg"`);
+    } else if (d.svg.length > 50_000) {
+      errors.push(`${label}: diagram.svg must be ≤ 50KB`);
+    }
+    if (!d.alt || typeof d.alt !== "string") {
+      errors.push(`${label}: diagram.alt is required for kind "svg"`);
+    }
+    return;
+  }
+  if (d.kind === "number_line") {
+    if (typeof d.min !== "number" || typeof d.max !== "number") {
+      errors.push(`${label}: number_line diagram requires numeric min and max`);
+    }
+    return;
+  }
+  if (d.svg !== undefined && typeof d.svg !== "string") {
+    errors.push(`${label}: diagram.svg must be a string when provided`);
+  }
 }
 
 function validateQuestion(
@@ -120,7 +198,8 @@ function validateQuestion(
     qType !== "multiple_choice" &&
     qType !== "true_false" &&
     qType !== "code_test" &&
-    qType !== "formula_test"
+    qType !== "formula_test" &&
+    qType !== "number_line_place"
   ) {
     errors.push(`${label}: invalid question type`);
     return;
@@ -131,12 +210,22 @@ function validateQuestion(
   if (q.stdin !== undefined && typeof q.stdin !== "string") {
     errors.push(`${label}: stdin must be a string when provided`);
   }
+  validateDiagram(q.diagram, label, errors);
+  validateSay(q.say, label, errors);
   const criteria = q.testCriteria as Record<string, unknown> | undefined;
   if (criteria?.expectedOutput !== undefined && typeof criteria.expectedOutput !== "string") {
     errors.push(`${label}: testCriteria.expectedOutput must be a string`);
   }
   if (criteria?.tests !== undefined && !Array.isArray(criteria.tests)) {
     errors.push(`${label}: testCriteria.tests must be an array`);
+  }
+  if (criteria?.accept !== undefined) {
+    if (
+      !Array.isArray(criteria.accept) ||
+      criteria.accept.some((item) => typeof item !== "string")
+    ) {
+      errors.push(`${label}: testCriteria.accept must be an array of strings`);
+    }
   }
   if (criteria?.turtleChecks !== undefined) {
     if (!Array.isArray(criteria.turtleChecks)) {
@@ -165,6 +254,14 @@ function validateQuestion(
     const criteria = q.testCriteria as Record<string, unknown> | undefined;
     if (!criteria?.expectedFormula || typeof criteria.expectedFormula !== "string") {
       errors.push(`${label}: formula_test requires testCriteria.expectedFormula`);
+    }
+  }
+  if (qType === "number_line_place") {
+    if (typeof q.min !== "number" || typeof q.max !== "number") {
+      errors.push(`${label}: number_line_place requires numeric min and max`);
+    }
+    if (typeof q.answer !== "number") {
+      errors.push(`${label}: number_line_place requires a numeric answer`);
     }
   }
 }
@@ -364,6 +461,8 @@ function validateBeat(
       if (b.speak_body !== undefined && typeof b.speak_body !== "boolean") {
         errors.push(`${label}: speak_body must be a boolean`);
       }
+      validateDiagram(b.diagram, label, errors);
+      validateSay(b.say, label, errors);
       break;
     case "media": {
       const media = b.media as Record<string, unknown> | undefined;
@@ -377,11 +476,14 @@ function validateBeat(
       break;
     case "formula_demo":
       validateFormulaExample(b.formula_example, label, errors);
+      validateSay(b.say, label, errors);
       break;
     case "question":
       if (b.advance !== "on_answer") {
         errors.push(`${label}: question beats should use advance "on_answer"`);
       }
+      validateDiagram(b.diagram, label, errors);
+      validateSay(b.say, label, errors);
       if (!b.question || typeof b.question !== "object") {
         errors.push(`${label}: question beat requires a 'question' object`);
       } else {

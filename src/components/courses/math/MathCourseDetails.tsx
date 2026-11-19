@@ -29,7 +29,9 @@ import {
 import MathFormulaBoard from "./MathFormulaBoard";
 import MathAnswerWorkspace from "./MathAnswerWorkspace";
 import MathText from "./MathText";
+import { RichBody } from "@/features/curriculum-preview/v2/components/RichBody";
 import { compareFormulaAnswer } from "@/utils/formulaAnswer";
+import { toSpeech } from "@/utils/mathSpeech";
 import {
   describeStoredAnswer,
   wrongAttemptOutcome,
@@ -339,14 +341,15 @@ function MathCourseDetailsInner() {
     (text: string, action: PendingAction = { type: "none" }) => {
       try {
         const avatar = getAvatar();
-        if (avatar && text && typeof avatar.speakText === "function") {
+        const spoken = toSpeech(text);
+        if (avatar && spoken && typeof avatar.speakText === "function") {
           pendingActionRef.current = action;
           speechStartTimeRef.current = Date.now();
-          lastSpeechTextRef.current = text;
-          rewindTracker.beginUtterance(text);
-          lastSpokenTextRef.current = text;
+          lastSpeechTextRef.current = spoken;
+          rewindTracker.beginUtterance(spoken);
+          lastSpokenTextRef.current = spoken;
           setAwaitingSpeech(true);
-          avatar.speakText(text);
+          avatar.speakText(spoken);
         }
       } catch (error) {
         console.warn("Error speaking text:", error);
@@ -1619,8 +1622,9 @@ function MathCourseDetailsInner() {
     answerSubmissionInFlightRef.current = true;
     setIsAnswerSubmitted(true);
     const expected = currentQuestion.testCriteria?.expectedFormula?.trim() ?? "";
+    const accept = currentQuestion.testCriteria?.accept;
     const isCorrect = expected
-      ? compareFormulaAnswer(studentAnswer, expected)
+      ? compareFormulaAnswer(studentAnswer, expected, accept)
       : false;
     if (!isCorrect) {
       const attempt = wrongAttemptOutcome(wrongAttemptsRef.current);
@@ -1631,7 +1635,7 @@ function MathCourseDetailsInner() {
         speak(attempt.hint);
         return;
       }
-      if (expected) setStudentAnswer(expected);
+      // Keep the child's typed answer visible; feedback shows the right answer beside it.
     }
     setLastAnswerCorrect(isCorrect);
     recordAnswerResult(isCorrect);
@@ -2295,9 +2299,22 @@ function MathCourseDetailsInner() {
                 </div>
 
                 {isShowingSubtitles ? (
-                  <div className="flex min-h-[180px] items-center justify-center sm:min-h-[220px]">
-                    <div className="w-full max-w-2xl px-2 sm:px-4">
-                      <div className="mb-4 flex items-center justify-center gap-2">
+                  <div className="flex min-h-0 flex-col gap-4">
+                    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto sm:space-y-5">
+                      <div className="rounded-2xl border border-primary/10 bg-white/90 p-4 shadow-sm sm:p-5">
+                        <RichBody text={currentLesson.body} />
+                      </div>
+                      {activeFormulaExample && (
+                        <MathFormulaBoard
+                          example={activeFormulaExample}
+                          liveFormula={
+                            isFormulaTyping ? displayedFormula : undefined
+                          }
+                        />
+                      )}
+                    </div>
+                    <div className="max-h-[35vh] w-full shrink-0 overflow-y-auto px-2 sm:px-4">
+                      <div className="mb-3 flex items-center justify-center gap-2">
                         <div className="flex items-center gap-1">
                           <div className="size-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "0ms" }} />
                           <div className="size-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "150ms" }} />
@@ -2307,7 +2324,7 @@ function MathCourseDetailsInner() {
                           Your instructor is speaking…
                         </span>
                       </div>
-                      <div className="rounded-2xl border-2 border-primary/20 bg-white/90 p-5 text-center shadow-lg sm:p-8">
+                      <div className="rounded-2xl border-2 border-primary/20 bg-white/90 p-4 text-center shadow-lg sm:p-6">
                         <p className="text-base font-medium leading-relaxed break-words text-gray-800 sm:text-lg lg:text-xl">
                           {currentSubtitle || "…"}
                         </p>
@@ -2317,9 +2334,7 @@ function MathCourseDetailsInner() {
                 ) : (
                   <>
                     <div className="rounded-2xl border border-primary/10 bg-white/90 p-4 shadow-sm sm:p-5">
-                      <p className="text-sm leading-relaxed text-gray-700 sm:text-base">
-                        {currentLesson.body}
-                      </p>
+                      <RichBody text={currentLesson.body} />
                     </div>
                     {activeFormulaExample && (
                       <MathFormulaBoard

@@ -592,23 +592,39 @@ export function ListenAnswerCard({
   onToggleShow: () => void;
   onPick: (id: string) => void;
 }) {
-  const spoke = useRef(false);
+  const spokeForText = useRef<string | null>(null);
+  const onToggleShowRef = useRef(onToggleShow);
+  onToggleShowRef.current = onToggleShow;
+
   const speak = useCallback(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) {
-      onToggleShow();
+      onToggleShowRef.current();
       return;
     }
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(spokenText);
     window.speechSynthesis.speak(u);
-    spoke.current = true;
-  }, [spokenText, onToggleShow]);
+  }, [spokenText]);
 
+  // Auto-play once per spoken phrase. Do not depend on unstable parent callbacks —
+  // that recreated `speak` every render and restarted speech in a loop.
   useEffect(() => {
     if (revealed || disabled) return;
+    if (spokeForText.current === spokenText) return;
+    spokeForText.current = spokenText;
     const t = window.setTimeout(() => speak(), 400);
-    return () => window.clearTimeout(t);
-  }, [speak, revealed, disabled]);
+    return () => {
+      window.clearTimeout(t);
+    };
+  }, [speak, spokenText, revealed, disabled]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const noTts = typeof window !== "undefined" && !window.speechSynthesis;
   const displayText = showText || noTts;

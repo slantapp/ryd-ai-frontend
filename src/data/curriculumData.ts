@@ -5,6 +5,20 @@ export interface FormulaExample {
   explanation?: string;
   autoRun?: boolean;
   typingSpeed?: number;
+  /** plain (default): exact text on the board. latex: KaTeX each line unchanged. */
+  notation?: "plain" | "latex";
+}
+
+/** Spoken overrides for on-screen fields (maths). */
+export interface CurriculumSay {
+  title?: string;
+  question?: string;
+  description?: string;
+  points?: string[];
+  options?: string[];
+  answer?: string;
+  hint?: string;
+  explanation?: string;
 }
 
 export interface CodeExample {
@@ -39,6 +53,11 @@ export interface CodeExample {
   supportingLanguage?: string;
   /** `web` opens the page preview. Missing means the language runs on Judge0. */
   runtime?: "node" | "web";
+  /**
+   * Maths-only: run and show turtle/canvas output without editor chrome.
+   * Coding courses should omit this.
+   */
+  view?: "output_only";
   /** Page markup for a JavaScript lesson that runs in the preview. */
   html?: string;
   css?: string;
@@ -58,13 +77,25 @@ export interface CodeExample {
 
 export interface Question {
   id?: string;
-  type: "multiple_choice" | "true_false" | "code_test" | "formula_test";
+  type:
+    | "multiple_choice"
+    | "true_false"
+    | "code_test"
+    | "formula_test"
+    | "number_line_place";
   question: string;
   options?: string[];
-  answer?: string | boolean;
+  answer?: string | boolean | number;
   explanation?: string;
   code_example?: CodeExample;
   formula_example?: FormulaExample;
+  diagram?: import("@/utils/mathDiagram").MathDiagram;
+  say?: CurriculumSay;
+  keyboard?: string[];
+  /** number_line_place */
+  min?: number;
+  max?: number;
+  step?: number;
   /**
    * Input for this question when it must differ from `code_example.stdin`.
    * When omitted, the example's `stdin` is used.
@@ -90,6 +121,8 @@ export interface Question {
     cssChecks?: Array<Record<string, unknown>>;
     /** Math: expected final answer or expression (flexible match). */
     expectedFormula?: string;
+    /** Additional accepted answers for formula_test. */
+    accept?: string[];
     testCases?: Array<{
       input: unknown[];
       expected: unknown;
@@ -300,14 +333,14 @@ export function getFirstLesson(
   return null;
 }
 
-import jokeMachineSneakPeekCurriculum from "./joke-machine-sneak-peek-curriculum.json";
+import pythonTasterSneakPeekCurriculum from "./python-taster-sneak-peek-curriculum.json";
 import type {
   CurriculumV2,
   CurriculumV2Data,
 } from "@/features/curriculum-preview/v2/types";
 
 /** Bundled sneak-peek demo (not from the visible-curricula API). */
-export const DEMO_COURSE_SLUG = "sneak-peek-joke-machine-html";
+export const DEMO_COURSE_SLUG = "python-taster-00-guessing-game";
 
 /**
  * API / store entry may be classic v1 or flow v2. Keep `curriculum` loosely typed
@@ -323,7 +356,7 @@ export type CurriculumEntry = {
 
 /** Schema v2 flow curriculum used by the free sneak-peek lesson player. */
 export function getDemoCurriculumV2(): CurriculumV2 {
-  return jokeMachineSneakPeekCurriculum as CurriculumV2;
+  return pythonTasterSneakPeekCurriculum as CurriculumV2;
 }
 
 export function isDemoCourseSlug(slug: string | null | undefined): boolean {

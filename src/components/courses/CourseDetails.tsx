@@ -2311,8 +2311,9 @@ function CourseDetailInner({
     setIsAnswerSubmitted(true);
     const expected =
       currentQuestion.testCriteria?.expectedFormula?.trim() ?? "";
+    const accept = currentQuestion.testCriteria?.accept;
     const isCorrect = expected
-      ? compareFormulaAnswer(studentAnswer, expected)
+      ? compareFormulaAnswer(studentAnswer, expected, accept)
       : false;
     if (!isCorrect) {
       const attempt = wrongAttemptOutcome(wrongAttemptsRef.current);
@@ -2323,7 +2324,7 @@ function CourseDetailInner({
         speak(attempt.hint);
         return;
       }
-      if (expected) setStudentAnswer(expected);
+      // Keep the child's typed answer; feedback shows the right answer beside it.
     }
     setLastAnswerCorrect(isCorrect);
     recordAnswerResult(isCorrect);

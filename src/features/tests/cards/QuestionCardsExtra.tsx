@@ -882,7 +882,7 @@ export function SpotBugCard({
       {stage === "fix" || revealed ? (
         <div className="flex flex-col gap-2">
           <p className="m-0 text-[13px] font-semibold text-[#6B6572]">
-            {revealed ? "Pick a fix" : "Pick a fix — you&apos;ll see if it&apos;s right straight away."}
+            {revealed ? "Pick a fix" : "Pick a fix — one try."}
           </p>
           {fixes.map((f) => (
             <button
@@ -898,8 +898,8 @@ export function SpotBugCard({
               {f.text}
             </button>
           ))}
-          {fixFlash === "incorrect" ? (
-            <p className="m-0 text-[13px] font-semibold text-[#B91C1C]">Not that fix — try another.</p>
+          {fixFlash === "incorrect" && !revealed ? (
+            <p className="m-0 text-[13px] font-semibold text-[#B91C1C]">Not that fix.</p>
           ) : null}
           {fixFlash === "correct" ? (
             <p className="m-0 text-[13px] font-semibold text-[#15803D]">Nice — that fixes it.</p>

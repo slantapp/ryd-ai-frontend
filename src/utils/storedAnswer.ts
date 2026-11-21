@@ -29,7 +29,8 @@ type StoredCriteria = {
 
 export type StoredAnswerQuestion = {
   type: string;
-  answer?: string | boolean;
+  /** Includes number for interactive maths types (e.g. number_line_place). */
+  answer?: string | boolean | number;
   code_example?: {
     code?: string;
     language?: string;

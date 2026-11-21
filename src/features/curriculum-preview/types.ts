@@ -100,8 +100,10 @@ export interface Curriculum {
   curriculum: CurriculumData;
 }
 
-export function isMathematicsPreview(curriculum: CurriculumData): boolean {
-  const category = String(curriculum.category ?? "").trim().toLowerCase();
+export function isMathematicsPreview(
+  curriculum: { category?: string } | null | undefined,
+): boolean {
+  const category = String(curriculum?.category ?? "").trim().toLowerCase();
   return category === "mathematics" || category === "math";
 }
 

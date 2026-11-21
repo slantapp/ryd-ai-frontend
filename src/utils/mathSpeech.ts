@@ -96,7 +96,7 @@ export function toSpeech(raw: string): string {
       `${whole} and ${fractionToWords(frac)}`,
   );
 
-  s = s.replace(/(\d+)\/(\d+)/g, (full, a: string, b: string) => {
+  s = s.replace(/(\d+)\/(\d+)/g, (_full, a: string, b: string) => {
     const key = `${a}/${b}`;
     return FRACTION_WORDS[key] ?? `${a} over ${b}`;
   });

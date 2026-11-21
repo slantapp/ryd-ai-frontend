@@ -670,47 +670,27 @@ export default function TestAttemptPage() {
       patch(question.id, { bugFixId: fixId, selected: { line: state.bugLine, fixId } });
       return;
     }
+    // One pick for the fix — right or wrong, finish the card and unlock Next.
     const tries = state.bugTries + 1;
     patch(question.id, { bugFixId: fixId, bugFixFlash: null });
     const res = await send({ line: state.bugLine, fixId, tries });
     if (!res) return;
     const ok = Boolean(res.fixOk ?? res.correct);
-    if (ok) {
-      patch(question.id, {
-        bugFixId: fixId,
-        bugFixFlash: "correct",
-        done: true,
-        revealed: true,
-        correct: true,
-        firstTryCorrect: !state.missed && tries <= 1,
-        correctAnswer: res.correctAnswer,
-        explanation: res.explanation ?? null,
-        bugTries: tries,
-        tries,
-      });
-      scoreOutcome(!state.missed && tries <= 1);
-      return;
-    }
-    // Wrong fix: shake/border feedback, then clear so they can pick again.
+    const firstTryClean = !state.missed && ok && tries <= 1;
     patch(question.id, {
       bugFixId: fixId,
-      bugFixFlash: "incorrect",
+      bugFixFlash: ok ? "correct" : "incorrect",
+      done: true,
+      revealed: true,
+      correct: ok,
+      firstTryCorrect: firstTryClean,
+      correctAnswer: res.correctAnswer,
+      explanation: res.explanation ?? null,
       bugTries: tries,
       tries,
-      missed: true,
+      missed: state.missed || !ok,
     });
-    playLearningSfx("wrong");
-    setStreak(0);
-    const qid = question.id;
-    timers.current.push(
-      window.setTimeout(() => {
-        setStates((prev) =>
-          prev[qid]?.bugFixFlash === "incorrect"
-            ? { ...prev, [qid]: { ...prev[qid], bugFixFlash: null, bugFixId: null } }
-            : prev,
-        );
-      }, WRONG_FLASH_MS + 250),
-    );
+    scoreOutcome(firstTryClean);
   };
 
   const submitSpeedRound = useCallback(

@@ -144,8 +144,10 @@ export function diagramToDataUrl(diagram: MathDiagram): string | null {
   if (diagram.kind === "number_line") {
     return svgToDataUrl(buildNumberLineSvg(diagram as MathDiagramNumberLine));
   }
-  if (typeof diagram.svg === "string" && diagram.svg.trim()) {
-    return svgToDataUrl(diagram.svg);
+  const fallbackSvg =
+    "svg" in diagram && typeof diagram.svg === "string" ? diagram.svg : null;
+  if (fallbackSvg?.trim()) {
+    return svgToDataUrl(fallbackSvg);
   }
   return null;
 }

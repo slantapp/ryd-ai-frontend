@@ -389,6 +389,11 @@ export function usePreviewAvatar(options: PreviewAvatarOptions = {}) {
       return;
     }
 
+    // Resume inside onReady so a reference-guide tab can speak as soon as the
+    // model is up, while the click that opened the tab may still count.
+    void avatarRef.current?.resumeAudioContext?.().catch(() => {
+      // Suspended until a gesture — expected when autoplay is blocked.
+    });
     flushNextQueuedSpeech();
   }, [flushNextQueuedSpeech, needsMobileUnlock]);
 

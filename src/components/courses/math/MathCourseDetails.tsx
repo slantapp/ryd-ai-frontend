@@ -517,8 +517,13 @@ function MathCourseDetailsInner() {
       setShowMobileAudioUnlock(true);
       return;
     }
+    void (getAvatar() as { resumeAudioContext?: () => Promise<void> } | null)
+      ?.resumeAudioContext?.()
+      .catch(() => {
+        /* suspended until a gesture when autoplay is blocked */
+      });
     flushNextQueuedSpeech();
-  }, [isLgUp, flushNextQueuedSpeech]);
+  }, [isLgUp, flushNextQueuedSpeech, getAvatar]);
 
   const handleMobileAudioUnlock = useCallback(() => {
     setShowMobileAudioUnlock(false);
@@ -1667,29 +1672,31 @@ function MathCourseDetailsInner() {
     const slug = exercise;
     let cancelled = false;
 
+    // Reference guide: start the lesson before the progress request so speech
+    // is not waiting on the network after the new tab opens.
+    if (requestedLessonId) {
+      const target = findLessonById(requestedLessonId, curriculum);
+      if (target) {
+        const index = getLessonIndexInCurriculum(target, curriculum);
+        if (typeof index === "number") lessonFlatIndexRef.current = index;
+        setCurrentLesson(target);
+        setCanResume(false);
+        pendingResumeRef.current = {
+          lesson: target,
+          questionIndex: 0,
+          canStartQuestions: false,
+          lessonComplete: false,
+        };
+        setProgressHydrated(true);
+        void useCoursesStore.getState().hydrateCourseProgressFromApi(slug);
+        return;
+      }
+    }
+
     void (async () => {
       try {
       await useCoursesStore.getState().hydrateCourseProgressFromApi(slug);
       if (cancelled) return;
-
-      if (requestedLessonId) {
-        const target = findLessonById(requestedLessonId, curriculum);
-        if (target) {
-          const index = getLessonIndexInCurriculum(target, curriculum);
-          if (typeof index === "number") lessonFlatIndexRef.current = index;
-          setCurrentLesson(target);
-          setLessonStarted(false);
-          setCanResume(false);
-          pendingResumeRef.current = {
-            lesson: target,
-            questionIndex: 0,
-            canStartQuestions: false,
-            lessonComplete: false,
-          };
-          setProgressHydrated(true);
-          return;
-        }
-      }
 
       const stored = useCoursesStore.getState().getCourseProgress(slug);
       if (!stored) {
@@ -1760,7 +1767,7 @@ function MathCourseDetailsInner() {
     };
     // Restore once when curriculum is available; helpers are read from the latest render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [curriculum, exercise]);
+  }, [curriculum, exercise, requestedLessonId]);
 
   // Keep phase aligned with question/completion state.
   useEffect(() => {

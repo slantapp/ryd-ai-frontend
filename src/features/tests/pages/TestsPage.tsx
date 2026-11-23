@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, ChevronLeft, ChevronRight, ClipboardList, Loader2, Play, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { formatDuration, testAttemptPath, testIntroPath, testLanguagePath, testR
 import { GradeBadge } from "../components/TestBits";
 import { LanguageMark, SubjectIcon } from "../components/LanguageMark";
 import { Pager } from "../components/Pager";
-import { categoryKey, displayTestTitle, focusTest, languageBoards, languageStarted, shortTestTitle, type LanguageBoard } from "../board";
+import { categoryKey, displayTestTitle, focusTest, languageBoards, languageProgress, languageStarted, shortTestTitle, type LanguageBoard } from "../board";
 import type { LearnerTestCard, ResultHistoryRow } from "../types";
 
 const RESULTS_PER_PAGE = 10;
@@ -271,15 +271,17 @@ export default function TestsPage() {
             pageSize={3}
             onOpen={(board) => navigate(testLanguagePath(board.id))}
           />
-          <LanguageRow
-            title="Not started"
-            hint="Start begins at test 1.1"
-            boards={notStarted}
-            empty="Every language here has been started."
-            pageSize={4}
-            onOpen={(board) => navigate(testLanguagePath(board.id))}
-            compact
-          />
+          {notStarted.length > 0 ? (
+            <LanguageRow
+              title="Not started"
+              hint="Start begins at test 1.1"
+              boards={notStarted}
+              empty="Every language here has been started."
+              pageSize={3}
+              onOpen={(board) => navigate(testLanguagePath(board.id))}
+              compact
+            />
+          ) : null}
         </>
       )}
     </div>
@@ -303,14 +305,40 @@ function LanguageRow({
   onOpen: (board: LanguageBoard) => void;
   compact?: boolean;
 }) {
-  const [page, setPage] = useState(0);
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
-  const pageCount = Math.max(1, Math.ceil(boards.length / pageSize));
-  const safePage = Math.min(page, pageCount - 1);
-  const start = safePage * pageSize;
-  const visible = expanded ? boards : boards.slice(start, start + pageSize);
-  const from = boards.length ? start + 1 : 0;
-  const to = Math.min(start + visible.length, boards.length);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
+  const useSlider = !expanded && boards.length > pageSize;
+
+  const syncEdges = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    setCanPrev(el.scrollLeft > 4);
+    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    if (!useSlider) return;
+    syncEdges();
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", syncEdges, { passive: true });
+    window.addEventListener("resize", syncEdges);
+    return () => {
+      el.removeEventListener("scroll", syncEdges);
+      window.removeEventListener("resize", syncEdges);
+    };
+  }, [boards.length, syncEdges, useSlider]);
+
+  const slide = (direction: -1 | 1) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const card = el.querySelector<HTMLElement>("[data-slider-card]");
+    const delta = (card?.offsetWidth ?? 280) + 12;
+    el.scrollBy({ left: direction * delta, behavior: "smooth" });
+  };
+
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
@@ -322,16 +350,11 @@ function LanguageRow({
           </span>
         </h2>
         <div className="flex items-center gap-2 text-sm text-[#8A8494]">
-          {boards.length > 0 && !expanded ? (
-            <span>
-              {from}–{to} of {boards.length}
-            </span>
-          ) : null}
           <button
             type="button"
             aria-label="Previous"
-            disabled={expanded || safePage === 0}
-            onClick={() => setPage((value) => Math.max(0, value - 1))}
+            disabled={!useSlider || !canPrev}
+            onClick={() => slide(-1)}
             className="grid size-8 place-items-center rounded-full border border-[#E7E4EE] bg-white disabled:opacity-40"
           >
             <ChevronLeft className="size-4" />
@@ -339,8 +362,8 @@ function LanguageRow({
           <button
             type="button"
             aria-label="Next"
-            disabled={expanded || safePage >= pageCount - 1}
-            onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))}
+            disabled={!useSlider || !canNext}
+            onClick={() => slide(1)}
             className="grid size-8 place-items-center rounded-full border border-[#E7E4EE] bg-white disabled:opacity-40"
           >
             <ChevronRight className="size-4" />
@@ -352,9 +375,28 @@ function LanguageRow({
       </div>
       {boards.length === 0 ? (
         <p className="text-sm text-[#8A8494]">{empty}</p>
+      ) : useSlider ? (
+        <div
+          ref={scrollerRef}
+          aria-label={title}
+          className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {boards.map((board) => (
+            <div
+              key={board.id}
+              data-slider-card
+              className={cn(
+                "shrink-0 snap-start",
+                compact ? "w-[86%] max-w-[260px]" : "w-[88%] max-w-[340px]",
+              )}
+            >
+              <LanguageCard board={board} compact={compact} onOpen={() => onOpen(board)} />
+            </div>
+          ))}
+        </div>
       ) : (
         <div className={cn("grid gap-3", compact ? "sm:grid-cols-2 xl:grid-cols-4" : "lg:grid-cols-3")}>
-          {visible.map((board) => (
+          {boards.map((board) => (
             <LanguageCard key={board.id} board={board} compact={compact} onOpen={() => onOpen(board)} />
           ))}
         </div>
@@ -364,7 +406,8 @@ function LanguageRow({
 }
 
 function LanguageCard({ board, compact, onOpen }: { board: LanguageBoard; compact: boolean; onOpen: () => void }) {
-  const percent = board.tests.length ? Math.round((board.passed / board.tests.length) * 100) : 0;
+  const progress = languageProgress(board);
+  const percent = progress.percent;
   const focus = board.focus;
   const paused = focus?.test.openAttemptId != null;
   if (compact) {
@@ -394,7 +437,7 @@ function LanguageCard({ board, compact, onOpen }: { board: LanguageBoard; compac
         <span className="min-w-0 flex-1">
           <span className="block truncate font-solway text-lg font-bold">{board.title}</span>
           <span className="block text-[13px] text-[#8A8494]">
-            {board.passed} of {board.tests.length} passed · {board.steps.length} step{board.steps.length === 1 ? "" : "s"}
+            {progress.completed} of {board.tests.length} completed · {board.steps.length} step{board.steps.length === 1 ? "" : "s"}
           </span>
         </span>
         <span className="text-[15px] font-bold text-[#3E3C55]">{percent}%</span>
@@ -427,7 +470,8 @@ function LanguageCard({ board, compact, onOpen }: { board: LanguageBoard; compac
 
 function SegmentBar({ percent }: { percent: number }) {
   const total = 12;
-  const filled = Math.round((Math.min(100, Math.max(0, percent)) / 100) * total);
+  const amount = Math.min(100, Math.max(0, percent));
+  const filled = amount <= 0 ? 0 : Math.max(1, Math.round((amount / 100) * total));
   return (
     <div className="mt-3 flex gap-1" aria-hidden>
       {Array.from({ length: total }, (_, index) => (

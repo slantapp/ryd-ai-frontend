@@ -63,18 +63,25 @@ export default function CourseDetailsV2() {
     [curriculum],
   );
 
-  const [currentLesson, setCurrentLesson] = useState<LessonV2 | null>(null);
-  const [lessonStarted, setLessonStarted] = useState(false);
-  const [lessonKey, setLessonKey] = useState(0);
-  const [progressReady, setProgressReady] = useState(false);
-  /** True when returning to an in-progress lesson — gate asks to continue, then speech starts on tap. */
-  const [canResume, setCanResume] = useState(false);
-  const [resumeDraft, setResumeDraft] = useState<V2LessonDraft | null>(null);
-  const [autoStartAttempted, setAutoStartAttempted] = useState(false);
-  const autoStartDone = useRef(false);
   const location = useLocation();
   const requestedLessonId = playLessonId(location.search);
   const autoStartLesson = wantsAutoStartLesson(location.state) || Boolean(requestedLessonId);
+  /** Reference guide: the lesson is already in memory, so play it on the first paint. */
+  const requestedLesson = useMemo(() => {
+    if (!requestedLessonId || !curriculum) return null;
+    return findLessonV2ById(curriculum, requestedLessonId);
+  }, [curriculum, requestedLessonId]);
+  const referenceGuide = Boolean(requestedLesson);
+  const [currentLesson, setCurrentLesson] = useState<LessonV2 | null>(requestedLesson);
+  const [lessonStarted, setLessonStarted] = useState(referenceGuide);
+  const [lessonKey, setLessonKey] = useState(0);
+  const [progressReady, setProgressReady] = useState(referenceGuide);
+  /** True when returning to an in-progress lesson — gate asks to continue, then speech starts on tap. */
+  const [canResume, setCanResume] = useState(false);
+  const [resumeDraft, setResumeDraft] = useState<V2LessonDraft | null>(null);
+  const [autoStartAttempted, setAutoStartAttempted] = useState(referenceGuide);
+  const autoStartDone = useRef(referenceGuide);
+  const referencePersisted = useRef(false);
   const courseCompletionSpeechRef = useRef(false);
 
   const {
@@ -115,7 +122,10 @@ export default function CourseDetailsV2() {
 
   // Hydrate progress, then pick the lesson. A learning-path start skips the gate;
   // opening a course directly still waits for a tap so speech can start.
+  // A reference guide (?playLesson=) already mounted its lesson above and must
+  // not be sent back to the start gate while progress loads.
   useEffect(() => {
+    if (referenceGuide) return;
     if (!curriculum || !exercise) {
       setProgressReady(false);
       return;
@@ -198,7 +208,7 @@ export default function CourseDetailsV2() {
     return () => {
       cancelled = true;
     };
-  }, [allLessons, curriculum, exercise, getCourseProgress]);
+  }, [allLessons, curriculum, exercise, getCourseProgress, referenceGuide]);
 
   const persistLessonPosition = useCallback(
     (lesson: LessonV2, started: boolean, beatIndex = 0) => {
@@ -222,6 +232,19 @@ export default function CourseDetailsV2() {
     },
     [allLessons, curriculum, exercise, getCourseProgress, updateCourseProgress],
   );
+
+  // Start the reference lesson from the beginning without waiting on saved progress.
+  useEffect(() => {
+    if (!referenceGuide || !requestedLesson || !exercise || referencePersisted.current) return;
+    referencePersisted.current = true;
+    clearV2LessonDraft(
+      typeof window !== "undefined" ? window.localStorage : null,
+      exercise,
+      requestedLesson.id,
+    );
+    persistLessonPosition(requestedLesson, true, 0);
+    void useCoursesStore.getState().hydrateCourseProgressFromApi(exercise);
+  }, [exercise, persistLessonPosition, referenceGuide, requestedLesson]);
 
   const handleBeatProgress = useCallback(
     (draft: V2LessonDraft) => {

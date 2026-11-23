@@ -842,9 +842,15 @@ function CourseDetailInner({
       return;
     }
 
-    // Desktop: play first chunk now; rest chain on speech end
+    // Desktop: play first chunk now; rest chain on speech end.
+    // Resume first so a reference-guide tab can speak as soon as the model is ready.
+    void (getAvatar() as { resumeAudioContext?: () => Promise<void> } | null)
+      ?.resumeAudioContext?.()
+      .catch(() => {
+        /* suspended until a gesture when autoplay is blocked */
+      });
     flushNextQueuedSpeech();
-  }, [isLgUp, flushNextQueuedSpeech]);
+  }, [isLgUp, flushNextQueuedSpeech, getAvatar]);
 
   const handleMobileAudioUnlock = useCallback(() => {
     setShowMobileAudioUnlock(false);
@@ -2577,29 +2583,32 @@ function CourseDetailInner({
     const slug = exercise;
     let cancelled = false;
 
+    // Reference guide: the lesson is already loaded, so start it before the
+    // progress request. Waiting on the network drops the click that opened
+    // this tab, and the avatar then stays silent.
+    if (requestedLessonId) {
+      const target = findLessonById(requestedLessonId, curriculum);
+      if (target) {
+        const index = getLessonIndexInCurriculum(target, curriculum);
+        if (typeof index === "number") lessonFlatIndexRef.current = index;
+        setCurrentLesson(target);
+        setCanResume(false);
+        pendingResumeRef.current = {
+          lesson: target,
+          questionIndex: 0,
+          canStartQuestions: false,
+          lessonComplete: false,
+        };
+        setProgressHydrated(true);
+        void useCoursesStore.getState().hydrateCourseProgressFromApi(slug);
+        return;
+      }
+    }
+
     void (async () => {
       try {
       await useCoursesStore.getState().hydrateCourseProgressFromApi(slug);
       if (cancelled) return;
-
-      if (requestedLessonId) {
-        const target = findLessonById(requestedLessonId, curriculum);
-        if (target) {
-          const index = getLessonIndexInCurriculum(target, curriculum);
-          if (typeof index === "number") lessonFlatIndexRef.current = index;
-          setCurrentLesson(target);
-          setLessonStarted(false);
-          setCanResume(false);
-          pendingResumeRef.current = {
-            lesson: target,
-            questionIndex: 0,
-            canStartQuestions: false,
-            lessonComplete: false,
-          };
-          setProgressHydrated(true);
-          return;
-        }
-      }
 
       const stored = useCoursesStore.getState().getCourseProgress(slug);
       if (!stored) {
@@ -2672,7 +2681,7 @@ function CourseDetailInner({
       cancelled = true;
     };
     // Restore once when curriculum is available; helpers are read from the latest render.
-  }, [curriculum, exercise]);
+  }, [curriculum, exercise, requestedLessonId]);
 
   // Keep phase aligned with question/completion state.
   useEffect(() => {

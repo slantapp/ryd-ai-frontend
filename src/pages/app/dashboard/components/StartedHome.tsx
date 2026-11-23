@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Flame, Headphones, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import type { DashboardData, DashboardPath, DashboardResume } from "@/api/dashboard";
 import type { LearningStats } from "@/api/learningStats";
 import { CourseRecommendedTests } from "@/features/learning-pathways/components/PathRail";
-import { fetchResult } from "@/features/tests/api";
-import { testResultPath } from "@/features/tests/paths";
-import type { AttemptResult } from "@/features/tests/types";
 import { useCoursesStore, type Course } from "@/stores/coursesStore";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 import { cn } from "@/lib/utils";
+import { DailyTestChallenge } from "./DailyTestChallenge";
 import { PathMap } from "./PathMap";
 
 /** Soft weekly target shown on the streak card until the API sends one. */
@@ -33,28 +31,6 @@ function preferredPathId(paths: DashboardPath[], resumeSlug?: string): number | 
   return (anyStarted ?? paths[0])?.id ?? null;
 }
 
-type MissedTopic = { label: string; count: number; courseSlug: string | null };
-
-function missedTopics(result: AttemptResult): MissedTopic[] {
-  const counts = new Map<string, MissedTopic>();
-  for (const item of result.review) {
-    if (item.answer?.correct !== false) continue;
-    const label = item.lessonRef?.lessonTitle?.trim() || item.question.prompt.trim();
-    const key = label.slice(0, 80);
-    const existing = counts.get(key);
-    if (existing) {
-      existing.count += 1;
-      continue;
-    }
-    counts.set(key, {
-      label: key,
-      count: 1,
-      courseSlug: item.lessonRef?.courseSlug ?? null,
-    });
-  }
-  return [...counts.values()].sort((a, b) => b.count - a.count).slice(0, 2);
-}
-
 export function StartedHome({
   stats,
   resume,
@@ -73,30 +49,10 @@ export function StartedHome({
   const [activePathId, setActivePathId] = useState<number | null>(() =>
     preferredPathId(paths, firstResume?.slug),
   );
-  const [review, setReview] = useState<MissedTopic[] | null>(null);
 
   useEffect(() => {
     setActivePathId(preferredPathId(paths, firstResume?.slug));
   }, [paths, firstResume?.slug]);
-
-  const latestAttemptId = tests?.latest?.attemptId;
-  useEffect(() => {
-    if (!latestAttemptId) {
-      setReview(null);
-      return;
-    }
-    let cancelled = false;
-    fetchResult(latestAttemptId)
-      .then((result) => {
-        if (!cancelled) setReview(result ? missedTopics(result) : []);
-      })
-      .catch(() => {
-        if (!cancelled) setReview([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [latestAttemptId]);
 
   const activePath = paths.find((path) => path.id === activePathId) ?? paths[0] ?? null;
   const resumeForPath = useMemo(() => {
@@ -127,7 +83,6 @@ export function StartedHome({
 
   const accuracy = tests?.latest?.percent ?? tests?.best?.percent ?? null;
   const weekMinutes = stats ? stats.last7Days.reduce((sum, day) => sum + day.minutes, 0) : 0;
-  const minutePct = Math.min(100, Math.round((weekMinutes / WEEKLY_MINUTE_GOAL) * 100));
   const streak = stats?.streak ?? 0;
 
   const openContinue = () => {
@@ -207,37 +162,36 @@ export function StartedHome({
         />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid items-stretch gap-5 lg:grid-cols-3">
         <section
           aria-labelledby="streakTitle"
-          className="flex flex-col gap-3.5 rounded-[20px] border border-[#E7E4EE] bg-white p-6"
+          className="relative flex h-full flex-col gap-3 overflow-hidden rounded-[22px] border border-[#eadcf4] bg-[linear-gradient(145deg,#fff_4%,#fff7ff_100%)] p-4 shadow-[0_12px_30px_rgba(99,26,138,0.10)]"
         >
-          <div className="flex items-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-xl bg-[#FDF1E2]" aria-hidden>
-              <Flame className="size-5" fill="#F2A65A" color="#8A4206" />
+          <span className="pointer-events-none absolute -right-20 -top-24 size-[230px] rounded-full bg-[radial-gradient(circle,rgba(223,45,169,0.10),transparent_70%)]" aria-hidden />
+          <div className="relative z-[1] flex items-start gap-2.5">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[linear-gradient(135deg,#ffdfc8,#ffd6ed)] text-xl shadow-[inset_0_0_0_1px_#f0d8fb]" aria-hidden>
+              🔥
             </span>
             <div>
-              <h2 id="streakTitle" className="font-solway text-[22px] leading-none text-[#1C1B3A]">
+              <h2 id="streakTitle" className="font-solway text-lg leading-tight text-[#201b48]">
                 {streak > 0 ? `${streak}-day streak` : "Start a streak"}
               </h2>
-              <p className="mt-1 text-[13px] text-[#5E5C72]">
+              <p className="mt-0.5 text-[13px] leading-snug text-[#6f6a8b]">
                 {stats?.activeToday
                   ? "You learned today. Come back tomorrow to keep it going."
-                  : streak > 0
-                    ? `Do today’s lesson to make it ${streak + 1}`
-                    : "Finish a lesson today to light your streak"}
+                  : "Finish a lesson today to keep your streak alive!"}
               </p>
             </div>
           </div>
           {stats ? (
-            <div className="flex justify-between" aria-label="Last 7 days">
+            <div className="relative z-[1] flex justify-between" aria-label="Last 7 days">
               {stats.last7Days.map((day) => {
                 const isToday = day.date === stats.today.day;
                 return (
                   <span
                     key={day.date}
                     className={cn(
-                      "flex size-[34px] items-center justify-center rounded-full border-2 text-xs font-bold",
+                      "flex size-[30px] items-center justify-center rounded-full border-2 text-xs font-bold",
                       day.active && "border-[#9B3A86] bg-[#9B3A86] text-white",
                       !day.active && isToday && "border-dashed border-[#9B3A86] bg-white text-[#7E2C6C]",
                       !day.active && !isToday && "border-[#F1EFF5] bg-[#F1EFF5] text-[#5E5C72]",
@@ -249,21 +203,28 @@ export function StartedHome({
               })}
             </div>
           ) : null}
-          <div className="mt-auto flex flex-col gap-1.5">
-            <div className="flex justify-between text-[13px]">
-              <span className="font-semibold text-[#1C1B3A]">
-                {weekMinutes > WEEKLY_MINUTE_GOAL
-                  ? `${weekMinutes} min this week`
-                  : `${weekMinutes} of ${WEEKLY_MINUTE_GOAL} min this week`}
-              </span>
-              {accuracy != null ? (
-                <span className="text-[#5E5C72]">{Math.round(accuracy)}% quiz accuracy</span>
-              ) : null}
+          <div className="relative z-[1] grid grid-cols-2 rounded-2xl bg-[linear-gradient(100deg,#f9dafa,#f7e9fc)] px-3 py-2.5 text-center">
+            <div>
+              <p className="font-solway text-lg font-bold leading-none tracking-[-0.4px] text-[#64118d]">
+                {weekMinutes} <span className="text-[13px] font-bold">of {WEEKLY_MINUTE_GOAL} min</span>
+              </p>
+              <p className="mt-1 text-[11px] text-[#5b4778]">this week</p>
             </div>
-            <div className="h-2 rounded-full bg-[#EFEAF3]">
-              <div className="h-2 rounded-full bg-[#9B3A86]" style={{ width: `${minutePct}%` }} />
+            <div className="border-l border-[#dcb9e9]">
+              <p className="font-solway text-lg font-bold leading-none tracking-[-0.4px] text-[#64118d]">
+                {accuracy != null ? `${Math.round(accuracy)}%` : "0%"}
+              </p>
+              <p className="mt-1 text-[11px] text-[#5b4778]">quiz accuracy</p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={openContinue}
+            className="relative z-[1] mt-auto inline-flex items-center justify-center gap-2 rounded-full bg-[linear-gradient(100deg,#8c16a6,#651183)] px-4 py-2.5 text-sm font-bold text-white transition hover:brightness-110"
+          >
+            <Play className="size-3.5 fill-current" aria-hidden />
+            Continue Learning
+          </button>
         </section>
 
         <CourseRecommendedTests
@@ -272,76 +233,7 @@ export function StartedHome({
           lessonTitle={selectedLessonTitle}
         />
 
-        {latestAttemptId && review === null ? (
-          <section className="flex flex-col justify-center rounded-[20px] border border-[#E7E4EE] bg-white p-6">
-            <h2 className="font-solway text-[22px] text-[#1C1B3A]">Quick review</h2>
-            <p className="mt-1 text-[13px] text-[#5E5C72]">Checking your last quiz…</p>
-          </section>
-        ) : review && review.length > 0 ? (
-          <section
-            aria-labelledby="reviewTitle"
-            className="flex flex-col gap-3.5 rounded-[20px] border border-[#E7E4EE] bg-white p-6"
-          >
-            <div className="flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-xl bg-[#E8F0FB]" aria-hidden>
-                <Headphones className="size-5 text-[#1E4E8C]" />
-              </span>
-              <div>
-                <h2 id="reviewTitle" className="font-solway text-[22px] leading-none text-[#1C1B3A]">
-                  Quick review
-                </h2>
-                <p className="mt-1 text-[13px] text-[#5E5C72]">Picked from your last quiz</p>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2.5">
-              {review.map((topic) => (
-                <div
-                  key={topic.label}
-                  className="flex items-center justify-between gap-2.5 rounded-xl bg-[#F7F6FA] px-3.5 py-3"
-                >
-                  <span className="min-w-0 truncate font-semibold text-[#1C1B3A]">{topic.label}</span>
-                  <span className="shrink-0 rounded-full bg-[#FDF1E2] px-2 py-0.5 text-xs font-bold text-[#8A4206]">
-                    {topic.count} missed
-                  </span>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const slug = review.find((topic) => topic.courseSlug)?.courseSlug;
-                if (slug) {
-                  navigate(coursePath(slug));
-                  return;
-                }
-                if (latestAttemptId) navigate(testResultPath(latestAttemptId));
-              }}
-              className="mt-auto inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl bg-[#1C1B3A] font-bold text-white transition hover:brightness-125"
-            >
-              <Headphones className="size-4" />
-              Listen to a 5-min review
-            </button>
-          </section>
-        ) : (
-          <section className="flex flex-col justify-between gap-3 rounded-[20px] border border-[#E7E4EE] bg-white p-6">
-            <div>
-              <h2 className="font-solway text-[22px] text-[#1C1B3A]">Quick review</h2>
-              <p className="mt-1 text-[13px] text-[#5E5C72]">
-                {latestAttemptId
-                  ? "Your last quiz didn’t leave a topic to revisit."
-                  : "Finish a quiz and we’ll pull the questions you missed."}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate(latestAttemptId ? testResultPath(latestAttemptId) : PRIVATE_PATHS.TESTS)}
-              className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl bg-[#1C1B3A] font-bold text-white"
-            >
-              {latestAttemptId ? "See last quiz" : "Browse quizzes"}
-              <ArrowRight className="size-4" />
-            </button>
-          </section>
-        )}
+        <DailyTestChallenge paths={paths} resume={resume} activePathId={activePath?.id ?? null} />
       </div>
     </div>
   );

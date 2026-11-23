@@ -195,3 +195,35 @@ export function lowestScore(tests: LearnerTestCard[]): LearnerTestCard | null {
 export function languageStarted(board: LanguageBoard): boolean {
   return board.tests.some((item) => item.test.attemptsUsed > 0 || item.test.openAttemptId != null || item.test.best);
 }
+
+/**
+ * How far through the language the learner is.
+ * A finished test counts in full, pass or not. An open attempt counts the questions
+ * already answered. One started test out of a long list still reads at least 1%.
+ */
+export function languageProgress(board: LanguageBoard): { percent: number; completed: number } {
+  const total = board.tests.length;
+  if (!total) return { percent: 0, completed: 0 };
+
+  let units = 0;
+  let started = false;
+  for (const item of board.tests) {
+    const test = item.test;
+    if (test.best || test.openAttemptId != null || test.attemptsUsed > 0) started = true;
+    if (test.best) {
+      units += 1;
+      continue;
+    }
+    const open = test.openProgress;
+    if (test.openAttemptId != null && open && open.total > 0) {
+      const answered = Math.max(0, open.question - 1);
+      units += Math.min(1, answered / open.total);
+    }
+  }
+
+  let percent = Math.round((units / total) * 100);
+  if (started && percent < 1) percent = 1;
+  if (percent > 100) percent = 100;
+  const completed = board.tests.filter((item) => item.test.best).length;
+  return { percent, completed };
+}

@@ -5,7 +5,7 @@ import { ChevronDown, Clock, Loader2, Play, Target, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PRIVATE_PATHS } from "@/utils/routePaths";
 import { fetchVisibleTests } from "../api";
-import { displayTestTitle, languageBoards, lastCompletedTest, squareStatus, type NumberedTest, type SquareStatus } from "../board";
+import { displayTestTitle, languageBoards, languageProgress, lastCompletedTest, squareStatus, type NumberedTest, type SquareStatus } from "../board";
 import { LanguageMark } from "../components/LanguageMark";
 import { testAttemptPath, testIntroPath, testLanguagePath } from "../paths";
 import type { LearnerTestCard } from "../types";
@@ -82,7 +82,8 @@ export default function TestLanguagePage() {
   }
 
   const focusId = board.focus?.test.id ?? null;
-  const percent = board.tests.length ? Math.round((board.passed / board.tests.length) * 100) : 0;
+  const progress = languageProgress(board);
+  const percent = progress.percent;
   const latest = lastCompletedTest(board.tests);
 
   return (
@@ -101,14 +102,14 @@ export default function TestLanguagePage() {
           <div>
             <h1 className="font-solway text-[32px] font-bold leading-none">{board.title} tests</h1>
             <p className="mt-1 text-sm text-[#5E5C72]">
-              {board.tests.length} tests · {board.steps.length} step{board.steps.length === 1 ? "" : "s"} · {board.passed} passed
+              {board.tests.length} tests · {board.steps.length} step{board.steps.length === 1 ? "" : "s"} · {progress.completed} completed · {board.passed} passed
               {board.failed ? ` · ${board.failed} not passed` : ""}
             </p>
           </div>
         </div>
         <div className="min-w-[180px] text-right">
           <p className="text-sm font-semibold">
-            {board.passed} of {board.tests.length} passed
+            {progress.completed} of {board.tests.length} completed
           </p>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#E7E4EE]">
             <div className="h-full rounded-full bg-[#3B82F6]" style={{ width: `${percent}%` }} />

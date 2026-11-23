@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, ClipboardList, Clock, Target, Waypoints } from "lucide-react";
+import { ChevronRight, ClipboardList, Clock, RefreshCw, Target, Waypoints, Zap } from "lucide-react";
 import { LanguageMark, languageMark } from "@/features/tests/components/LanguageMark";
 import { fetchVisibleTests } from "@/features/tests/api";
 import { displayTestTitle, testCode } from "@/features/tests/board";
@@ -100,9 +100,15 @@ function pathListCopy(pathway: Pathway) {
   return { name: title, subtitle: level || "Learning path" };
 }
 
-function RailCard({ children }: { children: React.ReactNode }) {
+function RailCard({ children, fill }: { children: React.ReactNode; fill?: boolean }) {
   return (
-    <section className="rounded-3xl border border-[#E7E4EE] bg-white p-4 shadow-[0_8px_24px_-16px_rgba(28,27,58,0.35)]">
+    <section
+      className={cn(
+        fill
+          ? "relative flex h-full flex-col gap-2.5 overflow-hidden rounded-[22px] border border-[#eadcf4] bg-[linear-gradient(145deg,#fff_4%,#fff7ff_100%)] p-4 shadow-[0_12px_30px_rgba(99,26,138,0.10)]"
+          : "rounded-3xl border border-[#E7E4EE] bg-white p-4 shadow-[0_8px_24px_-16px_rgba(28,27,58,0.35)]",
+      )}
+    >
       {children}
     </section>
   );
@@ -222,6 +228,7 @@ export function CourseRecommendedTests({
 
   return (
     <TestsRecommendationView
+      fill
       loading={tests == null}
       empty={!courseSlug || (tests != null && courseTests.length === 0)}
       allPassed={courseTests.length > 0 && upcoming.length === 0 && failed.length === 0}
@@ -236,6 +243,7 @@ export function CourseRecommendedTests({
 }
 
 function TestsRecommendationView({
+  fill = false,
   loading,
   empty,
   allPassed,
@@ -246,6 +254,7 @@ function TestsRecommendationView({
   hiddenUpcoming,
   onOpen,
 }: {
+  fill?: boolean;
   loading: boolean;
   empty: boolean;
   allPassed: boolean;
@@ -257,75 +266,102 @@ function TestsRecommendationView({
   onOpen: (test: LearnerTestCard) => void;
 }) {
   const navigate = useNavigate();
-
-  return (
-    <RailCard>
-      <div className="flex items-center gap-1.5">
-        <ClipboardList className="size-4 shrink-0 text-primary" aria-hidden />
-        <h3 className="font-solway text-[15px] font-bold text-[#132050]">Recommended tests</h3>
-      </div>
-      <p className="mt-0.5 font-inter text-xs text-[#6B6578]">From this path, in the order you&apos;ll take them</p>
-
-      {loading ? (
-        <p className="mt-4 font-inter text-sm text-[#6B6578]">Checking tests for this course…</p>
-      ) : empty ? (
-        <p className="mt-4 font-inter text-sm text-[#6B6578]">No knowledge tests are linked to this course yet.</p>
-      ) : allPassed ? (
-        <p className="mt-4 font-inter text-sm text-[#6B6578]">You&apos;ve passed the tests for this course.</p>
-      ) : (
-        <div className="mt-3.5 space-y-3">
-          {upcoming.length > 0 && (
-            <div>
-              <p className="font-inter text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
-                Up next in {unitTitle}
-              </p>
-              <ul className="mt-1 divide-y divide-[#EFE7F0]">
-                {upcoming.map((test, index) => (
-                  <TestRow
-                    key={test.id}
-                    test={test}
-                    unitTitle={unitTitle}
-                    index={index}
-                    failed={false}
-                    lessonTitle={lessonTitle}
-                    onOpen={onOpen}
-                  />
-                ))}
-              </ul>
-              {hiddenUpcoming > 0 && (
-                <p className="mt-1 px-1 font-inter text-xs text-[#6B6578]">
-                  {hiddenUpcoming} more in this course
-                </p>
-              )}
-            </div>
-          )}
-          {failed.length > 0 && (
-            <div>
-              <p className="font-inter text-[10px] font-bold uppercase tracking-[0.14em] text-[#E11D48]">
-                Needs another go
-              </p>
-              <ul className="mt-1 divide-y divide-[#F6D5DC]">
-                {failed.map((test, index) => (
-                  <TestRow
-                    key={test.id}
-                    test={test}
-                    unitTitle={unitTitle}
-                    index={index}
-                    failed
-                    lessonTitle={null}
-                    onOpen={onOpen}
-                  />
-                ))}
-              </ul>
-            </div>
+  const body = loading ? (
+    <p className="font-inter text-sm text-[#6B6578]">Checking tests for this course…</p>
+  ) : empty ? (
+    <p className="font-inter text-sm text-[#6B6578]">No knowledge tests are linked to this course yet.</p>
+  ) : allPassed ? (
+    <p className="font-inter text-sm text-[#6B6578]">You&apos;ve passed the tests for this course.</p>
+  ) : (
+    <div className="space-y-3">
+      {upcoming.length > 0 && (
+        <div>
+          <p className={cn(fill ? "flex items-center gap-1.5 rounded-full bg-[#f0e1ff] px-2.5 py-1.5 text-[11px] font-extrabold leading-snug tracking-[0.3px] text-[#7d19a2]" : "font-inter text-[10px] font-bold uppercase tracking-[0.14em] text-primary")}>
+            {fill ? <Zap className="size-3.5 shrink-0" aria-hidden /> : null}
+            Up next in {unitTitle}
+          </p>
+          <ul className={cn("mt-1", fill ? "space-y-1" : "divide-y divide-[#EFE7F0]")}>
+            {upcoming.map((test, index) => (
+              <TestRow
+                key={test.id}
+                test={test}
+                unitTitle={unitTitle}
+                index={index}
+                failed={false}
+                lessonTitle={lessonTitle}
+                dash={fill}
+                onOpen={onOpen}
+              />
+            ))}
+          </ul>
+          {hiddenUpcoming > 0 && (
+            <p className="mt-1 px-1 font-inter text-xs text-[#6B6578]">
+              {hiddenUpcoming} more in this course
+            </p>
           )}
         </div>
       )}
+      {failed.length > 0 && (
+        <div>
+          {fill ? <div className="my-1 h-px bg-[#eadcf2]" /> : null}
+          <p className={cn(fill ? "flex items-center gap-2 text-[13px] font-extrabold text-[#d02ba5]" : "font-inter text-[10px] font-bold uppercase tracking-[0.14em] text-[#E11D48]")}>
+            {fill ? <RefreshCw className="size-3.5" aria-hidden /> : null}
+            Needs another go
+          </p>
+          <ul className={cn("mt-1", fill ? "space-y-1" : "divide-y divide-[#F6D5DC]")}>
+            {failed.map((test, index) => (
+              <TestRow
+                key={test.id}
+                test={test}
+                unitTitle={unitTitle}
+                index={index}
+                failed
+                lessonTitle={null}
+                dash={fill}
+                onOpen={onOpen}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <RailCard fill={fill}>
+      {fill ? <span className="pointer-events-none absolute -right-20 -top-24 size-[230px] rounded-full bg-[radial-gradient(circle,rgba(223,45,169,0.10),transparent_70%)]" aria-hidden /> : null}
+      {fill ? (
+        <div className="relative z-[1] flex items-start gap-[13px]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[linear-gradient(135deg,#f0ddff,#e8e6ff)] text-lg shadow-[inset_0_0_0_1px_#f0d8fb]" aria-hidden>
+            ✦
+          </span>
+          <div className="min-w-0">
+            <h3 className="font-solway text-lg leading-tight text-[#201b48]">Recommended tests</h3>
+            <p className="mt-0.5 text-[13px] leading-snug text-[#6f6a8b]">From this path, in the order you&apos;ll take them</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-1.5">
+            <ClipboardList className="size-4 shrink-0 text-primary" aria-hidden />
+            <h3 className="font-solway text-[15px] font-bold text-[#132050]">Recommended tests</h3>
+          </div>
+          <p className="mt-0.5 font-inter text-xs text-[#6B6578]">From this path, in the order you&apos;ll take them</p>
+        </>
+      )}
+
+      <div className={cn(fill ? "relative z-[1] flex min-h-0 flex-1 flex-col gap-2" : "mt-4")}>
+        {body}
+      </div>
 
       <button
         type="button"
         onClick={() => navigate(PRIVATE_PATHS.TESTS)}
-        className="mt-3 inline-flex items-center gap-0.5 font-inter text-sm font-semibold text-primary hover:underline"
+        className={cn(
+          fill
+            ? "relative z-[1] mt-auto inline-flex items-center justify-center gap-1.5 rounded-full border-[1.5px] border-[#a625bf] bg-white px-4 py-2.5 text-sm font-bold text-[#7a129a] transition hover:bg-[#FBF4FA]"
+            : "mt-3 inline-flex items-center gap-0.5 font-inter text-sm font-semibold text-primary hover:underline",
+        )}
       >
         All knowledge tests
         <ChevronRight className="size-4" aria-hidden />
@@ -334,12 +370,18 @@ function TestsRecommendationView({
   );
 }
 
+function languageInitials(test: LearnerTestCard, unitTitle: string): string {
+  const language = (test.subcategory?.title || test.language || unitTitle.split(/[\s:·]/)[0] || "").replace(/[^A-Za-z]/g, "");
+  return (language.slice(0, 2) || "TS").toUpperCase();
+}
+
 function TestRow({
   test,
   unitTitle,
   index,
   failed,
   lessonTitle,
+  dash = false,
   onOpen,
 }: {
   test: LearnerTestCard;
@@ -347,6 +389,7 @@ function TestRow({
   index: number;
   failed: boolean;
   lessonTitle: string | null;
+  dash?: boolean;
   onOpen: (test: LearnerTestCard) => void;
 }) {
   const code = testCode(test.title)?.label ?? String(index + 1);
@@ -354,19 +397,66 @@ function TestRow({
   const status = failed ? "Not passed yet" : onThisLesson ? "Lesson you're on" : index === 0 ? "Next in order" : "Coming up";
   const action = test.openAttemptId ? "Resume" : failed ? "Retry" : "Start";
 
+  if (dash) {
+    return (
+      <li className={cn("grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-2 py-1.5", failed && "rounded-xl bg-[#FFF1F2] px-2")}>
+        <span className="grid size-8 place-items-center rounded-lg bg-[linear-gradient(140deg,#9b23bd,#741195)] text-[11px] font-black text-white">
+          {languageInitials(test, unitTitle)}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-[13px] font-extrabold leading-snug text-[#201b48]">{testHeading(test, unitTitle)}</p>
+          <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#6f6a8b]">
+            <span>{status}</span>
+            {test.timeLimitMinutes ? (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="size-3" aria-hidden />
+                {test.timeLimitMinutes} min
+              </span>
+            ) : null}
+          </p>
+          {!failed ? (
+            <>
+              <p className="mt-0.5 flex items-center gap-1 text-[11px] text-[#6f6a8b]">
+                <Target className="size-3" aria-hidden />
+                {test.passMark}% to pass
+              </p>
+              <div className="mt-1 h-1 overflow-hidden rounded-full bg-[#e9ddf3]">
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,#d52ba7,#a22bd0)]"
+                  style={{ width: `${Math.min(100, Math.max(0, test.passMark))}%` }}
+                />
+              </div>
+            </>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => onOpen(test)}
+          className={cn(
+            "whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-bold",
+            failed ? "bg-[#f5e3ff] text-[#8b20a7]" : "bg-[linear-gradient(100deg,#f22fb0,#c92ba6)] text-white",
+          )}
+        >
+          {action}
+          {!failed ? " ›" : ""}
+        </button>
+      </li>
+    );
+  }
+
   return (
-    <li className={cn("flex items-center gap-2.5 py-2.5", failed && "bg-[#FFF1F2] px-2")}>
+    <li className={cn("flex items-center gap-2.5 py-2", !dash && failed && "bg-[#FFF1F2] px-2")}>
       <span
         className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-lg font-inter text-xs font-bold",
-          failed ? "bg-[#FB7185] text-white" : "bg-primary text-white",
+          "flex size-9 shrink-0 items-center justify-center rounded-lg font-inter text-xs font-bold text-white",
+          dash ? "bg-[#5C2E78]" : failed ? "bg-[#FB7185]" : "bg-primary",
         )}
       >
-        {code}
+        {dash ? languageInitials(test, unitTitle) : code}
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate font-inter text-[15px] font-bold leading-snug text-[#132050]">{testHeading(test, unitTitle)}</p>
-        <p className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 font-inter text-xs leading-5 text-[#8A8496]">
+        <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-inter text-xs leading-4 text-[#8A8496]">
           <span className={cn("font-medium", failed ? "text-[#E11D48]" : "text-[#6B6578]")}>{status}</span>
           {test.timeLimitMinutes ? (
             <span className="inline-flex items-center gap-1">
@@ -383,7 +473,10 @@ function TestRow({
       <button
         type="button"
         onClick={() => onOpen(test)}
-        className="inline-flex h-8 shrink-0 items-center rounded-full bg-primary px-3.5 font-inter text-xs font-bold text-white transition hover:brightness-110"
+        className={cn(
+          "inline-flex h-8 shrink-0 items-center rounded-full bg-primary font-inter text-xs font-bold text-white transition hover:brightness-110",
+          dash ? "px-4" : "px-3.5",
+        )}
       >
         {action}
       </button>

@@ -162,7 +162,13 @@ export function StartedHome({
         />
       </section>
 
-      <div className="grid items-stretch gap-5 lg:grid-cols-3">
+      <CourseRecommendedTests
+        courseSlug={selectedCourseSlug}
+        courseTitle={selectedCourseTitle}
+        lessonTitle={selectedLessonTitle}
+      />
+
+      <div className="grid items-stretch gap-5 lg:grid-cols-2">
         <section
           aria-labelledby="streakTitle"
           className="relative flex h-full flex-col gap-3 overflow-hidden rounded-[22px] border border-[#eadcf4] bg-[linear-gradient(145deg,#fff_4%,#fff7ff_100%)] p-4 shadow-[0_12px_30px_rgba(99,26,138,0.10)]"
@@ -226,12 +232,6 @@ export function StartedHome({
             Continue Learning
           </button>
         </section>
-
-        <CourseRecommendedTests
-          courseSlug={selectedCourseSlug}
-          courseTitle={selectedCourseTitle}
-          lessonTitle={selectedLessonTitle}
-        />
 
         <DailyTestChallenge paths={paths} resume={resume} activePathId={activePath?.id ?? null} />
       </div>

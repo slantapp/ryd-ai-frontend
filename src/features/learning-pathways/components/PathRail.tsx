@@ -211,8 +211,8 @@ export function CourseRecommendedTests({
   );
   const failed = courseTests.filter((test) => test.best && !test.best.passed);
   const upcoming = courseTests.filter((test) => !test.best);
-  const shownFailed = failed.length > 0 ? failed.slice(0, 1) : [];
-  const shownUpcoming = upcoming.slice(0, failed.length > 0 ? 1 : 2);
+  const shownFailed = failed.slice(0, 2);
+  const shownUpcoming = upcoming.slice(0, Math.max(2, 4 - shownFailed.length));
 
   const openTest = (test: LearnerTestCard) => {
     if (test.openAttemptId) {
@@ -266,6 +266,63 @@ function TestsRecommendationView({
   onOpen: (test: LearnerTestCard) => void;
 }) {
   const navigate = useNavigate();
+  if (fill) {
+    const tiles = [
+      ...upcoming.map((test, index) => ({ test, failed: false, index })),
+      ...failed.map((test, index) => ({ test, failed: true, index })),
+    ];
+    const columns =
+      tiles.length >= 4 ? "sm:grid-cols-2 xl:grid-cols-4" : tiles.length === 3 ? "sm:grid-cols-3" : tiles.length === 2 ? "sm:grid-cols-2" : "grid-cols-1";
+    return (
+      <RailCard fill>
+        <span className="pointer-events-none absolute -right-20 -top-24 size-[230px] rounded-full bg-[radial-gradient(circle,rgba(223,45,169,0.10),transparent_70%)]" aria-hidden />
+        <div className="relative z-[1] flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[linear-gradient(135deg,#f0ddff,#e8e6ff)] text-lg shadow-[inset_0_0_0_1px_#f0d8fb]" aria-hidden>
+              ✦
+            </span>
+            <div className="min-w-0">
+              <h3 className="font-solway text-lg leading-tight text-[#201b48]">Recommended tests</h3>
+              <p className="mt-0.5 text-[13px] leading-snug text-[#6f6a8b]">From this path, in the order you&apos;ll take them</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate(PRIVATE_PATHS.TESTS)}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border-[1.5px] border-[#a625bf] bg-white px-4 py-2 text-sm font-bold text-[#7a129a] transition hover:bg-[#FBF4FA]"
+          >
+            All knowledge tests
+            <ChevronRight className="size-4" aria-hidden />
+          </button>
+        </div>
+        {loading ? (
+          <p className="relative z-[1] font-inter text-sm text-[#6B6578]">Checking tests for this course…</p>
+        ) : empty ? (
+          <p className="relative z-[1] font-inter text-sm text-[#6B6578]">No knowledge tests are linked to this course yet.</p>
+        ) : allPassed ? (
+          <p className="relative z-[1] font-inter text-sm text-[#6B6578]">You&apos;ve passed the tests for this course.</p>
+        ) : (
+          <div className={cn("relative z-[1] grid gap-3", columns)}>
+            {tiles.map(({ test, failed: missed, index }) => (
+              <WideTestCard
+                key={test.id}
+                test={test}
+                unitTitle={unitTitle}
+                index={index}
+                failed={missed}
+                lessonTitle={missed ? null : lessonTitle}
+                onOpen={onOpen}
+              />
+            ))}
+          </div>
+        )}
+        {hiddenUpcoming > 0 ? (
+          <p className="relative z-[1] text-xs text-[#6B6578]">{hiddenUpcoming} more in this course</p>
+        ) : null}
+      </RailCard>
+    );
+  }
+
   const body = loading ? (
     <p className="font-inter text-sm text-[#6B6578]">Checking tests for this course…</p>
   ) : empty ? (
@@ -328,45 +385,94 @@ function TestsRecommendationView({
   );
 
   return (
-    <RailCard fill={fill}>
-      {fill ? <span className="pointer-events-none absolute -right-20 -top-24 size-[230px] rounded-full bg-[radial-gradient(circle,rgba(223,45,169,0.10),transparent_70%)]" aria-hidden /> : null}
-      {fill ? (
-        <div className="relative z-[1] flex items-start gap-[13px]">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[linear-gradient(135deg,#f0ddff,#e8e6ff)] text-lg shadow-[inset_0_0_0_1px_#f0d8fb]" aria-hidden>
-            ✦
-          </span>
-          <div className="min-w-0">
-            <h3 className="font-solway text-lg leading-tight text-[#201b48]">Recommended tests</h3>
-            <p className="mt-0.5 text-[13px] leading-snug text-[#6f6a8b]">From this path, in the order you&apos;ll take them</p>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center gap-1.5">
-            <ClipboardList className="size-4 shrink-0 text-primary" aria-hidden />
-            <h3 className="font-solway text-[15px] font-bold text-[#132050]">Recommended tests</h3>
-          </div>
-          <p className="mt-0.5 font-inter text-xs text-[#6B6578]">From this path, in the order you&apos;ll take them</p>
-        </>
-      )}
-
-      <div className={cn(fill ? "relative z-[1] flex min-h-0 flex-1 flex-col gap-2" : "mt-4")}>
-        {body}
+    <RailCard>
+      <div className="flex items-center gap-1.5">
+        <ClipboardList className="size-4 shrink-0 text-primary" aria-hidden />
+        <h3 className="font-solway text-[15px] font-bold text-[#132050]">Recommended tests</h3>
       </div>
-
+      <p className="mt-0.5 font-inter text-xs text-[#6B6578]">From this path, in the order you&apos;ll take them</p>
+      <div className="mt-4">{body}</div>
       <button
         type="button"
         onClick={() => navigate(PRIVATE_PATHS.TESTS)}
-        className={cn(
-          fill
-            ? "relative z-[1] mt-auto inline-flex items-center justify-center gap-1.5 rounded-full border-[1.5px] border-[#a625bf] bg-white px-4 py-2.5 text-sm font-bold text-[#7a129a] transition hover:bg-[#FBF4FA]"
-            : "mt-3 inline-flex items-center gap-0.5 font-inter text-sm font-semibold text-primary hover:underline",
-        )}
+        className="mt-3 inline-flex items-center gap-0.5 font-inter text-sm font-semibold text-primary hover:underline"
       >
         All knowledge tests
         <ChevronRight className="size-4" aria-hidden />
       </button>
     </RailCard>
+  );
+}
+
+function WideTestCard({
+  test,
+  unitTitle,
+  index,
+  failed,
+  lessonTitle,
+  onOpen,
+}: {
+  test: LearnerTestCard;
+  unitTitle: string;
+  index: number;
+  failed: boolean;
+  lessonTitle: string | null;
+  onOpen: (test: LearnerTestCard) => void;
+}) {
+  const onThisLesson = !failed && matchesLesson(test, lessonTitle);
+  const status = failed ? "Not passed yet" : onThisLesson ? "Lesson you're on" : index === 0 ? "Next in order" : "Coming up";
+  const action = test.openAttemptId ? "Resume" : failed ? "Retry" : "Start";
+  return (
+    <article
+      className={cn(
+        "flex h-full flex-col gap-2 rounded-2xl border p-3",
+        failed ? "border-[#F6D5DC] bg-[#FFF1F2]" : "border-[#eadcf4] bg-white",
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className={cn("text-[11px] font-extrabold uppercase tracking-[0.08em]", failed ? "text-[#E11D48]" : "text-[#7d19a2]")}>
+          {failed ? "Needs another go" : "Up next"}
+        </p>
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[linear-gradient(140deg,#9b23bd,#741195)] text-[11px] font-black text-white">
+          {languageInitials(test, unitTitle)}
+        </span>
+      </div>
+      <p className="line-clamp-2 text-sm font-extrabold leading-snug text-[#201b48]">{testHeading(test, unitTitle)}</p>
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[#6f6a8b]">
+        <span className={failed ? "font-semibold text-[#E11D48]" : undefined}>{status}</span>
+        {test.timeLimitMinutes ? (
+          <span className="inline-flex items-center gap-1">
+            <Clock className="size-3" aria-hidden />
+            {test.timeLimitMinutes} min
+          </span>
+        ) : null}
+        <span className="inline-flex items-center gap-1">
+          <Target className="size-3" aria-hidden />
+          {test.passMark}% to pass
+        </span>
+      </p>
+      {!failed ? (
+        <div className="h-1 overflow-hidden rounded-full bg-[#e9ddf3]">
+          <div
+            className="h-full rounded-full bg-[linear-gradient(90deg,#d52ba7,#a22bd0)]"
+            style={{ width: `${Math.min(100, Math.max(0, test.passMark))}%` }}
+          />
+        </div>
+      ) : (
+        <div className="h-1" aria-hidden />
+      )}
+      <button
+        type="button"
+        onClick={() => onOpen(test)}
+        className={cn(
+          "mt-auto inline-flex h-8 w-full items-center justify-center rounded-full text-xs font-bold",
+          failed ? "bg-[#f5e3ff] text-[#8b20a7]" : "bg-[linear-gradient(100deg,#f22fb0,#c92ba6)] text-white",
+        )}
+      >
+        {action}
+        {failed ? "" : " ›"}
+      </button>
+    </article>
   );
 }
 

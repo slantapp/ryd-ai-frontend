@@ -376,23 +376,57 @@ function LanguageRow({
       {boards.length === 0 ? (
         <p className="text-sm text-[#8A8494]">{empty}</p>
       ) : useSlider ? (
-        <div
-          ref={scrollerRef}
-          aria-label={title}
-          className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {boards.map((board) => (
-            <div
-              key={board.id}
-              data-slider-card
-              className={cn(
-                "shrink-0 snap-start",
-                compact ? "w-[86%] max-w-[260px]" : "w-[88%] max-w-[340px]",
-              )}
-            >
-              <LanguageCard board={board} compact={compact} onOpen={() => onOpen(board)} />
-            </div>
-          ))}
+        <div className="relative">
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-y-0 left-0 z-[1] w-14 rounded-l-2xl bg-gradient-to-r from-[#F6D7EC] to-transparent transition-opacity",
+              canPrev ? "opacity-100" : "opacity-0",
+            )}
+            aria-hidden
+          />
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-y-0 right-0 z-[1] w-16 rounded-r-2xl bg-gradient-to-l from-[#E7B4D8] to-transparent transition-opacity",
+              canNext ? "opacity-100" : "opacity-40",
+            )}
+            aria-hidden
+          />
+          <button
+            type="button"
+            aria-label="Previous"
+            disabled={!canPrev}
+            onClick={() => slide(-1)}
+            className="absolute left-1 top-1/2 z-[2] grid size-9 -translate-y-1/2 place-items-center rounded-full bg-primary text-white shadow-[0_6px_16px_rgba(170,70,142,0.35)] disabled:pointer-events-none disabled:opacity-0"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="Next"
+            disabled={!canNext}
+            onClick={() => slide(1)}
+            className="absolute right-1 top-1/2 z-[2] grid size-9 -translate-y-1/2 place-items-center rounded-full bg-primary text-white shadow-[0_6px_16px_rgba(170,70,142,0.35)] disabled:pointer-events-none disabled:opacity-0"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+          <div
+            ref={scrollerRef}
+            aria-label={title}
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {boards.map((board) => (
+              <div
+                key={board.id}
+                data-slider-card
+                className={cn(
+                  "shrink-0 snap-start",
+                  compact ? "w-[86%] max-w-[260px]" : "w-[88%] max-w-[340px]",
+                )}
+              >
+                <LanguageCard board={board} compact={compact} onOpen={() => onOpen(board)} />
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className={cn("grid gap-3", compact ? "sm:grid-cols-2 xl:grid-cols-4" : "lg:grid-cols-3")}>

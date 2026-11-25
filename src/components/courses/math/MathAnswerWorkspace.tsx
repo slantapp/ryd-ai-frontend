@@ -1,5 +1,9 @@
+import { useEffect, useRef } from "react";
 import { CheckCircle2, PenLine, XCircle } from "lucide-react";
 import MathText from "./MathText";
+import MathAnswerKeyboard, {
+  type MathKeyboardKey,
+} from "./MathAnswerKeyboard";
 import { cn } from "@/lib/utils";
 
 interface MathAnswerWorkspaceProps {
@@ -17,6 +21,8 @@ interface MathAnswerWorkspaceProps {
   triesLeft?: number;
   speakingWait?: boolean;
   compact?: boolean;
+  /** Optional maths symbol buttons above the input. */
+  keyboard?: MathKeyboardKey[];
 }
 
 export default function MathAnswerWorkspace({
@@ -33,12 +39,48 @@ export default function MathAnswerWorkspace({
   triesLeft,
   speakingWait = false,
   compact = false,
+  keyboard,
 }: MathAnswerWorkspaceProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  /** Snapshot of what the child typed when they last checked — never overwritten. */
+  const submittedRef = useRef<string>("");
+  useEffect(() => {
+    if (isSubmitted && isCorrect !== null && value.trim()) {
+      submittedRef.current = value;
+    }
+    if (!isSubmitted) {
+      submittedRef.current = "";
+    }
+  }, [isSubmitted, isCorrect, value]);
+
+  const yourAnswer = isSubmitted
+    ? submittedRef.current || value
+    : value;
   const showSideBySide =
     isSubmitted &&
     isCorrect === false &&
     showExpected &&
     !!expectedAnswer;
+  const showYourOnly =
+    isSubmitted &&
+    isCorrect === false &&
+    !showExpected &&
+    typeof triesLeft === "number" &&
+    triesLeft > 0;
+
+  const insertAtCursor = (text: string) => {
+    const el = inputRef.current;
+    if (!el || disabled || isSubmitted) return;
+    const start = el.selectionStart ?? value.length;
+    const end = el.selectionEnd ?? value.length;
+    const next = value.slice(0, start) + text + value.slice(end);
+    onChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + text.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
 
   return (
     <div className={cn("min-w-0", compact ? "space-y-3" : "space-y-4 sm:space-y-5")}>
@@ -59,7 +101,15 @@ export default function MathAnswerWorkspace({
           <PenLine className="size-4 shrink-0" aria-hidden />
           Write your answer
         </label>
+        {keyboard && keyboard.length > 0 ? (
+          <MathAnswerKeyboard
+            keys={keyboard}
+            disabled={disabled || isSubmitted}
+            onInsert={insertAtCursor}
+          />
+        ) : null}
         <input
+          ref={inputRef}
           id="math-answer"
           type="text"
           inputMode="text"
@@ -79,6 +129,7 @@ export default function MathAnswerWorkspace({
             "border-primary/20 focus:border-primary focus:ring-4 focus:ring-primary/10",
             (disabled || isSubmitted) && "cursor-not-allowed bg-gray-50 opacity-80",
             showSideBySide && "border-rose-300 bg-rose-50/40",
+            isSubmitted && isCorrect === true && "border-emerald-300 bg-emerald-50/40",
           )}
         />
         <p className="mt-2 text-xs text-gray-500">
@@ -141,16 +192,18 @@ export default function MathAnswerWorkspace({
                   ? "Not quite — try again."
                   : "Not quite — let's look at the idea together."}
             </p>
-            {showSideBySide && (
+            {(showSideBySide || showYourOnly) && (
               <div className="mt-1 space-y-0.5 text-xs sm:text-sm">
                 <p className="break-words text-rose-800">
                   <span className="font-semibold">Your answer:</span>{" "}
-                  <span className="font-mono">{value || "—"}</span>
+                  <span className="font-mono">{yourAnswer || "—"}</span>
                 </p>
-                <p className="break-words text-emerald-800">
-                  <span className="font-semibold">Right answer:</span>{" "}
-                  <span className="font-mono">{expectedAnswer}</span>
-                </p>
+                {showSideBySide && (
+                  <p className="break-words text-emerald-800">
+                    <span className="font-semibold">Right answer:</span>{" "}
+                    <span className="font-mono">{expectedAnswer}</span>
+                  </p>
+                )}
               </div>
             )}
           </div>

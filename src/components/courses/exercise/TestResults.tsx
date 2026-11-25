@@ -23,6 +23,8 @@ interface TestResultsProps {
   language?: string;
   /** The program is waiting for an answer typed on the console's last line. */
   inputLine?: ConsoleInputLine | null;
+  /** Maths-only: hide console chrome and show the drawing / preview alone. */
+  outputOnly?: boolean;
 }
 
 /**
@@ -132,16 +134,25 @@ export default function TestResults({
   turtleTargetId,
   language,
   inputLine = null,
+  outputOnly = false,
 }: TestResultsProps) {
-  const [activeTab, setActiveTab] = useState<"console" | "preview">("console");
+  const [activeTab, setActiveTab] = useState<"console" | "preview">(
+    outputOnly ? "preview" : "console",
+  );
   const isLgUp = useMediaQueryMinLg();
 
   const isPagePreview = isWebWorkspaceLanguage(language);
   const hasTurtlePreview = Boolean(turtleTargetId);
   const hasVisualPreview = isPagePreview || hasTurtlePreview;
   const turtleRunning = useSyncExternalStore(subscribeTurtleRunning, isTurtleRunning, () => false);
-  const [turtleView, setTurtleView] = useState<TurtleView>("scroll");
+  const [turtleView, setTurtleView] = useState<TurtleView>(
+    outputOnly ? "fit" : "scroll",
+  );
   const turtleFit = useFitTurtleCanvas(hasTurtlePreview, turtleView);
+
+  useEffect(() => {
+    if (outputOnly) setActiveTab("preview");
+  }, [outputOnly]);
 
   const htmlContent = useMemo(() => {
     if (!isPagePreview || !code.trim()) return "";
@@ -173,6 +184,50 @@ export default function TestResults({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [hasVisualPreview]);
+
+  if (outputOnly && hasVisualPreview) {
+    return (
+      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-primary/15 bg-white">
+        <div className="min-h-0 flex-1 bg-white">
+          {hasTurtlePreview && turtleTargetId ? (
+            <div className="relative h-full min-h-56 overflow-hidden bg-white sm:min-h-72">
+              <div
+                ref={turtleFit.panelRef}
+                className="absolute inset-0 overflow-auto"
+              >
+                <div className="flex min-h-full min-w-full p-2">
+                  <div
+                    ref={turtleFit.boxRef}
+                    className="relative m-auto shrink-0 overflow-hidden"
+                  >
+                    <div
+                      ref={turtleFit.targetRef}
+                      id={turtleTargetId}
+                      className="absolute left-0 top-0 bg-white outline-none"
+                      aria-label="Drawing"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : htmlContent ? (
+            <iframe
+              key={htmlContent.slice(0, 64)}
+              srcDoc={htmlContent}
+              className="h-full min-h-56 w-full border-0 sm:min-h-72"
+              title="Picture"
+              sandbox="allow-scripts allow-popups allow-forms"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="flex min-h-56 items-center justify-center text-sm text-gray-500">
+              Drawing will appear here…
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-gray-200 bg-black text-white">

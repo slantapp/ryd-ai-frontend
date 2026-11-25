@@ -67,12 +67,14 @@ function renderMarkedProse(text: string, className?: string) {
         if (part.type === "text") {
           return <span key={i}>{part.value}</span>;
         }
-        const html = renderKatexHtml(part.value, false, false);
+        // Strip optional wrapping $ that curriculum sometimes leaves inside.
+        const latex = part.value.replace(/^\$|\$$/g, "").trim();
+        const html = renderKatexHtml(latex, false, false);
         if (!html) return <span key={i}>{part.value}</span>;
         return (
           <span
             key={i}
-            className="math-text inline-block max-w-full overflow-x-auto align-baseline [&_.katex]:text-inherit"
+            className="math-text inline-block align-baseline overflow-visible [&_.katex]:text-inherit [&_.katex-html]:overflow-visible"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         );
@@ -125,11 +127,28 @@ export default function MathText({
   if (segments.length === 0) return null;
 
   if (resolvedMode === "plain") {
+    // Display boards: centre the block as a whole, right-align lines inside so
+    // column addition (B3) lines up with tabular digits.
+    if (displayMode) {
+      return (
+        <span
+          className={cn(
+            "block min-w-0 text-center text-base sm:text-lg",
+            className,
+          )}
+        >
+          <span
+            className="inline-block max-w-full whitespace-pre-wrap text-right font-[KaTeX_Main,STIX_Two_Math,Cambria_Math,Times_New_Roman,serif] [font-variant-numeric:tabular-nums] wrap-anywhere"
+          >
+            {text}
+          </span>
+        </span>
+      );
+    }
     return (
       <span
         className={cn(
           "min-w-0 whitespace-pre-wrap wrap-anywhere font-[KaTeX_Main,STIX_Two_Math,Cambria_Math,Times_New_Roman,serif] [font-variant-numeric:tabular-nums]",
-          displayMode && "block text-center text-base sm:text-lg",
           className,
         )}
       >
@@ -146,7 +165,7 @@ export default function MathText({
     return (
       <span
         className={cn(
-          "math-text flex min-w-0 flex-col gap-1 overflow-x-auto",
+          "math-text flex min-w-0 flex-col gap-1 overflow-visible",
           displayMode && "items-center text-center",
           className,
         )}
@@ -157,7 +176,16 @@ export default function MathText({
           if (!line.trim()) {
             return <span key={index} className="h-3" aria-hidden />;
           }
-          const html = renderKatexHtml(line, displayMode, false);
+          // Mixed lines like `$\frac{3}{4}$ of 8 = 6` — render $…$ islands.
+          if (/\$[^$\n]+\$/.test(line)) {
+            return (
+              <span key={index} className="max-w-full">
+                {renderMarkedProse(line)}
+              </span>
+            );
+          }
+          const latex = line.replace(/^\$+|\$+$/g, "").trim();
+          const html = renderKatexHtml(latex, displayMode, false);
           if (!html) {
             return (
               <span
@@ -171,7 +199,7 @@ export default function MathText({
           return (
             <span
               key={index}
-              className="max-w-full [&_.katex]:text-inherit [&_.katex-display]:max-w-full [&_.katex-display]:overflow-x-auto"
+              className="max-w-full overflow-visible [&_.katex]:text-inherit [&_.katex-display]:max-w-full [&_.katex-display]:overflow-visible [&_.katex-html]:overflow-visible"
               dangerouslySetInnerHTML={{ __html: html }}
             />
           );
@@ -202,7 +230,7 @@ export default function MathText({
     return (
       <span
         className={cn(
-          "math-text inline-block max-w-full min-w-0 overflow-x-auto align-baseline [&_.katex]:text-inherit [&_.katex-display]:max-w-full [&_.katex-display]:overflow-x-auto",
+          "math-text inline-block max-w-full min-w-0 overflow-visible align-baseline [&_.katex]:text-inherit [&_.katex-display]:max-w-full [&_.katex-display]:overflow-visible [&_.katex-html]:overflow-visible",
           displayMode && "math-text-display block text-center",
           className,
         )}
@@ -230,7 +258,7 @@ export default function MathText({
         return (
           <span
             key={index}
-            className="math-text inline-block max-w-full overflow-x-auto align-baseline [&_.katex]:text-inherit"
+            className="math-text inline-block align-baseline overflow-visible [&_.katex]:text-inherit [&_.katex-html]:overflow-visible"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         );

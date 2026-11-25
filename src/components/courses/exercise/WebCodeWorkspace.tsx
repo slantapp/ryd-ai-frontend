@@ -37,6 +37,8 @@ interface WebCodeWorkspaceProps {
   submitDisabledReason?: string;
   /** A short line under the toolbar, e.g. why Submit is waiting. */
   toolbarNotice?: string | null;
+  /** Maths-only: hide editor/console and show the page preview alone. */
+  outputOnly?: boolean;
 }
 
 const TAB_CONFIG: Array<{ id: WebEditorTab; label: string; monaco: string }> = [
@@ -87,6 +89,7 @@ export default function WebCodeWorkspace({
   answerReview = null,
   submitDisabledReason,
   toolbarNotice = null,
+  outputOnly = false,
 }: WebCodeWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<WebEditorTab>(initialTab);
   const [previewLines, setPreviewLines] = useState<string[]>([]);
@@ -150,6 +153,16 @@ export default function WebCodeWorkspace({
       onReload={() => setPreviewLines([])}
     />
   );
+
+  if (outputOnly) {
+    return (
+      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-primary/15 bg-white">
+        <div className="min-h-56 flex-1 overflow-hidden sm:min-h-72">
+          {previewPane}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

@@ -87,6 +87,14 @@ html body[data-scroll-locked] {
   margin-right: 0 !important;
 }
 
+/* Inline KaTeX ($…$) must not sit in tiny scroll boxes (maths N4). */
+.math-text .katex,
+.math-text .katex-html,
+.math-text .katex-display {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
 :root {
   --radius: 0.625rem;
   --background: #f9ffff;

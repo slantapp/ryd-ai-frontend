@@ -2052,10 +2052,15 @@ function MathCourseDetailsInner() {
           canSubmit={
             !!studentAnswer.trim() && !isSpeaking && !isAnswerSubmitted
           }
-          disabled={isSpeaking}
+          disabled={isSpeaking || isAnswerSubmitted}
           isSubmitted={isAnswerSubmitted}
           isCorrect={lastAnswerCorrect}
           expectedAnswer={currentQuestion.testCriteria?.expectedFormula}
+          keyboard={
+            currentQuestion.keyboard as
+              | import("@/components/courses/math/MathAnswerKeyboard").MathKeyboardKey[]
+              | undefined
+          }
         />
       );
     }

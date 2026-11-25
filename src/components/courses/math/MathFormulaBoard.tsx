@@ -23,7 +23,15 @@ export default function MathFormulaBoard({
   const formula = /\n/.test(raw)
     ? raw.replace(/\r\n/g, "\n")
     : formatFormulaBoardText(raw).replace(/\s*;\s*/g, "\n");
-  const notation = example.notation === "latex" ? "latex" : "plain";
+  // Explicit notation wins; otherwise detect LaTeX commands / $…$ so older
+  // sampler boards (B6/B7) still render stacked fractions.
+  const notation =
+    example.notation === "latex" ||
+    example.notation === "plain"
+      ? example.notation
+      : /\\[a-zA-Z]+|\$[^$\n]+\$/.test(raw)
+        ? "latex"
+        : "plain";
 
   return (
     <div

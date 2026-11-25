@@ -4,6 +4,10 @@ function isAssignmentTarget(left: string): boolean {
   if (!s) return false;
   // Single math variable: x, y, n, x1, y2 (not "distance" / "speed")
   if (/^[A-Za-z][_A-Za-z0-9]?$/.test(s) || /^[A-Za-z]\d$/.test(s)) return true;
+  // Power / root equations that ARE the problem: x² = 49, x^2 = 49, √x = 4
+  if (/^[A-Za-z][_A-Za-z0-9]?[²³⁴⁵⁶⁷⁸⁹⁰¹²]?$/.test(s)) return true;
+  if (/^[A-Za-z][_A-Za-z0-9]?(?:\^|\*\*)\d+$/.test(s)) return true;
+  if (/^√\s*[A-Za-z][_A-Za-z0-9]?$/.test(s)) return true;
   return /^\(\s*[A-Za-z][_A-Za-z0-9]?(?:\s*,\s*[A-Za-z][_A-Za-z0-9]?)*\s*\)$/.test(
     s,
   );

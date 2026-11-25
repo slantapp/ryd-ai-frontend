@@ -52,6 +52,20 @@ const FRACTION_WORDS: Record<string, string> = {
   "7/8": "seven eighths",
 };
 
+const ORDINAL_POWERS: Record<string, string> = {
+  "0": "zeroth",
+  "1": "first",
+  "2": "second",
+  "3": "third",
+  "4": "fourth",
+  "5": "fifth",
+  "6": "sixth",
+  "7": "seventh",
+  "8": "eighth",
+  "9": "ninth",
+  "10": "tenth",
+};
+
 function stripEmojiRuns(text: string): string {
   return text.replace(
     /([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}])\1*/gu,
@@ -67,6 +81,19 @@ function stripEmojiRuns(text: string): string {
 
 function fractionToWords(frac: string): string {
   return FRACTION_WORDS[frac] ?? frac.replace("/", " over ");
+}
+
+function powerWords(digits: string): string {
+  if (digits === "2") return "squared";
+  if (digits === "3") return "cubed";
+  return `to the ${ORDINAL_POWERS[digits] ?? digits}`;
+}
+
+function centsWords(cents: string): string {
+  const n = Number.parseInt(cents, 10);
+  if (Number.isNaN(n) || n === 0) return "";
+  if (n < 10) return `oh ${n}`;
+  return String(n);
 }
 
 /** Speakable form of curriculum / on-screen maths text. */
@@ -85,6 +112,22 @@ export function toSpeech(raw: string): string {
     "$1 to $2",
   );
 
+  // Money BEFORE stripping $ or treating digits as bare numbers (C5).
+  s = s.replace(/\$\s*(\d+)\.(\d{1,2})\b/g, (_full, dollars: string, cents: string) => {
+    const d = Number.parseInt(dollars, 10);
+    const cRaw = cents.padEnd(2, "0").slice(0, 2);
+    const c = Number.parseInt(cRaw, 10);
+    if (d === 0) return ` ${c} cents `;
+    const dollarWord = d === 1 ? "one dollar" : `${d} dollars`;
+    if (c === 0) return ` ${dollarWord} `;
+    return ` ${dollarWord} ${centsWords(cRaw)} `;
+  });
+  s = s.replace(/\$\s*(\d+)\b/g, (_full, dollars: string) => {
+    const d = Number.parseInt(dollars, 10);
+    return d === 1 ? " one dollar " : ` ${d} dollars `;
+  });
+  s = s.replace(/(\d+)\s*¢/g, " $1 cents ");
+
   for (const [glyph, ascii] of Object.entries(UNICODE_FRACTIONS)) {
     s = s.split(glyph).join(` ${ascii} `);
   }
@@ -92,7 +135,7 @@ export function toSpeech(raw: string): string {
   // Mixed numbers: 2 1/4 → two and one quarter (keep digit form for word map)
   s = s.replace(
     /(\d+)\s+(\d+\/\d+)/g,
-    (_, whole: string, frac: string) =>
+    (_: string, whole: string, frac: string) =>
       `${whole} and ${fractionToWords(frac)}`,
   );
 
@@ -104,7 +147,7 @@ export function toSpeech(raw: string): string {
   // Superscripts / subscripts digits
   s = s.replace(/([A-Za-z0-9])²/g, "$1 squared");
   s = s.replace(/([A-Za-z0-9])³/g, "$1 cubed");
-  s = s.replace(/([A-Za-z0-9])([⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g, (_, base: string, sup: string) => {
+  s = s.replace(/([A-Za-z0-9])([⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g, (_: string, base: string, sup: string) => {
     const map: Record<string, string> = {
       "⁰": "0",
       "¹": "1",
@@ -118,10 +161,10 @@ export function toSpeech(raw: string): string {
       "⁹": "9",
     };
     const digits = [...sup].map((c) => map[c] ?? c).join("");
-    return `${base} to the ${digits}`;
+    return `${base} ${powerWords(digits)}`;
   });
-  s = s.replace(/\^(\d+)/g, " to the $1");
-  s = s.replace(/\^\{([^}]+)\}/g, " to the $1");
+  s = s.replace(/\^(\d+)/g, (_: string, d: string) => ` ${powerWords(d)}`);
+  s = s.replace(/\^\{([^}]+)\}/g, (_: string, d: string) => ` ${powerWords(d)}`);
 
   s = s.replace(/√\s*\(?\s*([^)\s]+)\s*\)?/g, " the square root of $1 ");
   s = s.replace(/√/g, " square root ");
@@ -144,7 +187,20 @@ export function toSpeech(raw: string): string {
   s = s.replace(/%/g, " percent ");
   s = s.replace(/°/g, " degrees ");
 
-  // Ratios / times like 3:4 between numbers (not clock times with known patterns already ok)
+  // Clock times BEFORE ratios (C4): h:mm with minutes 00–59.
+  s = s.replace(
+    /\b(\d{1,2})\s*:\s*([0-5]\d)\b/g,
+    (_full, hour: string, minute: string) => {
+      const h = Number.parseInt(hour, 10);
+      const m = Number.parseInt(minute, 10);
+      if (h > 23) return `${hour} to ${minute}`;
+      if (m === 0) return `${h} o'clock`;
+      if (m < 10) return `${h} oh ${m}`;
+      return `${h} ${m}`;
+    },
+  );
+
+  // Ratios like 3:4 (not clock times — those already rewritten).
   s = s.replace(/(\d+)\s*:\s*(\d+)(?!\d)/g, "$1 to $2");
 
   // Coordinates (2, -3) after negative rewrite may be "2, negative 3"

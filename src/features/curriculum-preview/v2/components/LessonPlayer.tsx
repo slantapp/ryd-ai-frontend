@@ -778,11 +778,18 @@ export function LessonPlayer({
       undefined,
       example.runtime,
     );
+    // Maths-only picture step: skip typing / editor and show the drawing.
+    const pictureOnly =
+      isMathsCourse && example.view === "output_only";
     if (isWeb) {
-      setWebCode(webCodeForExampleDemoStart(example));
+      setWebCode(
+        pictureOnly
+          ? buildWebCodeFromExample(example, "demo")
+          : webCodeForExampleDemoStart(example),
+      );
       setCode("");
     } else {
-      setCode("");
+      setCode(pictureOnly ? example.code : "");
       setWebCode(EMPTY_WEB_CODE);
     }
     setExtraFiles(example.files ?? {});
@@ -792,10 +799,29 @@ export function LessonPlayer({
       speakSequence(
         [
           example.explanation,
-          "Watch how that code works on the screen.",
-        ],
+          pictureOnly
+            ? null
+            : "Watch how that code works on the screen.",
+        ].filter((line): line is string => Boolean(line)),
         () => finishAutoOrManual(demoBeat),
       );
+    };
+
+    const runPicture = () => {
+      if (isWeb) {
+        setWebCode(buildWebCodeFromExample(example, "demo"));
+        setWebStdin(stdinForRun(example) ?? "");
+        setPreviewRefreshKey((key) => key + 1);
+        setResults(pictureOnly ? [] : ["✓ Preview updated."]);
+        explainAndFinish();
+        return;
+      }
+      setCode(example.code);
+      void showExampleResult(example).then((token) => {
+        if (token !== exampleRunRef.current) return;
+        if (pictureOnly) setResults([]);
+        explainAndFinish();
+      });
     };
 
     speakSequence(
@@ -806,23 +832,17 @@ export function LessonPlayer({
           demoBeat.avatar?.show,
           demoBeat.avatar?.gesture,
         ),
-        example.description ?? "Watch carefully as I type this example.",
+        pictureOnly
+          ? example.description
+          : (example.description ?? "Watch carefully as I type this example."),
       ],
       () => {
+        if (pictureOnly) {
+          runPicture();
+          return;
+        }
         typed.type(example.code, example.typingSpeed ?? 40, () => {
-          if (isWeb) {
-            setWebCode(buildWebCodeFromExample(example, "demo"));
-            setWebStdin(stdinForRun(example) ?? "");
-            setPreviewRefreshKey((key) => key + 1);
-            setResults(["✓ Preview updated."]);
-            explainAndFinish();
-            return;
-          }
-          setCode(example.code);
-          void showExampleResult(example).then((token) => {
-            if (token !== exampleRunRef.current) return;
-            explainAndFinish();
-          });
+          runPicture();
         });
       },
     );
@@ -1157,9 +1177,8 @@ export function LessonPlayer({
           setReviewReady(false);
           if (review) setResults((lines) => [...lines, ANSWER_REVIEW_CONSOLE_HINT]);
         }
-        if (q.type === "formula_test" && stored.formula) {
-          setFormulaAnswer(stored.formula);
-        }
+        // Keep the child's typed formula visible — never overwrite the input
+        // with the expected answer (item 13). Feedback shows both side by side.
         const teachingLines = resolveExhaustedWrongTeachingLines(q);
         const reveal = [
           ...teachingLines,
@@ -1197,7 +1216,7 @@ export function LessonPlayer({
         setIsAnswerSubmitted(false);
         setShowCelebration(false);
         if (clearSelection) setSelectedAnswer(null);
-        if (q.type === "formula_test") setFormulaAnswer("");
+        // Keep the child's typed formula so they can edit it for the next try.
       };
       retryUnlockRef.current = unlockRetry;
       setRetryPending(true);
@@ -1445,6 +1464,10 @@ export function LessonPlayer({
     ) ||
       (activeCodeExample ? exampleUsesAuthoredWebPanes(activeCodeExample) : false));
 
+  /** Maths courses only: run code and show the drawing, hide editor/console. */
+  const mathsOutputOnly =
+    isMathsCourse && activeCodeExample?.view === "output_only";
+
   const webEditorTab = useMemo(
     () =>
       // Raw example language — avoid normalizeRunLanguage("web") → "html".
@@ -1604,7 +1627,7 @@ export function LessonPlayer({
 
   const codeWorkspace = showCodePanel ? (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      {useWeb && programInput.prompt ? (
+      {useWeb && programInput.prompt && !mathsOutputOnly ? (
         <ProgramInputPrompt prompt={programInput.prompt} />
       ) : null}
       {useWeb ? (
@@ -1676,6 +1699,20 @@ export function LessonPlayer({
           answerReview={reviewControls}
           submitDisabledReason={submitWaitReason ?? undefined}
           toolbarNotice={submitWaitNotice}
+          outputOnly={mathsOutputOnly}
+        />
+      ) : mathsOutputOnly ? (
+        <TestResults
+          results={results}
+          inputLine={null}
+          code={code}
+          language={runLanguage}
+          turtleTargetId={activeTurtleTargetId}
+          onToggleFullscreen={() =>
+            setFullscreen(fullscreen === "results" ? null : "results")
+          }
+          isFullscreen={fullscreen === "results"}
+          outputOnly
         />
       ) : (
         <Split
@@ -1875,42 +1912,42 @@ export function LessonPlayer({
         />
       )}
       <div className="overflow-hidden rounded-xl border border-primary/20 bg-white/80 p-4 shadow-sm">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
-          Formula board
-        </p>
-        {formulaExampleForBoard && formulaBoardText ? (
-          <MathFormulaBoard
-            example={{
-              ...formulaExampleForBoard,
-              formula: formulaBoardText,
-              // Hide nested description/explanation — DemoIntro already covers copy.
-              description: undefined,
-              explanation: undefined,
-            }}
-            compact
-          />
-        ) : formulaBoardText ? (
-          <div className="min-h-[120px] rounded-lg bg-primary/5 p-3 text-base text-gray-900">
-            <MathText
-              displayMode
-              mode={
-                formulaExampleForBoard?.notation === "latex" ? "latex" : "plain"
-              }
-            >
-              {formulaBoardText}
-            </MathText>
-          </div>
-        ) : (
-          <div className="min-h-[120px] rounded-lg bg-primary/5 p-3">
-            <p className="text-sm text-gray-500">
-              {isFormulaTestPractice
-                ? "Work out your answer, then type it below."
-                : "Your example will appear here."}
+        {formulaBoardText ? (
+          <>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
+              Formula board
             </p>
-          </div>
-        )}
+            {formulaExampleForBoard ? (
+              <MathFormulaBoard
+                example={{
+                  ...formulaExampleForBoard,
+                  formula: formulaBoardText,
+                  // Hide nested description/explanation — DemoIntro already covers copy.
+                  description: undefined,
+                  explanation: undefined,
+                }}
+                compact
+              />
+            ) : (
+              <div className="min-h-[120px] rounded-lg bg-primary/5 p-3 text-base text-gray-900">
+                <MathText displayMode mode="plain">
+                  {formulaBoardText}
+                </MathText>
+              </div>
+            )}
+          </>
+        ) : !isFormulaTestPractice ? (
+          <>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
+              Formula board
+            </p>
+            <div className="min-h-[120px] rounded-lg bg-primary/5 p-3">
+              <p className="text-sm text-gray-500">Your example will appear here.</p>
+            </div>
+          </>
+        ) : null}
         {isFormulaTestPractice && beat?.type === "question" ? (
-          <div className="mt-4">
+          <div className={formulaBoardText ? "mt-4" : undefined}>
             {beat.diagram ? (
               <div className="mb-3">
                 <MathDiagram diagram={beat.diagram} />
@@ -1939,6 +1976,11 @@ export function LessonPlayer({
               triesLeft={triesLeft}
               speakingWait={isSpeaking && !isAnswerSubmitted}
               compact
+              keyboard={
+                beat.question.keyboard as
+                  | import("@/components/courses/math/MathAnswerKeyboard").MathKeyboardKey[]
+                  | undefined
+              }
             />
           </div>
         ) : null}
